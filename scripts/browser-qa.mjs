@@ -1094,6 +1094,14 @@ if (pass2 !== null) {
     await page.waitForTimeout(1200);
     const flipsHoldB = (await simState()).flips;
     log('m3 no repeated portal toggles', flipsHoldA === flipsHoldB, `flips ${flipsHoldA} -> ${flipsHoldB}`);
+    // M4 note: the level no longer ENDS after the gravity section — the M4
+    // interaction section (z 278..386, separately QA'd below and proven
+    // end-to-end by the deterministic playthrough test) continues to the new
+    // finishZ 380. This check therefore completes the M3 section, then uses
+    // the debug-only placement aid to skip the interaction content and proves
+    // the run still reaches the level finish gate from the final runway.
+    await page.evaluate(() => window.__gd3d.debugTeleport(0, 1.5, 376.5));
+    await page.waitForTimeout(300);
     let m3Finished = false;
     {
       const t0 = Date.now();
@@ -1106,7 +1114,7 @@ if (pass2 !== null) {
         await page.waitForTimeout(40);
       }
     }
-    log('m3 gravity section runs through to the finish gate', m3Finished,
+    log('m3 gravity section completes and the run reaches the level finish gate', m3Finished,
       m3Finished ? 'status=finished' : 'never finished');
   }
 }
@@ -1281,7 +1289,277 @@ if (pass2 !== null) {
   await page.waitForTimeout(300);
 }
 
-// --- 18. Console audit ---
+// --- 19. M4: interactive mechanics (pads, orbs, gravity orb, speed portal) ---
+// Same teleport-assisted pattern as the M3 section: debug-only placement to
+// reach the appended interaction section (z 278..386); full-section playability
+// is proven deterministically in tests/interactions.test.ts and the extended
+// gravity playthrough. Orb presses use closed-loop z-window polling with
+// bounded retries (CDP keypress latency ~50-100 ms is inside the generous
+// windows by design — see the M4 spec INPUT WINDOW CONTRACT).
+const m4Probe = () =>
+  page.evaluate(() => ({
+    speed: window.__gd3d.speedMultiplier(),
+    fwd: window.__gd3d.currentForwardSpeed(),
+    counts: window.__gd3d.interactionCounts(),
+    padUsed: window.__gd3d.isInteractionUsed('pad-floor-1'),
+    orbUsed: window.__gd3d.isInteractionUsed('orb-jump-1'),
+    gOrbUsed: window.__gd3d.isInteractionUsed('orb-gravity-1'),
+    rings: window.__gd3d.interactionRingsActive(),
+  }));
+
+async function pressSpaceWhen(pred, timeoutMs = 8000) {
+  const t0 = Date.now();
+  for (;;) {
+    const s = await simState();
+    if (s.status !== 'running') return false;
+    if (pred(s)) {
+      await page.keyboard.down('Space');
+      await page.waitForTimeout(80);
+      await page.keyboard.up('Space');
+      return true;
+    }
+    if (Date.now() - t0 > timeoutMs) return false;
+    await page.waitForTimeout(25);
+  }
+}
+
+// M4-1: jump pad — passive contact launch over the 10 u gap.
+{
+  // R then baseline BEFORE the teleport: the pad is passive and fires on any
+  // contact, so the counter baseline must be taken while the player is still
+  // at the start line (the teleport's fall+roll can legitimately reach it).
+  await page.keyboard.press('KeyR');
+  await page.waitForTimeout(350);
+  const pre = await m4Probe();
+  await page.evaluate(() => window.__gd3d.debugTeleport(0, 1.5, 300));
+  await page.waitForTimeout(120);
+  let maxPadY = 0;
+  let landed = null;
+  let shot = false;
+  const t0 = Date.now();
+  while (Date.now() - t0 < 15000) {
+    const s = await simState();
+    if (s.status !== 'running') break;
+    maxPadY = Math.max(maxPadY, s.y);
+    if (!shot && !s.grounded && s.y > 3) {
+      shot = true; // frozen mid-launch evidence
+      await page.keyboard.press('KeyP');
+      await page.waitForTimeout(400);
+      await capture('m4-01-jump-pad');
+      await page.keyboard.press('KeyP');
+      await page.waitForTimeout(150);
+    }
+    if (s.grounded && s.z > 316 && s.z < 332) { landed = s; break; }
+    await page.waitForTimeout(25);
+  }
+  const post = await m4Probe();
+  log('m4 jump pad activates exactly once (passive contact, no input)',
+    post.counts.pads === pre.counts.pads + 1 && post.padUsed,
+    `pads=${post.counts.pads} (pre=${pre.counts.pads}) used=${post.padUsed}`);
+  log('m4 pad launch apex exceeds the normal jump envelope', maxPadY > 3.6,
+    `maxY=${maxPadY.toFixed(2)} (jump apex ~2.07, pad 22 impulse -> ~5.76)`);
+  log('m4 pad flight crosses the 10 u gap and lands on runway F', landed !== null,
+    landed ? `z=${landed.z.toFixed(1)} y=${landed.y.toFixed(2)}` : '-');
+  await page.keyboard.press('KeyR');
+  await page.waitForTimeout(350);
+  const reset = await m4Probe();
+  log('m4 restart re-arms the pad and resets speed',
+    reset.padUsed === false && reset.speed === 1,
+    `padUsed=${reset.padUsed} speed=${reset.speed}`);
+}
+
+// M4-2: jump orb without press — pass-through is inert, the gap kills.
+{
+  await startGravityRun(326);
+  await rollUntilM3((s) => s.grounded && s.z > 328, 8000);
+  let death = null;
+  const t0 = Date.now();
+  while (Date.now() - t0 < 10000) {
+    const s = await simState();
+    if (s.status === 'dead') { death = s; break; }
+    await page.waitForTimeout(30);
+  }
+  const cause = await page.evaluate(() => window.__gd3d.deathCause());
+  const probe = await m4Probe();
+  log('m4 orb without press does not activate (orbs flat, not used)',
+    probe.counts.orbs === 0 && probe.orbUsed === false,
+    `orbs=${probe.counts.orbs} used=${probe.orbUsed}`);
+  log('m4 unassisted orb gap kills (void)', death !== null && cause === 'void',
+    `cause=${cause}`);
+  for (let i = 0; i < 40 && (await page.evaluate(() => window.__gd3d.status())) !== 'running'; i++) {
+    await page.waitForTimeout(100);
+  }
+}
+
+// M4-3: jump orb WITH press — activation + VFX ring + landing on G.
+let m4OrbActivated = false;
+let m4OrbRingsSeen = 0;
+for (let attempt = 1; attempt <= 4 && !m4OrbActivated; attempt++) {
+  await startGravityRun(326);
+  const jumped = await pressSpaceWhen((s) => s.grounded && s.z >= 329.2, 8000);
+  if (!jumped) { console.log(`  (m4 orb attempt ${attempt}: edge jump missed)`); continue; }
+  const pressed = await pressSpaceWhen((s) => !s.grounded && s.z >= 335.3 && s.z <= 338.4, 5000);
+  if (!pressed) { console.log(`  (m4 orb attempt ${attempt}: window press missed)`); continue; }
+  // VFX: the pooled activation ring must be observable right after firing.
+  const t0 = Date.now();
+  while (Date.now() - t0 < 1500) {
+    m4OrbRingsSeen = Math.max(m4OrbRingsSeen, (await m4Probe()).rings);
+    if (m4OrbRingsSeen > 0) break;
+    await page.waitForTimeout(15);
+  }
+  await page.keyboard.press('KeyP');
+  await page.waitForTimeout(300);
+  await capture('m4-03-orb-activation');
+  await page.keyboard.press('KeyP');
+  await page.waitForTimeout(150);
+  const probe = await m4Probe();
+  m4OrbActivated = probe.orbUsed && probe.counts.orbs >= 1;
+  if (!m4OrbActivated) console.log(`  (m4 orb attempt ${attempt}: activation not observed)`);
+}
+log('m4 orb press inside the window activates exactly once',
+  m4OrbActivated, `orbs=${(await m4Probe()).counts.orbs} used=${(await m4Probe()).orbUsed}`);
+log('m4 orb activation VFX ring observed', m4OrbRingsSeen > 0, `rings=${m4OrbRingsSeen}`);
+const m4OrbLanding = await rollUntilM3((s) => s.grounded && s.z > 342 && s.z < 358, 10000);
+log('m4 orb boost carries the player onto runway G', m4OrbLanding !== null,
+  m4OrbLanding ? `z=${m4OrbLanding.z.toFixed(1)}` : '-');
+// Window evidence shot: the orb ahead while approaching on F.
+{
+  await startGravityRun(326);
+  const approached = await rollUntilM3((s) => s.grounded && s.z > 329 && s.z < 331.5, 8000);
+  await page.keyboard.press('KeyP');
+  await page.waitForTimeout(400);
+  await capture('m4-02-jump-orb-window');
+  await page.keyboard.press('KeyP');
+  await page.waitForTimeout(150);
+  log('m4 orb window approach framed', approached !== null,
+    approached ? `z=${approached.z.toFixed(1)}` : '-');
+}
+
+// M4-4: gravity orb — press flips Floor -> Ceiling through the portal path.
+let m4Flip = null;
+for (let attempt = 1; attempt <= 4 && m4Flip === null; attempt++) {
+  await startGravityRun(344);
+  const jumped = await pressSpaceWhen((s) => s.grounded && s.z >= 348.2, 8000);
+  if (!jumped) { console.log(`  (m4 g-orb attempt ${attempt}: jump missed)`); continue; }
+  const pressed = await pressSpaceWhen((s) => !s.grounded && s.z >= 351 && s.z <= 352.9, 5000);
+  if (!pressed) { console.log(`  (m4 g-orb attempt ${attempt}: window press missed)`); continue; }
+  // Rise + ceiling grounding inside slab C (z 350..368).
+  const groundedCeiling = await rollUntilM3(
+    (s) => s.mode === 'ceiling' && s.grounded && Math.abs(s.y - 5.45) < 0.15 && s.z < 368,
+    10000,
+  );
+  if (groundedCeiling !== null) {
+    await page.keyboard.press('KeyP');
+    await page.waitForTimeout(400);
+    await capture('m4-04-gravity-orb');
+    await page.keyboard.press('KeyP');
+    await page.waitForTimeout(150);
+    m4Flip = groundedCeiling;
+  } else {
+    console.log(`  (m4 g-orb attempt ${attempt}: no ceiling grounding observed)`);
+  }
+}
+log('m4 gravity orb flips Floor -> Ceiling and grounds on slab C underside',
+  m4Flip !== null,
+  m4Flip ? `z=${m4Flip.z.toFixed(1)} y=${m4Flip.y.toFixed(2)} flips=${m4Flip.flips} mode=${m4Flip.mode}` : '-');
+log('m4 ceiling state readable: camera up remains world +Y',
+  m4Flip !== null && Math.abs(m4Flip.cameraUpY - 1) < 1e-6,
+  m4Flip ? `cameraUpY=${m4Flip.cameraUpY}` : '-');
+const m4BackDown = await rollUntilM3(
+  (s) => s.mode === 'floor' && s.grounded && s.z > 366, 15000,
+);
+log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
+  m4BackDown ? `z=${m4BackDown.z.toFixed(1)} mode=${m4BackDown.mode}` : '-');
+
+// M4-5: speed portal — deterministic crossing to 2x, then R resets.
+{
+  await startGravityRun(366);
+  const pre = await m4Probe(); // session-monotonic counters: assert a delta
+  const approach = await rollUntilM3((s) => s.grounded && s.z > 368 && s.z < 371, 10000);
+  await page.keyboard.press('KeyP');
+  await page.waitForTimeout(400);
+  await capture('m4-05-speed-portal');
+  await page.keyboard.press('KeyP');
+  await page.waitForTimeout(150);
+  const crossed = await rollUntilM3((s) => s.z > 373, 10000);
+  const probe = await m4Probe();
+  log('m4 speed portal crossing sets the 2x tier (no position jump)',
+    crossed !== null && probe.speed === 2 && Math.abs(probe.fwd - 28) < 1e-9 &&
+      probe.counts.speedPortals === pre.counts.speedPortals + 1,
+    `speed=${probe.speed} fwd=${probe.fwd} portals=${probe.counts.speedPortals} z=${crossed?.z.toFixed(1) ?? '-'}`);
+  // Live forward-rate corroboration at 2x: peak local rate across the short
+  // 2x runway (z 373..finish 380 leaves ~7 u — a single averaged window can
+  // include the finish stop, so sample local rates and take the peak).
+  const t0 = Date.now();
+  let maxRate = 0;
+  let prev = await pos();
+  let prevT = Date.now();
+  while (Date.now() - t0 < 6000) {
+    await page.waitForTimeout(35);
+    if ((await page.evaluate(() => window.__gd3d.status())) !== 'running') break;
+    const cur = await pos();
+    const dt = (Date.now() - prevT) / 1000;
+    if (dt > 0 && cur.z > prev.z && cur.z < 379.8) {
+      maxRate = Math.max(maxRate, (cur.z - prev.z) / dt);
+    }
+    prev = cur;
+    prevT = Date.now();
+  }
+  log('m4 2x forward rate observed (~28 u/s peak)', maxRate > 22,
+    `${maxRate.toFixed(1)} u/s peak`);
+  log('m4 speed portal approach framed', approach !== null,
+    approach ? `z=${approach.z.toFixed(1)}` : '-');
+  await page.keyboard.press('KeyR');
+  await page.waitForTimeout(350);
+  const reset = await m4Probe();
+  log('m4 restart resets the speed tier', reset.speed === 1, `speed=${reset.speed}`);
+}
+
+// M4-6: high-speed gameplay to the finish + repeated-interaction leak guard.
+{
+  await startGravityRun(366);
+  const crossed = await rollUntilM3((s) => s.z > 373, 10000);
+  const sprintShot = crossed !== null;
+  if (sprintShot) {
+    await page.keyboard.press('KeyP');
+    await page.waitForTimeout(300);
+    await capture('m4-06-high-speed-gameplay');
+    await page.keyboard.press('KeyP');
+    await page.waitForTimeout(150);
+  }
+  let finished = null;
+  const t0 = Date.now();
+  while (Date.now() - t0 < 10000) {
+    const s = await simState();
+    if (s.status === 'finished') { finished = s; break; }
+    if (s.status === 'dead') break;
+    await page.waitForTimeout(30);
+  }
+  log('m4 2x sprint crosses the finish gate (collision-safe high-speed section)',
+    finished !== null, finished ? 'status=finished' : `status=${(await simState()).status}`);
+  log('m4 high-speed screenshot framed', sprintShot, '-');
+
+  // Leak guard: three fresh pad->landing passes; scene children + draw calls
+  // must stay flat (pooled VFX, shared materials, no per-activation growth).
+  const samples = [];
+  for (let i = 0; i < 3; i++) {
+    await startGravityRun(300);
+    await rollUntilM3((s) => s.grounded && s.z > 318 && s.z < 330, 12000);
+    samples.push(await page.evaluate(() => ({
+      kids: window.__gd3d.sceneChildren(),
+      calls: window.__gd3d.rendererStats().calls,
+      pads: window.__gd3d.interactionCounts().pads,
+    })));
+  }
+  const flat = samples.length === 3 && samples[0].kids === samples[1].kids && samples[1].kids === samples[2].kids;
+  log('m4 repeated interactions leak guard (scene children flat)', flat,
+    JSON.stringify(samples));
+  log('m4 exactly one pad activation per attempt across repeats',
+    samples.length === 3 && samples[2].pads - samples[0].pads === 2,
+    `pads=${JSON.stringify(samples.map((s) => s.pads))}`);
+}
+
+// --- 20. Console audit ---
 log('no console errors', consoleErrors.length === 0, JSON.stringify(consoleErrors.slice(0, 3)));
 log('no page errors', pageErrors.length === 0, JSON.stringify(pageErrors.slice(0, 3)));
 
