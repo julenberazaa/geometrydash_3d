@@ -1,0 +1,133 @@
+/* Minimal HUD/debug chrome. All in-game visuals are Three.js geometry;
+   HTML/CSS is UI only. */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #07040f;
+  font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+}
+
+#app {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+}
+
+#app canvas {
+  display: block;
+}
+
+.hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  color: #cfe9ff;
+  user-select: none;
+}
+
+.hud-top {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(10, 6, 24, 0.72);
+  border: 1px solid rgba(180, 77, 255, 0.45);
+  border-radius: 8px;
+  padding: 8px 16px;
+}
+
+.hud-name {
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: #b44dff;
+  font-size: 13px;
+}
+
+.hud-bar-wrap {
+  width: min(46vw, 420px);
+  height: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.hud-bar {
+  width: 100%;
+  height: 100%;
+}
+
+.hud-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #19e6ff, #7ff7ff);
+  border-radius: 5px;
+  transition: width 80ms linear;
+}
+
+.hud-progress-text {
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  color: #7ff7ff;
+  min-width: 42px;
+}
+
+.hud-attempts {
+  font-size: 12px;
+  color: #ff9d00;
+  letter-spacing: 0.08em;
+}
+
+.hud-message {
+  position: absolute;
+  top: 34%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #ff4dd2;
+  text-shadow: 0 0 18px rgba(255, 77, 210, 0.65);
+  text-align: center;
+}
+
+.hud-help {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: rgba(207, 233, 255, 0.55);
+  background: rgba(10, 6, 24, 0.55);
+  padding: 6px 12px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.debug-overlay {
+  position: absolute;
+  top: 64px;
+  left: 12px;
+  padding: 10px 14px;
+  background: rgba(2, 8, 4, 0.82);
+  border: 1px solid rgba(0, 255, 136, 0.4);
+  border-radius: 6px;
+  color: #6dffb0;
+  font-family: 'Cascadia Code', Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  pointer-events: none;
+  white-space: pre;
+}

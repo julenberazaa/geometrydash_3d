@@ -1,0 +1,84 @@
+# GAME_DESIGN.md — Canonical Gameplay Contract
+
+> Authority for **product/gameplay behavior**. Implementation follows this file;
+> implementation difficulty never justifies silently changing it (see
+> `AGENTS.md` §4). Each section is marked **CURRENT** (shipped, tested) or
+> **PLANNED** (future milestone).
+
+Product priority order (applies to every tradeoff):
+
+1. Quality of control and fun
+2. Visual quality and gameplay readability
+3. Conceptual fidelity to precision auto-run arcade gameplay
+4. Viral / immediate visual appeal
+5. Architecture / editor / community infrastructure
+
+## 1. Core loop — CURRENT
+
+Automatic forward motion through a 3D track. Deterministic precision gameplay:
+instant death on mistakes, fast restart (<~500 ms feel), memorable
+data-driven levels. Lanes instead of free horizontal movement. No checkpoints,
+no Practice Mode initially.
+
+## 2. Cube on the floor — CURRENT
+
+- **Auto-forward:** the player always moves forward at level base speed
+  (Test Level: 14 units/s along +Z). No manual longitudinal control.
+- **Jump:** `ArrowUp` or `Space` = fixed-impulse jump. No variable-height hold
+  behavior. Holding jump causes an immediate re-jump after every valid landing
+  (hold-to-repeat), never a mid-air extra jump.
+  - Impulse 13.2 u/s, gravity 42 u/s² → apex ≈ 2.07 units, airtime ≈ 0.63 s,
+    forward distance ≈ 8.8 units.
+- **Fast-fall:** airborne `ArrowDown` adds extra downward acceleration (+55);
+  grounded `ArrowDown` does nothing.
+- **Lanes:** `ArrowLeft`/`ArrowRight` change the *target lane index*.
+  Physical lateral position is **continuous** (accelerate → cruise → analytic
+  braking → settle/snap; max lateral speed 16 u/s), participates in collision,
+  and remains substantially correctable **while airborne**.
+  - Test Level: 3 lanes at x = −2.6 / 0 / +2.6. Architecture supports arbitrary
+    lane definitions per level.
+  - **PROVISIONAL (M1):** each lane transition requires a distinct left/right
+    press edge; holding a lane key does NOT slide across multiple lanes. This
+    is pending human-feel evaluation — do not treat it as final design.
+
+## 3. Collision and death — CURRENT
+
+- Predictable AABB hitboxes. The gameplay collider (1.1³ cube) NEVER rotates —
+  visual tumble is render-only.
+- High-speed collision must not tunnel (swept per-axis movement, Y → Z → X).
+- Frontal wall contact kills (kill-front arcade semantics).
+- Hazards kill on overlap; falling below the level death plane kills.
+- Death: instant gameplay death, short visual hold (~0.45 s), deterministic
+  respawn at start, attempt counter increments. `R` restarts immediately.
+
+## 4. Camera — CURRENT
+
+Third person: behind and elevated, anchored to track center (NOT parented to
+the player), small damped lateral bias only (never mirrors lane movement 1:1),
+look-ahead down-track, never rolls.
+
+## 5. Levels — CURRENT
+
+Data-driven. Engine (`GameSimulation`, `CubeController`, collision) is
+separated from level content (`LevelDefinition`) and visual theme. A new level
+is a new data file plus zero engine changes.
+
+## 6. Gravity futures — PLANNED (not implemented)
+
+Gravity changes the actual gravity vector; the world does NOT rotate and the
+camera does NOT roll to fake orientation. The Cube will physically run on the
+ceiling / walls. Primary future states: Floor (−Y), Ceiling (+Y), Left wall
+(−X), Right wall (+X). Input semantics stay relative to the gameplay frame
+(`forwardAxis`, `gravityVector`, `surfaceNormal`, `laneAxis` — explicit data,
+never cross-product-derived mirroring).
+
+## 7. Out of scope for the current foundation
+
+Ship mode, gravity portals, orbs, pads, speed portals, moving hazards,
+final VFX, music/BPM sync, public editor, backend, persistence. See `ROADMAP.md`.
+
+## 8. Reference art
+
+`normal.png` / `cohete.png` / `arriba.png` are visual MOOD references only
+(neon-on-dark modular 3D, cyan player, orange hazards, readable void). All
+gameplay is real runtime 3D geometry. Never ship reference pixels.

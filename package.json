@@ -1,0 +1,30 @@
+{
+  "name": "geometrydash_3d",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Original 3D precision arcade runner (working title GeometryDash3D). Three.js view over a deterministic fixed-step simulation.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "verify": "npm run typecheck && npm run lint && npm test && npm run build",
+    "qa:browser": "node scripts/browser-qa.mjs",
+    "verify:full": "npm run verify && npm run qa:browser"
+  },
+  "dependencies": {
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.180.0",
+    "eslint": "^9.30.0",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.35.0",
+    "vite": "^7.0.0",
+    "vitest": "^3.2.0"
+  }
+}
