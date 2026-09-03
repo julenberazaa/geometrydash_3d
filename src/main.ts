@@ -30,6 +30,9 @@ declare global {
       cameraUpY: () => number;
       cameraEye: () => { x: number; y: number; z: number };
       cameraLook: () => { x: number; y: number; z: number };
+      screenPoint: (x: number, y: number, z: number) => {
+        ndcX: number; ndcY: number; px: number; py: number; behind: boolean;
+      };
       debugTeleport: (x: number, y: number, z: number) => void;
       deathCause: () => string | null;
       lethalInfo: () => {
@@ -62,6 +65,8 @@ window.__gd3d = {
   cameraUpY: () => game['rendererHost'].camera.up.y,
   cameraEye: () => ({ ...game['rendererHost'].chaseCamera.currentPosition }),
   cameraLook: () => ({ ...game['rendererHost'].chaseCamera.currentLookTarget }),
+  screenPoint: (x: number, y: number, z: number): { ndcX: number; ndcY: number; px: number; py: number; behind: boolean } =>
+    game['rendererHost'].projectToScreen(x, y, z),
   // Debug-only QA placement (see GameSimulation.debugPlaceAt).
   debugTeleport: (x: number, y: number, z: number): void => {
     game['simulation'].debugPlaceAt(x, y, z);

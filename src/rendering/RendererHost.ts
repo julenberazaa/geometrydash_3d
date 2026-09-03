@@ -252,6 +252,28 @@ export class RendererHost {
     this.deathBurst.play(this.simulation.deathPosition);
   }
 
+  /**
+   * QA observability: project a world point through the LIVE camera to NDC
+   * [-1,1]² and pixel coordinates (y down). Presentation-only read (same
+   * category as cameraEye/cameraLook probes) — framing/readability QA measures
+   * screen-space placement, apparent size, and surface visibility with it.
+   * Cold path; never called per frame by gameplay.
+   */
+  public projectToScreen(x: number, y: number, z: number): {
+    ndcX: number; ndcY: number; px: number; py: number; behind: boolean;
+  } {
+    this.camera.updateMatrixWorld();
+    const v = new THREE.Vector3(x, y, z).project(this.camera);
+    const behind = v.z > 1 || v.z < -1;
+    return {
+      ndcX: v.x,
+      ndcY: v.y,
+      px: (v.x * 0.5 + 0.5) * this.renderer.domElement.clientWidth,
+      py: (0.5 - v.y * 0.5) * this.renderer.domElement.clientHeight,
+      behind,
+    };
+  }
+
   public resize(width: number, height: number): void {
     this.camera.aspect = width / Math.max(1, height);
     this.camera.updateProjectionMatrix();

@@ -118,6 +118,16 @@ authoritative gravity mode and the existing damped smoothing turns it into a
 short glide — the camera eye must never enter blocking geometry (pinned by
 `tests/cameraFraming.test.ts`).
 
+**View parity (M3.2):** the ceiling must never be harder because of the VIEW.
+Measured framing parity is pinned (comparable eye-to-player distance and
+centered player on both surfaces, same `tests/cameraFraming.test.ts`). Because
+the below-focus eye makes the Cube's own silhouette occlude the ceiling run
+surface a few units ahead (unavoidable from below), ceiling run surfaces carry
+the SAME neon edge-rail language as the floor track (underside rails on
+exposed undersides) so corridor boundaries and gap edges stay readable beside
+the silhouette. Presentation only — no camera roll, no world rotation, no
+gameplay difference.
+
 ## 5. Levels — CURRENT
 
 Data-driven. Engine (`GameSimulation`, `CubeController`, collision) is

@@ -6,6 +6,15 @@ import { PALETTE } from '../visuals/palette';
 const FACE_TRIM_MIN_HEIGHT = 0.8;
 /** Faces narrower than this get no center seam (small faces read via frame). */
 const FACE_SEAM_MIN_WIDTH = 6.0;
+/**
+ * Bottom-face trims (underside rails) apply only to undersides exposed in
+ * open air well above the void reference (world-space heuristic — the same
+ * axis the gameplay frame uses). Ground-resting or buried bottoms are skipped:
+ * their rails would either poke through a host solid's top face or never be
+ * seen, and the M3.2 audit measured that only elevated undersides (ceiling run
+ * surfaces) need them — see specs/milestones/M3_2_CEILING_VIEW_PARITY.md.
+ */
+const UNDER_RAIL_MIN_BOTTOM_Y = 2.0;
 // NOTE: every face trim below rides ~0.04 proud of its host face (applique).
 // Fully embedded trims are invisible inside the opaque solid (M1.2 lesson).
 
@@ -83,14 +92,6 @@ export class LevelView {
       // the surface readable from the corridor below. On floor content the
       // bottom faces are buried or void-facing, so this changes nothing there.
       if (solidHeight >= FACE_TRIM_MIN_HEIGHT) {
-        // M3.1: underside inset, same visual language as the top inset — this
-        // is the RUN SURFACE of ceiling-gravity sections. A down-facing face
-        // receives only the near-black hemisphere ground light, so the
-        // ceiling underside used to render as a void and the attached Cube
-        // read as floating. A dim UNLIT panel (rides 0.011 proud below the
-        // face) keeps the surface readable from the corridor below. On floor
-        // content the bottom faces are buried or void-facing, so this changes
-        // nothing there.
         const under = new THREE.Mesh(box, underMat);
         under.scale.set(
           solid.halfExtents.x * 2 - 0.12,
@@ -99,6 +100,36 @@ export class LevelView {
         );
         under.position.set(solid.center.x, bottomY - 0.011, solid.center.z);
         this.group.add(under);
+
+        // M3.2: underside edge rails — the mirror of the top-edge strips
+        // below, for exposed undersides only (see UNDER_RAIL_MIN_BOTTOM_Y).
+        // Evidence (M3.2 audit): every neon rail previously lived on top
+        // faces, so the ceiling run surface had zero edge structure while the
+        // floor track glowed with it; and the below-focus camera makes the
+        // Cube's own silhouette occlude the ceiling surface ~4..16 u ahead —
+        // the LATERAL edges beside that silhouette are the only viable
+        // forward cue. Rails mark the corridor boundaries and the lethal gap
+        // edges with the same visual language the floor already has.
+        if (bottomY >= UNDER_RAIL_MIN_BOTTOM_Y) {
+          for (const side of [-1, 1]) {
+            const strip = new THREE.Mesh(box, edgeMat);
+            strip.scale.set(solidWidth, 0.055, 0.09);
+            strip.position.set(
+              solid.center.x,
+              bottomY - 0.01,
+              solid.center.z + side * (solid.halfExtents.z - 0.06),
+            );
+            this.group.add(strip);
+            const stripSide = new THREE.Mesh(box, edgeMat);
+            stripSide.scale.set(0.09, 0.055, solid.halfExtents.z * 2);
+            stripSide.position.set(
+              solid.center.x + side * (solid.halfExtents.x - 0.06),
+              bottomY - 0.01,
+              solid.center.z,
+            );
+            this.group.add(stripSide);
+          }
+        }
 
         // Four corner posts, outboard of the solid so each shows on BOTH
         // adjacent faces (front/back + sides share the corners).

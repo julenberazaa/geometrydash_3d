@@ -1204,6 +1204,83 @@ if (pass2 !== null) {
   await page.waitForTimeout(300);
 }
 
+// --- 17c. M3.2: ceiling view parity (underside rails + gap-edge visibility) ---
+// M3.2 audit evidence: the below-focus camera makes the Cube's own silhouette
+// occlude the ceiling run surface ~4..16 u ahead (unavoidable from below), and
+// every neon rail used to live on TOP faces — so the ceiling corridor had no
+// visible forward cue at all. LevelView now mirrors the rail treatment onto
+// exposed undersides. These checks assert the payoff IN SCREEN SPACE via the
+// screenPoint probe: the lateral underside rails and the lethal gap edges must
+// be visible in the viewport and NOT hidden behind the Cube's silhouette.
+{
+  const project = (pts) =>
+    page.evaluate((pp) => pp.map((p) => window.__gd3d.screenPoint(p[0], p[1], p[2])), pts);
+  const cubeScreenBox = async () => {
+    const p = await pos();
+    const h = 0.62; // visual cube half-edge
+    const corners = await project([
+      [p.x - h, p.y - h, p.z - h], [p.x + h, p.y - h, p.z - h],
+      [p.x - h, p.y + h, p.z - h], [p.x + h, p.y + h, p.z - h],
+      [p.x - h, p.y - h, p.z + h], [p.x + h, p.y - h, p.z + h],
+      [p.x - h, p.y + h, p.z + h], [p.x + h, p.y + h, p.z + h],
+    ]);
+    return {
+      x0: Math.min(...corners.map((c) => c.px)),
+      x1: Math.max(...corners.map((c) => c.px)),
+    };
+  };
+  const visibleInViewport = (sp) =>
+    !sp.behind && sp.px > 0 && sp.px < 1280 && sp.py > 0 && sp.py < 720;
+
+  // Stable ceiling run: the longitudinal underside rails ahead must be ON
+  // SCREEN (the converging forward cue beside the Cube silhouette).
+  const railRun = await crossToCeiling();
+  await rollUntilM3((s) => s.grounded && s.z > 200 && s.z < 212, 15000);
+  const railPts = await project([
+    [-5.34, 5.99, 218], [5.34, 5.99, 218],
+    [-5.34, 5.99, 226], [5.34, 5.99, 226],
+  ]);
+  log('m3.2 underside rails visible ahead during ceiling run',
+    railRun !== null && railPts.every(visibleInViewport),
+    railPts.map((p) => `${p.px.toFixed(0)},${p.py.toFixed(0)}${p.behind ? ' (behind)' : ''}`).join(' | '));
+  await page.keyboard.press('KeyP');
+  await page.waitForTimeout(400);
+  await capture('m32-01-ceiling-corridor-rails');
+  await page.keyboard.press('KeyP');
+  await page.waitForTimeout(150);
+
+  // Gap approach: the lethal gap's lateral edges must be visible BESIDE the
+  // Cube silhouette (the pre-M3.2 build left the gap boundary unmarked where
+  // it is actually visible).
+  const m32Gap = await rollUntilM3((s) => s.grounded && s.z > 222 && s.z < 228, 15000);
+  log('m3.2 gap approach framed', m32Gap !== null, m32Gap ? `z=${m32Gap.z.toFixed(1)}` : '-');
+  const box = await cubeScreenBox();
+  const gapEdges = await project([[5.4, 6, 232], [-5.4, 6, 232]]);
+  const edgesBesideSilhouette = gapEdges.every(
+    (sp) => visibleInViewport(sp) && (sp.px < box.x0 - 2 || sp.px > box.x1 + 2),
+  );
+  log('m3.2 gap edges visible beside the cube silhouette',
+    edgesBesideSilhouette,
+    `cube x ${box.x0.toFixed(0)}..${box.x1.toFixed(0)} | edges ${gapEdges.map((s) => s.px.toFixed(0)).join(', ')}`);
+  await page.keyboard.press('KeyP');
+  await page.waitForTimeout(400);
+  await capture('m32-02-ceiling-gap-approach');
+  await page.keyboard.press('KeyP');
+  await page.waitForTimeout(150);
+
+  // Parity pair: same framing stage on the floor (pre-portal approach).
+  await startGravityRun(172);
+  const m32Floor = await rollUntilM3((s) => s.z > 172 && s.z < 181 && s.mode === 'floor' && s.grounded, 15000);
+  log('m3.2 floor reference framing reached', m32Floor !== null, m32Floor ? `z=${m32Floor.z.toFixed(1)}` : '-');
+  await page.keyboard.press('KeyP');
+  await page.waitForTimeout(400);
+  await capture('m32-03-floor-reference');
+  await page.keyboard.press('KeyP');
+  await page.waitForTimeout(150);
+  await page.keyboard.press('KeyR'); // clean up
+  await page.waitForTimeout(300);
+}
+
 // --- 18. Console audit ---
 log('no console errors', consoleErrors.length === 0, JSON.stringify(consoleErrors.slice(0, 3)));
 log('no page errors', pageErrors.length === 0, JSON.stringify(pageErrors.slice(0, 3)));

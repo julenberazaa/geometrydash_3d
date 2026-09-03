@@ -111,8 +111,29 @@ gameplay/collider/controller/tuning changes; no camera collision system
 (unneeded — non-penetration now pinned). 90/90 unique automated tests
 (2 new, incl. the real-playthrough camera-eye non-penetration regression),
 `npm run verify` green, browser QA 72/72 green (40 M2 + 27 M3 + 5 M3.1) with
-zero console/page errors, `qa/screenshots/m31-*` proof set, visual gate 4/4
-pass. HUMAN CEILING FEEL = STILL OPEN (re-playtest on the M3.1 build).
+  zero console/page errors, `qa/screenshots/m31-*` proof set, visual gate 4/4
+  pass. HUMAN CEILING FEEL = STILL OPEN (re-playtest on the M3.1 build).
+
+## M3.2 — Ceiling view parity & readability polish: PASS (2026-09-03)
+
+Human re-playtest on M3.1: "looks better", but the ceiling view may still be
+harder to read than the floor view. Measured audit (headless framing/pixel
+probes, `scripts/m32-audit.mjs`) REJECTED the camera-framing and cube-
+material hypotheses (eye distance 10.55 vs 10.30, cube width 92 vs 97 px,
+both players mid-frame) and PROVED the real causes: (1) every neon rail sat
+on TOP faces, so the ceiling run surface had zero edge structure exactly
+where (2) the below-focus camera makes the Cube's own silhouette occlude the
+ceiling surface ~4..16 u ahead (geometrically unavoidable from below). Fix,
+presentation-only in `LevelView`: exposed undersides (ceiling run surfaces)
+now mirror the top-edge rail treatment (2 longitudinal + 2 across neon rails
+per slab), giving the ceiling the same converging-corridor language as the
+floor; buried/resting bottoms unaffected (floor pixels unchanged). Camera,
+gameplay, colliders, tuning, level content: untouched. Plus `screenPoint` QA
+probe, `scripts/m32-audit.mjs` measurement tool, `tests/undersideRails.test.ts`
+(3) + framing-parity bounds in `cameraFraming` (1). 94/94 unique automated
+tests, `npm run verify` green, browser QA 76/76 green (40 M2 + 27 M3 + 5
+M3.1 + 4 M3.2) with zero console/page errors, `qa/screenshots/m32-*` proof
+set. HUMAN CEILING FEEL = STILL OPEN (re-playtest on the M3.2 build).
 
 ## M4 — Interactive mechanics
 

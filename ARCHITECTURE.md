@@ -177,7 +177,9 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   still never reads level data).
 - `RendererHost`: SOLE owner of `WebGLRenderer`. Per frame interpolates
   visuals between `prevPosition`→`position` (gameplay never interpolates),
-  advances camera, exposes `renderer.info` stats. DPR capped at 1.5.
+  advances camera, exposes `renderer.info` stats. DPR capped at 1.5. QA probe
+  support: `projectToScreen(x,y,z)` (live-camera world→NDC/pixel projection;
+  observability only, cold path).
 - `PlayerView`: original procedural cyan cube (visual 1.24 vs collider 1.1);
   airtime tumble is render-only and snaps to rest on landing — rest
   orientation aligns to the surface normal (180° Z roll presentation on
@@ -207,7 +209,16 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   UNLIT panel (`PALETTE.platformUnder`) riding proud of each tall solid's
   bottom face so the CEILING run surface reads from the corridor (down-facing
   Lambert gets only the near-black hemisphere ground light; invisible on
-  floor content where bottom faces are buried or void-facing); solids < 0.8
+  floor content where bottom faces are buried or void-facing); M3.2 underside
+  RAILS — exposed undersides (bottom face ≥ world y 2, i.e. ceiling run
+  surfaces) mirror the top-edge neon rail treatment below the face (2
+  longitudinal + 2 across rails, shared edge material), so the ceiling
+  corridor reads with the same converging neon language as the floor;
+  ground-resting/buried bottoms stay rail-free (rails would poke through host
+  solids or never be seen — pinned by `tests/undersideRails.test.ts`;
+  evidence: the M3.2 audit measured that the below-focus camera makes the
+  Cube silhouette occlude the ceiling surface ~4..16 u ahead, so the lateral
+  underside edges are the only viable forward cue); solids < 0.8
   tall and all hazards untouched — no new systems), `EnvironmentView` (fog,
   deterministic starfield/pillars — seeded PRNG, visuals only), finish gate.
 - `Hud`: level name, real progress %, attempt count, key help, messages.
@@ -217,7 +228,8 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   cause/lethal/hold/contact-normal/pre-impact-velocity) + `DebugView` (F2
   collider wireframes, F3 player hitbox). `__gd3d` probes expose death cause,
   lethal info, gravity mode/portal state, support id, camera up/eye/look,
-  renderer stats, scene-child count, burst state, and the debug-only
+  live-camera world→screen projection (`screenPoint`), renderer stats,
+  scene-child count, burst state, and the debug-only
   `debugTeleport` placement aid for browser QA.
 
 ## 9. QA (`tests/`, `scripts/`, `qa/`)
@@ -236,7 +248,17 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   playthrough to finish), `cameraFraming` (M3.1: ceiling rest frames from
   below the focus; the camera eye — stepped per sim tick alongside the REAL
   playthrough with the RendererHost framing — never enters any blocking
-  collider; proven failing pre-fix, 343 penetrating samples / worst 0.157 u).
+  collider; proven failing pre-fix, 343 penetrating samples / worst 0.157 u;
+  M3.2: floor/ceiling framing-parity bounds — eye-to-player distance ratio
+  and centered-player NDC on both surfaces), `undersideRails` (M3.2
+  presentation geometry: elevated ceiling run surfaces carry 4 underside
+  rails incl. 2 longitudinal; ground-resting/buried bottoms none; M3.1
+  underside inset pinned).
+- `scripts/m32-audit.mjs`: M3.2 measurement tool (dev tool, not part of the
+  verify gate) — freezes deterministic floor/ceiling framings and measures
+  geometric parity (eye distance, screen placement, apparent cube size,
+  surface-visibility profile) + pixel parity (cube/contact-band luminance)
+  into `qa/screenshots/m32-audit-*`.
 - `scripts/browser-qa.mjs`: headless Chromium gameplay harness (Playwright) —
   console audit, input sequences, `window.__gd3d` probes, PNG + JSON
   provenance sidecars in `qa/screenshots/` (git-ignored, regenerable).
@@ -254,6 +276,11 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   (eye stays in the open corridor, never in the slab band y ≥ 6), floor
   framing unchanged, ceiling eye settles below the cube with clearance, look
   target reads the contact surface, `m31-*` screenshots.
+  M3.2 section: screen-space ceiling parity via the `screenPoint` probe —
+  underside rails ahead during a stable ceiling run project inside the
+  viewport, the lethal gap's lateral edges project beside (not behind) the
+  Cube silhouette at gap approach, floor reference framing reached,
+  `m32-*` screenshots.
 - Gate: `npm run verify` = typecheck + lint + tests + build. Full:
   `npm run verify:full` adds browser QA (needs `npm run dev` + browsers).
 
@@ -271,6 +298,7 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
 | Floor behavior bit-identical to the approved pre-M3 build | `floorCompat` golden gate (exact-float trajectories) |
 | Camera not parented; lateral bias bounded | `ChaseCamera` tuning + code review |
 | Camera eye never inside blocking geometry (either gravity surface) | `cameraFraming` regression (real-playthrough eye sweep) + browser QA m3.1 live eye sampling |
+| Floor/ceiling view parity: comparable eye distance + centered player; ceiling run surfaces carry floor-parity underside rails | `cameraFraming` M3.2 parity bounds + `undersideRails` regression + browser QA m3.2 screen-space checks |
 | Swept collision, no tunneling at speed | `collision` anti-tunneling tests |
 | Frontal kills, lateral/top contacts safe (either blocking kind, either surface) | `death` killFront semantics tests + `gravity` tests + browser QA |
 | Death exactly-once; attempts +1 per respawn/restart only | `death` event/attempt tests |

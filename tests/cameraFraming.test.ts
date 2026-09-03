@@ -58,6 +58,47 @@ describe('ChaseCamera framing invariants', () => {
     expect(eye.y).toBeLessThan(player.y);
   });
 
+  it('keeps floor/ceiling framing parity: comparable eye distance and centered player (M3.2)', () => {
+    // M3.2 audit measurements: the remaining ceiling readability gap was NOT
+    // camera framing (eye-to-player distance 10.55 vs 10.30, apparent cube
+    // width within ~5%, both players near the vertical middle of the frame).
+    // These bounds pin that parity so future framing changes cannot silently
+    // reintroduce a view disadvantage on either surface.
+    const rest = (y: number, side: 'aboveFocus' | 'belowFocus') => {
+      const cam = new ChaseCamera();
+      const player = { x: 0, y, z: 210 };
+      cam.snapTo(player, 0, side);
+      const eye = cam.currentPosition;
+      const dist = Math.hypot(player.x - eye.x, player.y - eye.y, player.z - eye.z);
+      // Player vertical NDC via the pure-math camera basis (fov 62, up +Y).
+      const look = cam.currentLookTarget;
+      let fx = look.x - eye.x, fy = look.y - eye.y, fz = look.z - eye.z;
+      const fl = Math.hypot(fx, fy, fz);
+      fx /= fl; fy /= fl; fz /= fl;
+      // right = normalize(forward × worldUp); upv = right × forward
+      let rx = -fz;
+      const ry = 0;
+      let rz = fx;
+      const rl = Math.hypot(rx, ry, rz);
+      rx /= rl; rz /= rl;
+      const ux = ry * fz - rz * fy, uy = rz * fx - rx * fz, uz = rx * fy - ry * fx;
+      const dx = player.x - eye.x, dy = player.y - eye.y, dz = player.z - eye.z;
+      const upComp = dx * ux + dy * uy + dz * uz;
+      const fwdComp = dx * fx + dy * fy + dz * fz;
+      const ndcY = upComp / (fwdComp * Math.tan((62 / 2) * (Math.PI / 180)));
+      return { dist, ndcY };
+    };
+    const floor = rest(0.55, 'aboveFocus');
+    const ceiling = rest(5.45, 'belowFocus');
+    // Apparent size scales ~1/distance: comparable framing within 15%.
+    const ratio = ceiling.dist / floor.dist;
+    expect(ratio).toBeGreaterThan(0.85);
+    expect(ratio).toBeLessThan(1.15);
+    // Player stays in the middle band of the frame on BOTH surfaces.
+    expect(Math.abs(floor.ndcY)).toBeLessThan(0.6);
+    expect(Math.abs(ceiling.ndcY)).toBeLessThan(0.6);
+  });
+
   it('camera eye never enters blocking geometry across the full Test-Level playthrough', () => {
     const sim = new GameSimulation(TEST_LEVEL);
     const cam = new ChaseCamera();
