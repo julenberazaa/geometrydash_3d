@@ -37,7 +37,9 @@ import type { LevelDefinition } from '../level/levelDefinition';
  *   5. lethal checks: void bounds then exact swept-path hazard CCD
  *      (death returns immediately — LETHAL CHECKS PRECEDE ALL PORTAL AND
  *      INTERACTION MUTATIONS: nothing later in the step can rescue or
- *      mutate a dead step)
+ *      mutate a dead step; a killing step can never also mutate
+ *      gravityMode / portalTransitionCount / lastPortalId — they stay
+ *      pre-step, per the M3.3 closeout contract)
  *   6. passive interactions: jump pads (swept contact, one-shot per attempt)
  *   7. active interactions: jump orbs then gravity orbs (press edge inside
  *      the swept activation window, one-shot per attempt)
@@ -339,11 +341,13 @@ export class GameSimulation {
       this.player.supportColliderId = null;
     }
 
-    // 4. LETHAL CHECKS (before all portal/interaction mutations — M3.3
-    //    invariant, extended to every M4 interaction): void bounds (lower
-    //    always; upper when defined) then exact swept-path hazard overlap.
-    //    A death here terminates the step; no pad, orb, or portal below can
-    //    rescue or mutate a dead step.
+    // 4. LETHAL CHECKS (before all portal/interaction mutations — the M3.3
+    //    closeout invariant, extended to every M4 interaction): void bounds
+    //    (lower always; upper when defined) then exact swept-path hazard
+    //    overlap. A death here terminates the step; no pad, orb, or portal
+    //    below can rescue or mutate a dead step — die() returns before the
+    //    interaction/portal steps, leaving gravityMode,
+    //    portalTransitionCount and lastPortalId at their pre-step values.
     if (this.player.position.y < this.def.deathY) {
       this.die('void', null, null);
       return;
@@ -365,7 +369,13 @@ export class GameSimulation {
     this.processOrbs(jumpPressed);
     // 7. Speed portal crossings (ascending Z): speed multiplier mutation.
     this.processSpeedPortals();
-    // 8. Gravity portal crossings (ascending Z): gravity transition.
+    // 8. Gravity portal crossings (AFTER the lethal checks — death wins the
+    //    step). Forward-crossing edge on the swept step path:
+    //    prevZ < portal.z <= currentZ. Deterministic at any per-step
+    //    displacement; one-shot per attempt by construction. Crossing
+    //    detection is order-independent (it reads prevPosition/position
+    //    only), so the post-lethal placement changes nothing for non-lethal
+    //    steps and structurally guarantees the precedence contract above.
     this.processGravityPortals();
 
     this.elapsedSimTime += SIMULATION_DT;
@@ -439,8 +449,14 @@ export class GameSimulation {
    * Gravity portal processing: check forward crossings on this step's swept
    * path and apply transitions. Portals are sorted ascending by Z at load;
    * if several are crossed in one extreme-displacement step, the furthest one
-   * wins (last applied). Crossing a portal whose target is already the
-   * current mode updates the debug id but does not count as a transition.
+   * wins (last applied). Transition semantics live on the ONE shared
+   * `applyGravityTransition` path (also used by M4 gravity orbs): preserve
+   * world position and all velocity components (no teleport, no impulse, no
+   * snap), flip the authoritative mode, invalidate grounded/support.
+   * Crossing a portal whose target is already the current mode updates the
+   * debug id but does not count as a transition. Runs AFTER the lethal
+   * checks (M3.3): if this step killed the player, update() already
+   * returned and no portal state is mutated.
    */
   private processGravityPortals(): void {
     if (this.level.gravityPortals.length === 0) return;

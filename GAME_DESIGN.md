@@ -101,8 +101,10 @@ rolls when gravity changes.
   manual `R` restart is not death. `R` restarts immediately from any state.
   Finish can never trigger after death. Falling out of bounds after a lateral
   (or forward) exit completes through this same path — side falls are never
-  instant kills. Lethal contact in a simulation step is never undone by a
-  gravity portal (death wins the step).
+  instant kills. A lethal step NEVER applies a gravity transition: lethal
+  checks (frontal, void, hazard) precede portal processing, so a step that
+  kills the player keeps the pre-step gravity mode and portal state (death
+  wins the step).
 
 ## 4. Camera — CURRENT
 

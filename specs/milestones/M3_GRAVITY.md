@@ -129,18 +129,20 @@ Generalized collision axis ordering (wall gravity) is explicitly deferred.
     (no impulse, no snap);
   - `grounded = false`; `supportColliderId = null`;
   - subsequent steps accelerate toward the new gravity direction.
-- Processing order per step (documented authority):
-  1. controller (input interpreted with pre-portal mode) → velocities
+- Processing order per step (documented authority; revised by the M3.3
+  closeout — lethal checks precede portal processing so a lethal step can
+  never mutate gravity/portal state):
+  1. controller (input interpreted with the pre-portal mode) → velocities
   2. integrate + collide (Y → Z → X swept; unchanged axis order)
   3. frontal-kill check (death returns immediately)
   4. grounding (support probe along gravity, head-bump cancel)
-  5. gravity portal crossing → transition
-  6. void death checks (lower + upper)
-  7. hazard swept-path CCD check
+  5. void death checks (lower + upper)
+  6. hazard swept-path CCD check
+  7. gravity portal crossing → transition
   8. finish check
-  Death at any earlier point wins: **lethal contact in a step is never undone
-  by a gravity portal** (death returns before portal processing; pinned by
-  test).
+  Death at any earlier point wins: **a lethal step never applies a gravity
+  transition** (death returns before portal processing; pinned by tests,
+  incl. same-step hazard+portal and void+portal cases added in M3.3).
 - Respawn/restart (`R`) resets gravity mode to the level's start mode.
 
 ## SUPPORT / GROUNDING CONTRACT

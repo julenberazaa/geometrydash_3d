@@ -469,6 +469,86 @@ describe('Precedence, hazards and frontal rule under both gravities', () => {
     expect(sim.player.position.y).toBeGreaterThan(2);
   });
 
+  it('hazard + gravity portal in the SAME step: death wins, portal state stays pre-step (M3.3)', () => {
+    // The hazard's near edge sits exactly at portal.z + cube half-extent, so
+    // the first overlapping step IS the crossing step: overlap requires
+    // z + 0.55 >= portal.z + 0.55, i.e. z >= portal.z — the same condition as
+    // the forward crossing. (Old order: the portal flipped first, then the
+    // hazard killed — mutating gravity state in a lethal step.)
+    const SAME_STEP: LevelDefinition = {
+      ...GRAVITY_LEVEL,
+      id: 'gravity-test-hazard-portal-same-step',
+      gravityPortals: [{ id: 'up-1', z: 20.5, target: 'ceiling' }],
+      hazards: [
+        {
+          kind: 'hazard',
+          visual: 'spike',
+          center: { x: 0, y: 0.3, z: 21.55 },
+          halfExtents: { x: 5.4, y: 0.3, z: 0.5 },
+        },
+      ],
+    };
+    const sim = makeGravitySim(SAME_STEP);
+    settleFloor(sim);
+    const preStepMode = sim.gravityMode;
+    expect(runUntil(sim, () => sim.status === 'dead', 600)).toBe(true);
+    expect(sim.deathCause).toBe('hazard');
+    // The crossing happened in the death step itself...
+    expect(sim.prevPosition.z).toBeLessThan(20.5);
+    expect(sim.player.position.z).toBeGreaterThanOrEqual(20.5);
+    // ...but the lethal step must NOT apply the transition.
+    expect(sim.gravityMode).toBe(preStepMode);
+    expect(sim.portalTransitionCount).toBe(0);
+    expect(sim.lastPortalId).toBeNull();
+    // Respawn still resets cleanly to the start mode.
+    expect(runUntil(sim, () => sim.player.grounded, 200)).toBe(true);
+    expect(sim.gravityMode).toBe('floor');
+  });
+
+  it('void + gravity portal in the SAME step: death wins, portal state stays pre-step (M3.3)', () => {
+    // Probe run on a portal-free twin: find the exact step where the Cube
+    // falls below the lower void bound after running off the runway edge and
+    // record that step's swept Z interval (portals have no physical effect,
+    // so the real run's trajectory to that step is identical).
+    const twin: LevelDefinition = {
+      ...GRAVITY_LEVEL,
+      id: 'gravity-test-void-portal-twin',
+      gravityPortals: [],
+      deathY: -2,
+      solids: [
+        // Runway top y=0, z -10..40, then open void.
+        { center: { x: 0, y: -0.5, z: 15 }, halfExtents: { x: 5.4, y: 0.5, z: 25 } },
+      ],
+    };
+    const probe = makeGravitySim(twin);
+    settleFloor(probe);
+    expect(runUntil(probe, () => probe.status === 'dead', 600)).toBe(true);
+    expect(probe.deathCause).toBe('void');
+    const prevZ = probe.prevPosition.z;
+    const deathZ = probe.player.position.z;
+    expect(deathZ).toBeGreaterThan(prevZ);
+    // Portal plane inside the death step's swept interval: the crossing and
+    // the void death land in the SAME fixed step of the real run.
+    const portalZ = (prevZ + deathZ) / 2;
+
+    const level: LevelDefinition = {
+      ...twin,
+      id: 'gravity-test-void-portal-same-step',
+      gravityPortals: [{ id: 'void-portal', z: portalZ, target: 'ceiling' }],
+    };
+    const sim = makeGravitySim(level);
+    settleFloor(sim);
+    expect(runUntil(sim, () => sim.status === 'dead', 600)).toBe(true);
+    expect(sim.deathCause).toBe('void');
+    // The portal plane was crossed in that very step...
+    expect(sim.player.position.z).toBeGreaterThanOrEqual(portalZ);
+    expect(sim.prevPosition.z).toBeLessThan(portalZ);
+    // ...but death wins before portal state mutation.
+    expect(sim.gravityMode).toBe('floor');
+    expect(sim.portalTransitionCount).toBe(0);
+    expect(sim.lastPortalId).toBeNull();
+  });
+
   it('Frontal impact still kills on the Ceiling; lateral scrape still survives', () => {
     const CEILING_WALL: LevelDefinition = {
       ...GRAVITY_LEVEL,

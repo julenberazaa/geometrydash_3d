@@ -146,7 +146,10 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   the prebuilt per-mode `gameplayFrame`, and the input interpretation.
   Step order (authoritative, M4): the LETHAL CHECKS precede ALL portal and
   interaction mutations — a lethal step terminates before any pad, orb, or
-  portal can rescue, mutate, or re-tag it (M3.3 invariant extended to M4).
+  portal can rescue, mutate, or re-tag it (M3.3 invariant extended to M4:
+  `gravityMode`, `portalTransitionCount` and `lastPortalId` stay at their
+  pre-step values on a killing step; portal/interaction crossing detection
+  is order-independent — it reads only `prevPosition`/`position`).
   Death at any earlier point wins the step. Owns `prevPosition` (also the
   portal/interaction forward-crossing reference) for render interpolation,
   `status` (`running`/`dead`/`finished`), `attempts`, `elapsedSimTime`,
