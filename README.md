@@ -20,19 +20,23 @@ and cube-material hypotheses and proved the ceiling's readability gap came
 from missing surface cue structure (all neon rails were top-face-only, while
 the below-focus camera makes the cube's own silhouette occlude the ceiling
 surface a few units ahead); ceiling run surfaces now carry the same
-converging neon rail language as the floor. M4 interactive mechanics (branch
-`parallel/m4-interactions`): data-driven jump pads (passive contact impulse),
-jump orbs (press-edge activation windows, airborne), gravity orbs (Floor ↔
-Ceiling flip through the shared portal transition) and speed portals
-(0.5–4× multiplier tiers) with one authoritative speed state, explicit
-trigger ordering (lethal checks always win the step), original procedural
-visuals + pooled activation VFX, and a playable Test Level interaction
-section. 119 automated tests + 97 browser checks green. M2 polish (fair
-frontal/lateral collision, cause-tagged instant death, 0.30 s deterministic
-respawn with pooled burst feedback) and M2.1 exact swept-path hazard CCD
-remain in place. Cube movement feel human-approved (frozen); death/restart
-feel human-approved (M2 playtest); **ceiling feel and M4 interaction feel
-awaiting human playtest**.
+converging neon rail language as the floor. M3.3 camera-contract PASS: the
+ceiling framing is now the exact mirror of the floor framing, so the cube
+face opposite the support surface projects with identical size/perspective
+on both surfaces (measured free-face area ratio 0.219 → 1.000; the invariant
+is expressed surface-relatively so future gravity surfaces inherit it). M4
+interactive mechanics (branch `parallel/m4-interactions`): data-driven jump
+pads (passive contact impulse), jump orbs (press-edge activation windows,
+airborne), gravity orbs (Floor ↔ Ceiling flip through the shared portal
+transition) and speed portals (0.5–4× multiplier tiers) with one
+authoritative speed state, explicit trigger ordering (lethal checks always
+win the step), original procedural visuals + pooled activation VFX, and a
+playable Test Level interaction section. M2 polish (fair frontal/lateral
+collision, cause-tagged instant death, 0.30 s deterministic respawn with
+pooled burst feedback) and M2.1 exact swept-path hazard CCD remain in place.
+Cube movement feel human-approved (frozen); death/restart feel human-approved
+(M2 playtest); **ceiling feel and M4 interaction feel awaiting human
+playtest**.
 
 ## Setup
 

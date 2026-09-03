@@ -198,10 +198,19 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   smoothing only. Gravity-aware VERTICAL framing (M3.1): an explicit
   `CameraFocusSide` (`'aboveFocus' | 'belowFocus'`) selects the height
   formula — Floor: `playerY * 0.35 + 4.2` (elevated, unchanged); Ceiling:
-  `playerY * 0.15 + 3.4` so the eye hangs mid-corridor BELOW the cube
-  (settles y ≈ 4.22 vs cube 5.45) and can never be pulled up into the slab
-  the player runs under — the pre-M3.1 gravity-blind formula put the eye at
-  y ≈ 6.11, INSIDE the slabs (proven: 343 penetrating steps, worst 0.157 u;
+  `playerY * 0.35 - 0.3`. **Surface-relative projection symmetry (M3.3):**
+  the below-focus line is the EXACT mirror of the above-focus line about the
+  corridor mid-plane (shared `verticalParallax` 0.35; reflected anchor
+  `belowFocusAnchor` −0.3; look bias +0.6 above / −0.6 below with the focus
+  side), so the Cube's FREE face (the face on the `surfaceNormal` side,
+  opposite support — top on Floor, bottom on Ceiling) projects with
+  identical apparent size/perspective on every gravity surface (measured
+  0.219 pre-fix → 1.000 post-fix; pinned 0.98..1.02 in
+  `tests/cameraFraming.test.ts`, acceptance 0.90..1.10). The ceiling eye
+  hangs mid-corridor BELOW the cube (rest y ≈ 1.61 vs cube 5.45, ≈4.4 u
+  clear of the slab) and can never be pulled up into the slab the player
+  runs under — the pre-M3.1 gravity-blind formula put the eye at y ≈ 6.11,
+  INSIDE the slabs (proven: 343 penetrating steps, worst 0.157 u;
   backface culling then hid the ceiling, which read as the cube floating).
   `RendererHost` maps the sim's authoritative gravity mode to the focus side
   (presentation-only read; respawn `snapTo` included). Eye non-penetration
@@ -296,7 +305,10 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   and centered-player NDC on both surfaces), `undersideRails` (M3.2
   presentation geometry: elevated ceiling run surfaces carry 4 underside
   rails incl. 2 longitudinal; ground-resting/buried bottoms none; M3.1
-  underside inset pinned).
+  underside inset pinned). M3.3: exact-mirror rest-frame pins (floor
+  unchanged, ceiling reflected) + deterministic free-face projection parity
+  (pure-math square-NDC projection, area ratio 0.98..1.02, mirrored player
+  NDC).
 - `tests/interactions.test.ts` (M4: pads, jump orbs, gravity orbs, speed
   model + portals, trigger ordering, input-window semantics, 4× safety,
   run-twice determinism — 25 tests on compact data-driven fixtures).
@@ -305,6 +317,12 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   geometric parity (eye distance, screen placement, apparent cube size,
   surface-visibility profile) + pixel parity (cube/contact-band luminance)
   into `qa/screenshots/m32-audit-*`.
+- `scripts/m33-audit.mjs`: M3.3 measurement tool (dev tool, not part of the
+  verify gate) — frozen floor/ceiling rest framings, eye→player offset
+  decomposition (support-normal vs longitudinal) and projected FREE-face
+  area (shoelace over the live `screenPoint` projections); tagged
+  `M33_TAG=before|after` runs preserve the 0.219 → 1.000 parity evidence in
+  `qa/screenshots/m33-audit-*-metrics.json`.
 - `scripts/browser-qa.mjs`: headless Chromium gameplay harness (Playwright) —
   console audit, input sequences, `window.__gd3d` probes, PNG + JSON
   provenance sidecars in `qa/screenshots/` (git-ignored, regenerable).
@@ -327,6 +345,11 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   viewport, the lethal gap's lateral edges project beside (not behind) the
   Cube silhouette at gap approach, floor reference framing reached,
   `m32-*` screenshots.
+  M3.3 section: surface-relative projection parity via the `screenPoint`
+  probe — projected FREE-face area (shoelace over the face opposite support)
+  on frozen floor/ceiling reference frames, live ceiling/floor ratio
+  0.95..1.05 (measured 1.000), gap approach with the mirrored view,
+  `m33-*` screenshots.
   M4 section: teleport-assisted passes over the interaction section — pad
   activation exactly once + apex + gap crossing + re-arm on R, orb no-press
   pass-through vs press activation + pooled-ring VFX observation, gravity
@@ -352,6 +375,7 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
 | Camera not parented; lateral bias bounded | `ChaseCamera` tuning + code review |
 | Camera eye never inside blocking geometry (either gravity surface) | `cameraFraming` regression (real-playthrough eye sweep) + browser QA m3.1 live eye sampling |
 | Floor/ceiling view parity: comparable eye distance + centered player; ceiling run surfaces carry floor-parity underside rails | `cameraFraming` M3.2 parity bounds + `undersideRails` regression + browser QA m3.2 screen-space checks |
+| Surface-relative projection symmetry: the FREE face (opposite support) projects identically on every gravity surface; floor framing unchanged | `cameraFraming` M3.3 exact-mirror + free-face area parity tests + `m33-audit.mjs` before/after metrics + browser QA m3.3 live parity check |
 | Swept collision, no tunneling at speed | `collision` anti-tunneling tests |
 | Frontal kills, lateral/top contacts safe (either blocking kind, either surface) | `death` killFront semantics tests + `gravity` tests + browser QA |
 | Death exactly-once; attempts +1 per respawn/restart only | `death` event/attempt tests |

@@ -135,6 +135,36 @@ tests, `npm run verify` green, browser QA 76/76 green (40 M2 + 27 M3 + 5
 M3.1 + 4 M3.2) with zero console/page errors, `qa/screenshots/m32-*` proof
 set. HUMAN CEILING FEEL = STILL OPEN (re-playtest on the M3.2 build).
 
+## M3.3 — Surface-relative camera projection symmetry + M3 closeout: PASS (2026-09-04)
+
+Human re-playtest on M3.2: ceiling depth/readability acceptable to continue,
+but one explicit CAMERA DESIGN RULE had to become an architectural invariant
+before M4: the Cube face OPPOSITE the support surface (the FREE face — top
+on Floor, bottom on Ceiling) must project with the same apparent size and
+perspective on every gravity surface. Measured before fixing
+(`scripts/m33-audit.mjs`): the ceiling free face projected at only **0.219×**
+the floor's area (eye vertical offset −1.23 u vs +3.84 u — nearly edge-on),
+while total cube width was comparable (the bounding-box size was never the
+problem). Fix, presentation-only in `ChaseCamera`: the below-focus framing is
+now the EXACT mirror of the above-focus framing about the corridor mid-plane
+(shared 0.35 parallax slope, reflected anchor −0.3, look bias mirrored
++0.6/−0.6), giving a measured ratio of **1.000**; the rule is expressed
+surface-relatively (free face = `surfaceNormal`-side face) so future gravity
+surfaces inherit it — no Ceiling-only magic constant. Floor branch numerically
+identical; M3.1 eye non-penetration contract green unchanged (rise dip min
+0.72, portal-down peak ≈5.6 < underside 6). Plus the M3 semantic closeout
+(separate commit): lethal checks (void, hazard) now run BEFORE gravity
+portal processing, so a lethal step can never apply a gravity transition
+(mode/count/portal-id stay pre-step). Camera, gameplay, colliders, tuning,
+level content: otherwise untouched. `tests/cameraFraming.test.ts` +2
+(exact-mirror pins, deterministic free-face projection parity),
+`tests/gravity.test.ts` +2 (hazard+portal and void+portal same-step
+precedence), browser QA M3.3 section +4 with `m33-*` parity evidence pair.
+98/98 unique automated tests, `npm run verify` green, browser QA 80/80 green
+(40 M2 + 27 M3 + 5 M3.1 + 4 M3.2 + 4 M3.3) with zero console/page errors.
+HUMAN GATE: automated + visual evidence only — human re-playtest still
+authoritative.
+
 ## M4 — Interactive mechanics
 
 Pads, orbs, speed portals, moving hazards. Only on top of a validated Cube.

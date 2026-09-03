@@ -1183,13 +1183,14 @@ if (pass2 !== null) {
     eyeSamples > 20 && !eyeInSlabBand,
     `samples=${eyeSamples} eyeY ${eyeMin.toFixed(2)}..${eyeMax.toFixed(2)} (slab underside y=6)`);
 
-  // Stable ceiling run: eye settles BELOW the focus, mid-corridor, with real
-  // clearance under the slab; the look target points up at the contact.
+  // Stable ceiling run: eye settles BELOW the focus on the free-face side at
+  // the M3.3 mirrored canonical offset (~3.84 u below the cube — the same
+  // distance the Floor eye sits above it), low in the open corridor.
   const m31Eye = await page.evaluate(() => window.__gd3d.cameraEye());
   const m31Look = await page.evaluate(() => window.__gd3d.cameraLook());
   log('m3.1 ceiling eye settles below the cube with slab clearance',
-    m31Ceil !== null && m31Eye.y > 3.0 && m31Eye.y < 5.0 && m31Eye.y < m31Ceil.y - 0.5,
-    `eyeY=${m31Eye.y.toFixed(2)} playerY=${m31Ceil ? m31Ceil.y.toFixed(2) : '-'} (underside y=6)`);
+    m31Ceil !== null && m31Eye.y > 0.5 && m31Eye.y < 5.85 && m31Eye.y < m31Ceil.y - 2.5,
+    `eyeY=${m31Eye.y.toFixed(2)} playerY=${m31Ceil ? m31Ceil.y.toFixed(2) : '-'} (underside y=6, M3.3 mirrored offset ~3.84 below)`);
   log('m3.1 look target reads the ceiling contact surface (above the eye)',
     m31Look.y > m31Eye.y + 0.5,
     `lookY=${m31Look.y.toFixed(2)} eyeY=${m31Eye.y.toFixed(2)}`);
@@ -1289,7 +1290,7 @@ if (pass2 !== null) {
   await page.waitForTimeout(300);
 }
 
-// --- 19. M4: interactive mechanics (pads, orbs, gravity orb, speed portal) ---
+// --- 18. M4: interactive mechanics (pads, orbs, gravity orb, speed portal) ---
 // Same teleport-assisted pattern as the M3 section: debug-only placement to
 // reach the appended interaction section (z 278..386); full-section playability
 // is proven deterministically in tests/interactions.test.ts and the extended
@@ -1557,6 +1558,88 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   log('m4 exactly one pad activation per attempt across repeats',
     samples.length === 3 && samples[2].pads - samples[0].pads === 2,
     `pads=${JSON.stringify(samples.map((s) => s.pads))}`);
+}
+
+// --- 19. M3.3: surface-relative projection parity (free-face contract) ---
+// M3.3 contract: the Cube face OPPOSITE the support surface (the FREE face —
+// top face on Floor, bottom face on Ceiling) must project with the same
+// apparent size/perspective from the chase camera. The below-focus framing is
+// the exact mirror of the above-focus framing, so the projected free-face
+// AREA ratio (ceiling/floor) must sit at 1 within live-frame noise
+// (acceptance 0.90..1.10, live check pins 0.95..1.05). Deterministic pure-math
+// coverage lives in tests/cameraFraming.test.ts; these checks observe the LIVE
+// renderer projection and capture the parity evidence pair.
+{
+  const project = (pts) =>
+    page.evaluate((pp) => pp.map((p) => window.__gd3d.screenPoint(p[0], p[1], p[2])), pts);
+  const quadAreaPx = (pts) =>
+    Math.abs(
+      (pts[0].px * pts[1].py - pts[1].px * pts[0].py) +
+      (pts[1].px * pts[2].py - pts[2].px * pts[1].py) +
+      (pts[2].px * pts[3].py - pts[3].px * pts[2].py) +
+      (pts[3].px * pts[0].py - pts[0].px * pts[3].py),
+    ) / 2;
+  const CUBE_HALF = 0.62; // visual cube half-edge
+  // Free-face corners in perimeter order, on the face OPPOSITE the support.
+  const freeFaceArea = async (surface) => {
+    const p = await pos();
+    const faceY = surface === 'floor' ? p.y + CUBE_HALF : p.y - CUBE_HALF;
+    return quadAreaPx(await project([
+      [p.x - CUBE_HALF, faceY, p.z - CUBE_HALF],
+      [p.x + CUBE_HALF, faceY, p.z - CUBE_HALF],
+      [p.x + CUBE_HALF, faceY, p.z + CUBE_HALF],
+      [p.x - CUBE_HALF, faceY, p.z + CUBE_HALF],
+    ]));
+  };
+  const freeze = async (ms) => {
+    await page.keyboard.press('KeyP');
+    await page.waitForTimeout(ms); // camera settles into the frozen frame
+  };
+  const unfreeze = async () => {
+    await page.keyboard.press('KeyP');
+    await page.waitForTimeout(150);
+  };
+
+  // Floor free-face reference (stable grounded approach before portal-up).
+  await startGravityRun(172);
+  const m33Floor = await rollUntilM3(
+    (s) => s.z > 172 && s.z < 181 && s.mode === 'floor' && s.grounded, 15000);
+  await freeze(900);
+  const m33FloorArea = await freeFaceArea('floor');
+  log('m3.3 floor free-face reference framed', m33Floor !== null && m33FloorArea > 0,
+    `area=${m33FloorArea.toFixed(0)}px² z=${m33Floor ? m33Floor.z.toFixed(1) : '-'}`);
+  await capture('m33-01-floor-free-face-reference');
+  await unfreeze();
+
+  // Ceiling free-face reference (stable grounded ceiling run).
+  const m33Ceil = await crossToCeiling();
+  await rollUntilM3((s) => s.grounded && s.z > 205 && s.z < 215, 15000);
+  await freeze(900);
+  const m33CeilArea = await freeFaceArea('ceiling');
+  log('m3.3 ceiling free-face reference framed', m33Ceil !== null && m33CeilArea > 0,
+    `area=${m33CeilArea.toFixed(0)}px²`);
+  await capture('m33-02-ceiling-free-face-reference');
+  // Parity evidence with the F1 framing overlay visible.
+  await page.keyboard.press('F1');
+  await page.waitForTimeout(200);
+  await capture('m33-03-floor-ceiling-parity-debug');
+  await page.keyboard.press('F1');
+  await unfreeze();
+
+  const m33Ratio = m33CeilArea / m33FloorArea;
+  log('m3.3 free-face projection parity (ceiling/floor projected area)',
+    m33Ratio > 0.95 && m33Ratio < 1.05,
+    `ratio=${m33Ratio.toFixed(3)} (ceiling ${m33CeilArea.toFixed(0)}px² / floor ${m33FloorArea.toFixed(0)}px², acceptance 0.90..1.10)`);
+
+  // Ceiling depth readability at the gap approach with the mirrored framing.
+  const m33Gap = await rollUntilM3((s) => s.grounded && s.z > 222 && s.z < 228, 15000);
+  log('m3.3 ceiling gap approach framed with mirrored view', m33Gap !== null,
+    m33Gap ? `z=${m33Gap.z.toFixed(1)}` : '-');
+  await freeze(400);
+  await capture('m33-04-ceiling-depth-readability');
+  await unfreeze();
+  await page.keyboard.press('KeyR'); // clean up
+  await page.waitForTimeout(300);
 }
 
 // --- 20. Console audit ---

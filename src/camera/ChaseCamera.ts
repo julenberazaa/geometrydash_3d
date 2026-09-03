@@ -11,6 +11,13 @@ import { vec3, dampFactor } from '../core/math';
  *   drag the camera 1:1.
  * - Optional tiny damped lateral bias toward the player (heavily limited).
  * - Slightly elevated, looking AHEAD of the player, never rolling.
+ *
+ * M3.3 SURFACE-RELATIVE PROJECTION SYMMETRY: the below-focus framing is the
+ * EXACT mirror of the above-focus framing about the corridor mid-plane, so
+ * the Cube face OPPOSITE the support surface (the free face — top face on
+ * Floor, bottom face on Ceiling) projects with the same apparent size and
+ * perspective on every gravity surface. The mirror is vertical only: X/Z
+ * framing, up vector, FOV and roll (none) are identical on both sides.
  */
 /**
  * Which side of the focus the camera frames it from. `aboveFocus` is the
@@ -24,21 +31,30 @@ export type CameraFocusSide = 'aboveFocus' | 'belowFocus';
 export interface CameraTuning {
   /** Distance behind the player along -forward. */
   followDistance: number;
-  /** Camera height above the track focus Y (aboveFocus framing). */
+  /** Camera height anchor on the free-face side (aboveFocus framing). */
   height: number;
-  /** Height term when framing the focus from below (belowFocus framing).
-   *  Chosen to keep the eye mid-corridor and clearly UNDER ceiling slabs:
-   *  with the M3 test level (underside y=6, cube center y≈5.45) the eye
-   *  rests at y≈4.2 — ~1.8 clear of the slab — instead of the old
-   *  floor formula's y≈6.11, which sat INSIDE the slab. */
-  belowFocusHeight: number;
-  /** Vertical parallax factor when framing from below (gentler than the
-   *  floor's 0.35 so the eye stays mid-corridor and the framing barely
-   *  moves across a gravity portal transition). */
-  belowFocusParallax: number;
+  /**
+   * Vertical parallax factor shared by BOTH focus sides: the eye tracks this
+   * fraction of the player's vertical motion, so jump framing reads the same
+   * way on every gravity surface (mirrored along gravity).
+   */
+  verticalParallax: number;
+  /**
+   * Y anchor of the below-focus height line `playerY * verticalParallax +
+   * belowFocusAnchor`. Together with `height` it satisfies the M3.3 mirror:
+   * the below-focus line is the above-focus line reflected about the corridor
+   * mid-plane y = 3 (floor support plane 0 ↔ ceiling underside 6; floor rest
+   * cube y 0.55 + eye offset +3.84 ↔ ceiling rest cube y 5.45 + eye offset
+   * −3.84), so the rest eye sits the SAME distance on the free-face side of
+   * the player on both surfaces. Like the M3.1 framing constants, this anchor
+   * is tuned for corridor-style levels (support planes 0/6); a future level
+   * with a very different ceiling band may need a declared framing hint.
+   */
+  belowFocusAnchor: number;
   /** How far ahead of the player the look target sits (units along forward). */
   lookAhead: number;
-  /** Vertical offset of the look target above the player center. */
+  /** Vertical offset of the look target toward the free-face side of the
+   *  player center (above on Floor, mirrored below on Ceiling). */
   lookHeightBias: number;
   /** Field of view in degrees. */
   fov: number;
@@ -55,8 +71,8 @@ export interface CameraTuning {
 export const CAMERA_TUNING: CameraTuning = {
   followDistance: 8.5,
   height: 4.2,
-  belowFocusHeight: 3.4,
-  belowFocusParallax: 0.15,
+  verticalParallax: 0.35,
+  belowFocusAnchor: -0.3,
   lookAhead: 10,
   lookHeightBias: 0.6,
   fov: 62,
@@ -99,17 +115,23 @@ export class ChaseCamera {
       Math.min(t.maxLateralBias, lateralOffset * t.lateralBiasFactor),
     );
     const desiredX = trackCenterX + bias;
-    // Gentle vertical parallax on either side. On the ceiling the eye hangs
-    // BELOW the focus (the open corridor side) so it can never be pulled up
-    // into the slab the player runs under.
-    const desiredY =
-      focusSide === 'belowFocus'
-        ? playerPosition.y * t.belowFocusParallax + t.belowFocusHeight
-        : playerPosition.y * 0.35 + t.height;
+    // Surface-relative vertical framing (M3.3): both height lines share the
+    // same parallax slope and are exact mirrors about the corridor mid-plane,
+    // so the free face opposite the support projects identically on both
+    // surfaces. On the ceiling the eye hangs BELOW the focus (the open
+    // corridor side) so it can never be pulled up into the slab the player
+    // runs under.
+    const below = focusSide === 'belowFocus';
+    const desiredY = below
+      ? playerPosition.y * t.verticalParallax + t.belowFocusAnchor
+      : playerPosition.y * t.verticalParallax + t.height;
     const desiredZ = playerPosition.z - t.followDistance;
 
     const desiredLookX = trackCenterX + bias * 0.5;
-    const desiredLookY = playerPosition.y + t.lookHeightBias;
+    // Look bias mirrors with the framing side: toward the free face on every
+    // gravity surface (above the cube on Floor, below it on Ceiling) so the
+    // view pitch — and with it the free-face perspective — mirrors exactly.
+    const desiredLookY = playerPosition.y + (below ? -t.lookHeightBias : t.lookHeightBias);
     const desiredLookZ = playerPosition.z + t.lookAhead;
 
     if (!this.initialized) {

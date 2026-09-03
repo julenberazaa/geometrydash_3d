@@ -110,23 +110,32 @@ Third person: behind, anchored to track center (NOT parented to the player),
 small damped lateral bias only (never mirrors lane movement 1:1), look-ahead
 down-track, never rolls; `camera.up` remains world +Y on every gravity
 surface. The vertical framing follows the gravity surface (M3.1): on Floor
-the camera is elevated above the cube (gentle 0.35 vertical parallax); on
-Ceiling it frames the cube from BELOW, hanging in the open corridor under the
-slab (eye ≈ 1.2 u below the cube center, ≈ 1.8 u clear of the underside),
-looking up at the contact surface. The framing side flips only with the
-authoritative gravity mode and the existing damped smoothing turns it into a
-short glide — the camera eye must never enter blocking geometry (pinned by
+the camera is elevated above the cube; on Ceiling it frames the cube from
+BELOW, hanging in the open corridor under the slab, looking up at the
+contact surface. The framing side flips only with the authoritative gravity
+mode and the existing damped smoothing turns it into a short glide — the
+camera eye must never enter blocking geometry (pinned by
 `tests/cameraFraming.test.ts`).
 
+**Surface-relative projection symmetry (M3.3):** the Cube face OPPOSITE the
+support surface (the FREE face — top face on Floor, bottom face on Ceiling)
+must project with the same apparent size and perspective from the chase
+camera on every gravity surface. The ceiling framing is therefore the exact
+mirror of the Floor framing: the rest eye sits the SAME distance on the
+free-face side of the cube on both surfaces (3.84 u above on Floor, 3.84 u
+below on Ceiling; projected free-face area ratio pinned at 1 within
+0.98..1.02 in tests, 0.90..1.10 acceptance). The rule is expressed
+surface-relatively (free face = the face on the `surfaceNormal` side; eye
+offset along the free-face normal) so future gravity surfaces inherit it.
+Presentation only — no camera roll, no world rotation, no gameplay
+difference, no Cube-scale or FOV tricks.
+
 **View parity (M3.2):** the ceiling must never be harder because of the VIEW.
-Measured framing parity is pinned (comparable eye-to-player distance and
-centered player on both surfaces, same `tests/cameraFraming.test.ts`). Because
-the below-focus eye makes the Cube's own silhouette occlude the ceiling run
-surface a few units ahead (unavoidable from below), ceiling run surfaces carry
-the SAME neon edge-rail language as the floor track (underside rails on
-exposed undersides) so corridor boundaries and gap edges stay readable beside
-the silhouette. Presentation only — no camera roll, no world rotation, no
-gameplay difference.
+Because the below-focus eye makes the Cube's own silhouette partially occlude
+the ceiling run surface a few units ahead, ceiling run surfaces carry the
+SAME neon edge-rail language as the floor track (underside rails on exposed
+undersides) so corridor boundaries and gap edges stay readable beside the
+silhouette.
 
 ## 5. Levels — CURRENT
 
