@@ -5,6 +5,7 @@ import type { CameraFocusSide } from '../camera/ChaseCamera';
 import { LevelView } from './LevelView';
 import { PlayerView } from './PlayerView';
 import { DeathBurstView } from './DeathBurstView';
+import { InteractionView } from './InteractionView';
 import { EnvironmentView } from './EnvironmentView';
 import { DebugView } from '../debug/DebugView';
 import { lerp } from '../core/math';
@@ -33,6 +34,8 @@ export class RendererHost {
   public readonly chaseCamera: ChaseCamera;
 
   private readonly levelView: LevelView;
+  /** M4 interaction visuals + activation VFX (presentation only). */
+  private readonly interactionView: InteractionView;
   public get playerView(): Readonly<PlayerView> {
     return this.playerViewInternal;
   }
@@ -84,6 +87,9 @@ export class RendererHost {
 
     this.levelView = new LevelView(simulation.level);
     this.scene.add(this.levelView.group);
+
+    this.interactionView = new InteractionView(simulation.level, simulation);
+    this.scene.add(this.interactionView.group);
 
     this.playerViewInternal = new PlayerView();
     this.scene.add(this.playerViewInternal.group);
@@ -165,6 +171,7 @@ export class RendererHost {
     );
     this.debugView.updatePlayerBox(p, sim.halfExtents);
     this.deathBurst.update(renderDtSeconds);
+    this.interactionView.update(renderDtSeconds);
 
     // Decay the death kick (~0.12 s time constant) and apply it as pure
     // presentation: FOV bump + tiny vertical lift. Never rolls, never shakes.
@@ -240,6 +247,11 @@ export class RendererHost {
     return this.deathBurst.isActive;
   }
 
+  /** Active M4 activation rings (QA leak-guard observability). */
+  public get interactionRingsActive(): number {
+    return this.interactionView.activeRingCount;
+  }
+
   /**
    * Debug-only burst replay (QA photography aid). Re-fires the REAL pooled
    * burst at the recorded death position without touching simulation state.
@@ -283,6 +295,7 @@ export class RendererHost {
   public dispose(): void {
     this.renderer.dispose();
     this.levelView.dispose();
+    this.interactionView.dispose();
     this.playerViewInternal.dispose();
     this.deathBurst.dispose();
     this.debugView.dispose();

@@ -79,8 +79,9 @@ export interface JumpOrbDef extends InteractionOrbDef {
 
 /** Gravity orb (M4): press edge inside the window → Floor ↔ Ceiling flip
  *  through the SAME transition semantics as M3 gravity portals (position and
- *  all velocity preserved, support cleared). */
-export interface GravityOrbDef extends InteractionOrbDef {}
+ *  all velocity preserved, support cleared). Structurally identical to the
+ *  shared orb window shape; a distinct alias keeps level data self-describing. */
+export type GravityOrbDef = InteractionOrbDef;
 
 /** Visual theme values consumed by the rendering layer only. */
 export interface LevelTheme {

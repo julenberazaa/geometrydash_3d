@@ -22,7 +22,6 @@ import {
 import { loadLevel, computeProgress } from '../level/levelRuntime';
 import type { LoadedLevel } from '../level/levelRuntime';
 import type { LevelDefinition } from '../level/levelDefinition';
-import type { Aabb } from '../collision/collider';
 
 /**
  * Headless gameplay orchestration: the ENTIRE game simulates here.
@@ -586,7 +585,7 @@ export class GameSimulation {
       this.moveResult.positionAfterZ,
       this.player.position,
       this.halfExtentsVec,
-      box as Aabb,
+      box,
     );
   }
 

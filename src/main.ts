@@ -26,6 +26,17 @@ declare global {
       gravityMode: () => 'floor' | 'ceiling';
       lastPortalId: () => string | null;
       portalTransitionCount: () => number;
+      speedMultiplier: () => number;
+      currentForwardSpeed: () => number;
+      interactionCounts: () => {
+        pads: number;
+        orbs: number;
+        speedPortals: number;
+        events: number;
+      };
+      lastInteraction: () => { kind: string; id: string } | null;
+      isInteractionUsed: (id: string) => boolean;
+      interactionRingsActive: () => number;
       supportId: () => string | null;
       cameraUpY: () => number;
       cameraEye: () => { x: number; y: number; z: number };
@@ -61,6 +72,20 @@ window.__gd3d = {
   gravityMode: () => game['simulation'].gravityMode,
   lastPortalId: () => game['simulation'].lastPortalId,
   portalTransitionCount: () => game['simulation'].portalTransitionCount,
+  speedMultiplier: () => game['simulation'].speedMultiplier,
+  currentForwardSpeed: () => game['simulation'].currentForwardSpeed,
+  interactionCounts: () => ({
+    pads: game['simulation'].padActivationCount,
+    orbs: game['simulation'].orbActivationCount,
+    speedPortals: game['simulation'].speedPortalCount,
+    events: game['simulation'].interactionEventCount,
+  }),
+  lastInteraction: () => {
+    const sim = game['simulation'];
+    return sim.hasInteractionEvent ? { kind: sim.lastInteraction.kind, id: sim.lastInteraction.id } : null;
+  },
+  isInteractionUsed: (id: string): boolean => game['simulation'].isInteractionUsed(id),
+  interactionRingsActive: () => game['rendererHost'].interactionRingsActive,
   supportId: () => game['simulation'].player.supportColliderId,
   cameraUpY: () => game['rendererHost'].camera.up.y,
   cameraEye: () => ({ ...game['rendererHost'].chaseCamera.currentPosition }),
