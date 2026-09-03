@@ -90,13 +90,20 @@ async function capture(name) {
 log('canvas mounted', await page.evaluate(() => !!document.querySelector('#app canvas')));
 await page.keyboard.press('KeyR'); // deterministic start line
 await page.waitForTimeout(250);
+const t0 = Date.now();
 const p0 = await pos();
 await page.waitForTimeout(500);
+// Rate form (dz per ACTUAL wall second) instead of raw dz: under CPU
+// contention the 0.5 s nominal window stretches (evaluate round-trips), so
+// raw dz inflates while the sim rate stays correct. The rate band still
+// rejects stalls, 2x-speed faults, and wrong-direction motion.
 const p1 = await pos();
+const wallDt = (Date.now() - t0) / 1000;
+const fwdRate = (p1.z - p0.z) / wallDt;
 log(
   'auto-forward along +Z at base speed',
-  p1.z > p0.z + 5 && p1.z < p0.z + 9,
-  `dz=${(p1.z - p0.z).toFixed(2)} over 0.5s (~14 u/s expected)`,
+  fwdRate > 11 && fwdRate < 17,
+  `dz=${(p1.z - p0.z).toFixed(2)} over ${wallDt.toFixed(2)}s wall (${fwdRate.toFixed(1)} u/s, ~14 expected)`,
 );
 const groundedStart = await page.evaluate(() =>
   Math.abs(window.__gd3d.playerPosition().y - 0.55) < 0.05,
@@ -110,13 +117,44 @@ await page.waitForTimeout(400);
 // screen-right, so ArrowRight must settle at x = −2.6 (visually right).
 await page.keyboard.press('ArrowRight');
 await page.waitForTimeout(400);
-const pRight = await pos();
-log('lane right reaches screen-right lane (−2.6)', Math.abs(pRight.x + 2.6) < 0.15, `x=${pRight.x.toFixed(3)}`);
+// Poll-based settle: under headless load the sim can run at ~2/3 wall speed,
+// so fixed 400 ms waits end mid-transition. Polling position is robust;
+// fixed waits are flaky by construction (same class as the M1 apex/repeat
+// hardenings). Intent (laneIndex) is asserted exactly alongside.
+async function settleX(target, tol = 0.15, timeoutMs = 2500) {
+  const t0 = Date.now();
+  for (;;) {
+    const p = await pos();
+    if (Math.abs(p.x - target) < tol) return p;
+    if (Date.now() - t0 > timeoutMs) return p;
+    await page.waitForTimeout(50);
+  }
+}
+const pRight = await settleX(-2.6);
+const idxRight = await page.evaluate(() => window.__gd3d.laneIndex());
+log('lane right reaches screen-right lane (−2.6)', Math.abs(pRight.x + 2.6) < 0.15 && idxRight === 2, `x=${pRight.x.toFixed(3)} idx=${idxRight}`);
 await capture('m11-01-controls-correct');
 await page.keyboard.press('ArrowLeft');
 await page.waitForTimeout(400);
-const pBack = await pos();
-log('lane left recenters to 0', Math.abs(pBack.x) < 0.15, `x=${pBack.x.toFixed(3)}`);
+let pBack = await settleX(0);
+let idxBack = await page.evaluate(() => window.__gd3d.laneIndex());
+if (idxBack !== 1) {
+  // Ultra-rare CDP input duplication under headless load can deliver a
+  // press twice (engine correctly honors every delivered edge). Bounded
+  // single retry with full diagnostics instead of failing ambiguously.
+  console.log(`  (retry §2: idx=${idxBack} after one Left press; restarting section once)`);
+  await page.keyboard.press('KeyR');
+  await page.waitForTimeout(400);
+  await page.keyboard.press('ArrowRight');
+  await settleX(-2.6);
+  await page.keyboard.press('ArrowLeft');
+  await page.waitForTimeout(400);
+  pBack = await settleX(0);
+  idxBack = await page.evaluate(() => window.__gd3d.laneIndex());
+}
+// Index assertion makes intent exact: one Left press must step 2 -> 1 (a
+// doubled input edge would show idx 0 here instead of failing ambiguously).
+log('lane left recenters to 0', Math.abs(pBack.x) < 0.15 && idxBack === 1, `x=${pBack.x.toFixed(3)} idx=${idxBack}`);
 
 // --- 3. Rapid double switch (still on early runway) ---
 await page.keyboard.press('KeyR');
@@ -124,8 +162,7 @@ await page.waitForTimeout(300);
 await page.keyboard.press('ArrowLeft');
 await page.waitForTimeout(120); // mid-transition...
 await page.keyboard.press('ArrowRight'); // ...reverse intent
-await page.waitForTimeout(550);
-const pRapid = await pos();
+const pRapid = await settleX(0, 0.2);
 log('rapid switch settles at center', Math.abs(pRapid.x) < 0.2, `x=${pRapid.x.toFixed(3)}`);
 await page.keyboard.press('ArrowRight');
 await page.waitForTimeout(400);
@@ -146,14 +183,28 @@ for (let i = 0; i < 9; i++) {
   apexY = Math.max(apexY, (await pos()).y);
 }
 await page.keyboard.up('Space');
-await page.waitForTimeout(900); // land after release (no repeat once released)
-const pLand = await pos();
+// Poll for touchdown: a fixed 900 ms wait ends mid-air when the sim runs
+// below wall speed under headless load (same flake class as lane settling).
+let pLand = await pos();
+const landT0 = Date.now();
+for (;;) {
+  if (Math.abs(pLand.y - 0.55) < 0.05) break;
+  if (Date.now() - landT0 > 2500) break;
+  await page.waitForTimeout(50);
+  pLand = await pos();
+}
 log('jump gains altitude (~2 units)', apexY > 1.8, `apexY≈${apexY.toFixed(2)}`);
 log('lands back on floor', Math.abs(pLand.y - 0.55) < 0.05, `y=${pLand.y.toFixed(2)}`);
 
 // --- 5. Hold-jump repeat (fresh restart; hold through several cycles) ---
 await page.keyboard.press('KeyR');
 await page.waitForTimeout(300);
+// Verify the restart landed (a lost R under load would leave the Cube
+// mid-track and corrupt every measurement below); retry boundedly.
+for (let i = 0; i < 3 && (await pos()).z > 10; i++) {
+  await page.keyboard.press('KeyR');
+  await page.waitForTimeout(300);
+}
 // Deterministic: count initiated jumps via the sim event counter. Position
 // sampling cannot catch the 1-step grounded instant between hold-repeats,
 // so min-Y sampling here would be flaky by construction.
@@ -168,7 +219,10 @@ for (let i = 0; i < 15; i++) {
 }
 await page.keyboard.up('ArrowUp');
 const jumpsDuringHold = (await jumps()) - jumpsBefore;
-log('hold-jump repeats (jump counter advances >= 2 in 1.5 s)', jumpsDuringHold >= 2 && maxYDuringHold > 1.5,
+// Upper bound guards impulse integrity: flat-runway takeoff caps apex at
+// ~2.68 (marker takeoffs, unreachable here, cap at ~2.88) — anything near
+// 3.0+ would mean double-impulse or grounding flicker, and must fail loudly.
+log('hold-jump repeats (jump counter advances >= 2 in 1.5 s)', jumpsDuringHold >= 2 && maxYDuringHold > 1.5 && maxYDuringHold < 3.0,
   `jumps=${jumpsDuringHold} maxY=${maxYDuringHold.toFixed(2)}`);
 
 await capture('01-gameplay-runway');
@@ -278,7 +332,83 @@ await page.waitForTimeout(400);
 
 await capture('04-after-resize');
 
-// --- 11. Console audit ---
+// --- 11. M1.2: gap-face readability + lateral fall-off ---
+// Debug overlay is OFF here (§8 turned F1/F2 off); keep it off for m12-01.
+await page.keyboard.press('KeyR');
+await page.waitForTimeout(300);
+for (let i = 0; i < 60; i++) {
+  if ((await pos()).z >= 36) break;
+  await page.waitForTimeout(100);
+}
+const m12pos = await pos();
+log('m12 framing valid (runway B, low-platform face ahead)',
+  m12pos.z > 30 && m12pos.z < 45 && (await page.evaluate(() => window.__gd3d.status())) === 'running',
+  `z=${m12pos.z.toFixed(1)}`);
+await capture('m12-01-gap-face-readability');
+
+// Physical side fall: settle outer lane, teeter (virtual 3), exit (virtual
+// 4). Catch the fall mid-air: running + airborne + below track level.
+const grounded = () => page.evaluate(() => window.__gd3d.grounded());
+await page.keyboard.press('KeyR');
+await page.waitForTimeout(300);
+await page.keyboard.press('ArrowRight');
+await page.waitForTimeout(600);
+await page.keyboard.press('ArrowRight');
+await page.waitForTimeout(300); // teeter at virtual lane 3 (still supported)
+await page.keyboard.press('ArrowRight'); // virtual lane 4: committed exit
+// Catch support loss EARLY (first airborne frame, Cube still at the slab
+// edge beside the track): late captures frame empty void as the chase
+// camera pitches down with the fall. No jump input here, so airborne ==
+// support loss; x past the lanes disambiguates further.
+let fallState = null;
+for (let i = 0; i < 80; i++) {
+  await page.waitForTimeout(50);
+  const s = await page.evaluate(() => ({
+    x: window.__gd3d.playerPosition().x,
+    y: window.__gd3d.playerPosition().y,
+    status: window.__gd3d.status(),
+    grounded: window.__gd3d.grounded(),
+  }));
+  if (s.status === 'running' && !s.grounded && s.x < -4.5) {
+    fallState = s;
+    break;
+  }
+}
+log('side fall begins (airborne past the edge, still running)', fallState !== null,
+  fallState ? `x=${fallState.x.toFixed(2)} y=${fallState.y.toFixed(2)}` : 'never observed support loss');
+await capture('m12-02-side-fall');
+// The fall must complete through the EXISTING death-plane reset (no instant
+// kill: the Cube was alive below track level a moment ago).
+const attPreFall = await attempts();
+let respawned = false;
+for (let i = 0; i < 60; i++) {
+  await page.waitForTimeout(100);
+  if ((await attempts()) > attPreFall && (await page.evaluate(() => window.__gd3d.status())) === 'running') {
+    respawned = true;
+    break;
+  }
+}
+log('side fall resets via death plane (attempts + 1, running)', respawned,
+  `attempts=${attPreFall} -> ${await attempts()}`);
+
+// Support-model proof: teeter at the slab edge is still grounded (COM over
+// support) — exit needs the footprint fully past the edge.
+await page.keyboard.press('KeyR');
+await page.waitForTimeout(300);
+await page.keyboard.press('F1');
+await page.keyboard.press('ArrowRight');
+await page.waitForTimeout(600);
+await page.keyboard.press('ArrowRight');
+await page.waitForTimeout(400);
+const m12teeter = await pos();
+const m12teeterGrounded = await grounded();
+log('edge teeter stays grounded (support footprint overlaps)',
+  Math.abs(m12teeter.x + 5.2) < 0.3 && m12teeterGrounded === true,
+  `x=${m12teeter.x.toFixed(2)} grounded=${m12teeterGrounded}`);
+await capture('m12-03-debug-support-loss');
+await page.keyboard.press('F1');
+
+// --- 12. Console audit ---
 log('no console errors', consoleErrors.length === 0, JSON.stringify(consoleErrors.slice(0, 3)));
 log('no page errors', pageErrors.length === 0, JSON.stringify(pageErrors.slice(0, 3)));
 

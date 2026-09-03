@@ -41,6 +41,15 @@ no Practice Mode initially.
     (world x = +2.6 / 0 / −2.6 — the +Z chase camera shows −X on the right;
     lane order fixed in M1.1, see `GameplayFrame` convention). Architecture
     supports arbitrary lane definitions per level.
+  - **Lateral fall-off (M1.2):** intent is NOT clamped at the outer lanes.
+    An outward tap past the edge lane steps onto a *virtual* lane one
+    spacing beyond (centers linearly extrapolated). The first step teeters
+    at the slab edge while the support footprint still overlaps; a further
+    outward tap leaves support entirely: the Cube goes airborne, falls under
+    gravity, and dies at the death plane unless support is recovered. Side
+    exit is physical and support-based — no invisible side walls, no instant
+    side kill. Side contact with real geometry (lane markers, walls) blocks
+    movement without killing.
   - **PROVISIONAL (M1):** each lane transition requires a distinct left/right
     press edge; holding a lane key does NOT slide across multiple lanes. This
     is pending human-feel evaluation — do not treat it as final design.
@@ -54,6 +63,8 @@ no Practice Mode initially.
 - Hazards kill on overlap; falling below the level death plane kills.
 - Death: instant gameplay death, short visual hold (~0.45 s), deterministic
   respawn at start, attempt counter increments. `R` restarts immediately.
+  Falling below the death plane after a lateral (or forward) exit completes
+  through this same path — side falls are never instant kills.
 
 ## 4. Camera — CURRENT
 

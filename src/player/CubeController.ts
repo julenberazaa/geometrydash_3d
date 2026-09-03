@@ -31,6 +31,31 @@ export interface CubeControllerStepContext {
   jumpedThisStep: boolean;
 }
 
+/**
+ * Lane index -> world lateral center, defined for ALL integers (M1.2).
+ * Interior indices read the level array; exterior (virtual) lanes extrapolate
+ * linearly from the outer pair, so each outward tap past the edge lane moves
+ * one consistent lane step further out. Whether the Cube can stay there is
+ * decided by support probing, gravity, and the death plane — never by
+ * clamping intent or by invisible side walls.
+ */
+function laneCenterForIndex(centers: readonly number[], index: number): number {
+  const n = centers.length;
+  if (n === 0) return 0;
+  const first = centers[0] ?? 0;
+  if (n === 1) return first;
+  const last = centers[n - 1] ?? first;
+  if (index < 0) {
+    const second = centers[1] ?? first;
+    return first + (first - second) * -index;
+  }
+  if (index > n - 1) {
+    const secondLast = centers[n - 2] ?? last;
+    return last + (last - secondLast) * (index - (n - 1));
+  }
+  return centers[index] ?? first;
+}
+
 export class CubeController {
   private readonly tuning: CubeTuning;
   /** Frame is replaceable data for future gravity modes; M1 always Floor. */
@@ -59,24 +84,22 @@ export class CubeController {
     const frame = this.frame;
 
     // ------------------------------------------------------------------
-    // 1. Lane intent — EDGE-TRIGGERED ONLY.
+    // 1. Lane intent — EDGE-TRIGGERED ONLY, UNCLAMPED (M1.2).
     //    A physical tap must produce exactly ONE lane change even when the
     //    key event spans multiple simulation steps; holding a lane key does
     //    NOT slide across lanes (precision arcade semantics).
+    //    A tap past the outer lane steps onto a VIRTUAL lane (extrapolated
+    //    center — see laneCenterForIndex). Support governs the outcome: the
+    //    Cube brakes there if supported, steers back with an inward tap, or
+    //    runs out of support and falls. No fake side walls, ever.
     // ------------------------------------------------------------------
-    if (input.laneLeft.pressedThisStep) {
-      state.targetLaneIndex = clamp(state.targetLaneIndex - 1, 0, state.laneCount - 1);
-    }
-    if (input.laneRight.pressedThisStep) {
-      state.targetLaneIndex = clamp(state.targetLaneIndex + 1, 0, state.laneCount - 1);
-    }
+    if (input.laneLeft.pressedThisStep) state.targetLaneIndex -= 1;
+    if (input.laneRight.pressedThisStep) state.targetLaneIndex += 1;
 
     // ------------------------------------------------------------------
     // 2. Lateral kinematics (along laneAxis; M1: world X).
     // ------------------------------------------------------------------
-    const laneCount = context.laneCenters.length;
-    const safeIndex = clamp(state.targetLaneIndex, 0, laneCount - 1);
-    const targetCenter = context.laneCenters[safeIndex] ?? 0;
+    const targetCenter = laneCenterForIndex(context.laneCenters, state.targetLaneIndex);
     const dx = targetCenter - state.position.x;
     const absDx = Math.abs(dx);
     const v = state.velocity.x;

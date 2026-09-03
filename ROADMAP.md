@@ -29,6 +29,19 @@ existing shared edge system (markers/hazards untouched). 43/43 tests,
 Feel still NOT human-approved beyond the original feedback — M2 entry gate
 (the human feel test) remains open.
 
+## M1.2 — Exposed-face readability + lateral fall-off: PASS (2026-09-03)
+
+Human playtest follow-up: controls accepted; verticals still missing on gap
+faces; side fall-off requested. (1) M1.1 trims were fully embedded inside
+opaque solids, hence invisible — reworked as face applique riding ~0.04
+proud: outboard corner posts, front-face bottom strips (gap landing faces
+read as framed portals), center seams on faces >= 6 wide; markers/hazards
+untouched. (2) Lane intent unclamped with linear virtual-lane extrapolation:
+outer tap teeters at the edge, further taps exit support -> airborne ->
+fall -> existing death-plane reset; side contact with real geometry blocks
+without killing. 33/33 tests, `npm run verify` green, browser QA 19/19
+green with zero console errors.
+
 ## M2 — Collision/death/restart polish + human controller tuning (NEXT)
 
 Entry: human playtest of M1 approves (or retunes) Cube feel. Polish death

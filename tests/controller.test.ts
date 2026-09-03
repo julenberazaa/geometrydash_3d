@@ -142,12 +142,16 @@ describe('Lane change', () => {
     expect(GameplayFrame.floor().laneAxis.x).toBe(-1);
     expect(TEST_LEVEL.laneCenters[0]).toBeCloseTo(2.6, 5); // index 0 = screen-left
     expect(TEST_LEVEL.laneCenters[2]).toBeCloseTo(-2.6, 5); // index 2 = screen-right
+    // NOTE: tap snapshots carry pressedThisStep, so each step advanced with
+    // one fires an edge — single edges need exactly 1 tap step + idle steps.
     const simR = makeGroundedSim().sim;
-    advance(simR, tapLaneRight, 3);
+    advance(simR, tapLaneRight, 1);
+    advance(simR, idleInput, 2);
     expect(simR.player.targetLaneIndex).toBe(2);
     expect(simR.player.velocity.x).toBeLessThan(0);
     const simL = makeGroundedSim().sim;
-    advance(simL, tapLaneLeft, 3);
+    advance(simL, tapLaneLeft, 1);
+    advance(simL, idleInput, 2);
     expect(simL.player.targetLaneIndex).toBe(0);
     expect(simL.player.velocity.x).toBeGreaterThan(0);
   });
@@ -177,24 +181,101 @@ describe('Lane change', () => {
     expect(overshoot).toBeLessThan(0.05);
   });
 
-  it('rapidly switching lanes reverses smoothly without oscillation', () => {
+  it('reversing lane intent mid-course settles cleanly without oscillation', () => {
     const sim = makeSim();
     advance(sim, tapLaneLeft, 8);
-    advance(sim, tapLaneLeft, 8); // now target back to center? No: left twice clamps at lane 0.
-    // Instead: right then left repeatedly around center.
-    const sim2 = makeSim();
-    for (let k = 0; k < 5; k++) {
-      advance(sim2, tapLaneLeft, 10);
-      advance(sim2, idleInput, 10);
-      advance(sim2, { ...idleInput, laneRight: { held: false, pressedThisStep: true, releasedThisStep: true } }, 1);
-      advance(sim2, idleInput, 10);
+    advance(sim, tapLaneLeft, 8); // M1.2: intent unclamped — second tap targets virtual lane -1.
+    // Reversal with full settle between intents (deterministic: sub-settle
+    // alternation windows beat against accel/brake rates and random-walk, so
+    // rapid-tap timing artifacts are not asserted here — reversal + damping
+    // are). M1.2: one tap step = one edge (multi-step tap snapshots would
+    // walk the unclamped index outward).
+    const sim2 = makeGroundedSim().sim;
+    const tapRightInline = {
+      ...idleInput,
+      laneRight: { held: false, pressedThisStep: true, releasedThisStep: true },
+    };
+    advance(sim2, tapLaneLeft, 1); // head screen-left...
+    advance(sim2, idleInput, 60);
+    expect(sim2.player.position.x).toBeCloseTo(2.6, 1);
+    advance(sim2, tapRightInline, 1); // ...reverse mid-course...
+    advance(sim2, idleInput, 60);
+    expect(sim2.player.targetLaneIndex).toBe(1);
+    expect(sim2.player.position.x).toBeCloseTo(0, 1);
+    expect(Math.abs(sim2.player.velocity.x)).toBeLessThan(0.05);
+    advance(sim2, tapRightInline, 1); // ...mirror side...
+    advance(sim2, idleInput, 60);
+    expect(sim2.player.position.x).toBeCloseTo(-2.6, 1);
+    advance(sim2, tapLaneLeft, 1); // ...and back: no residual oscillation.
+    advance(sim2, idleInput, 60);
+    expect(sim2.player.targetLaneIndex).toBe(1);
+    expect(sim2.player.position.x).toBeCloseTo(0, 1);
+    expect(Math.abs(sim2.player.velocity.x)).toBeLessThan(0.05);
+  });
+});
+
+describe('Lateral fall-off (M1.2)', () => {
+  it('outward tap past the outer lane targets a virtual lane (no clamping)', () => {
+    const { sim } = makeGroundedSim();
+    advance(sim, tapLaneRight, 1);
+    advance(sim, idleInput, 50); // settle at outer lane
+    expect(sim.player.targetLaneIndex).toBe(2);
+    expect(sim.player.position.x).toBeCloseTo(-2.6, 1);
+    advance(sim, tapLaneRight, 1); // one more outward tap: virtual lane 3
+    expect(sim.player.targetLaneIndex).toBe(3);
+  });
+
+  it('leaving support laterally transitions to airborne, then falls (no instant kill)', () => {
+    const { sim } = makeGroundedSim();
+    advance(sim, tapLaneRight, 1);
+    advance(sim, idleInput, 50); // settle outer lane (x = -2.6)
+    // Grid truth: lane spacing is 2.6 and the slab edge is at x = -5.4, so
+    // virtual lane 3 (center -5.2) is a grounded teeter with COM over support;
+    // lane 4 (center -7.8) is past the footprint exit (x < -4.87). Two taps.
+    advance(sim, tapLaneRight, 1); // virtual lane 3: teeter, still grounded
+    advance(sim, tapLaneRight, 1); // virtual lane 4: committed exit
+    // Drive out: the support footprint must fully leave the slab before lift ends.
+    let lostSupportAt = -1;
+    for (let i = 0; i < 150; i++) {
+      sim.update(idleInput);
+      if (!sim.player.grounded) {
+        lostSupportAt = i;
+        break;
+      }
     }
-    // Must end near a lane center, not oscillating between.
-    const finalX = sim2.player.position.x;
-    const nearestCenter = TEST_LEVEL.laneCenters.reduce((best, c) =>
-      Math.abs(c - finalX) < Math.abs(best - finalX) ? c : best,
-    );
-    expect(Math.abs(finalX - nearestCenter)).toBeLessThan(0.35);
+    expect(lostSupportAt).toBeGreaterThanOrEqual(0); // support-based exit happened
+    expect(sim.status).toBe('running'); // airborne, NOT instantly killed
+    const yAtLoss = sim.player.position.y;
+    advance(sim, idleInput, 40); // gravity takes over
+    expect(sim.player.position.y).toBeLessThan(yAtLoss - 0.5); // really falling
+    expect(sim.status).toBe('running');
+  });
+
+  it('side fall ends through the existing death-plane reset (attempts + 1)', () => {
+    const { sim } = makeGroundedSim();
+    advance(sim, tapLaneRight, 1);
+    advance(sim, idleInput, 50);
+    advance(sim, tapLaneRight, 1); // virtual lane 3: teeter (COM over support)
+    advance(sim, tapLaneRight, 1); // virtual lane 4: off the edge
+    for (let i = 0; i < 400 && sim.attempts === 1; i++) sim.update(idleInput);
+    // Fall to deathY -> die -> 0.45 s hold -> deterministic respawn.
+    expect(sim.attempts).toBe(2);
+    expect(sim.status).toBe('running');
+    expect(sim.player.position.z).toBeLessThan(10); // back at the start line
+  });
+
+  it('a solid side face still blocks lateral exit as geometry (no kill, no pass-through)', () => {
+    // Lane-marker block at x = -1.3 +/- 0.35, z = 34 +/- 0.35: drive -X into
+    // its +X face (x = -0.95); the collider must stop at x = -0.40, grounded.
+    const sim = makeSim();
+    advance(sim, idleInput, 310); // roll to z ~= 32 on open runway
+    expect(sim.player.grounded).toBe(true);
+    advance(sim, tapLaneRight, 1);
+    advance(sim, tapLaneRight, 1); // virtual lane: committed outward drive
+    advance(sim, idleInput, 16);
+    expect(sim.player.position.x).toBeCloseTo(-0.4, 1);
+    expect(sim.player.grounded).toBe(true);
+    expect(sim.status).toBe('running'); // side contact is not lethal
   });
 });
 

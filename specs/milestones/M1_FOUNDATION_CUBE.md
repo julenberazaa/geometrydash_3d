@@ -120,6 +120,31 @@ Scope was strictly limited to the feedback — no M2 mechanics, no retuning.
 Validation: 43/43 tests, `npm run verify` green, browser QA 19/19 green,
 zero console errors; `qa/screenshots/m11-*` proof set.
 
+## M1.2 FOLLOW-UP (2026-09-03) — STATUS: PASS
+
+Human playtest follow-up: controls accepted; verticals still missing where
+expected (gap/hole faces read as plain dark holes); side fall-off requested.
+
+1. **Exposed-face readability (root cause: embedded trims are invisible).**
+   The M1.1 corner posts sat 0.015 *inside* the opaque solid faces, so the
+   human correctly saw no vertical lines. Reworked as face applique sharing
+   the existing edge system: outboard corner posts, front-face bottom strips
+   (landing faces at gaps read as framed portals), center seams on faces
+   >= 6 wide; staggered 5 mm plane separations, no coplanar z-fighting.
+   Markers and spike hazards untouched.
+2. **Lateral fall-off (support-based, no fake walls).** Lane intent
+   unclamped; `laneCenterForIndex` extrapolates virtual lanes linearly from
+   the outer pair. Footprint probing already governed grounding, so no
+   collision/sim changes were needed: outer tap teeters (COM over support),
+   further taps exit -> airborne -> gravity -> death-plane reset; side
+   contact with real geometry blocks without killing. No level changes
+   needed (runway edges are open void). Controller code otherwise untouched.
+
+Validation: 33/33 tests (4 new lateral fall-off tests; reversal test
+rewritten deterministically after unclamping changed multi-tap dynamics),
+`npm run verify` green, browser QA 19/19 green, zero console errors;
+`qa/screenshots/m12-*` proof set.
+
 ## EVIDENCE
 
 - `npm run verify` output (see milestone commit message / session record).

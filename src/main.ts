@@ -20,6 +20,8 @@ declare global {
       progress: () => number;
       attempts: () => number;
       jumps: () => number;
+      grounded: () => boolean;
+      laneIndex: () => number;
       playerPosition: () => { x: number; y: number; z: number };
       toggleDebug: () => void;
     };
@@ -31,6 +33,8 @@ window.__gd3d = {
   progress: () => game['simulation'].progress,
   attempts: () => game['simulation'].attempts,
   jumps: () => game.totalJumps,
+  grounded: () => game['simulation'].player.grounded,
+  laneIndex: () => game['simulation'].player.targetLaneIndex,
   playerPosition: () => ({ ...game['simulation'].player.position }),
   toggleDebug: () => {
     /* toggled via F1/F2/F3 keyboard events */

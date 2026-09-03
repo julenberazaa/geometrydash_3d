@@ -51,7 +51,10 @@ no browser needed. `Game` owns separate non-gameplay keys (`R` restart,
   M1.1 convention: increasing lane index runs toward screen-right, so the M1
   Floor laneAxis is −X (the +Z chase camera shows −X on the right).
 - `CubeController`: owns Cube movement policy. Per step: lane intent
-  (**edge-triggered only** — one tap = one lane change), lateral kinematics
+  (**edge-triggered only, unclamped since M1.2** — one tap = one lane change;
+  taps past the outer lane address virtual lanes via `laneCenterForIndex`
+  linear extrapolation, so side exit is possible where support runs out),
+  lateral kinematics
   (accelerate/cruise/analytic-brake/settle-snap, hard geometric no-overshoot
   cap), vertical kinematics (gravity + fast-fall + terminal speed), jump
   (grounded AND held → deterministic impulse replacing the along-gravity
@@ -69,8 +72,10 @@ no browser needed. `Game` owns separate non-gameplay keys (`R` restart,
   caller-owned output arrays for queries.
 - `moveAabb.ts`: axis-separated swept movement in Y → Z → X order; per-step
   `MoveResult` (floor/ceiling/wall contacts); `probeGroundSupport` for stable
-  grounded state at zero vertical velocity. No tunneling at high speed
-  (tested incl. 4× forward speed vs thin walls).
+  grounded state at zero vertical velocity. The probe tests the full support
+  footprint (minus a 0.02 skin): partial overlap still grounds (edge teeter),
+  only full exit ungrounds → airborne → gravity → death plane. No tunneling
+  at high speed (tested incl. 4× forward speed vs thin walls).
 - No general physics engine, no ECS (permanent constraint unless justified).
 
 ## 6. Level (`src/level/`, `src/content/levels/`)
@@ -104,9 +109,11 @@ no browser needed. `Game` owns separate non-gameplay keys (`R` restart,
 - `PlayerView`: original procedural cyan cube (visual 1.24 vs collider 1.1);
   airtime tumble is render-only and snaps to rest on landing. Collider and
   mesh are independent by construction (debug F3 visualizes the real hitbox).
-- `LevelView` (shared geometries/materials; M1.1 adds restrained vertical
-  corner trims on solids ≥ 0.8 tall reusing the shared edge material — no new
-  systems, markers/hazards untouched), `EnvironmentView` (fog,
+- `LevelView` (shared geometries/materials; M1.1/M1.2 face applique — thin
+  unlit trims in the shared edge material riding PROUD of solid faces:
+  outboard corner posts, front-face bottom strips (gap faces read as framed
+  portals), center seams on faces ≥ 6 wide; solids < 0.8 tall and all hazards
+  untouched — no new systems), `EnvironmentView` (fog,
   deterministic starfield/pillars — seeded PRNG, visuals only), finish gate.
 - `Hud`: level name, real progress %, attempt count, key help, messages.
 - `DebugOverlay` (F1 text stats) + `DebugView` (F2 collider wireframes,
