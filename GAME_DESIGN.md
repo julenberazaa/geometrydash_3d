@@ -59,7 +59,9 @@ no Practice Mode initially.
 - Predictable AABB hitboxes. The gameplay collider (1.1³ cube) NEVER rotates —
   visual tumble is render-only.
 - High-speed collision must not tunnel (swept per-axis movement, Y → Z → X;
-  hazard overlap is tested against the swept pre/post-step union).
+  hazard overlap is tested against that exact swept path — the union of the
+  three single-axis swept segment volumes, not a loose pre/post bounding
+  rectangle — so corners the Cube's path never enters cannot falsely kill).
 - Frontal impact kills (kill-front arcade semantics), decided from contact
   geometry + motion: a wall contact whose normal opposes the forward axis
   while approaching along forward kills. Side scrapes (±X contacts) block

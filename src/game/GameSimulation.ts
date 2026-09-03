@@ -11,7 +11,12 @@ import {
   type PlayerState,
 } from '../player/playerState';
 import { moveAabbThroughWorld, createMoveResult, probeGroundSupport } from '../collision/moveAabb';
-import { aabbOverlap, colliderToAabb, type Collider } from '../collision/collider';
+import {
+  colliderToAabb,
+  createSweptPathScratch,
+  sweptPathOverlaps,
+  type Collider,
+} from '../collision/collider';
 import { loadLevel, computeProgress } from '../level/levelRuntime';
 import type { LoadedLevel } from '../level/levelRuntime';
 import type { LevelDefinition } from '../level/levelDefinition';
@@ -39,11 +44,11 @@ export interface SimulationEvents {
   onJump?: () => void;
 }
 
-/** How long (sim seconds) the dead status holds before auto-respawn eligibility.
- *  M2: 0.30 s (36 ticks) — readable burst, sub-500 ms retry feel. */
-export const DEATH_HOLD_SECONDS = 0.3;
-/** Exact hold duration in fixed simulation ticks (unit-test authority). */
+/** Exact hold duration in fixed simulation ticks (single timing authority). */
 export const DEATH_HOLD_TICKS = 36;
+/** How long (sim seconds) the dead status holds before auto-respawn eligibility.
+ *  Derived from the tick authority (36/120 = 0.30 s) so the two can never drift. */
+export const DEATH_HOLD_SECONDS = DEATH_HOLD_TICKS * SIMULATION_DT;
 /** Vertical probe distance for the grounded support check (contact-tight). */
 const SUPPORT_PROBE_DISTANCE = 0.03;
 /** Max speed along gravity (toward surface) that still counts as "resting". */
@@ -101,6 +106,8 @@ export class GameSimulation {
   private readonly preMoveVelocity: Vec3 = vec3();
 
   private hazardScratch: Collider[] = [];
+  /** Scratch swept-segment boxes for the exact hazard path test. Reused. */
+  private readonly sweptPathScratch = createSweptPathScratch();
 
   constructor(levelDef: LevelDefinition, events: SimulationEvents = {}) {
     this.def = levelDef;
@@ -261,9 +268,12 @@ export class GameSimulation {
 
   /** The overlapping hazard collider, if any. killFront is NOT an overlap kill:
    *  it blocks like solid and kills only via the frontal contact rule above.
-   *  The query box is the union of the pre-step and post-step player boxes so
-   *  fast motion can never skip over a thin hazard within one step (the
-   *  axis-separated path always stays inside this union). */
+   *  Broadphase: the loose pre/post-step union box (a superset of the true
+   *  swept path — clipping only ever places intermediates between the
+   *  endpoints). Narrowphase is EXACT: the hazard must overlap one of the
+   *  three single-axis swept segment volumes of the authoritative
+   *  Y → Z → X path, so fast motion can never skip a thin hazard and corner
+   *  regions the path never enters can never falsely kill. */
   private findOverlappingHazard(): Collider | null {
     const half = this.halfExtentsVec;
     const p = this.player.position;
@@ -278,8 +288,14 @@ export class GameSimulation {
     };
     const candidates = this.hazardScratch;
     this.level.world.queryBox(box, candidates);
+    if (candidates.length === 0) return null;
+    const afterY = this.moveResult.positionAfterY;
+    const afterZ = this.moveResult.positionAfterZ;
     for (const c of candidates) {
-      if (c.kind === 'hazard' && aabbOverlap(box, colliderToAabb(c))) {
+      if (
+        c.kind === 'hazard' &&
+        sweptPathOverlaps(this.sweptPathScratch, q, afterY, afterZ, p, half, colliderToAabb(c))
+      ) {
         return c;
       }
     }

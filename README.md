@@ -11,9 +11,11 @@ original. Reference PNGs in the repo root are mood references only.
 
 M2 collision/death/restart polish PASS: precise fair frontal/lateral
 collision, cause-tagged instant death, 0.30 s deterministic respawn with
-pooled burst feedback, 54 automated tests + 40 browser checks green.
-Cube movement feel human-approved (frozen); death/restart feel awaits
-human playtest.
+pooled burst feedback, 62 automated tests + 40 browser checks green.
+M2.1 closeout: hazard kills follow the true swept movement path (exact CCD,
+no loose-union false positives); death-hold timing has a single tick
+authority. Cube movement feel human-approved (frozen); death/restart feel
+human-approved (M2 playtest).
 
 ## Setup
 
@@ -58,6 +60,6 @@ Individual: `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`.
 
 ## Current milestone
 
-M2 Collision & Death — spec: `specs/milestones/M2_COLLISION_DEATH.md` (PASS,
-pending human death-feel playtest).
+M2 Collision & Death — spec: `specs/milestones/M2_COLLISION_DEATH.md` (PASS;
+human death/restart feel APPROVED; M2.1 fairness closeout complete).
 Next: M3 gravity architecture (see `ROADMAP.md`).

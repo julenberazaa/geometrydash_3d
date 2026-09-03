@@ -1,5 +1,5 @@
 import type { Vec3 } from '../core/math';
-import { vec3 } from '../core/math';
+import { vec3, copyVec3 } from '../core/math';
 import type { Aabb, Collider } from './collider';
 import { colliderToAabb, sweepAxis } from './collider';
 import type { CollisionWorld } from './CollisionWorld';
@@ -39,6 +39,13 @@ export interface MoveResult {
   ceilingContact: ContactSurface | null;
   /** Wall contacts from Z/X clipping (normals horizontal). */
   wallContacts: ContactSurface[];
+  /** Position after the Y clip (== start position when delta.y === 0).
+   *  Reused scratch: together with the caller's pre-step position and the
+   *  final position these define the authoritative swept path
+   *  (prev → afterY → afterZ → final) for exact hazard overlap tests. */
+  positionAfterY: Vec3;
+  /** Position after the Z clip. Reused scratch, see `positionAfterY`. */
+  positionAfterZ: Vec3;
 }
 
 export const createMoveResult = (): MoveResult => ({
@@ -47,6 +54,8 @@ export const createMoveResult = (): MoveResult => ({
   floorContact: null,
   ceilingContact: null,
   wallContacts: [],
+  positionAfterY: vec3(),
+  positionAfterZ: vec3(),
 });
 
 const scratchCandidates: Collider[] = [];
@@ -117,6 +126,7 @@ export function moveAabbThroughWorld(
       }
     }
   }
+  copyVec3(result.positionAfterY, position);
 
   // --- Z axis (auto-forward) ---
   if (delta.z !== 0) {
@@ -129,6 +139,7 @@ export function moveAabbThroughWorld(
       });
     }
   }
+  copyVec3(result.positionAfterZ, position);
 
   // --- X axis (lateral lane motion) ---
   if (delta.x !== 0) {

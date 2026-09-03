@@ -60,6 +60,69 @@ export const aabbOverlap = (a: Readonly<Aabb>, b: Readonly<Aabb>): boolean =>
   a.maxZ > b.minZ;
 
 /**
+ * Exact swept-volume box of an AABB translated from `from` to `to` along a
+ * SINGLE axis: the min/max envelope of the two endpoint cubes. For one-axis
+ * motion every swept point lies in this envelope and every envelope point is
+ * swept through, so overlap against this box is EXACT — no iteration. With
+ * multi-axis deltas this degenerates to the loose enclosing rectangle, which
+ * is NOT the swept volume (its corner regions are never visited).
+ * `out` is caller-owned scratch (hot loop: zero allocation).
+ */
+export function sweptSegmentAabb(
+  out: Aabb,
+  from: Readonly<Vec3>,
+  to: Readonly<Vec3>,
+  half: Readonly<Vec3>,
+): void {
+  out.minX = Math.min(from.x, to.x) - half.x;
+  out.maxX = Math.max(from.x, to.x) + half.x;
+  out.minY = Math.min(from.y, to.y) - half.y;
+  out.maxY = Math.max(from.y, to.y) + half.y;
+  out.minZ = Math.min(from.z, to.z) - half.z;
+  out.maxZ = Math.max(from.z, to.z) + half.z;
+}
+
+export interface SweptPathScratch {
+  y: Aabb;
+  z: Aabb;
+  x: Aabb;
+}
+
+export const createSweptPathScratch = (): SweptPathScratch => ({
+  y: { minX: 0, maxX: 0, minY: 0, maxY: 0, minZ: 0, maxZ: 0 },
+  z: { minX: 0, maxX: 0, minY: 0, maxY: 0, minZ: 0, maxZ: 0 },
+  x: { minX: 0, maxX: 0, minY: 0, maxY: 0, minZ: 0, maxZ: 0 },
+});
+
+/**
+ * True iff `target` overlaps ANY single-axis swept segment volume of the
+ * authoritative Y → Z → X step path (prev → afterY → afterZ → final), where
+ * the intermediate points include solid clipping (exactly the positions
+ * `moveAabbThroughWorld` passes through). This is the exact hazard hit test:
+ * start overlap (inside the Y segment box), end overlap (inside the X
+ * segment box), and thin-hazard tunneling (each segment sweeps its full
+ * displacement) are all covered by construction. `scratch` is caller-owned.
+ */
+export function sweptPathOverlaps(
+  scratch: SweptPathScratch,
+  prev: Readonly<Vec3>,
+  afterY: Readonly<Vec3>,
+  afterZ: Readonly<Vec3>,
+  final: Readonly<Vec3>,
+  half: Readonly<Vec3>,
+  target: Readonly<Aabb>,
+): boolean {
+  sweptSegmentAabb(scratch.y, prev, afterY, half);
+  sweptSegmentAabb(scratch.z, afterY, afterZ, half);
+  sweptSegmentAabb(scratch.x, afterZ, final, half);
+  return (
+    aabbOverlap(scratch.y, target) ||
+    aabbOverlap(scratch.z, target) ||
+    aabbOverlap(scratch.x, target)
+  );
+}
+
+/**
  * Exact single-axis swept query: does box B block A's translation of `amount`
  * along `axis` this step?
  *

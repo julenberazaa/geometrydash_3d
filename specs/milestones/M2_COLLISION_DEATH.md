@@ -7,8 +7,18 @@ contract, test, browser-QA, and performance requirements met: 54/54 unique
 automated tests (21 new in `tests/death.test.ts`), `npm run verify` green,
 browser QA 40/40 green with zero console/page errors, validated commit on
 `main`. Human Cube-movement-feel gate: APPROVED on entry (tuning frozen).
-Human death/restart-feel gate: OPEN (requires playtest; automated QA cannot
-prove feel).
+Human death/restart-feel gate: **APPROVED** (M2 playtest: 0.30 s hold /
+36 ticks, burst, camera kick/snap, R behavior all accepted).
+
+**M2.1 closeout (same day, engineering-only, zero gameplay retuning):**
+true swept hazard CCD replaces the loose pre/post union test (hazard kills
+follow the authoritative Y → Z → X path exactly — no false kills in
+never-visited corner regions; broadphase unchanged; suite
+`tests/hazardCcd.test.ts`), and the duplicate death-hold constants were
+collapsed to a single tick authority (`DEATH_HOLD_TICKS = 36`;
+`DEATH_HOLD_SECONDS = 36 × dt`). Final state: 62/62 unique automated
+tests, `npm run verify` green, browser QA 40/40 green with zero
+console/page errors. See ROADMAP M2.1 and ARCHITECTURE §5/§7.
 
 ## OBJECTIVE
 
@@ -94,9 +104,11 @@ post-processing stack. No general-gravity refactor (M3 owns it).
   fronts (spike walls) while sharing one code path. No level is required to
   use it; the test level uses `solid` fronts (GD-standard: any block face kills
   head-on).
-- **Hazard rule:** `hazard` kills on any AABB overlap (checked after movement
-  each running step). Spike gameplay boxes are intentionally smaller than their
-  visuals (0.5 tall vs ~0.85 visual) — fairness margin, pinned by test.
+- **Hazard rule:** `hazard` kills on overlap with the Cube's authoritative
+  swept path (M2.1: exact union of the three single-axis swept segment
+  volumes of the Y → Z → X step; checked after movement each running step).
+  Spike gameplay boxes are intentionally smaller than their visuals (0.5
+  tall vs ~0.85 visual) — fairness margin, pinned by test.
 - **Determinism:** per-axis strictly-smallest-TOI wins; ties keep the first
   candidate in `CollisionWorld` query order (cell-index order, then level
   insertion order) — deterministic per level, documented, pinned by a
@@ -203,8 +215,9 @@ death cause + lethal info; resize; zero console/page errors. Screenshots:
 All behavioral + contract + test + browser-QA + performance requirements above,
 plus: M1 movement feel untouched (tuning diff empty); docs match reality
 (`GAME_DESIGN`, `ARCHITECTURE`, `ROADMAP`, this spec); unique test count
-reported honestly; validated milestone commit on `main`. Human death-feel gate
-explicitly left OPEN for playtest.
+reported honestly; validated milestone commit on `main`. Human death-feel
+gate: OPEN at M2 closeout → **APPROVED** in the M2 playtest (recorded in
+M2.1 closeout, ROADMAP).
 
 ## KNOWN LIMITATIONS
 

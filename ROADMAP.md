@@ -51,7 +51,7 @@ green with zero console errors.
 Human Cube-feel gate APPROVED on entry (movement/jump/lane/gravity tuning
 untouched). Explicit frontal-kill rule (contact normal + forward approach,
 both blocking kinds); killFront blocks like solid, lethal frontally only,
-safe top/side; hazard overlap swept (pre/post union); spike boxes pinned
+safe top/side; hazard overlap swept; spike boxes pinned
 smaller than visuals; corner ties documented + pinned; death instantaneous,
 cause-tagged (hazard/frontImpact/void), idempotent, exactly-once event;
 0.30 s (36-tick) hold; attempts +1 per respawn/restart only; R from any
@@ -61,7 +61,21 @@ record + __gd3d probes. 54/54 unique automated tests (21 new), `npm run
 verify` green, browser QA 40/40 green with zero console/page errors;
 `qa/screenshots/m2-*` proof set (burst held via freeze/replay debug path).
 
-Human death/restart-feel gate: OPEN (needs playtest). No new mechanics.
+## M2.1 — Collision fairness closeout: PASS (2026-09-03)
+
+HUMAN M2 DEATH/RESTART FEEL = APPROVED (playtest: 0.30 s hold / 36 ticks,
+burst, camera kick/snap, R behavior all accepted — M2 human gate closed).
+Engineering closeout, zero gameplay retuning: (1) hazard kills now follow
+the TRUE swept movement path — a hazard must overlap one of the three
+single-axis swept segment volumes of the authoritative Y → Z → X path
+(exact envelope-of-endpoints test, clipped intermediates included); the
+old loose pre/post union rectangle remained only as broadphase and can no
+longer falsely kill in corner regions the path never enters (regression
+suite `tests/hazardCcd.test.ts`, incl. 4×-speed thin-hazard and clipped
+fall cases). (2) duplicate death-hold timing authority removed —
+`DEATH_HOLD_TICKS = 36` is the single source; `DEATH_HOLD_SECONDS` derives
+from it. 62/62 unique automated tests (8 new), `npm run verify` green,
+browser QA 40/40 green with zero console/page errors.
 
 ## M3 — Gravity architecture productionization
 

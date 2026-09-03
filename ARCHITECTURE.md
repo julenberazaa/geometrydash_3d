@@ -71,11 +71,13 @@ no browser needed. `Game` owns separate non-gameplay keys (`R` restart,
 - `CollisionWorld`: spatial-hash (X/Z) broadphase, level-load registration,
   caller-owned output arrays for queries.
 - `moveAabb.ts`: axis-separated swept movement in Y → Z → X order; per-step
-  `MoveResult` (floor/ceiling/wall contacts); `probeGroundSupport` for stable
-  grounded state at zero vertical velocity. The probe tests the full support
-  footprint (minus a 0.02 skin): partial overlap still grounds (edge teeter),
-  only full exit ungrounds → airborne → gravity → death plane. No tunneling
-  at high speed (tested incl. 4× forward speed vs thin walls).
+  `MoveResult` (floor/ceiling/wall contacts) plus the post-Y/post-Z clip
+  positions that record the authoritative swept path for hazard tests;
+  `probeGroundSupport` for stable grounded state at zero vertical velocity.
+  The probe tests the full support footprint (minus a 0.02 skin): partial
+  overlap still grounds (edge teeter), only full exit ungrounds → airborne →
+  gravity → death plane. No tunneling at high speed (tested incl. 4× forward
+  speed vs thin walls).
 - Blocking kinds are `solid` AND `killFront` (identical clipping + support;
   `hazard` never blocks). The frontal-kill DECISION lives in `GameSimulation`
   (contact normal opposing forward + forward approach velocity), never in
@@ -106,8 +108,12 @@ no browser needed. `Game` owns separate non-gameplay keys (`R` restart,
   idempotent with `deathCause` (`hazard` | `frontImpact` | `void`), stable
   `lastDeathCause`/`lastDeathLethalId` records, `deathPosition`, `deathId`
   counter (VFX edge), lethal id, contact normal, pre-impact velocity.
-  Emits `onDeath`/`onFinish`/`onJump`. Hazard overlap uses the swept
-  pre/post-step union box (no thin-hazard skipping at speed).
+  Emits `onDeath`/`onFinish`/`onJump`. Hazard kills use EXACT swept-path CCD:
+  a hazard must overlap one of the three single-axis swept segment volumes of
+  the authoritative Y → Z → X path (prev → afterY → afterZ → final, including
+  solid clipping), via `sweptSegmentAabb`/`sweptPathOverlaps` in `collider.ts`
+  — the loose pre/post union box remains only as the broadphase superset. No
+  thin-hazard skipping at speed, no false kills in never-visited corners.
 - `Game`: composition root only (input → sim → renderer → UI). No gameplay
   logic. Owns pause, FPS EMA, debug toggles.
 
@@ -189,5 +195,7 @@ no browser needed. `Game` owns separate non-gameplay keys (`R` restart,
 - `CollisionWorld.queryBox` allocates a small dedupe `Set` per call and the
   support probe allocates a candidate array per step — acceptable at M1 scale;
   revisit in the M6 performance pass, not before.
-- M2 intentionally keeps `prevPosition`-union hazard boxes (one small object
-  per running step, same as M1's endpoint box) — no hot-loop regression.
+- M2.1 swept-path hazard CCD keeps the hot loop allocation-neutral: the three
+  segment envelope boxes live in a reused scratch (`SweptPathScratch`), the
+  post-clip positions ride the reused `MoveResult`, and the loose union
+  broadphase box is a per-step stack literal as before.
