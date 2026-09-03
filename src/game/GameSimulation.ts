@@ -29,6 +29,9 @@ import type { LevelDefinition } from '../level/levelDefinition';
  */
 export type SimulationStatus = 'running' | 'dead' | 'finished';
 
+/** Why the current (or most recent) death happened. Manual restart is NOT death. */
+export type DeathCause = 'hazard' | 'frontImpact' | 'void';
+
 export interface SimulationEvents {
   onDeath?: () => void;
   onFinish?: () => void;
@@ -36,8 +39,11 @@ export interface SimulationEvents {
   onJump?: () => void;
 }
 
-/** How long (sim seconds) the dead status holds before auto-respawn eligibility. */
-export const DEATH_HOLD_SECONDS = 0.45;
+/** How long (sim seconds) the dead status holds before auto-respawn eligibility.
+ *  M2: 0.30 s (36 ticks) — readable burst, sub-500 ms retry feel. */
+export const DEATH_HOLD_SECONDS = 0.3;
+/** Exact hold duration in fixed simulation ticks (unit-test authority). */
+export const DEATH_HOLD_TICKS = 36;
 /** Vertical probe distance for the grounded support check (contact-tight). */
 const SUPPORT_PROBE_DISTANCE = 0.03;
 /** Max speed along gravity (toward surface) that still counts as "resting". */
@@ -58,8 +64,28 @@ export class GameSimulation {
   public attempts = 1;
   /** Simulated seconds since the current run started. */
   public elapsedSimTime = 0;
-  /** Counts down while dead; respawn allowed when it hits 0 (or on key press). */
-  public deathHoldTimer = 0;
+  /** Fixed-step ticks left while dead; respawn allowed when it hits 0 (or on key press).
+   *  Integer authority for restart timing (float seconds would drift over 36 ticks). */
+  public deathHoldTicksLeft = 0;
+  /** Cause of the current death; null while running (manual restart is NOT death). */
+  public deathCause: DeathCause | null = null;
+  /** Stable record of the most recent death (never cleared by respawn):
+   *  powers the timing-proof F1 last-death readout and future analytics. */
+  public lastDeathCause: DeathCause | null = null;
+  /** Lethal collider of the most recent death (stable record, see above). */
+  public lastDeathLethalId: string | null = null;
+  /** Monotonic death counter; rendering observes changes to trigger one-shot VFX. */
+  public deathId = 0;
+  /** Lethal collider id for the current death (debug/QA). */
+  public lastLethalColliderId: string | null = null;
+  /** World-space center where the most recent death occurred (debug/QA/VFX
+   *  anchor; set on every death, kept as a stable record — not cleared by
+   *  respawn so render-side one-shot effects can anchor to it). */
+  public readonly deathPosition: Vec3 = vec3();
+  /** Contact normal of the lethal impact, pointing away from the surface (debug/QA). */
+  public readonly lastContactNormal: Vec3 = vec3();
+  /** Pre-impact player velocity at the lethal step (debug/QA). */
+  public readonly lastPreImpactVelocity: Vec3 = vec3();
 
   private readonly laneCenters: readonly number[];
   private readonly stepContext: CubeControllerStepContext = {
@@ -71,6 +97,8 @@ export class GameSimulation {
   private readonly stepDelta: Vec3 = vec3();
   /** Scratch: cached half extents. */
   private readonly halfExtentsVec: Vec3 = vec3();
+  /** Scratch: pre-move velocity snapshot for the frontal-approach + debug record. */
+  private readonly preMoveVelocity: Vec3 = vec3();
 
   private hazardScratch: Collider[] = [];
 
@@ -108,9 +136,10 @@ export class GameSimulation {
    */
   public update(input: Readonly<InputSnapshot> = makeIdleSnapshot()): void {
     if (this.status === 'dead') {
-      if (this.deathHoldTimer > 0) {
-        this.deathHoldTimer = Math.max(0, this.deathHoldTimer - SIMULATION_DT);
-        if (this.deathHoldTimer === 0) this.respawn();
+      // Dead: gameplay input ignored, transform + sim time frozen; tick the hold.
+      if (this.deathHoldTicksLeft > 0) {
+        this.deathHoldTicksLeft -= 1;
+        if (this.deathHoldTicksLeft === 0) this.respawn();
       }
       return;
     }
@@ -127,7 +156,10 @@ export class GameSimulation {
     if (ctx.jumpedThisStep) this.events.onJump?.();
 
     // 2. Integrate + collide. Delta is velocity * dt (full-step displacement).
+    // Snapshot pre-move velocity: the frontal-kill decision needs the approach
+    // motion, and QA needs the pre-impact record.
     const v = this.player.velocity;
+    copyVec3(this.preMoveVelocity, v);
     this.stepDelta.x = v.x * SIMULATION_DT;
     this.stepDelta.y = v.y * SIMULATION_DT;
     this.stepDelta.z = v.z * SIMULATION_DT;
@@ -139,10 +171,14 @@ export class GameSimulation {
       this.moveResult,
     );
 
-    // Frontal wall contact = kill-front semantics for M1 (arcade standard).
+    // Frontal kill rule (M2 explicit): a wall contact whose normal opposes the
+    // forward axis (+Z) while the player approaches along forward kills — for
+    // BOTH blocking kinds (solid, killFront). Derived from contact geometry +
+    // motion, never from kind alone. ±X side scrapes block without killing;
+    // top landings are safe via Y resolution / the support probe below.
     for (const contact of this.moveResult.wallContacts) {
-      if (contact.normal.z < -0.5) {
-        this.die();
+      if (contact.normal.z < -0.5 && this.preMoveVelocity.z > 0) {
+        this.die('frontImpact', contact.collider.id, contact.normal);
         return;
       }
     }
@@ -174,11 +210,12 @@ export class GameSimulation {
 
     // 4. Death checks.
     if (this.player.position.y < this.def.deathY) {
-      this.die();
+      this.die('void', null, null);
       return;
     }
-    if (this.checkHazardOverlap()) {
-      this.die();
+    const lethalHazard = this.findOverlappingHazard();
+    if (lethalHazard !== null) {
+      this.die('hazard', lethalHazard.id, null);
       return;
     }
 
@@ -189,7 +226,7 @@ export class GameSimulation {
     }
   }
 
-  /** Deterministic reset to start; increments attempts. */
+  /** Deterministic reset to start; increments attempts exactly once. */
   public respawn(): void {
     resetPlayerState(this.player, {
       position: this.def.start,
@@ -197,18 +234,17 @@ export class GameSimulation {
       laneCount: this.def.laneCenters.length,
     });
     copyVec3(this.prevPosition, this.player.position);
-    this.deathHoldTimer = 0;
+    this.deathHoldTicksLeft = 0;
+    this.deathCause = null;
+    this.lastLethalColliderId = null;
     this.elapsedSimTime = 0;
     this.status = 'running';
     this.attempts += 1;
   }
 
-  /** Immediate manual restart (R key / UI). Does NOT require death hold to elapse. */
+  /** Immediate manual restart (R key / UI) from any status. NOT death:
+   *  no death cause, no onDeath — exactly one attempt via respawn(). */
   public restart(): void {
-    if (this.status === 'dead') {
-      this.respawn();
-      return;
-    }
     this.respawn();
   }
 
@@ -223,31 +259,52 @@ export class GameSimulation {
     this.player.velocity.z -= g.z * velAlongG;
   }
 
-  /** True if a hazard overlaps the player box. */
-  private checkHazardOverlap(): boolean {
+  /** The overlapping hazard collider, if any. killFront is NOT an overlap kill:
+   *  it blocks like solid and kills only via the frontal contact rule above.
+   *  The query box is the union of the pre-step and post-step player boxes so
+   *  fast motion can never skip over a thin hazard within one step (the
+   *  axis-separated path always stays inside this union). */
+  private findOverlappingHazard(): Collider | null {
     const half = this.halfExtentsVec;
     const p = this.player.position;
+    const q = this.prevPosition;
     const box = {
-      minX: p.x - half.x,
-      maxX: p.x + half.x,
-      minY: p.y - half.y,
-      maxY: p.y + half.y,
-      minZ: p.z - half.z,
-      maxZ: p.z + half.z,
+      minX: Math.min(p.x, q.x) - half.x,
+      maxX: Math.max(p.x, q.x) + half.x,
+      minY: Math.min(p.y, q.y) - half.y,
+      maxY: Math.max(p.y, q.y) + half.y,
+      minZ: Math.min(p.z, q.z) - half.z,
+      maxZ: Math.max(p.z, q.z) + half.z,
     };
     const candidates = this.hazardScratch;
     this.level.world.queryBox(box, candidates);
     for (const c of candidates) {
-      if (c.kind !== 'solid' && aabbOverlap(box, colliderToAabb(c))) {
-        return true;
+      if (c.kind === 'hazard' && aabbOverlap(box, colliderToAabb(c))) {
+        return c;
       }
     }
-    return false;
+    return null;
   }
 
-  private die(): void {
+  /** Instantaneous lethal transition. Idempotent: repeat calls while dead are
+   *  ignored so overlapping contacts can never double-fire the event. */
+  private die(
+    cause: DeathCause,
+    lethalColliderId: string | null,
+    contactNormal: Readonly<Vec3> | null,
+  ): void {
+    if (this.status === 'dead') return;
     this.status = 'dead';
-    this.deathHoldTimer = DEATH_HOLD_SECONDS;
+    this.deathCause = cause;
+    this.lastDeathCause = cause;
+    this.lastDeathLethalId = lethalColliderId;
+    this.deathId += 1;
+    copyVec3(this.deathPosition, this.player.position);
+    this.lastLethalColliderId = lethalColliderId;
+    if (contactNormal !== null) copyVec3(this.lastContactNormal, contactNormal);
+    else this.lastContactNormal.x = this.lastContactNormal.y = this.lastContactNormal.z = 0;
+    copyVec3(this.lastPreImpactVelocity, this.preMoveVelocity);
+    this.deathHoldTicksLeft = DEATH_HOLD_TICKS;
     this.events.onDeath?.();
   }
 }

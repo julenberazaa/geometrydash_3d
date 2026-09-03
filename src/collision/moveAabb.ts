@@ -12,6 +12,15 @@ import type { CollisionWorld } from './CollisionWorld';
  * combination of speeds can tunnel through a static box within one step —
  * including future 4x speed portals and thin walls.
  *
+ * Blocking kinds are `solid` AND `killFront` (identical movement blocking and
+ * ground support; the frontal-kill decision lives in GameSimulation and is
+ * derived from contact normal + approach motion, never from kind alone).
+ * `hazard` never blocks — it is overlap-tested by the simulation.
+ *
+ * Determinism: per axis the strictly smallest time-of-impact wins; ties keep
+ * the first candidate in world query order (cell-index order, then level
+ * insertion order) — deterministic for a fixed level definition.
+ *
  * The caller owns `position`; it is advanced in place.
  */
 
@@ -58,7 +67,7 @@ function buildProbeBox(position: Readonly<Vec3>, half: Readonly<Vec3>, delta: Re
   };
 }
 
-/** Sweep one axis against candidate solids; returns clipped toi (<=1) and best contact. */
+/** Sweep one axis against blocking candidates; returns clipped toi (<=1) and best contact. */
 function clipAxis(
   candidates: readonly Collider[],
   position: Readonly<Vec3>,
@@ -69,7 +78,7 @@ function clipAxis(
   let bestToi = 1;
   let bestCollider: Collider | null = null;
   for (const c of candidates) {
-    if (c.kind !== 'solid') continue;
+    if (c.kind !== 'solid' && c.kind !== 'killFront') continue;
     const hit = sweepAxis(position, half, axis, amount, colliderToAabb(c));
     if (hit && hit.toi < bestToi) {
       bestToi = hit.toi;
@@ -159,7 +168,7 @@ export function probeGroundSupport(
   let closest: ContactSurface | null = null;
   let closestDepth = Infinity;
   for (const c of candidates) {
-    if (c.kind !== 'solid') continue;
+    if (c.kind !== 'solid' && c.kind !== 'killFront') continue;
     const b = colliderToAabb(c);
     const horizontalOverlap =
       probeBox.minX < b.maxX &&

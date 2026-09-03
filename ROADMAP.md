@@ -15,7 +15,9 @@ QA 19/19 green with zero console errors; milestone commit on `main`.
 
 Provisional (needs human-feel gate before canonizing): edge-per-lane input
 (no hold-to-slide), landing rotation snap, killFront side semantics.
-NOT human-approved for fun — mechanics validated only.
+Controller mechanically validated; HUMAN-APPROVED for feel post-M1.2 (movement
+tuning frozen since — see M2). Historical note: run-counts here (41) predate
+the test-import fix; unique tests at M1.2 closeout were 33.
 
 ## M1.1 — Input/visual polish: PASS (2026-09-03)
 
@@ -27,7 +29,9 @@ untouched. (2) Vertical neon corner trims added to solids ≥ 0.8 tall via the
 existing shared edge system (markers/hazards untouched). 43/43 tests,
 `npm run verify` green, browser QA 19/19 green with zero console errors.
 Feel still NOT human-approved beyond the original feedback — M2 entry gate
-(the human feel test) remains open.
+(the human feel test) remains open. (Closed post-M1.2: human approved Cube
+movement feel; tuning frozen. Historical run-counts (43) predate the
+test-import fix; uniques were 33.)
 
 ## M1.2 — Exposed-face readability + lateral fall-off: PASS (2026-09-03)
 
@@ -42,11 +46,22 @@ fall -> existing death-plane reset; side contact with real geometry blocks
 without killing. 33/33 tests, `npm run verify` green, browser QA 19/19
 green with zero console errors.
 
-## M2 — Collision/death/restart polish + human controller tuning (NEXT)
+## M2 — Collision/death/restart polish: PASS (2026-09-03)
 
-Entry: human playtest of M1 approves (or retunes) Cube feel. Polish death
-feedback/restart snap, killFront side semantics, early hazard readability.
-No new mechanics.
+Human Cube-feel gate APPROVED on entry (movement/jump/lane/gravity tuning
+untouched). Explicit frontal-kill rule (contact normal + forward approach,
+both blocking kinds); killFront blocks like solid, lethal frontally only,
+safe top/side; hazard overlap swept (pre/post union); spike boxes pinned
+smaller than visuals; corner ties documented + pinned; death instantaneous,
+cause-tagged (hazard/frontImpact/void), idempotent, exactly-once event;
+0.30 s (36-tick) hold; attempts +1 per respawn/restart only; R from any
+state; finish-after-death impossible; pooled 14-fragment burst (0.35 s) +
+restrained kick + camera snap on respawn; guarded Web Audio blip; F1 death
+record + __gd3d probes. 54/54 unique automated tests (21 new), `npm run
+verify` green, browser QA 40/40 green with zero console/page errors;
+`qa/screenshots/m2-*` proof set (burst held via freeze/replay debug path).
+
+Human death/restart-feel gate: OPEN (needs playtest). No new mechanics.
 
 ## M3 — Gravity architecture productionization
 

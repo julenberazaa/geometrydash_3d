@@ -3,6 +3,7 @@ import { SIMULATION_DT, SIMULATION_HZ } from '../core/constants';
 import { InputSystem } from '../input/InputSystem';
 import { GameSimulation } from './GameSimulation';
 import { RendererHost } from '../rendering/RendererHost';
+import { DeathSfx } from '../audio/deathSfx';
 import { Hud } from '../ui/Hud';
 import { DebugOverlay } from '../debug/DebugOverlay';
 import { TEST_LEVEL } from '../content/levels/testLevel01';
@@ -18,6 +19,7 @@ export class Game {
   private readonly input = new InputSystem();
   private readonly simulation: GameSimulation;
   private readonly rendererHost: RendererHost;
+  private readonly deathSfx: DeathSfx;
   private readonly hud: Hud;
   private readonly debugOverlay: DebugOverlay;
 
@@ -35,12 +37,14 @@ export class Game {
     private readonly container: HTMLElement,
     levelDef: LevelDefinition = TEST_LEVEL,
   ) {
+    this.deathSfx = new DeathSfx();
     this.simulation = new GameSimulation(levelDef, {
       onJump: () => {
         this.jumpCount++;
       },
       onDeath: () => {
         this.hud.setMessage('');
+        this.deathSfx.play();
       },
       onFinish: () => {
         this.hud.setMessage('LEVEL COMPLETE — press R to run again');
@@ -88,6 +92,7 @@ export class Game {
     window.removeEventListener('keydown', this.onKeyDown);
     this.input.detach(window);
     this.rendererHost.dispose();
+    this.deathSfx.dispose();
     this.hud.setVisible(false);
     this.debugOverlay.setVisible(false);
   }
@@ -97,6 +102,8 @@ export class Game {
   };
 
   private onKeyDown = (event: KeyboardEvent): void => {
+    // First gesture unlocks the (guarded, optional) death blip.
+    this.deathSfx.ensure();
     switch (event.code) {
       case 'KeyR':
         this.simulation.restart();
@@ -141,14 +148,12 @@ export class Game {
       this.fpsEma += (1000 / measuredDt - this.fpsEma) * 0.05;
     }
 
-    if (this.simulation.status === 'dead') {
-      this.rendererHost.playerView.setVisible(false);
-    } else {
-      this.rendererHost.playerView.setVisible(true);
-    }
-
     this.rendererHost.applyFrame(alpha, renderDtSeconds);
     this.rendererHost.render();
+
+    // DOM overlays follow the render freeze so frozen QA frames (and their
+    // screenshots) show death-moment HUD/debug state, not live respawn state.
+    if (this.rendererHost.debugFreezeFrame) return;
 
     this.hud.update({
       displayName: this.simulation.level.def.displayName,
@@ -173,6 +178,8 @@ export class Game {
       `lane target: ${p.targetLaneIndex} / ${g.laneCenters.length} | x: ${p.position.x.toFixed(3)} | vx: ${p.velocity.x.toFixed(2)}`,
       `grounded: ${String(p.grounded)} | support: ${p.supportColliderId ?? '—'} | gravity: (0,-1,0)`,
       `status: ${sim.status} | attempt: ${sim.attempts} | progress: ${(sim.progress * 100).toFixed(1)}%`,
+      `death: cause=${sim.lastDeathCause ?? '—'} | lethal=${sim.lastDeathLethalId ?? '—'} | holdTicks=${sim.deathHoldTicksLeft} | status=${sim.status}`,
+      `contactN: (${sim.lastContactNormal.x.toFixed(1)}, ${sim.lastContactNormal.y.toFixed(1)}, ${sim.lastContactNormal.z.toFixed(1)}) | preVel: (${sim.lastPreImpactVelocity.x.toFixed(1)}, ${sim.lastPreImpactVelocity.y.toFixed(1)}, ${sim.lastPreImpactVelocity.z.toFixed(1)})`,
       `draw calls: ${stats.calls} | tris: ${stats.triangles}`,
     ]);
   }

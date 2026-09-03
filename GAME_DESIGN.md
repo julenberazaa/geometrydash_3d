@@ -58,11 +58,24 @@ no Practice Mode initially.
 
 - Predictable AABB hitboxes. The gameplay collider (1.1³ cube) NEVER rotates —
   visual tumble is render-only.
-- High-speed collision must not tunnel (swept per-axis movement, Y → Z → X).
-- Frontal wall contact kills (kill-front arcade semantics).
+- High-speed collision must not tunnel (swept per-axis movement, Y → Z → X;
+  hazard overlap is tested against the swept pre/post-step union).
+- Frontal impact kills (kill-front arcade semantics), decided from contact
+  geometry + motion: a wall contact whose normal opposes the forward axis
+  while approaching along forward kills. Side scrapes (±X contacts) block
+  without killing; top landings are always safe.
+- Blocking kinds are `solid` and `killFront` (identical movement blocking and
+  ground support; `killFront` marks visually lethal fronts for future content
+  and kills only via the same frontal rule — never by kind alone or by
+  overlap). `hazard` never blocks. Spike gameplay boxes are intentionally
+  smaller than their visuals (fairness margin).
 - Hazards kill on overlap; falling below the level death plane kills.
-- Death: instant gameplay death, short visual hold (~0.45 s), deterministic
-  respawn at start, attempt counter increments. `R` restarts immediately.
+- Death: instantaneous at the lethal step, tagged with a cause
+  (`hazard` | `frontImpact` | `void`, internal/debug), exactly-once event,
+  short visual hold (0.30 s / 36 ticks) with a brief procedural burst,
+  deterministic respawn at start. Attempts increment exactly once per
+  respawn/restart, never on death itself; manual `R` restart is not death.
+  `R` restarts immediately from any state. Finish can never trigger after death.
   Falling below the death plane after a lateral (or forward) exit completes
   through this same path — side falls are never instant kills.
 

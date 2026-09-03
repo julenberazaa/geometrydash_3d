@@ -9,8 +9,11 @@ original. Reference PNGs in the repo root are mood references only.
 
 ## Current maturity
 
-M0/M1 foundation PASS: playable Cube controller test track with instant death
-and fast restart. Fun/feel NOT yet human-approved (mechanics validated only).
+M2 collision/death/restart polish PASS: precise fair frontal/lateral
+collision, cause-tagged instant death, 0.30 s deterministic respawn with
+pooled burst feedback, 54 automated tests + 40 browser checks green.
+Cube movement feel human-approved (frozen); death/restart feel awaits
+human playtest.
 
 ## Setup
 
@@ -55,5 +58,6 @@ Individual: `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`.
 
 ## Current milestone
 
-M1 Foundation Cube — spec: `specs/milestones/M1_FOUNDATION_CUBE.md`.
-Next: human controller-feel test, then M2 (see `ROADMAP.md`).
+M2 Collision & Death — spec: `specs/milestones/M2_COLLISION_DEATH.md` (PASS,
+pending human death-feel playtest).
+Next: M3 gravity architecture (see `ROADMAP.md`).

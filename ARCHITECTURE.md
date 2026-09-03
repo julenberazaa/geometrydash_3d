@@ -76,6 +76,13 @@ no browser needed. `Game` owns separate non-gameplay keys (`R` restart,
   footprint (minus a 0.02 skin): partial overlap still grounds (edge teeter),
   only full exit ungrounds → airborne → gravity → death plane. No tunneling
   at high speed (tested incl. 4× forward speed vs thin walls).
+- Blocking kinds are `solid` AND `killFront` (identical clipping + support;
+  `hazard` never blocks). The frontal-kill DECISION lives in `GameSimulation`
+  (contact normal opposing forward + forward approach velocity), never in
+  kind checks — side/top contacts on either kind block or ground safely.
+- Determinism: per axis the strictly smallest TOI wins; ties keep the first
+  candidate in `CollisionWorld` query order (cell-index, then level insertion
+  order) — deterministic per level, pinned by run-it-twice tests.
 - No general physics engine, no ECS (permanent constraint unless justified).
 
 ## 6. Level (`src/level/`, `src/content/levels/`)
@@ -93,8 +100,14 @@ no browser needed. `Game` owns separate non-gameplay keys (`R` restart,
 - `GameSimulation`: headless orchestration per fixed step — controller →
   integrate+collide → grounding → death/finish checks. Owns `prevPosition`
   for render interpolation, `status` (`running`/`dead`/`finished`),
-  `attempts`, `elapsedSimTime`, 0.45 s `deathHoldTimer`. Single
-  `die()`/`respawn()`/`restart()` paths. Emits `onDeath`/`onFinish`/`onJump`.
+  `attempts`, `elapsedSimTime`, 36-tick `deathHoldTicksLeft` (0.30 s) with
+  integer-tick authority. Single `die()`/`respawn()`/`restart()` paths
+  (`restart()` converges to one `respawn()` from any status); `die(cause)` is
+  idempotent with `deathCause` (`hazard` | `frontImpact` | `void`), stable
+  `lastDeathCause`/`lastDeathLethalId` records, `deathPosition`, `deathId`
+  counter (VFX edge), lethal id, contact normal, pre-impact velocity.
+  Emits `onDeath`/`onFinish`/`onJump`. Hazard overlap uses the swept
+  pre/post-step union box (no thin-hazard skipping at speed).
 - `Game`: composition root only (input → sim → renderer → UI). No gameplay
   logic. Owns pause, FPS EMA, debug toggles.
 
@@ -109,6 +122,19 @@ no browser needed. `Game` owns separate non-gameplay keys (`R` restart,
 - `PlayerView`: original procedural cyan cube (visual 1.24 vs collider 1.1);
   airtime tumble is render-only and snaps to rest on landing. Collider and
   mesh are independent by construction (debug F3 visualizes the real hitbox).
+  Visibility follows sim status (hidden while dead), applied in `RendererHost`
+  so debug frame-freezes capture true death frames.
+- `DeathBurstView` (M2, owned by `RendererHost`): 14 pooled fragments, shared
+  geometry + 2 shared materials, deterministic radial burst, 0.35 s lifetime,
+  shrink-out; zero allocation post-construction; triggered by `deathId` edge.
+  Death kick (FOV +3.5, +0.25 u lift, ~0.12 s decay, no roll/shake) + camera
+  snap-to-start on respawn/teleport also live in `RendererHost`.
+  Debug-only `debugFreezeFrame` (skip visual updates, keep presenting) +
+  `debugReplayBurst` (re-fire at recorded death pos) exist SOLELY for
+  photographing the 0.35 s effect under headless screenshot latency.
+- `DeathSfx` (`src/audio/`, M2): lazy guarded Web Audio death blip (0.18 s),
+  created on first user gesture; silence-on-failure; gameplay never depends
+  on it.
 - `LevelView` (shared geometries/materials; M1.1/M1.2 face applique — thin
   unlit trims in the shared edge material riding PROUD of solid faces:
   outboard corner posts, front-face bottom strips (gap faces read as framed
@@ -116,18 +142,27 @@ no browser needed. `Game` owns separate non-gameplay keys (`R` restart,
   untouched — no new systems), `EnvironmentView` (fog,
   deterministic starfield/pillars — seeded PRNG, visuals only), finish gate.
 - `Hud`: level name, real progress %, attempt count, key help, messages.
-- `DebugOverlay` (F1 text stats) + `DebugView` (F2 collider wireframes,
-  F3 player hitbox).
+- `DebugOverlay` (F1 text stats, incl. latched last-death record:
+  cause/lethal/hold/contact-normal/pre-impact-velocity) + `DebugView` (F2
+  collider wireframes, F3 player hitbox). `__gd3d` probes expose death cause,
+  lethal info, renderer stats, scene-child count, burst state for browser QA.
 
 ## 9. QA (`tests/`, `scripts/`, `qa/`)
 
 - Unit/integration: `fixedStep` (timestep, cadence invariance on INTEGER step
   counts, clamp, spiral guard, alpha range), `controller` (determinism, jump,
   repeat-jump, fast-fall, lanes, air lanes), `collision` (grounding,
-  penetration, frontal kill, anti-tunneling, void death, data-driven loading).
+  penetration, frontal kill, anti-tunneling, void death, data-driven loading),
+  `death` (M2: frontal/side/top killFront semantics, causes, exactly-once
+  + idempotent death, 36-tick hold, attempt accounting, R semantics, freeze
+  + full reset, finish-after-death, determinism, spike fairness pins).
 - `scripts/browser-qa.mjs`: headless Chromium gameplay harness (Playwright) —
   console audit, input sequences, `window.__gd3d` probes, PNG + JSON
   provenance sidecars in `qa/screenshots/` (git-ignored, regenerable).
+  M2 section: wall/spike/void/fall deaths, burst visible + cleared, 10×
+  die/respawn leak guard (scene children + draw calls flat), R-from-dead,
+  camera reset, F1 death record, `m2-*` screenshots (burst held via the
+  freeze/replay debug path after a page reload for compositor freshness).
 - Gate: `npm run verify` = typecheck + lint + tests + build. Full:
   `npm run verify:full` adds browser QA (needs `npm run dev` + browsers).
 
@@ -143,13 +178,16 @@ no browser needed. `Game` owns separate non-gameplay keys (`R` restart,
 | Input preserves held/pressed/released edges | `InputSystem` + controller edge tests |
 | Camera not parented; lateral bias bounded | `ChaseCamera` tuning + code review |
 | Swept collision, no tunneling at speed | `collision` anti-tunneling tests |
+| Frontal kills, lateral/top contacts safe (either blocking kind) | `death` killFront semantics tests + browser QA |
+| Death exactly-once; attempts +1 per respawn/restart only | `death` event/attempt tests |
+| 36-tick death hold; respawn fully resets | `death` tick + reset tests |
 | Reference PNGs never runtime assets | Repo/runtime search + visual review |
 | No milestone passes with failing verification | `npm run verify` + `AGENTS.md` process rule |
 
-## 11. Known non-defects / deferred perf notes (M1)
+## 11. Known non-defects / deferred perf notes
 
 - `CollisionWorld.queryBox` allocates a small dedupe `Set` per call and the
   support probe allocates a candidate array per step — acceptable at M1 scale;
   revisit in the M6 performance pass, not before.
-- `GameSimulation.restart()` has a redundant branch (both paths respawn) —
-  harmless, intentional minimal churn.
+- M2 intentionally keeps `prevPosition`-union hazard boxes (one small object
+  per running step, same as M1's endpoint box) — no hot-loop regression.

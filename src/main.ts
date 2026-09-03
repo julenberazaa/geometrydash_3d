@@ -23,6 +23,17 @@ declare global {
       grounded: () => boolean;
       laneIndex: () => number;
       playerPosition: () => { x: number; y: number; z: number };
+      deathCause: () => string | null;
+      lethalInfo: () => {
+        colliderId: string | null;
+        normal: { x: number; y: number; z: number };
+        preVel: { x: number; y: number; z: number };
+      };
+      rendererStats: () => { calls: number; triangles: number };
+      sceneChildren: () => number;
+      burstActive: () => boolean;
+      debugFreezeFrame: (frozen: boolean) => void;
+      debugReplayBurst: () => void;
       toggleDebug: () => void;
     };
   }
@@ -36,6 +47,23 @@ window.__gd3d = {
   grounded: () => game['simulation'].player.grounded,
   laneIndex: () => game['simulation'].player.targetLaneIndex,
   playerPosition: () => ({ ...game['simulation'].player.position }),
+  deathCause: () => game['simulation'].deathCause,
+  lethalInfo: () => ({
+    colliderId: game['simulation'].lastLethalColliderId,
+    normal: { ...game['simulation'].lastContactNormal },
+    preVel: { ...game['simulation'].lastPreImpactVelocity },
+  }),
+  rendererStats: () => ({ ...game['rendererHost'].stats }),
+  sceneChildren: () => game['rendererHost'].sceneChildren,
+  burstActive: () => game['rendererHost'].deathBurstActive,
+  // Debug-only freeze for burst photography (see RendererHost.debugFreezeFrame).
+  debugFreezeFrame: (frozen: boolean): void => {
+    game['rendererHost'].debugFreezeFrame = frozen;
+  },
+  // Debug-only burst replay at the recorded death position (see RendererHost).
+  debugReplayBurst: (): void => {
+    game['rendererHost'].debugReplayBurst();
+  },
   toggleDebug: () => {
     /* toggled via F1/F2/F3 keyboard events */
   },
