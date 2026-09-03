@@ -9,6 +9,12 @@ import { vec3, type Vec3 } from '../core/math';
  * IMPORTANT (per spec): laneAxis is explicit data, never derived from
  * cross(gravity, forward) — future ceiling/wall gameplay must preserve the same
  * left/right lane orientation rather than mirroring with the cross product.
+ *
+ * M1.1 screen-side convention (human playtest fix): the chase camera looks
+ * along +forward (+Z) with up +Y, so screen-right is world −X. Increasing
+ * lane index MUST run toward screen-right, i.e. laneAxis = −X for M1 Floor.
+ * (Deriving it from a cross product would yield +X and mirror the controls
+ * on screen — exactly the reversal fixed in M1.1. Keep it explicit.)
  */
 export class GameplayFrame {
   /** Unit vector the player perpetually travels along (+Z for M1). */
@@ -17,7 +23,11 @@ export class GameplayFrame {
   readonly gravityVector: Vec3;
   /** Current support surface normal; equals -gravityVector when airborne. */
   readonly surfaceNormal: Vec3;
-  /** Unit vector toward increasing lane index (+X for M1); explicit data. */
+  /**
+   * Unit vector toward increasing lane index. M1 Floor: −X, because the +Z
+   * chase camera shows −X on screen-right; index 0 = screen-left lane.
+   * Explicit data — never cross-product-derived (see note above).
+   */
   readonly laneAxis: Vec3;
 
   constructor(
@@ -41,7 +51,7 @@ export class GameplayFrame {
     return new GameplayFrame(
       { x: 0, y: 0, z: 1 }, // forward +Z
       { x: 0, y: -1, z: 0 }, // gravity -Y
-      { x: 1, y: 0, z: 0 }, // lanes +X
+      { x: -1, y: 0, z: 0 }, // lanes: increasing index toward screen-right (−X)
     );
   }
 }

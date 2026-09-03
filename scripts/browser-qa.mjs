@@ -106,10 +106,13 @@ log('player settled onto runway', groundedStart, `y=${p1.y.toFixed(2)}`);
 // --- 2. Lane changes (fresh restart; whole segment stays on runway z<30) ---
 await page.keyboard.press('KeyR');
 await page.waitForTimeout(400);
+// M1.1 screen-side convention: the +Z chase camera shows world −X on
+// screen-right, so ArrowRight must settle at x = −2.6 (visually right).
 await page.keyboard.press('ArrowRight');
 await page.waitForTimeout(400);
 const pRight = await pos();
-log('lane right reaches +2.6 center', Math.abs(pRight.x - 2.6) < 0.15, `x=${pRight.x.toFixed(3)}`);
+log('lane right reaches screen-right lane (−2.6)', Math.abs(pRight.x + 2.6) < 0.15, `x=${pRight.x.toFixed(3)}`);
+await capture('m11-01-controls-correct');
 await page.keyboard.press('ArrowLeft');
 await page.waitForTimeout(400);
 const pBack = await pos();
@@ -176,7 +179,7 @@ await page.waitForTimeout(350);
 await page.keyboard.down('Space');
 await page.waitForTimeout(150); // now airborne
 const xBeforeAirLane = (await pos()).x;
-await page.keyboard.press('ArrowLeft');
+await page.keyboard.press('ArrowRight');
 await page.waitForTimeout(450);
 const xMidAir = (await pos()).x;
 await page.keyboard.up('Space');
@@ -201,6 +204,36 @@ const overlayHasData = await page.evaluate(() => {
 });
 log('debug overlay shows sim Hz + draw calls', overlayHasData);
 await capture('03-debug-colliders');
+// M1.1 proof set 1/2 — deterministic right-lane debug state: restart first
+// (the run-in may have ended mid-death-hold, where lane input is ignored),
+// go right, capture the overlay pinning x ≈ −2.6 with the cube screen-right.
+await page.keyboard.press('KeyR');
+await page.waitForTimeout(400);
+await page.keyboard.press('ArrowRight');
+await page.waitForTimeout(500);
+await capture('m11-03-debug-lane-direction');
+// M1.1 proof set 2/2 — clean (debug off) readability shot of the vertical
+// trims: roll to z ≈ 38 so the low-platform face (z = 48) fills the frame
+// (wall kill triggers at z ≈ 47.4 — the screenshot itself is instant, and the
+// R below re-establishes state even if the hold lands in the death window).
+await page.keyboard.press('F1');
+await page.keyboard.press('F2');
+for (let i = 0; i < 60; i++) {
+  if ((await pos()).z >= 38) break;
+  await page.waitForTimeout(100);
+}
+await capture('m11-02-vertical-edges');
+await page.keyboard.press('F1');
+await page.keyboard.press('F2');
+// Restore the §8 death-run entry assumption deterministically (closed-loop:
+// headless capture overhead makes open-loop waits drift and lets the player
+// die+respawn mid-sequence, shifting §8's whole timeline).
+await page.keyboard.press('KeyR');
+await page.waitForTimeout(300);
+for (let i = 0; i < 60; i++) {
+  if ((await pos()).z >= 40) break;
+  await page.waitForTimeout(100);
+}
 
 // --- 8. Death & attempt reset: run off into first gap without jumping ---
 await page.keyboard.press('F1');

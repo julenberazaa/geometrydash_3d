@@ -79,7 +79,8 @@ PNG + JSON provenance sidecars.
 
 ## VISUAL BASELINE
 
-Dark modular track, violet neon edges, cyan procedural cube, orange spike
+Dark modular track, violet neon edges (M1.1: top perimeter strips + vertical
+corner trims on solids ≥ 0.8 tall), cyan procedural cube, orange spike
 hazards, fog + starfield + pillar dressing, finish gate. `qa/screenshots/`
 (local, git-ignored, regenerable).
 
@@ -95,6 +96,29 @@ exist and match reality; `npm run verify` passes; milestone commit on `main`.
 - Landing visual rotation snaps to rest.
 - killFront side/frontal edge semantics may need M2 polish.
 - Controller mechanically validated; fun NOT human-approved.
+
+## M1.1 POLISH PASS (2026-09-03) — STATUS: PASS
+
+Human playtest of the M1 build: "broadly good", two concrete fixes.
+Scope was strictly limited to the feedback — no M2 mechanics, no retuning.
+
+1. **Left/right reversal (root cause: view/model orientation mismatch).**
+   Input map, controller edge logic, kinematics, and camera were each
+   correct in isolation; the lane-index ordering (+X = increasing index)
+   rendered mirrored under the +Z chase camera (screen-right = −X),
+   confirmed by lookAt math and by M1 screenshots (x = −2.6 rendered right
+   of center). Fix: index now increases toward screen-right —
+   `laneCenters` [+2.6, 0, −2.6], Floor `laneAxis` −X (explicit, documented
+   against the cross-product trap), asymmetric level geometry mirrored so
+   existing left/right level comments are true. Controller code untouched;
+   new unit test pins Right→−X-velocity / Left→+X-velocity.
+2. **Vertical neon edges.** Extended the existing shared edge-strip system:
+   4 unlit corner trims per solid ≥ 0.8 tall (thin, shared geometry +
+   material, stopped below the top strips to avoid z-fighting); markers and
+   hazards untouched. ~+40 cheap boxes; readability verified in browser QA.
+
+Validation: 43/43 tests, `npm run verify` green, browser QA 19/19 green,
+zero console errors; `qa/screenshots/m11-*` proof set.
 
 ## EVIDENCE
 

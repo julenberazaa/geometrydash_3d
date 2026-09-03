@@ -41,7 +41,12 @@ export interface LevelDefinition {
   start: Vec3;
   /** Initial lane index. */
   startLaneIndex: number;
-  /** Lane centers along X. Length defines laneCount; do not hardcode 3 in engine code. */
+  /**
+   * Lane centers along X, ordered by lane index. Convention (M1.1): index
+   * increases toward screen-right (world −X under the +Z chase camera), so
+   * index 0 is the screen-left lane. Length defines laneCount; do not
+   * hardcode 3 in engine code.
+   */
   laneCenters: number[];
   /** Base forward speed for this level. */
   baseForwardSpeed: number;

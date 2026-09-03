@@ -32,11 +32,15 @@ no Practice Mode initially.
 - **Fast-fall:** airborne `ArrowDown` adds extra downward acceleration (+55);
   grounded `ArrowDown` does nothing.
 - **Lanes:** `ArrowLeft`/`ArrowRight` change the *target lane index*.
-  Physical lateral position is **continuous** (accelerate → cruise → analytic
-  braking → settle/snap; max lateral speed 16 u/s), participates in collision,
-  and remains substantially correctable **while airborne**.
-  - Test Level: 3 lanes at x = −2.6 / 0 / +2.6. Architecture supports arbitrary
-    lane definitions per level.
+  `ArrowRight` ALWAYS moves the Cube toward **screen-right**, `ArrowLeft`
+  toward screen-left. Physical lateral position is **continuous**
+  (accelerate → cruise → analytic braking → settle/snap; max lateral speed
+  16 u/s), participates in collision, and remains substantially correctable
+  **while airborne**.
+  - Test Level: 3 lanes, index 0/1/2 = screen-left/center/screen-right
+    (world x = +2.6 / 0 / −2.6 — the +Z chase camera shows −X on the right;
+    lane order fixed in M1.1, see `GameplayFrame` convention). Architecture
+    supports arbitrary lane definitions per level.
   - **PROVISIONAL (M1):** each lane transition requires a distinct left/right
     press edge; holding a lane key does NOT slide across multiple lanes. This
     is pending human-feel evaluation — do not treat it as final design.

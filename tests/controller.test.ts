@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { GameSimulation } from '../src/game/GameSimulation';
 import { TEST_LEVEL } from '../src/content/levels/testLevel01';
+import { GameplayFrame } from '../src/player/gameplayFrame';
 import type { InputSnapshot } from '../src/input/InputSystem';
 
 /** Test helpers to drive the simulation deterministically. */
@@ -20,6 +21,11 @@ export const holdJump: InputSnapshot = {
 export const tapLaneLeft: InputSnapshot = {
   ...idleInput,
   laneLeft: { held: false, pressedThisStep: true, releasedThisStep: true },
+};
+
+export const tapLaneRight: InputSnapshot = {
+  ...idleInput,
+  laneRight: { held: false, pressedThisStep: true, releasedThisStep: true },
 };
 
 export const holdFastFall: InputSnapshot = {
@@ -172,10 +178,27 @@ describe('Lane change', () => {
     expect(Math.abs(earlyX - startX)).toBeLessThan(1.5); // clearly not teleported
   });
 
+  it('screen-side convention: Right key moves toward screen-right (−X), Left toward +X', () => {
+    // M1.1 regression: the +Z chase camera shows world −X on screen-right,
+    // so laneRight must produce −X velocity and laneLeft +X velocity.
+    // Index convention: laneCenters ordered screen-left -> screen-right.
+    expect(GameplayFrame.floor().laneAxis.x).toBe(-1);
+    expect(TEST_LEVEL.laneCenters[0]).toBeCloseTo(2.6, 5); // index 0 = screen-left
+    expect(TEST_LEVEL.laneCenters[2]).toBeCloseTo(-2.6, 5); // index 2 = screen-right
+    const simR = makeGroundedSim().sim;
+    advance(simR, tapLaneRight, 3);
+    expect(simR.player.targetLaneIndex).toBe(2);
+    expect(simR.player.velocity.x).toBeLessThan(0);
+    const simL = makeGroundedSim().sim;
+    advance(simL, tapLaneLeft, 3);
+    expect(simL.player.targetLaneIndex).toBe(0);
+    expect(simL.player.velocity.x).toBeGreaterThan(0);
+  });
+
   it('reaches neighboring lane center quickly, settles, bounded overshoot', () => {
     const sim = makeSim();
-    advance(sim, tapLaneLeft, 1);
-    const target: number = TEST_LEVEL.laneCenters[0] ?? 0; // -2.6
+    advance(sim, tapLaneRight, 1);
+    const target: number = TEST_LEVEL.laneCenters[2] ?? 0; // -2.6, screen-right
     let overshoot = 0;
     let settledStep = -1;
     for (let i = 0; i < 90; i++) {
@@ -225,6 +248,7 @@ describe('Airborne lane change', () => {
     expect(sim.player.grounded).toBe(false);
     const xAtTakeoff = sim.player.position.x;
     advance(sim, tapLaneLeft, 15);
-    expect(sim.player.position.x).toBeLessThan(xAtTakeoff - 0.5);
+    // M1.1: Left key moves toward screen-left = world +X.
+    expect(sim.player.position.x).toBeGreaterThan(xAtTakeoff + 0.5);
   });
 });

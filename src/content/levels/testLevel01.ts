@@ -12,7 +12,12 @@ import type { LevelDefinition } from '../../level/levelDefinition';
  *   z  62..76   elevated platform (top y=1.6), hold-jump chain practice
  *   z  78..84.5 GAP (void death if missed) -> landing pad to z=96
  *   z  92.5     wall blocking RIGHT lane -> forced left lane change
- *   z 106..122  spike weave: safe lane alternates right / left
+ *   z 106..122  spike weave: safe lane alternates center / right
+ *
+ * Screen-side convention (M1.1): the +Z chase camera shows world −X on
+ * screen-right, so laneCenters are ordered index -> screen-left/center/right
+ * ([+2.6, 0, -2.6]) and every asymmetric feature is mirrored accordingly:
+ * "right" in the comments below always means screen-right (world −X).
  *   z 124..131  GAP -> elevated island (top y=1.2) z 133..141
  *   z 143..149  GAP -> center island (narrow) z 151..157
  *   z 159..176  final straight runway to finish gate
@@ -22,7 +27,7 @@ export const TEST_LEVEL: LevelDefinition = {
   displayName: 'CONTROLLER TEST 01',
   start: { x: 0, y: 1.5, z: -4 },
   startLaneIndex: 1,
-  laneCenters: [-2.6, 0, 2.6],
+  laneCenters: [2.6, 0, -2.6], // index 0 = screen-left, 1 = center, 2 = screen-right
   baseForwardSpeed: 14,
   finishZ: 170,
   deathY: -14,
@@ -47,8 +52,8 @@ export const TEST_LEVEL: LevelDefinition = {
 
     // --- Landing pad: top y=0, z 84.5..96 ---
     { center: { x: 0, y: -0.5, z: 90.25 }, halfExtents: { x: 5.4, y: 0.5, z: 5.75 } },
-    // Wall blocking RIGHT lane only: x 1.95..3.9, z 92..93, tall enough that jumping over is not intended
-    { center: { x: 2.925, y: 2.0, z: 92.5 }, halfExtents: { x: 0.975, y: 2.0, z: 0.5 } },
+    // Wall blocking RIGHT lane only (screen-right = world −X): x −3.9..−1.95, z 92..93, tall enough that jumping over is not intended
+    { center: { x: -2.925, y: 2.0, z: 92.5 }, halfExtents: { x: 0.975, y: 2.0, z: 0.5 } },
 
     // --- Weave runway: top y=0, z 96..122 ---
     { center: { x: 0, y: -0.5, z: 109 }, halfExtents: { x: 5.4, y: 0.5, z: 13 } },
@@ -68,7 +73,7 @@ export const TEST_LEVEL: LevelDefinition = {
     { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 108 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 108 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     // Spike row z=116: CENTER+LEFT dangerous -> right lane safe
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 116 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 116 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 116 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
   ],
 

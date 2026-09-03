@@ -17,6 +17,18 @@ Provisional (needs human-feel gate before canonizing): edge-per-lane input
 (no hold-to-slide), landing rotation snap, killFront side semantics.
 NOT human-approved for fun — mechanics validated only.
 
+## M1.1 — Input/visual polish: PASS (2026-09-03)
+
+Human playtest feedback on the M1 build: broadly good; two fixes requested.
+(1) Left/right reversal fixed at the root: lane index now increases toward
+screen-right (`laneCenters` [+2.6, 0, −2.6], Floor `laneAxis` −X, asymmetric
+level geometry mirrored) — `ArrowRight` = visually right, controller code
+untouched. (2) Vertical neon corner trims added to solids ≥ 0.8 tall via the
+existing shared edge system (markers/hazards untouched). 43/43 tests,
+`npm run verify` green, browser QA 19/19 green with zero console errors.
+Feel still NOT human-approved beyond the original feedback — M2 entry gate
+(the human feel test) remains open.
+
 ## M2 — Collision/death/restart polish + human controller tuning (NEXT)
 
 Entry: human playtest of M1 approves (or retunes) Cube feel. Polish death

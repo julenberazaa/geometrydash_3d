@@ -48,6 +48,8 @@ no browser needed. `Game` owns separate non-gameplay keys (`R` restart,
   `gravityVector`, `surfaceNormal`, `laneAxis` data. M1 always Floor; future
   modes change frame DATA, not controller code. `laneAxis` is explicit, never
   derived from a cross product (no control mirroring on ceiling/walls).
+  M1.1 convention: increasing lane index runs toward screen-right, so the M1
+  Floor laneAxis is −X (the +Z chase camera shows −X on the right).
 - `CubeController`: owns Cube movement policy. Per step: lane intent
   (**edge-triggered only** — one tap = one lane change), lateral kinematics
   (accelerate/cruise/analytic-brake/settle-snap, hard geometric no-overshoot
@@ -102,7 +104,9 @@ no browser needed. `Game` owns separate non-gameplay keys (`R` restart,
 - `PlayerView`: original procedural cyan cube (visual 1.24 vs collider 1.1);
   airtime tumble is render-only and snaps to rest on landing. Collider and
   mesh are independent by construction (debug F3 visualizes the real hitbox).
-- `LevelView` (shared geometries/materials), `EnvironmentView` (fog,
+- `LevelView` (shared geometries/materials; M1.1 adds restrained vertical
+  corner trims on solids ≥ 0.8 tall reusing the shared edge material — no new
+  systems, markers/hazards untouched), `EnvironmentView` (fog,
   deterministic starfield/pillars — seeded PRNG, visuals only), finish gate.
 - `Hud`: level name, real progress %, attempt count, key help, messages.
 - `DebugOverlay` (F1 text stats) + `DebugView` (F2 collider wireframes,
