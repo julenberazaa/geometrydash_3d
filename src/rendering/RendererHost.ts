@@ -156,7 +156,12 @@ export class RendererHost {
     ip.y = lerp(prev.y, p.y, alpha);
     ip.z = lerp(prev.z, p.z, alpha);
 
-    this.playerView.updateFromSimulation(ip, sim.player.grounded, renderDtSeconds);
+    this.playerView.updateFromSimulation(
+      ip,
+      sim.player.grounded,
+      renderDtSeconds,
+      sim.player.gravityMode === 'ceiling',
+    );
     this.debugView.updatePlayerBox(p, sim.halfExtents);
     this.deathBurst.update(renderDtSeconds);
 

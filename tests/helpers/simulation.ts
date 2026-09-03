@@ -1,6 +1,6 @@
 import { GameSimulation } from '../../src/game/GameSimulation';
 import { TEST_LEVEL } from '../../src/content/levels/testLevel01';
-import type { InputSnapshot } from '../../src/input/InputSystem';
+import type { PhysicalInputSnapshot } from '../../src/input/InputSystem';
 
 /**
  * Shared deterministic simulation-driving helpers for test suites.
@@ -8,38 +8,48 @@ import type { InputSnapshot } from '../../src/input/InputSystem';
  * Lives in a NON-TEST support module on purpose: test files must never import
  * another `*.test.ts` module (importing one re-executes its top-level suite
  * under Vitest and inflates the test count). Import helpers from here instead.
+ *
+ * Inputs are PHYSICAL snapshots (M3): raw keys, no gravity meaning. The
+ * simulation interprets them against its authoritative gravity mode.
  */
 
-/** All inputs idle. */
-export const idleInput: InputSnapshot = {
-  jump: { held: false, pressedThisStep: false, releasedThisStep: false },
-  fastFall: { held: false, pressedThisStep: false, releasedThisStep: false },
-  laneLeft: { held: false, pressedThisStep: false, releasedThisStep: false },
-  laneRight: { held: false, pressedThisStep: false, releasedThisStep: false },
+const edge = (held: boolean, pressed: boolean) => ({
+  held,
+  pressedThisStep: pressed,
+  releasedThisStep: false,
+});
+
+/** All physical keys idle. */
+export const idleInput: PhysicalInputSnapshot = {
+  space: edge(false, false),
+  up: edge(false, false),
+  down: edge(false, false),
+  laneLeft: edge(false, false),
+  laneRight: edge(false, false),
 };
 
-/** Jump held (first step carries the press edge; hold-to-repeat applies). */
-export const holdJump: InputSnapshot = {
+/** Space held (universal jump key; first step carries the press edge). */
+export const holdJump: PhysicalInputSnapshot = {
   ...idleInput,
-  jump: { held: true, pressedThisStep: true, releasedThisStep: false },
+  space: edge(true, true),
+};
+
+/** ArrowDown held — fast-fall on Floor (ArrowUp is fast-fall on Ceiling). */
+export const holdFastFall: PhysicalInputSnapshot = {
+  ...idleInput,
+  down: edge(true, true),
 };
 
 /** Single left-lane press edge. */
-export const tapLaneLeft: InputSnapshot = {
+export const tapLaneLeft: PhysicalInputSnapshot = {
   ...idleInput,
   laneLeft: { held: false, pressedThisStep: true, releasedThisStep: true },
 };
 
 /** Single right-lane press edge. */
-export const tapLaneRight: InputSnapshot = {
+export const tapLaneRight: PhysicalInputSnapshot = {
   ...idleInput,
   laneRight: { held: false, pressedThisStep: true, releasedThisStep: true },
-};
-
-/** Fast-fall held. */
-export const holdFastFall: InputSnapshot = {
-  ...idleInput,
-  fastFall: { held: true, pressedThisStep: true, releasedThisStep: false },
 };
 
 /** Fresh simulation on the controller test level (player starts mid-air). */
@@ -48,7 +58,7 @@ export const makeSim = (): GameSimulation => new GameSimulation(TEST_LEVEL);
 /** Advance n fixed steps with a constant input. */
 export const advance = (
   sim: GameSimulation,
-  input: InputSnapshot,
+  input: PhysicalInputSnapshot,
   steps: number,
 ): void => {
   for (let i = 0; i < steps; i++) sim.update(input);

@@ -807,7 +807,311 @@ log('m2 draw cost stable after deaths',
   Math.abs(statsAfter.calls - statsBefore.calls) <= 2 && statsAfter.burst === false,
   `calls ${statsBefore.calls} -> ${statsAfter.calls} tris ${statsBefore.triangles} -> ${statsAfter.triangles}`);
 
-// --- 16. Console audit ---
+// --- 17. M3: gravity portals + ceiling gameplay ---
+// Uses the debug-only teleport probe (GameSimulation.debugPlaceAt, same QA-aid
+// category as debugFreezeFrame) to enter the appended gravity section at
+// z=176: the existing track between the start and the section contains ~0.3 u
+// takeoff windows (gap z 122..129.5) that CDP polling cannot hit reliably —
+// full-section playability is proven deterministically in tests/gravity.test.ts
+// (per-step closed-loop playthrough to finish). The Cube never stops moving
+// forward, so on-ceiling checks are grouped into short passes that fit inside
+// the ceiling slabs; each pass starts fresh with a teleport.
+const simState = () =>
+  page.evaluate(() => ({
+    x: window.__gd3d.playerPosition().x,
+    y: window.__gd3d.playerPosition().y,
+    z: window.__gd3d.playerPosition().z,
+    grounded: window.__gd3d.grounded(),
+    status: window.__gd3d.status(),
+    mode: window.__gd3d.gravityMode(),
+    portalId: window.__gd3d.lastPortalId(),
+    flips: window.__gd3d.portalTransitionCount(),
+    support: window.__gd3d.supportId(),
+    cause: window.__gd3d.deathCause(),
+    cameraUpY: window.__gd3d.cameraUpY(),
+  }));
+async function rollUntilM3(pred, timeoutMs = 30000, pollMs = 40) {
+  const t0 = Date.now();
+  for (;;) {
+    const s = await simState();
+    if (s.status === 'running' && pred(s)) return s;
+    if (Date.now() - t0 > timeoutMs) return null;
+    await page.waitForTimeout(pollMs);
+  }
+}
+async function startGravityRun(teleportZ = 176) {
+  for (let i = 0; i < 3; i++) {
+    await page.keyboard.press('KeyR');
+    await page.waitForTimeout(300);
+    if ((await pos()).z < 10) break;
+  }
+  await page.evaluate((z) => window.__gd3d.debugTeleport(0, 1.5, z), teleportZ);
+  await page.waitForTimeout(250);
+}
+async function crossToCeiling() {
+  await startGravityRun();
+  const crossed = await rollUntilM3((s) => s.mode === 'ceiling' && s.flips >= 1, 20000);
+  if (!crossed) return null;
+  return rollUntilM3((s) => s.grounded && Math.abs(s.y - 5.45) < 0.12, 10000);
+}
+
+// PASS 1: floor baseline, portal-up crossing + rise observation, grounding.
+// Screenshots freeze the sim with the pause key (P) so CDP capture latency
+// (~1 s = 14 u of travel) can never race the closed-loop observation.
+await startGravityRun(172);
+const m3Floor = await rollUntilM3((s) => s.z > 172 && s.z < 181.5 && s.mode === 'floor' && s.grounded);
+log('m3 floor baseline before portal (still Floor, grounded)',
+  m3Floor !== null, m3Floor ? `z=${m3Floor.z.toFixed(1)} mode=${m3Floor.mode}` : 'never framed');
+await page.keyboard.press('KeyP'); // freeze at the pre-portal frame
+await page.waitForTimeout(250);
+await capture('m3-01-floor-before-portal');
+await page.keyboard.press('KeyP'); // resume
+await page.waitForTimeout(150);
+
+// Combined crossing+rise observation: the transition photo is taken MID-RISE
+// with the sim paused, so the frozen frame shows the portal + upward travel.
+let firstCeiling = null;
+let groundedCeiling = null;
+let airborneSupportCleared = false;
+let maxYRise = -99;
+let transitionShot = false;
+{
+  const t0 = Date.now();
+  for (;;) {
+    const s = await simState();
+    if (s.status === 'running' && s.mode === 'ceiling') {
+      if (firstCeiling === null) firstCeiling = s;
+      if (!s.grounded) {
+        maxYRise = Math.max(maxYRise, s.y);
+        if (s.support === null) airborneSupportCleared = true;
+        if (!transitionShot) {
+          transitionShot = true;
+          await page.keyboard.press('KeyP'); // freeze mid-rise
+          await page.waitForTimeout(250);
+          await capture('m3-02-gravity-transition-up');
+          await page.keyboard.press('KeyP'); // resume the rise
+          await page.waitForTimeout(150);
+        }
+      } else if (s.y > 4.5 && groundedCeiling === null) {
+        groundedCeiling = s;
+        break;
+      }
+    }
+    if (Date.now() - t0 > 25000) break;
+    await page.waitForTimeout(25);
+  }
+}
+log('m3 portal up crossing flips gravity exactly once',
+  firstCeiling !== null && firstCeiling.flips === 1 && firstCeiling.portalId === 'portal-up-1',
+  firstCeiling ? `z=${firstCeiling.z.toFixed(2)} flips=${firstCeiling.flips} id=${firstCeiling.portalId}` : 'never flipped');
+log('m3 crossing does not teleport (observed just past the plane, still at portal height)',
+  firstCeiling !== null && firstCeiling.z > 181.5 && firstCeiling.z < 210,
+  firstCeiling ? `z=${firstCeiling.z.toFixed(2)}` : '-');
+log('m3 support cleared on flip (airborne ceiling phase has no support)',
+  firstCeiling !== null && airborneSupportCleared,
+  `airborneSupportCleared=${airborneSupportCleared}`);
+log('m3 cube physically travels upward to the ceiling (grounded high; sampled maxY corroborates)',
+  groundedCeiling !== null && groundedCeiling.y > 4.5,
+  groundedCeiling ? `maxY=${maxYRise.toFixed(2)} y=${groundedCeiling.y.toFixed(2)}` : 'never grounded high');
+log('m3 grounded on ceiling underside (~5.45) with support id',
+  groundedCeiling !== null && Math.abs(groundedCeiling.y - 5.45) < 0.12 && !!groundedCeiling.support,
+  groundedCeiling ? `y=${groundedCeiling.y.toFixed(3)} support=${groundedCeiling.support}` : '-');
+log('m3 camera up remains world +Y (no roll)',
+  groundedCeiling !== null && Math.abs(groundedCeiling.cameraUpY - 1) < 1e-6,
+  `cameraUpY=${groundedCeiling?.cameraUpY}`);
+await capture('m3-03-ceiling-grounded');
+
+// Lane screen convention on the ceiling (ArrowRight -> x -2.6, idx 2).
+// Bounded retry: CDP keypresses can be dropped under load (documented in the
+// M1.1 section); the intent index is checked first so a lost press is visible.
+let m3Right = null;
+let idxCeil = -1;
+for (let attempt = 0; attempt < 3 && m3Right === null; attempt++) {
+  await page.keyboard.press('ArrowRight');
+  const it0 = Date.now();
+  for (;;) {
+    idxCeil = await page.evaluate(() => window.__gd3d.laneIndex());
+    if (idxCeil === 2 || Date.now() - it0 > 1500) break;
+    await page.waitForTimeout(40);
+  }
+  m3Right = await rollUntilM3((s) => Math.abs(s.x + 2.6) < 0.25, 2500);
+}
+log('m3 ArrowRight still moves screen-right (−X) on ceiling',
+  m3Right !== null && idxCeil === 2, `x=${m3Right?.x.toFixed(2)} idx=${idxCeil}`);
+await page.keyboard.press('ArrowLeft');
+const m3Back = await rollUntilM3((s) => Math.abs(s.x) < 0.2, 2500);
+log('m3 ArrowLeft recenters on ceiling', m3Back !== null, m3Back ? `x=${m3Back.x.toFixed(2)}` : '-');
+
+// Ceiling support stability (own pass, full slab margin): ~1.5 s of grounded
+// running on slab A with zero input; unit tests pin 0 airborne ticks/120.
+{
+  await crossToCeiling();
+  let stableTicks = 0;
+  for (let i = 0; i < 15; i++) {
+    await page.waitForTimeout(100);
+    const st = await simState();
+    if (st.status === 'running' && st.mode === 'ceiling' && st.grounded && Math.abs(st.y - 5.45) < 0.12) stableTicks++;
+  }
+  log('m3 ceiling support stays stable for 1.5 s (no oscillation)', stableTicks >= 14, `stable=${stableTicks}/15`);
+}
+
+// PASS 2: ceiling jumps + fast-fall + debug frame (all fit on slab A).
+const pass2 = await crossToCeiling();
+log('m3 pass2 reaches ceiling', pass2 !== null);
+async function ceilingJumpMinY(key) {
+  await page.keyboard.down(key);
+  await page.waitForTimeout(120);
+  await page.keyboard.up(key);
+  let minY = 99;
+  const t0 = Date.now();
+  for (;;) {
+    const s = await simState();
+    if (s.status !== 'running') return { minY, grounded: false };
+    minY = Math.min(minY, s.y);
+    if (minY < 99 && s.grounded && Date.now() - t0 > 500) return { minY, grounded: true };
+    if (Date.now() - t0 > 6000) return { minY, grounded: s.grounded };
+    await page.waitForTimeout(25);
+  }
+}
+if (pass2 !== null) {
+  const jumpDown = await ceilingJumpMinY('ArrowDown');
+  log('m3 ArrowDown jumps AWAY from ceiling (dips below 4.8, lands again)',
+    jumpDown.minY < 4.8 && jumpDown.grounded, `minY=${jumpDown.minY.toFixed(2)}`);
+  const jumpSpace = await ceilingJumpMinY('Space');
+  log('m3 Space jumps from ceiling (universal jump key)',
+    jumpSpace.minY < 4.8 && jumpSpace.grounded, `minY=${jumpSpace.minY.toFixed(2)}`);
+  await capture('m3-04-ceiling-jump');
+  // Fast-fall: ArrowUp while airborne returns the Cube to the ceiling.
+  await page.keyboard.down('Space');
+  await page.waitForTimeout(150);
+  await page.keyboard.down('ArrowUp');
+  await page.waitForTimeout(400);
+  await page.keyboard.up('ArrowUp');
+  await page.keyboard.up('Space');
+  const ffBack = await rollUntilM3((s) => s.grounded && Math.abs(s.y - 5.45) < 0.12, 5000);
+  log('m3 ArrowUp airborne fast-fall returns to ceiling (running, grounded)',
+    ffBack !== null, ffBack ? `y=${ffBack.y.toFixed(2)}` : 'never re-grounded');
+  // Debug overlay shows the gravity frame (F1).
+  await page.keyboard.press('F1');
+  await page.waitForTimeout(200);
+  const overlayGravity = await page.evaluate(() => {
+    const el = document.querySelector('.debug-overlay');
+    return el ? el.textContent : '';
+  });
+  log('m3 F1 overlay shows ceiling gravity frame',
+    overlayGravity.includes('gravity: ceiling') && overlayGravity.includes('g: (0,1,0)') && overlayGravity.includes('N: (0,-1,0)'),
+    (overlayGravity.split('\n').find((l) => l.includes('gravity:')) ?? 'line missing').trim());
+  await capture('m3-06-debug-gravity-frame');
+  await page.keyboard.press('F1');
+}
+
+// PASS 3: ceiling lateral fall-off -> upper void -> respawn on Floor start.
+{
+  const pass3 = await crossToCeiling();
+  log('m3 pass3 reaches ceiling', pass3 !== null);
+  if (pass3 !== null) {
+    await page.keyboard.press('ArrowRight');
+    await page.waitForTimeout(600);
+    await page.keyboard.press('ArrowRight');
+    await page.waitForTimeout(300);
+    await page.keyboard.press('ArrowRight');
+    let ceilFall = null;
+    for (let i = 0; i < 80; i++) {
+      await page.waitForTimeout(50);
+      const s = await simState();
+      if (s.status === 'running' && s.mode === 'ceiling' && !s.grounded && s.x < -4.5) {
+        ceilFall = s;
+        break;
+      }
+    }
+    log('m3 ceiling side fall loses support physically (airborne, alive)',
+      ceilFall !== null, ceilFall ? `x=${ceilFall.x.toFixed(2)} y=${ceilFall.y.toFixed(2)}` : 'never observed');
+    let upperVoidDeath = null;
+    for (let i = 0; i < 80; i++) {
+      await page.waitForTimeout(50);
+      const s = await page.evaluate(() => ({
+        status: window.__gd3d.status(),
+        cause: window.__gd3d.deathCause(),
+        y: window.__gd3d.playerPosition().y,
+      }));
+      if (s.status === 'dead') {
+        upperVoidDeath = s;
+        break;
+      }
+    }
+    log('m3 upper void death (cause void, high altitude)',
+      upperVoidDeath !== null && upperVoidDeath.cause === 'void' && upperVoidDeath.y > 10,
+      upperVoidDeath ? `cause=${upperVoidDeath.cause} y=${upperVoidDeath.y.toFixed(1)}` : 'no death');
+    const m3Respawn = await rollUntilM3((s) => s.grounded && s.mode === 'floor' && s.z < 5, 10000);
+    log('m3 death from ceiling respawns in starting mode (Floor, at start)',
+      m3Respawn !== null, m3Respawn ? `mode=${m3Respawn.mode} z=${m3Respawn.z.toFixed(1)}` : 'never respawned');
+  }
+}
+
+// PASS 4: R-from-ceiling, then portal-down crossing + floor landing + finish.
+{
+  const pass4 = await crossToCeiling();
+  log('m3 pass4 reaches ceiling', pass4 !== null);
+  if (pass4 !== null) {
+    await page.keyboard.press('KeyR');
+    await page.waitForTimeout(400);
+    const rReset = await simState();
+    log('m3 R from ceiling resets to Floor start', rReset.mode === 'floor' && rReset.z < 5,
+      `mode=${rReset.mode} z=${rReset.z.toFixed(1)}`);
+  }
+  // Fresh run for the return leg: cross up, closed-loop ceiling-gap jump
+  // (takeoff window z 228.6..232.6, ~4 u — CDP-pollable), portal down.
+  await startGravityRun();
+  const upAgain = await rollUntilM3((s) => s.mode === 'ceiling' && s.grounded && Math.abs(s.y - 5.45) < 0.15, 20000);
+  log('m3 portal re-cross after R (re-armed)', upAgain !== null);
+  if (upAgain !== null) {
+    let gapJumped = false;
+    const t0 = Date.now();
+    while (Date.now() - t0 < 20000) {
+      const s = await simState();
+      if (s.status !== 'running') break;
+      if (s.grounded && s.z >= 228.6 && s.z <= 232.6) {
+        await page.keyboard.down('Space');
+        await page.waitForTimeout(80);
+        await page.keyboard.up('Space');
+        gapJumped = true;
+        break;
+      }
+      await page.waitForTimeout(20);
+    }
+    log('m3 ceiling gap jump executed', gapJumped);
+    const flipsBeforeDown = (await simState()).flips;
+    const downCross = await rollUntilM3((s) => s.mode === 'floor' && s.flips >= flipsBeforeDown + 1, 20000);
+    log('m3 portal down returns gravity to Floor exactly once',
+      downCross !== null && downCross.portalId === 'portal-down-1' && downCross.flips === flipsBeforeDown + 1,
+      downCross ? `z=${downCross.z.toFixed(1)} id=${downCross.portalId} flips=${downCross.flips}` : 'never returned');
+    const m3Landed = await rollUntilM3((s) => s.grounded && Math.abs(s.y - 0.55) < 0.1, 10000);
+    log('m3 lands back on the floor after portal down',
+      m3Landed !== null && m3Landed.z > 245 && m3Landed.z < 265,
+      m3Landed ? `z=${m3Landed.z.toFixed(1)} y=${m3Landed.y.toFixed(2)}` : 'never landed');
+    await capture('m3-05-return-floor');
+    const flipsHoldA = (await simState()).flips;
+    await page.waitForTimeout(1200);
+    const flipsHoldB = (await simState()).flips;
+    log('m3 no repeated portal toggles', flipsHoldA === flipsHoldB, `flips ${flipsHoldA} -> ${flipsHoldB}`);
+    let m3Finished = false;
+    {
+      const t0 = Date.now();
+      for (;;) {
+        if ((await page.evaluate(() => window.__gd3d.status())) === 'finished') {
+          m3Finished = true;
+          break;
+        }
+        if (Date.now() - t0 > 30000) break;
+        await page.waitForTimeout(40);
+      }
+    }
+    log('m3 gravity section runs through to the finish gate', m3Finished,
+      m3Finished ? 'status=finished' : 'never finished');
+  }
+}
+
+// --- 18. Console audit ---
 log('no console errors', consoleErrors.length === 0, JSON.stringify(consoleErrors.slice(0, 3)));
 log('no page errors', pageErrors.length === 0, JSON.stringify(pageErrors.slice(0, 3)));
 

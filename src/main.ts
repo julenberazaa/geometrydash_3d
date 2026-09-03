@@ -23,6 +23,12 @@ declare global {
       grounded: () => boolean;
       laneIndex: () => number;
       playerPosition: () => { x: number; y: number; z: number };
+      gravityMode: () => 'floor' | 'ceiling';
+      lastPortalId: () => string | null;
+      portalTransitionCount: () => number;
+      supportId: () => string | null;
+      cameraUpY: () => number;
+      debugTeleport: (x: number, y: number, z: number) => void;
       deathCause: () => string | null;
       lethalInfo: () => {
         colliderId: string | null;
@@ -47,6 +53,15 @@ window.__gd3d = {
   grounded: () => game['simulation'].player.grounded,
   laneIndex: () => game['simulation'].player.targetLaneIndex,
   playerPosition: () => ({ ...game['simulation'].player.position }),
+  gravityMode: () => game['simulation'].gravityMode,
+  lastPortalId: () => game['simulation'].lastPortalId,
+  portalTransitionCount: () => game['simulation'].portalTransitionCount,
+  supportId: () => game['simulation'].player.supportColliderId,
+  cameraUpY: () => game['rendererHost'].camera.up.y,
+  // Debug-only QA placement (see GameSimulation.debugPlaceAt).
+  debugTeleport: (x: number, y: number, z: number): void => {
+    game['simulation'].debugPlaceAt(x, y, z);
+  },
   deathCause: () => game['simulation'].deathCause,
   lethalInfo: () => ({
     colliderId: game['simulation'].lastLethalColliderId,

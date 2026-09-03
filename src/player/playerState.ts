@@ -2,11 +2,13 @@ import type { Vec3 } from '../core/math';
 import { vec3 } from '../core/math';
 
 /**
- * Which side of the world the player is attached to.
- * Only 'floor' is functional in M1; the enum exists so the gravity system can
- * grow without changing controller contracts (spec §9).
+ * Which side of the world the player is currently attached to / pulled toward.
+ * M3 ships Floor and Ceiling only; wall modes are future work and MUST NOT be
+ * assumed by any code path yet. The authoritative value lives on
+ * `GameSimulation` (see ARCHITECTURE.md); this mirror on the player state is
+ * read-only presentation of that authority.
  */
-export type GravityMode = 'floor' | 'ceiling' | 'wallLeft' | 'wallRight';
+export type GravityMode = 'floor' | 'ceiling';
 
 /**
  * Pure simulation state of the player. THREE.js never touches this.
@@ -30,6 +32,8 @@ export interface PlayerStartState {
   position: Vec3;
   laneIndex: number;
   laneCount: number;
+  /** Starting gravity orientation (defaults to 'floor'). */
+  gravityMode?: GravityMode;
 }
 
 export const createPlayerState = (start: PlayerStartState): PlayerState => ({
@@ -38,7 +42,7 @@ export const createPlayerState = (start: PlayerStartState): PlayerState => ({
   grounded: false,
   targetLaneIndex: start.laneIndex,
   laneCount: start.laneCount,
-  gravityMode: 'floor',
+  gravityMode: start.gravityMode ?? 'floor',
   supportColliderId: null,
 });
 
@@ -51,6 +55,6 @@ export const resetPlayerState = (state: PlayerState, start: PlayerStartState): v
   state.velocity.z = 0;
   state.grounded = false;
   state.targetLaneIndex = start.laneIndex;
-  state.gravityMode = 'floor';
+  state.gravityMode = start.gravityMode ?? 'floor';
   state.supportColliderId = null;
 };

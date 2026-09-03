@@ -1,10 +1,11 @@
 import { vec3, type Vec3 } from '../core/math';
+import type { GravityMode } from './playerState';
 
 /**
  * Player gameplay frame: the four directions all controller math is expressed in.
  *
- * Milestone M1 ships Floor gravity only, but the contract exists so Ceiling /
- * Wall modes later change FRAME DATA, not controller code.
+ * M3 ships Floor and Ceiling as complete frame DATA sets; wall modes are
+ * future work and would add further data sets, not controller code.
  *
  * IMPORTANT (per spec): laneAxis is explicit data, never derived from
  * cross(gravity, forward) — future ceiling/wall gameplay must preserve the same
@@ -53,5 +54,24 @@ export class GameplayFrame {
       { x: 0, y: -1, z: 0 }, // gravity -Y
       { x: -1, y: 0, z: 0 }, // lanes: increasing index toward screen-right (−X)
     );
+  }
+
+  /**
+   * Ceiling frame: gravity pulls UP (+Y); the Cube runs on the UNDERSIDE of
+   * slabs. Forward and the lane convention are IDENTICAL to Floor — flipping
+   * gravity must never mirror lanes or rotate the world. surfaceNormal points
+   * away from the ceiling surface (−Y) so jump impulses leave the surface.
+   */
+  public static ceiling(): GameplayFrame {
+    return new GameplayFrame(
+      { x: 0, y: 0, z: 1 }, // forward +Z
+      { x: 0, y: 1, z: 0 }, // gravity +Y
+      { x: -1, y: 0, z: 0 }, // lanes: same screen-right convention (−X)
+    );
+  }
+
+  /** Prebuilt frame for a gravity mode (no per-step allocation). */
+  public static forMode(mode: GravityMode): GameplayFrame {
+    return mode === 'ceiling' ? GameplayFrame.ceiling() : GameplayFrame.floor();
   }
 }

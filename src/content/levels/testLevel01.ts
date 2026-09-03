@@ -20,7 +20,17 @@ import type { LevelDefinition } from '../../level/levelDefinition';
  * "right" in the comments below always means screen-right (world −X).
  *   z 124..131  GAP -> elevated island (top y=1.2) z 133..141
  *   z 143..149  GAP -> center island (narrow) z 151..157
- *   z 159..176  final straight runway to finish gate
+ *   z 159..176  final runway of the original M1/M2 track
+ *
+ * M3 gravity section (appended; original content untouched):
+ *   z 176..246  continuous floor runway
+ *   z 182       gravity portal UP  -> ceiling (flip, rise ~4.9 u, grounds ~z 189)
+ *   z 186..232  ceiling slab A (underside y=6) — ceiling run
+ *   z 232..238  ceiling GAP (6 u — ceiling-jumpable; missed = upper void)
+ *   z 238..254  ceiling slab B (underside y=6)
+ *   z 248       gravity portal DOWN -> floor (fall ~4.9 u, lands ~z 256)
+ *   z 246..278  final runway to finish gate (finishZ 270)
+ * Upper void bound y=12 terminates upward falls (ceiling side exit).
  */
 export const TEST_LEVEL: LevelDefinition = {
   id: 'controller-test-01',
@@ -29,8 +39,14 @@ export const TEST_LEVEL: LevelDefinition = {
   startLaneIndex: 1,
   laneCenters: [2.6, 0, -2.6], // index 0 = screen-left, 1 = center, 2 = screen-right
   baseForwardSpeed: 14,
-  finishZ: 170,
+  finishZ: 270,
   deathY: -14,
+  deathYMax: 12,
+  startGravityMode: 'floor',
+  gravityPortals: [
+    { id: 'portal-up-1', z: 182, target: 'ceiling' },
+    { id: 'portal-down-1', z: 248, target: 'floor' },
+  ],
 
   solids: [
     // --- Main runway A: x -5.4..5.4, top y=0, z -10..30 ---
@@ -64,8 +80,20 @@ export const TEST_LEVEL: LevelDefinition = {
     // --- GAP z 141..148.5 -> center island (narrow): top y=0, z 148.5..154.5 ---
     { center: { x: 0, y: -0.5, z: 151.5 }, halfExtents: { x: 2.6, y: 0.5, z: 3 } },
 
-    // --- Final runway: top y=0, z 157..176 ---
+    // --- Final runway of the original track: top y=0, z 157..176 ---
+
     { center: { x: 0, y: -0.5, z: 166.5 }, halfExtents: { x: 5.4, y: 0.5, z: 9.5 } },
+
+    // --- M3 gravity section ---
+    // Floor runway C: top y=0, z 176..246 (continuous under the ceiling run)
+    { center: { x: 0, y: -0.5, z: 211 }, halfExtents: { x: 5.4, y: 0.5, z: 35 } },
+    // Ceiling slab A: underside y=6, z 186..232 (ceiling run + rise landing)
+    { center: { x: 0, y: 7, z: 209 }, halfExtents: { x: 5.4, y: 1, z: 23 } },
+    // Ceiling GAP z 232..238 (6 u — ceiling jump; miss = upper void death)
+    // Ceiling slab B: underside y=6, z 238..254
+    { center: { x: 0, y: 7, z: 246 }, halfExtents: { x: 5.4, y: 1, z: 8 } },
+    // Floor runway D: top y=0, z 246..278 (landing after portal-down + finish)
+    { center: { x: 0, y: -0.5, z: 262 }, halfExtents: { x: 5.4, y: 0.5, z: 16 } },
   ],
 
   hazards: [

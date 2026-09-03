@@ -9,13 +9,15 @@ original. Reference PNGs in the repo root are mood references only.
 
 ## Current maturity
 
-M2 collision/death/restart polish PASS: precise fair frontal/lateral
-collision, cause-tagged instant death, 0.30 s deterministic respawn with
-pooled burst feedback, 62 automated tests + 40 browser checks green.
-M2.1 closeout: hazard kills follow the true swept movement path (exact CCD,
-no loose-union false positives); death-hold timing has a single tick
-authority. Cube movement feel human-approved (frozen); death/restart feel
-human-approved (M2 playtest).
+M3 gravity architecture PASS: true Floor ↔ Ceiling gravity with behaviorally
+unchanged Floor gameplay (exact-float golden gate), deterministic gravity
+portals, ceiling support/jump/fast-fall, upper/lower void bounds, and a
+playable gravity section in the Test Level. 88 automated tests + 67 browser
+checks green. M2 polish (fair frontal/lateral collision, cause-tagged instant
+death, 0.30 s deterministic respawn with pooled burst feedback) and M2.1
+exact swept-path hazard CCD remain in place. Cube movement feel human-approved
+(frozen); death/restart feel human-approved (M2 playtest); **ceiling feel
+awaiting human playtest**.
 
 ## Setup
 
@@ -38,14 +40,15 @@ Individual: `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`.
 
 ## Controls
 
-| Input | Action |
-|---|---|
-| `Space` / `↑` (hold = repeat) | Jump |
-| `←` / `→` | Lane target (one press = one lane, provisional) |
-| `↓` (airborne) | Fast-fall |
-| `R` | Instant restart |
-| `P` | Pause |
-| `F1` / `F2` / `F3` | Debug stats / collider wireframes / player hitbox |
+| Input | Floor | Ceiling |
+|---|---|---|
+| `Space` (hold = repeat) | Jump | Jump |
+| `↑` | Jump | Fast-fall (airborne) |
+| `↓` | Fast-fall (airborne) | Jump |
+| `←` / `→` | Lane target (one press = one lane, provisional) | Same — never mirrored |
+| `R` | Instant restart | Instant restart (back to start gravity) |
+| `P` | Pause | Pause |
+| `F1` / `F2` / `F3` | Debug stats / collider wireframes / player hitbox | Same |
 
 ## Folders
 
@@ -60,6 +63,7 @@ Individual: `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`.
 
 ## Current milestone
 
-M2 Collision & Death — spec: `specs/milestones/M2_COLLISION_DEATH.md` (PASS;
-human death/restart feel APPROVED; M2.1 fairness closeout complete).
-Next: M3 gravity architecture (see `ROADMAP.md`).
+M3 Gravity Architecture (Floor ↔ Ceiling) — spec:
+`specs/milestones/M3_GRAVITY.md` (PASS mechanically/browser-validated; human
+ceiling-feel gate OPEN). Next: human playtest gate, then M4 (see
+`ROADMAP.md`).

@@ -77,10 +77,24 @@ fall cases). (2) duplicate death-hold timing authority removed —
 from it. 62/62 unique automated tests (8 new), `npm run verify` green,
 browser QA 40/40 green with zero console/page errors.
 
-## M3 — Gravity architecture productionization
+## M3 — Gravity architecture + Floor ↔ Ceiling gameplay: PASS (2026-09-03)
 
-Floor ↔ Ceiling first (real gravity-vector change, fixed world/camera per
-`GAME_DESIGN.md` §6). Lateral wall gravity only when robust.
+Gameplay-frame productionization with behaviorally UNCHANGED Floor gameplay
+(proven by an exact-float golden trajectory gate captured from the pre-refactor
+build). Authoritative gravity mode on the simulation; physical→logical input
+interpretation (Space is always jump; arrow jump/fast-fall roles flip with
+gravity; lanes never mirror); generalized support probing (below on Floor,
+above on Ceiling); forward-axis frontal kill; lower + upper void bounds;
+data-driven gravity portals (forward-crossing planes, exactly once per
+attempt, no teleport/impulse, support cleared, death wins the step); ceiling
+support/jump/fast-fall/lateral fall-off; data-driven test-level gravity
+section (Floor → portal → ceiling run → ceiling gap → portal → Floor →
+finish, playable end-to-end — proven by a deterministic per-step playthrough
+test); cyan/warm neon portal visuals; render-only upside-down rest
+orientation; world/camera never rotate or roll. 88/88 unique automated tests
+(26 new), `npm run verify` green, browser QA 67/67 green with zero
+console/page errors (40 M2 checks unchanged + 27 M3 checks), `qa/screenshots/
+m3-*` proof set. HUMAN CEILING FEEL = OPEN (playtest requested).
 
 ## M4 — Interactive mechanics
 

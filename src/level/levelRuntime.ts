@@ -1,5 +1,6 @@
 import type { Collider } from '../collision/collider';
-import type { LevelDefinition } from './levelDefinition';
+import type { GravityPortalDef, LevelDefinition } from './levelDefinition';
+import type { GravityMode } from '../player/playerState';
 import { CollisionWorld } from '../collision/CollisionWorld';
 import type { Vec3 } from '../core/math';
 import { vec3 } from '../core/math';
@@ -11,6 +12,10 @@ export interface LoadedLevel {
   colliders: Collider[];
   laneCenters: readonly number[];
   start: Readonly<Vec3>;
+  /** Level start gravity mode ('floor' when the level omits it). */
+  startGravityMode: GravityMode;
+  /** Gravity portals sorted by ascending Z (portal processing order). */
+  gravityPortals: readonly GravityPortalDef[];
 }
 
 /** Build runtime collision data from a declarative level. Pure: no THREE, no DOM. */
@@ -37,12 +42,16 @@ export const loadLevel = (def: LevelDefinition): LoadedLevel => {
   const world = new CollisionWorld(8);
   world.addAll(colliders);
 
+  const gravityPortals = [...(def.gravityPortals ?? [])].sort((a, b) => a.z - b.z);
+
   return {
     def,
     world,
     colliders,
     laneCenters: def.laneCenters,
     start: def.start,
+    startGravityMode: def.startGravityMode ?? 'floor',
+    gravityPortals,
   };
 };
 

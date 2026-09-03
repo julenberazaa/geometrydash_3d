@@ -29,6 +29,12 @@ export interface CubeControllerStepContext {
   dt: number;
   /** Output: true when a jump was initiated this step. */
   jumpedThisStep: boolean;
+  /**
+   * Gameplay frame for THIS step, supplied by the simulation from its
+   * authoritative gravity mode (M3). Optional only so direct controller
+   * constructions (tests) can fall back to the controller's own frame.
+   */
+  frame?: Readonly<GameplayFrame>;
 }
 
 /**
@@ -81,7 +87,9 @@ export class CubeController {
   ): void {
     const t = this.tuning;
     context.jumpedThisStep = false;
-    const frame = this.frame;
+    // Authoritative frame comes from the simulation each step (gravity mode
+    // owner); this.frame is only the fallback for direct construction.
+    const frame = context.frame ?? this.frame;
 
     // ------------------------------------------------------------------
     // 1. Lane intent — EDGE-TRIGGERED ONLY, UNCLAMPED (M1.2).

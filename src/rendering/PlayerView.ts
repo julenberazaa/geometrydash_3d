@@ -50,11 +50,17 @@ export class PlayerView {
   /**
    * Update the view from SIMULATION state (current + previous position) and
    * interpolation alpha. Never writes back to simulation.
+   *
+   * `upsideDown` is render-only presentation of the authoritative gravity
+   * mode: on Ceiling the rest orientation flips 180° around Z (world up stays
+   * world up — the CAMERA never rolls) so the cube reads as hanging under the
+   * ceiling. Air tumble continues to be a forward roll on either surface.
    */
   public updateFromSimulation(
     interpolatedPosition: Readonly<{ x: number; y: number; z: number }>,
     grounded: boolean,
     renderDtSeconds: number,
+    upsideDown: boolean,
   ): void {
     this.group.position.set(interpolatedPosition.x, interpolatedPosition.y, interpolatedPosition.z);
 
@@ -67,7 +73,8 @@ export class PlayerView {
       this.spinState.airborne = false;
       this.spinState.angle = 0;
     }
-    this.cube.rotation.set(this.spinState.angle, 0, 0);
+    const restRoll = upsideDown ? Math.PI : 0;
+    this.cube.rotation.set(this.spinState.angle, 0, restRoll);
     this.edgeLines.rotation.copy(this.cube.rotation);
     this.innerFace.rotation.set(0, 0, 0);
   }

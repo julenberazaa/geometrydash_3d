@@ -14,4 +14,8 @@ export const PALETTE = {
   playerEdge: 0x19e6ff,
   playerFace: 0x7ff7ff,
   starField: 0x8f7bd8,
+  // M3 gravity portals: cyan frame = flip UP to ceiling, warm frame = flip
+  // DOWN to floor. Original colors; no reference assets involved.
+  portalUp: 0x19e6ff,
+  portalDown: 0xffb347,
 } as const;

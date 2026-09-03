@@ -119,7 +119,9 @@ post-processing stack. No general-gravity refactor (M3 owns it).
 ## DEATH CONTRACT
 
 - `status: running | dead | finished`. Only `update()` transitions.
-- `die(cause)` sets `dead` + `deathHoldTimer = 0.30 s`, records `deathCause`
+- `die(cause)` sets `dead` + `deathHoldTicksLeft = 36` (0.30 s; the tick
+  field is the single timing authority — see M2.1 closeout), records
+  `deathCause`
   (`hazard | frontImpact | void`), `deathId` (+1), lethal collider id, contact
   normal, and pre-impact velocity. **Idempotent:** calls while already dead are
   ignored (no second event, no timer reset).
@@ -127,7 +129,7 @@ post-processing stack. No general-gravity refactor (M3 owns it).
   and `elapsedSimTime`, ticks the hold timer down, and auto-respawns at 0.
 - `onDeath` fires exactly once per death. Manual `restart()` is NOT death
   (`deathCause` stays null, no `onDeath`).
-- `respawn()` resets player state, `deathHoldTimer`, `elapsedSimTime`,
+- `respawn()` resets player state, `deathHoldTicksLeft`, `elapsedSimTime`,
   transient death fields, sets `running`, and does `attempts += 1` exactly once.
   `restart()` from any status converges to one `respawn()` (single attempt).
 - Debug surface: `deathCause`, `lastDeathId`, `lastLethalColliderId`,
@@ -237,6 +239,7 @@ M2.1 closeout, ROADMAP).
   long-lived headless pages serve stale compositor surfaces; documented in
   `scripts/browser-qa.mjs`), m2-03 respawn, m2-04 lateral scrape,
   m2-05 debug contact.
-- Unique test count from `npx vitest run` (54, not historical run-counts).
+- Unique test count from `npx vitest run` (54 at the M2 closeout, 62 after the
+  M2.1 closeout — not historical run-counts).
 - In-page burst gate (burstActive + dead at detection) + natural-observation
   asserts + draw-call deltas + 10× leak loop, all in the QA log.

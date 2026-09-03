@@ -137,6 +137,68 @@ export class LevelView {
       mesh.rotation.y = Math.PI / 4;
       this.group.add(mesh);
     }
+
+    this.buildGravityPortals(level, box);
+  }
+
+  /**
+   * M3 gravity portal visuals: a vertical neon gateway spanning the route at
+   * each portal's crossing Z. Purely presentational — triggering lives in the
+   * simulation (forward-crossing plane), never here. Shared unit-box geometry
+   * and ONE shared material per direction (up = cyan, down = warm); zero
+   * per-frame work.
+   */
+  private buildGravityPortals(level: LoadedLevel, unitBox: THREE.BoxGeometry): void {
+    if (level.gravityPortals.length === 0) return;
+    const frameMatUp = new THREE.MeshBasicMaterial({ color: PALETTE.portalUp });
+    const frameMatDown = new THREE.MeshBasicMaterial({ color: PALETTE.portalDown });
+    const paneMatUp = new THREE.MeshBasicMaterial({
+      color: PALETTE.portalUp,
+      transparent: true,
+      opacity: 0.14,
+      side: THREE.DoubleSide,
+    });
+    const paneMatDown = new THREE.MeshBasicMaterial({
+      color: PALETTE.portalDown,
+      transparent: true,
+      opacity: 0.14,
+      side: THREE.DoubleSide,
+    });
+    this.disposables.push(frameMatUp, frameMatDown, paneMatUp, paneMatDown);
+
+    // Span the route: lateral extent from the lane layout, vertical extent
+    // from the floor up past the ceiling band. Presentation values only.
+    const lanes = level.laneCenters;
+    const lateralHalf = Math.max(Math.abs(lanes[0] ?? 0), Math.abs(lanes[lanes.length - 1] ?? 0)) + 1.6;
+    const portalBottom = -0.6;
+    const portalTop = 9;
+    const height = portalTop - portalBottom;
+    const centerY = portalBottom + height / 2;
+
+    for (const portal of level.gravityPortals) {
+      const up = portal.target === 'ceiling';
+      const frameMat = up ? frameMatUp : frameMatDown;
+      const paneMat = up ? paneMatUp : paneMatDown;
+      // Two side posts + top/bottom bars in a plane facing the camera...
+      const postGeomScale = { x: 0.14, y: height, z: 0.14 };
+      for (const sx of [-1, 1]) {
+        const post = new THREE.Mesh(unitBox, frameMat);
+        post.scale.set(postGeomScale.x, postGeomScale.y, postGeomScale.z);
+        post.position.set(sx * lateralHalf, centerY, portal.z);
+        this.group.add(post);
+      }
+      for (const sy of [portalBottom, portalTop]) {
+        const bar = new THREE.Mesh(unitBox, frameMat);
+        bar.scale.set(lateralHalf * 2, 0.14, 0.14);
+        bar.position.set(0, sy, portal.z);
+        this.group.add(bar);
+      }
+      // ...plus a faint translucent pane so the gateway reads as a threshold.
+      const pane = new THREE.Mesh(unitBox, paneMat);
+      pane.scale.set(lateralHalf * 2, height, 0.02);
+      pane.position.set(0, centerY, portal.z);
+      this.group.add(pane);
+    }
   }
 
   public dispose(): void {
