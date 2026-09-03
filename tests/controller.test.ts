@@ -2,59 +2,16 @@ import { describe, it, expect } from 'vitest';
 import { GameSimulation } from '../src/game/GameSimulation';
 import { TEST_LEVEL } from '../src/content/levels/testLevel01';
 import { GameplayFrame } from '../src/player/gameplayFrame';
-import type { InputSnapshot } from '../src/input/InputSystem';
-
-/** Test helpers to drive the simulation deterministically. */
-
-export const idleInput: InputSnapshot = {
-  jump: { held: false, pressedThisStep: false, releasedThisStep: false },
-  fastFall: { held: false, pressedThisStep: false, releasedThisStep: false },
-  laneLeft: { held: false, pressedThisStep: false, releasedThisStep: false },
-  laneRight: { held: false, pressedThisStep: false, releasedThisStep: false },
-};
-
-export const holdJump: InputSnapshot = {
-  ...idleInput,
-  jump: { held: true, pressedThisStep: true, releasedThisStep: false },
-};
-
-export const tapLaneLeft: InputSnapshot = {
-  ...idleInput,
-  laneLeft: { held: false, pressedThisStep: true, releasedThisStep: true },
-};
-
-export const tapLaneRight: InputSnapshot = {
-  ...idleInput,
-  laneRight: { held: false, pressedThisStep: true, releasedThisStep: true },
-};
-
-export const holdFastFall: InputSnapshot = {
-  ...idleInput,
-  fastFall: { held: true, pressedThisStep: true, releasedThisStep: false },
-};
-
-export const makeSim = (): GameSimulation => new GameSimulation(TEST_LEVEL);
-
-/** Advance n fixed steps with a constant input. */
-export const advance = (
-  sim: GameSimulation,
-  input: InputSnapshot,
-  steps: number,
-): void => {
-  for (let i = 0; i < steps; i++) sim.update(input);
-};
-
-/** Spawn puts the player mid-air (y=1.5); settle onto the runway first. */
-export const makeGroundedSim = (): { sim: GameSimulation; groundedAtStep: number } => {
-  const sim = makeSim();
-  let groundedAtStep = 0;
-  for (let i = 0; i < 120 && !sim.player.grounded; i++) {
-    sim.update(idleInput);
-    groundedAtStep = i + 1;
-  }
-  if (!sim.player.grounded) throw new Error('player never settled at spawn');
-  return { sim, groundedAtStep };
-};
+import {
+  advance,
+  holdFastFall,
+  holdJump,
+  idleInput,
+  makeGroundedSim,
+  makeSim,
+  tapLaneLeft,
+  tapLaneRight,
+} from './helpers/simulation';
 
 describe('GameSimulation — auto forward travel', () => {
   it('moves forward at base speed along +Z without any input', () => {

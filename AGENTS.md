@@ -84,6 +84,9 @@ Before declaring gameplay work complete: `typecheck` + `lint` + `tests` +
 `build` (i.e. `npm run verify`), plus real browser gameplay inspection when
 available (console errors, screenshots). Automated tests prove mechanics, never
 fun — controller feel requires a human gate (see `ROADMAP.md`).
+Test files must never import another `*.test.ts` module (Vitest re-executes
+the imported suite and inflates the count); reusable test helpers belong in
+non-test support files (e.g. `tests/helpers/`).
 
 ## 10. Documentation rule
 

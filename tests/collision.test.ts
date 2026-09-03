@@ -7,7 +7,7 @@ import { CollisionWorld } from '../src/collision/CollisionWorld';
 import { moveAabbThroughWorld, createMoveResult } from '../src/collision/moveAabb';
 import { vec3 } from '../src/core/math';
 import { CUBE_TUNING } from '../src/player/cubeTuning';
-import { idleInput, holdJump, advance, makeSim, makeGroundedSim } from './controller.test';
+import { idleInput, holdJump, advance, makeSim, makeGroundedSim } from './helpers/simulation';
 
 const CUBE_HALF = CUBE_TUNING.colliderSize / 2;
 
