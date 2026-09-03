@@ -161,8 +161,20 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
 ## 8. Presentation (`src/camera/`, `src/rendering/`, `src/ui/`, `src/debug/`)
 
 - `ChaseCamera` (pure math): track-centered + tiny damped bias (max 0.55 u,
-  factor 0.12), follow 8.5 / height 4.2 / look-ahead 10 / FOV 62, no roll,
-  render-dt smoothing only. Applied to the THREE camera by `RendererHost`.
+  factor 0.12), follow 8.5 / look-ahead 10 / FOV 62, no roll, render-dt
+  smoothing only. Gravity-aware VERTICAL framing (M3.1): an explicit
+  `CameraFocusSide` (`'aboveFocus' | 'belowFocus'`) selects the height
+  formula — Floor: `playerY * 0.35 + 4.2` (elevated, unchanged); Ceiling:
+  `playerY * 0.15 + 3.4` so the eye hangs mid-corridor BELOW the cube
+  (settles y ≈ 4.22 vs cube 5.45) and can never be pulled up into the slab
+  the player runs under — the pre-M3.1 gravity-blind formula put the eye at
+  y ≈ 6.11, INSIDE the slabs (proven: 343 penetrating steps, worst 0.157 u;
+  backface culling then hid the ceiling, which read as the cube floating).
+  `RendererHost` maps the sim's authoritative gravity mode to the focus side
+  (presentation-only read; respawn `snapTo` included). Eye non-penetration
+  across the real full-level playthrough is pinned by
+  `tests/cameraFraming.test.ts` (level-data-aware auditor; the camera itself
+  still never reads level data).
 - `RendererHost`: SOLE owner of `WebGLRenderer`. Per frame interpolates
   visuals between `prevPosition`→`position` (gameplay never interpolates),
   advances camera, exposes `renderer.info` stats. DPR capped at 1.5.
@@ -191,8 +203,12 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
 - `LevelView` (shared geometries/materials; M1.1/M1.2 face applique — thin
   unlit trims in the shared edge material riding PROUD of solid faces:
   outboard corner posts, front-face bottom strips (gap faces read as framed
-  portals), center seams on faces ≥ 6 wide; solids < 0.8 tall and all hazards
-  untouched — no new systems), `EnvironmentView` (fog,
+  portals), center seams on faces ≥ 6 wide; M3.1 underside inset — a dim
+  UNLIT panel (`PALETTE.platformUnder`) riding proud of each tall solid's
+  bottom face so the CEILING run surface reads from the corridor (down-facing
+  Lambert gets only the near-black hemisphere ground light; invisible on
+  floor content where bottom faces are buried or void-facing); solids < 0.8
+  tall and all hazards untouched — no new systems), `EnvironmentView` (fog,
   deterministic starfield/pillars — seeded PRNG, visuals only), finish gate.
 - `Hud`: level name, real progress %, attempt count, key help, messages.
 - `DebugOverlay` (F1 text stats, incl. the live gravity frame (mode,
@@ -200,8 +216,8 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   transition count, and the latched last-death record:
   cause/lethal/hold/contact-normal/pre-impact-velocity) + `DebugView` (F2
   collider wireframes, F3 player hitbox). `__gd3d` probes expose death cause,
-  lethal info, gravity mode/portal state, support id, camera up, renderer
-  stats, scene-child count, burst state, and the debug-only
+  lethal info, gravity mode/portal state, support id, camera up/eye/look,
+  renderer stats, scene-child count, burst state, and the debug-only
   `debugTeleport` placement aid for browser QA.
 
 ## 9. QA (`tests/`, `scripts/`, `qa/`)
@@ -217,7 +233,10 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   gate: exact-float Floor trajectories captured from the pre-refactor build),
   `gravity` (M3: frame data, portals, ceiling support/jump/fast-fall/lanes,
   void bounds, precedence, determinism, full Test-Level gravity-section
-  playthrough to finish).
+  playthrough to finish), `cameraFraming` (M3.1: ceiling rest frames from
+  below the focus; the camera eye — stepped per sim tick alongside the REAL
+  playthrough with the RendererHost framing — never enters any blocking
+  collider; proven failing pre-fix, 343 penetrating samples / worst 0.157 u).
 - `scripts/browser-qa.mjs`: headless Chromium gameplay harness (Playwright) —
   console audit, input sequences, `window.__gd3d` probes, PNG + JSON
   provenance sidecars in `qa/screenshots/` (git-ignored, regenerable).
@@ -231,6 +250,10 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   teleport, support cleared), rise + ceiling grounding/stability, lane
   convention, ceiling jumps/fast-fall, side fall → upper void → respawn mode,
   R reset, portal down → floor landing → finish, `m3-*` screenshots.
+  M3.1 section: live camera-eye sampling through the rise + under-slab transit
+  (eye stays in the open corridor, never in the slab band y ≥ 6), floor
+  framing unchanged, ceiling eye settles below the cube with clearance, look
+  target reads the contact surface, `m31-*` screenshots.
 - Gate: `npm run verify` = typecheck + lint + tests + build. Full:
   `npm run verify:full` adds browser QA (needs `npm run dev` + browsers).
 
@@ -247,6 +270,7 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
 | Gravity mode authoritative on the simulation; world never rotates; camera never rolls | `gravity` tests + browser QA camera-up check |
 | Floor behavior bit-identical to the approved pre-M3 build | `floorCompat` golden gate (exact-float trajectories) |
 | Camera not parented; lateral bias bounded | `ChaseCamera` tuning + code review |
+| Camera eye never inside blocking geometry (either gravity surface) | `cameraFraming` regression (real-playthrough eye sweep) + browser QA m3.1 live eye sampling |
 | Swept collision, no tunneling at speed | `collision` anti-tunneling tests |
 | Frontal kills, lateral/top contacts safe (either blocking kind, either surface) | `death` killFront semantics tests + `gravity` tests + browser QA |
 | Death exactly-once; attempts +1 per respawn/restart only | `death` event/attempt tests |

@@ -11,6 +11,10 @@ errors, validated milestone commit on `main`. Floor compatibility proven
 bit-identical (exact-float golden trajectories captured from the pre-refactor
 build at `4847e1d`). **HUMAN CEILING FEEL = OPEN** — playtest requested
 (see §HUMAN PLAYTEST GATE in the milestone prompt / final report).
+The human playtest found ceiling camera/readability defects; they were
+root-caused and fixed in the M3.1 follow-up
+(`M3_1_CEILING_CAMERA_READABILITY.md`, PASS) — ceiling feel gate remains
+OPEN there.
 
 ## OBJECTIVE
 

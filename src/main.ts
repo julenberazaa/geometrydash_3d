@@ -28,6 +28,8 @@ declare global {
       portalTransitionCount: () => number;
       supportId: () => string | null;
       cameraUpY: () => number;
+      cameraEye: () => { x: number; y: number; z: number };
+      cameraLook: () => { x: number; y: number; z: number };
       debugTeleport: (x: number, y: number, z: number) => void;
       deathCause: () => string | null;
       lethalInfo: () => {
@@ -58,6 +60,8 @@ window.__gd3d = {
   portalTransitionCount: () => game['simulation'].portalTransitionCount,
   supportId: () => game['simulation'].player.supportColliderId,
   cameraUpY: () => game['rendererHost'].camera.up.y,
+  cameraEye: () => ({ ...game['rendererHost'].chaseCamera.currentPosition }),
+  cameraLook: () => ({ ...game['rendererHost'].chaseCamera.currentLookTarget }),
   // Debug-only QA placement (see GameSimulation.debugPlaceAt).
   debugTeleport: (x: number, y: number, z: number): void => {
     game['simulation'].debugPlaceAt(x, y, z);

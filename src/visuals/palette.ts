@@ -6,6 +6,12 @@ export const PALETTE = {
   fog: 0x140b26,
   platformBody: 0x17122a,
   platformTop: 0x241b42,
+  // M3.1: unlit underside inset (ceiling run surface). Down-facing Lambert
+  // surfaces receive only the near-black hemisphere ground light, so a lit
+  // material can never read there; this dim unlit tone makes the ceiling
+  // surface — and the Cube's contact with it — visible from the corridor
+  // without glowing like an edge trim.
+  platformUnder: 0x322858,
   platformEdge: 0xb44dff,
   hazardBody: 0x3a1500,
   hazardGlow: 0xff9d00,

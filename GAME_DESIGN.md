@@ -106,11 +106,17 @@ rolls when gravity changes.
 
 ## 4. Camera — CURRENT
 
-Third person: behind and elevated, anchored to track center (NOT parented to
-the player), small damped lateral bias only (never mirrors lane movement 1:1),
-look-ahead down-track, never rolls. Gentle vertical parallax follows the
-player so ceiling runs stay framed; `camera.up` remains world +Y on every
-gravity surface.
+Third person: behind, anchored to track center (NOT parented to the player),
+small damped lateral bias only (never mirrors lane movement 1:1), look-ahead
+down-track, never rolls; `camera.up` remains world +Y on every gravity
+surface. The vertical framing follows the gravity surface (M3.1): on Floor
+the camera is elevated above the cube (gentle 0.35 vertical parallax); on
+Ceiling it frames the cube from BELOW, hanging in the open corridor under the
+slab (eye ≈ 1.2 u below the cube center, ≈ 1.8 u clear of the underside),
+looking up at the contact surface. The framing side flips only with the
+authoritative gravity mode and the existing damped smoothing turns it into a
+short glide — the camera eye must never enter blocking geometry (pinned by
+`tests/cameraFraming.test.ts`).
 
 ## 5. Levels — CURRENT
 

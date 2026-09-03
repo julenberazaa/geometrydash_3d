@@ -29,9 +29,10 @@ export class LevelView {
       color: PALETTE.platformBody,
     });
     const topMat = new THREE.MeshLambertMaterial({ color: PALETTE.platformTop });
+    const underMat = new THREE.MeshBasicMaterial({ color: PALETTE.platformUnder });
     const edgeMat = new THREE.MeshBasicMaterial({ color: PALETTE.platformEdge });
     const hazardMat = new THREE.MeshBasicMaterial({ color: PALETTE.hazardGlow });
-    this.disposables.push(bodyMat, topMat, edgeMat, hazardMat);
+    this.disposables.push(bodyMat, topMat, underMat, edgeMat, hazardMat);
 
     for (const solid of level.def.solids) {
       const mesh = new THREE.Mesh(box, bodyMat);
@@ -73,7 +74,32 @@ export class LevelView {
       const solidWidth = solid.halfExtents.x * 2;
       const bottomY = solid.center.y - solid.halfExtents.y;
       const frontZ = solid.center.z - solid.halfExtents.z; // faces the camera
+
+      // M3.1: underside inset, same visual language as the top inset — this
+      // is the RUN SURFACE of ceiling-gravity sections. A down-facing face
+      // receives only the near-black hemisphere ground light, so the ceiling
+      // underside used to render as a void and the attached Cube read as
+      // floating. A dim UNLIT panel (rides 0.011 proud below the face) keeps
+      // the surface readable from the corridor below. On floor content the
+      // bottom faces are buried or void-facing, so this changes nothing there.
       if (solidHeight >= FACE_TRIM_MIN_HEIGHT) {
+        // M3.1: underside inset, same visual language as the top inset — this
+        // is the RUN SURFACE of ceiling-gravity sections. A down-facing face
+        // receives only the near-black hemisphere ground light, so the
+        // ceiling underside used to render as a void and the attached Cube
+        // read as floating. A dim UNLIT panel (rides 0.011 proud below the
+        // face) keeps the surface readable from the corridor below. On floor
+        // content the bottom faces are buried or void-facing, so this changes
+        // nothing there.
+        const under = new THREE.Mesh(box, underMat);
+        under.scale.set(
+          solid.halfExtents.x * 2 - 0.12,
+          0.02,
+          solid.halfExtents.z * 2 - 0.12,
+        );
+        under.position.set(solid.center.x, bottomY - 0.011, solid.center.z);
+        this.group.add(under);
+
         // Four corner posts, outboard of the solid so each shows on BOTH
         // adjacent faces (front/back + sides share the corners).
         for (const sx of [-1, 1]) {

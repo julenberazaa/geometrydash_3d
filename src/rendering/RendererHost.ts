@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { GameSimulation } from '../game/GameSimulation';
 import { ChaseCamera, CAMERA_TUNING } from '../camera/ChaseCamera';
+import type { CameraFocusSide } from '../camera/ChaseCamera';
 import { LevelView } from './LevelView';
 import { PlayerView } from './PlayerView';
 import { DeathBurstView } from './DeathBurstView';
@@ -142,7 +143,7 @@ export class RendererHost {
         Math.abs(p.z - this.lastAppliedPos.z) >
       5;
     if ((this.prevStatus === 'dead' && sim.status === 'running') || (sim.status === 'running' && teleported)) {
-      this.chaseCamera.snapTo(p, 0);
+      this.chaseCamera.snapTo(p, 0, this.focusSide());
       this.fovKick = 0;
       this.heightKick = 0;
       this.deathBurst.clear();
@@ -177,7 +178,17 @@ export class RendererHost {
     this.camera.fov = CAMERA_TUNING.fov + this.fovKick;
     this.camera.updateProjectionMatrix();
 
-    this.chaseCamera.update(p, 0, renderDtSeconds);
+    this.chaseCamera.update(p, 0, renderDtSeconds, this.focusSide());
+  }
+
+  /**
+   * Camera framing follows the simulation's authoritative gravity mode
+   * (presentation-only read): on the ceiling the pure-math camera frames the
+   * focus from below so the eye stays in the open corridor instead of being
+   * pulled up into the ceiling slab (M3.1 fix; see ChaseCamera).
+   */
+  private focusSide(): CameraFocusSide {
+    return this.simulation.gravityMode === 'ceiling' ? 'belowFocus' : 'aboveFocus';
   }
 
   public render(): void {

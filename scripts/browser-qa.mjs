@@ -1111,6 +1111,99 @@ if (pass2 !== null) {
   }
 }
 
+// --- 17b. M3.1: ceiling camera framing + underside/contact readability ---
+// Regression coverage for the M3.1 fix: the pre-M3.1 chase framing pulled the
+// camera eye to y≈6.11 on the ceiling — INSIDE the slabs (underside y=6) —
+// which backface-culled the ceiling into invisibility (cube read as floating,
+// stray neon edges read as the camera fighting geometry). The eye path is now
+// proven non-penetrating per-step in tests/cameraFraming.test.ts; these checks
+// observe the LIVE renderer state and capture fresh visual evidence.
+{
+  // Floor framing must be unchanged: eye ~4.4u above the track before the portal.
+  await startGravityRun(172);
+  const m31Floor = await rollUntilM3((s) => s.z > 172 && s.z < 181 && s.mode === 'floor' && s.grounded);
+  const m31FloorEye = await page.evaluate(() => window.__gd3d.cameraEye());
+  log('m3.1 floor framing unchanged (eye ~4.4u above track, track-relative)',
+    m31Floor !== null && m31FloorEye.y > 3.9 && m31FloorEye.y < 5.0,
+    `eyeY=${m31FloorEye.y.toFixed(2)} (was ~4.4 pre-M3.1)`);
+  await page.keyboard.press('KeyP');
+  await page.waitForTimeout(300);
+  await capture('m31-01-portal-approach');
+  await page.keyboard.press('KeyP');
+  await page.waitForTimeout(150);
+
+  // Cross to the ceiling while sampling the camera EYE every poll: it must
+  // stay inside the open corridor (0.5 < y < 5.85) through the whole rise —
+  // never up at the slab band (y 6..8) the way the old framing did.
+  await startGravityRun(172);
+  let eyeSamples = 0;
+  let eyeMin = 99;
+  let eyeMax = -99;
+  let eyeInSlabBand = false;
+  let transitionShotDone = false;
+  let m31Ceil = null;
+  {
+    const t0 = Date.now();
+    for (;;) {
+      const s = await simState();
+      const eyeY = await page.evaluate(() => window.__gd3d.cameraEye().y);
+      if (s.status === 'running' && s.mode === 'ceiling') {
+        eyeSamples++;
+        eyeMin = Math.min(eyeMin, eyeY);
+        eyeMax = Math.max(eyeMax, eyeY);
+        if (eyeY >= 5.85) eyeInSlabBand = true;
+        if (!transitionShotDone && !s.grounded && s.y > 2.2 && s.y < 4.6) {
+          transitionShotDone = true;
+          await page.keyboard.press('KeyP');
+          await page.waitForTimeout(300);
+          await capture('m31-02-transition-rise');
+          await page.keyboard.press('KeyP');
+          await page.waitForTimeout(150);
+        }
+        if (s.grounded && Math.abs(s.y - 5.45) < 0.12) {
+          if (m31Ceil === null) m31Ceil = s;
+          // Keep sampling well into the under-slab run so the eye-invariant
+          // is observed across the whole transit, not just the rise.
+          if (s.z > 210) break;
+        }
+      }
+      if (Date.now() - t0 > 25000) break;
+      await page.waitForTimeout(25);
+    }
+  }
+  log('m3.1 camera eye stays inside the corridor through the rise (never in the slab band)',
+    eyeSamples > 20 && !eyeInSlabBand,
+    `samples=${eyeSamples} eyeY ${eyeMin.toFixed(2)}..${eyeMax.toFixed(2)} (slab underside y=6)`);
+
+  // Stable ceiling run: eye settles BELOW the focus, mid-corridor, with real
+  // clearance under the slab; the look target points up at the contact.
+  const m31Eye = await page.evaluate(() => window.__gd3d.cameraEye());
+  const m31Look = await page.evaluate(() => window.__gd3d.cameraLook());
+  log('m3.1 ceiling eye settles below the cube with slab clearance',
+    m31Ceil !== null && m31Eye.y > 3.0 && m31Eye.y < 5.0 && m31Eye.y < m31Ceil.y - 0.5,
+    `eyeY=${m31Eye.y.toFixed(2)} playerY=${m31Ceil ? m31Ceil.y.toFixed(2) : '-'} (underside y=6)`);
+  log('m3.1 look target reads the ceiling contact surface (above the eye)',
+    m31Look.y > m31Eye.y + 0.5,
+    `lookY=${m31Look.y.toFixed(2)} eyeY=${m31Eye.y.toFixed(2)}`);
+  await page.keyboard.press('KeyP');
+  await page.waitForTimeout(400); // camera settles while frozen
+  await capture('m31-03-ceiling-contact');
+  await page.keyboard.press('KeyP');
+  await page.waitForTimeout(150);
+
+  // Ceiling gap approach: stable grounded run framing the gap + return portal.
+  const m31Gap = await rollUntilM3((s) => s.grounded && s.z > 222 && s.z < 228, 12000);
+  log('m3.1 stable ceiling run reaches the gap approach', m31Gap !== null,
+    m31Gap ? `z=${m31Gap.z.toFixed(1)}` : '-');
+  await page.keyboard.press('KeyP');
+  await page.waitForTimeout(300);
+  await capture('m31-04-ceiling-gap-approach');
+  await page.keyboard.press('KeyP');
+  await page.waitForTimeout(150);
+  await page.keyboard.press('KeyR'); // clean up; later sections re-run their own passes
+  await page.waitForTimeout(300);
+}
+
 // --- 18. Console audit ---
 log('no console errors', consoleErrors.length === 0, JSON.stringify(consoleErrors.slice(0, 3)));
 log('no page errors', pageErrors.length === 0, JSON.stringify(pageErrors.slice(0, 3)));

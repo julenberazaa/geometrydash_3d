@@ -12,12 +12,15 @@ original. Reference PNGs in the repo root are mood references only.
 M3 gravity architecture PASS: true Floor ↔ Ceiling gravity with behaviorally
 unchanged Floor gameplay (exact-float golden gate), deterministic gravity
 portals, ceiling support/jump/fast-fall, upper/lower void bounds, and a
-playable gravity section in the Test Level. 88 automated tests + 67 browser
-checks green. M2 polish (fair frontal/lateral collision, cause-tagged instant
-death, 0.30 s deterministic respawn with pooled burst feedback) and M2.1
-exact swept-path hazard CCD remain in place. Cube movement feel human-approved
-(frozen); death/restart feel human-approved (M2 playtest); **ceiling feel
-awaiting human playtest**.
+playable gravity section in the Test Level. M3.1 polish PASS: the ceiling
+camera now frames the cube from below inside the open corridor (proven never
+to enter level geometry) and the ceiling underside reads as a real contact
+surface. 90 automated tests + 72 browser checks green. M2 polish (fair
+frontal/lateral collision, cause-tagged instant death, 0.30 s deterministic
+respawn with pooled burst feedback) and M2.1 exact swept-path hazard CCD
+remain in place. Cube movement feel human-approved (frozen); death/restart
+feel human-approved (M2 playtest); **ceiling feel awaiting human re-playtest
+on the M3.1 build**.
 
 ## Setup
 
@@ -63,7 +66,8 @@ Individual: `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`.
 
 ## Current milestone
 
-M3 Gravity Architecture (Floor ↔ Ceiling) — spec:
-`specs/milestones/M3_GRAVITY.md` (PASS mechanically/browser-validated; human
-ceiling-feel gate OPEN). Next: human playtest gate, then M4 (see
-`ROADMAP.md`).
+M3 Gravity Architecture (Floor ↔ Ceiling) + M3.1 ceiling camera/readability
+polish — specs: `specs/milestones/M3_GRAVITY.md`,
+`specs/milestones/M3_1_CEILING_CAMERA_READABILITY.md` (both PASS
+mechanically/browser-validated; human ceiling-feel gate OPEN). Next: human
+re-playtest of the ceiling on the M3.1 build, then M4 (see `ROADMAP.md`).

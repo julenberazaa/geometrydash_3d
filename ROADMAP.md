@@ -96,6 +96,24 @@ orientation; world/camera never rotate or roll. 88/88 unique automated tests
 console/page errors (40 M2 checks unchanged + 27 M3 checks), `qa/screenshots/
 m3-*` proof set. HUMAN CEILING FEEL = OPEN (playtest requested).
 
+## M3.1 — Ceiling camera, readability, and contact polish: PASS (2026-09-03)
+
+Human playtest follow-up on M3: ceiling camera/scene "fighting the upper
+geometry" + cube "floating". ROOT CAUSE PROVEN, not inferred: the gravity-
+blind vertical framing put the camera EYE INSIDE the ceiling slabs (y≈6.11 vs
+underside 6; pre-fix probe: 343 penetrating steps, worst 0.157 u) — backface
+culling then hid the slab entirely (stray edge lines + black void → both
+symptoms). Fixes, presentation-only: gravity-aware `CameraFocusSide` framing
+(ceiling eye hangs mid-corridor BELOW the cube, settles y≈4.22, ≈1.8 u clear;
+Floor branch byte-identical); dim unlit underside inset panel so the ceiling
+run surface reads (down-facing Lambert is near-black there). Zero
+gameplay/collider/controller/tuning changes; no camera collision system
+(unneeded — non-penetration now pinned). 90/90 unique automated tests
+(2 new, incl. the real-playthrough camera-eye non-penetration regression),
+`npm run verify` green, browser QA 72/72 green (40 M2 + 27 M3 + 5 M3.1) with
+zero console/page errors, `qa/screenshots/m31-*` proof set, visual gate 4/4
+pass. HUMAN CEILING FEEL = STILL OPEN (re-playtest on the M3.1 build).
+
 ## M4 — Interactive mechanics
 
 Pads, orbs, speed portals, moving hazards. Only on top of a validated Cube.
