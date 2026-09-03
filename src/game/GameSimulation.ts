@@ -22,26 +22,48 @@ import {
 import { loadLevel, computeProgress } from '../level/levelRuntime';
 import type { LoadedLevel } from '../level/levelRuntime';
 import type { LevelDefinition } from '../level/levelDefinition';
+import type { Aabb } from '../collision/collider';
 
 /**
  * Headless gameplay orchestration: the ENTIRE game simulates here.
  * No THREE, no DOM, no renderer. The rendering layer reads this state and
  * interpolates visual transforms between previous and current positions.
  *
- * Per fixed step:
- *   1. controller step (gravity-relative input interpretation -> velocities)
+ * Per fixed step (authoritative M4 order):
+ *   1. controller step (gravity-relative input interpretation -> velocities;
+ *      forward speed = level base × authoritative speed multiplier)
  *   2. integrate + collide via axis-separated swept movement (Y -> Z -> X)
  *   3. frontal-kill check (death returns immediately)
  *   4. grounding resolution (support probe along gravity + velocity cleanup)
- *   5. gravity portal crossings -> gravity transition (clears grounded/support)
- *   6. death checks (void bounds / hazards) & finish detection
- * Death at any earlier point wins the step: lethal contact is never undone by
- * a gravity portal.
+ *   5. lethal checks: void bounds then exact swept-path hazard CCD
+ *      (death returns immediately — LETHAL CHECKS PRECEDE ALL PORTAL AND
+ *      INTERACTION MUTATIONS: nothing later in the step can rescue or
+ *      mutate a dead step)
+ *   6. passive interactions: jump pads (swept contact, one-shot per attempt)
+ *   7. active interactions: jump orbs then gravity orbs (press edge inside
+ *      the swept activation window, one-shot per attempt)
+ *   8. speed portal crossings (ascending Z) -> speed multiplier mutation
+ *   9. gravity portal crossings (ascending Z) -> gravity transition
+ *  10. finish detection
+ * Death at any earlier point wins the step.
  */
 export type SimulationStatus = 'running' | 'dead' | 'finished';
 
 /** Why the current (or most recent) death happened. Manual restart is NOT death. */
 export type DeathCause = 'hazard' | 'frontImpact' | 'void';
+
+/** Kind of the most recent interaction activation (debug/QA/VFX routing). */
+export type InteractionKind = 'pad' | 'jumpOrb' | 'gravityOrb' | 'speedPortal';
+
+/** Stable record of the most recent interaction activation (VFX anchor). */
+export interface InteractionEvent {
+  kind: InteractionKind;
+  id: string;
+  /** World-space position of the interaction (its definition center). */
+  x: number;
+  y: number;
+  z: number;
+}
 
 export interface SimulationEvents {
   onDeath?: () => void;
@@ -87,6 +109,32 @@ export class GameSimulation {
   public lastPortalId: string | null = null;
   /** Monotonic count of actual gravity transitions (debug/QA leak/toggle guard). */
   public portalTransitionCount = 0;
+  /**
+   * AUTHORITATIVE current speed multiplier (M4). The per-step forward speed
+   * is `def.baseForwardSpeed * speedMultiplier`; the controller consumes it
+   * via the step context and never owns speed policy. Reset to the level's
+   * `startSpeedMultiplier` by respawn().
+   */
+  private speedMultiplierValue: number;
+  /** Id of the most recent speed portal crossed THIS attempt (debug/QA). */
+  public lastSpeedPortalId: string | null = null;
+  /**
+   * One-shot lifecycle state: interaction ids already activated this attempt.
+   * Pre-allocated once; cleared (never reallocated) by respawn().
+   */
+  private readonly usedInteractions = new Set<string>();
+  /** Monotonic count of interaction activations this session (VFX edge). */
+  public interactionEventCount = 0;
+  /** Per-kind activation counters (session-monotonic, debug/QA). */
+  public padActivationCount = 0;
+  public orbActivationCount = 0;
+  public speedPortalCount = 0;
+  /** Id of the most recent interaction activation THIS attempt (debug/QA). */
+  public lastInteractionId: string | null = null;
+  /** Stable record of the most recent interaction activation (VFX anchor). */
+  public readonly lastInteraction: InteractionEvent = { kind: 'pad', id: '', x: 0, y: 0, z: 0 };
+  /** True once the most recent interaction record has been written at least once. */
+  public hasInteractionEvent = false;
   /** Simulated seconds since the current run started. */
   public elapsedSimTime = 0;
   /** Fixed-step ticks left while dead; respawn allowed when it hits 0 (or on key press).
@@ -117,6 +165,7 @@ export class GameSimulation {
     laneCenters: [],
     dt: SIMULATION_DT,
     jumpedThisStep: false,
+    forwardSpeed: 0,
   };
   /** Scratch: full-step displacement passed to collision. Reused, never realloc'd. */
   private readonly stepDelta: Vec3 = vec3();
@@ -128,11 +177,16 @@ export class GameSimulation {
   private hazardScratch: Collider[] = [];
   /** Scratch swept-segment boxes for the exact hazard path test. Reused. */
   private readonly sweptPathScratch = createSweptPathScratch();
+  /** Scratch AABB for M4 interaction window tests. Reused (hot loop). */
+  private readonly interactionBoxScratch = {
+    minX: 0, maxX: 0, minY: 0, maxY: 0, minZ: 0, maxZ: 0,
+  };
 
   constructor(levelDef: LevelDefinition, events: SimulationEvents = {}) {
     this.def = levelDef;
     this.level = loadLevel(levelDef);
     this.gravityModeValue = this.level.startGravityMode;
+    this.speedMultiplierValue = this.level.startSpeedMultiplier;
     this.player = createPlayerState({
       position: levelDef.start,
       laneIndex: levelDef.startLaneIndex,
@@ -163,6 +217,21 @@ export class GameSimulation {
     return this.gravityModeValue === 'ceiling' ? FRAME_CEILING : FRAME_FLOOR;
   }
 
+  /** AUTHORITATIVE current speed multiplier (debug/QA/HUD observability). */
+  public get speedMultiplier(): number {
+    return this.speedMultiplierValue;
+  }
+
+  /** Per-step forward speed: level base × current multiplier (units/s). */
+  public get currentForwardSpeed(): number {
+    return this.def.baseForwardSpeed * this.speedMultiplierValue;
+  }
+
+  /** Whether an interaction id has already activated this attempt. */
+  public isInteractionUsed(id: string): boolean {
+    return this.usedInteractions.has(id);
+  }
+
   /** Progress [0..1] from real forward distance. */
   public get progress(): number {
     return computeProgress(this.player.position.z, this.def.start.z, this.def.finishZ);
@@ -191,14 +260,18 @@ export class GameSimulation {
     copyVec3(this.prevPosition, this.player.position);
 
     // 1. Controller: physical input interpreted through the CURRENT gravity
-    //    mode (pre-portal), then intent + kinematics.
+    //    mode (pre-mutation), then intent + kinematics. The per-step forward
+    //    speed comes from the authoritative level speed × speed multiplier.
     const ctx = this.stepContext;
     ctx.laneCenters = this.laneCenters;
     ctx.dt = SIMULATION_DT;
     ctx.frame = this.gameplayFrame;
+    ctx.forwardSpeed = this.currentForwardSpeed;
     const logicalInput = interpretPhysicalInput(input, this.gravityModeValue);
     this.controller.step(this.player, logicalInput, ctx);
     if (ctx.jumpedThisStep) this.events.onJump?.();
+    // The orb press edge is the same logical jump action the ground jump uses.
+    const jumpPressed = logicalInput.jump.pressedThisStep;
 
     // 2. Integrate + collide. Delta is velocity * dt (full-step displacement).
     // Snapshot pre-move velocity: the frontal-kill decision needs the approach
@@ -267,14 +340,11 @@ export class GameSimulation {
       this.player.supportColliderId = null;
     }
 
-    // 4. Gravity portal crossings (after grounding, before death checks so a
-    //    lethal contact in this step always wins). Forward-crossing edge on
-    //    the swept step path: prevZ < portal.z <= currentZ. Deterministic at
-    //    any per-step displacement; one-shot per attempt by construction.
-    this.processGravityPortals();
-
-    // 5. Death checks: void bounds (lower always; upper when defined) then
-    //    exact swept-path hazard overlap.
+    // 4. LETHAL CHECKS (before all portal/interaction mutations — M3.3
+    //    invariant, extended to every M4 interaction): void bounds (lower
+    //    always; upper when defined) then exact swept-path hazard overlap.
+    //    A death here terminates the step; no pad, orb, or portal below can
+    //    rescue or mutate a dead step.
     if (this.player.position.y < this.def.deathY) {
       this.die('void', null, null);
       return;
@@ -288,6 +358,16 @@ export class GameSimulation {
       this.die('hazard', lethalHazard.id, null);
       return;
     }
+
+    // 5. Passive interactions: jump pads (swept contact, one-shot/attempt).
+    this.processJumpPads();
+    // 6. Active interactions: jump orbs then gravity orbs (press edge inside
+    //    the swept activation window, one-shot/attempt).
+    this.processOrbs(jumpPressed);
+    // 7. Speed portal crossings (ascending Z): speed multiplier mutation.
+    this.processSpeedPortals();
+    // 8. Gravity portal crossings (ascending Z): gravity transition.
+    this.processGravityPortals();
 
     this.elapsedSimTime += SIMULATION_DT;
     if (this.player.position.z >= this.def.finishZ) {
@@ -305,7 +385,11 @@ export class GameSimulation {
       gravityMode: this.level.startGravityMode,
     });
     this.gravityModeValue = this.level.startGravityMode;
+    this.speedMultiplierValue = this.level.startSpeedMultiplier;
+    this.usedInteractions.clear();
     this.lastPortalId = null;
+    this.lastSpeedPortalId = null;
+    this.lastInteractionId = null;
     copyVec3(this.prevPosition, this.player.position);
     this.deathHoldTicksLeft = 0;
     this.deathCause = null;
@@ -356,12 +440,8 @@ export class GameSimulation {
    * Gravity portal processing: check forward crossings on this step's swept
    * path and apply transitions. Portals are sorted ascending by Z at load;
    * if several are crossed in one extreme-displacement step, the furthest one
-   * wins (last applied). A transition PRESERVES world position and all
-   * velocity components (no teleport, no impulse, no snap); it flips the
-   * authoritative gravity mode and immediately invalidates grounded/support
-   * so the next steps accelerate toward the new gravity direction.
-   * Crossing a portal whose target is already the current mode updates the
-   * debug id but does not count as a transition.
+   * wins (last applied). Crossing a portal whose target is already the
+   * current mode updates the debug id but does not count as a transition.
    */
   private processGravityPortals(): void {
     if (this.level.gravityPortals.length === 0) return;
@@ -370,17 +450,166 @@ export class GameSimulation {
     for (const portal of this.level.gravityPortals) {
       if (prevZ < portal.z && currentZ >= portal.z) {
         this.lastPortalId = portal.id;
-        if (this.gravityModeValue !== portal.target) {
-          this.gravityModeValue = portal.target;
-          this.player.gravityMode = portal.target;
-          // Invalidate support immediately: the Cube is airborne relative to
-          // the new gravity orientation from this step onward.
-          this.player.grounded = false;
-          this.player.supportColliderId = null;
-          this.portalTransitionCount += 1;
-        }
+        this.applyGravityTransition(portal.target);
       }
     }
+  }
+
+  /**
+   * THE single Floor ↔ Ceiling transition path — shared by M3 gravity portals
+   * and M4 gravity orbs (no duplicate gravity state). Preserves world position
+   * and ALL velocity components (no teleport, no impulse, no snap); flips the
+   * authoritative gravity mode and immediately invalidates grounded/support so
+   * the next steps accelerate toward the new gravity direction.
+   */
+  private applyGravityTransition(target: GravityMode): void {
+    if (this.gravityModeValue === target) return;
+    this.gravityModeValue = target;
+    this.player.gravityMode = target;
+    this.player.grounded = false;
+    this.player.supportColliderId = null;
+    this.portalTransitionCount += 1;
+  }
+
+  /**
+   * Speed portal processing (M4): deterministic forward crossings on the
+   * swept step path, ascending Z (furthest crossed wins). Pure multiplier
+   * mutation — no position jump, no impulse. One-shot per attempt by
+   * construction (forward motion never revisits a plane).
+   */
+  private processSpeedPortals(): void {
+    if (this.level.speedPortals.length === 0) return;
+    const prevZ = this.prevPosition.z;
+    const currentZ = this.player.position.z;
+    for (const portal of this.level.speedPortals) {
+      if (prevZ < portal.z && currentZ >= portal.z) {
+        this.lastSpeedPortalId = portal.id;
+        this.speedMultiplierValue = portal.multiplier;
+        this.registerInteraction('speedPortal', portal.id, 0, 0, portal.z);
+      }
+    }
+  }
+
+  /**
+   * Passive pad interactions (M4): a pad fires when the player's swept step
+   * path contacts/crosses its trigger volume — no input involved. One-shot
+   * per attempt (a resting/overlapping player cannot multi-fire).
+   */
+  private processJumpPads(): void {
+    for (const pad of this.level.jumpPads) {
+      if (this.usedInteractions.has(pad.id)) continue;
+      if (!this.sweptWindowOverlap(pad.center, pad.halfExtents)) continue;
+      this.usedInteractions.add(pad.id);
+      // Replace the velocity component along the pad's surface normal
+      // (+Y floor / −Y ceiling) with the pad impulse; lateral/forward
+      // preserved. Deterministic identical launch.
+      this.player.velocity.y = (pad.surface === 'ceiling' ? -1 : 1) * pad.impulse;
+      this.player.grounded = false;
+      this.player.supportColliderId = null;
+      this.registerInteraction(
+        'pad',
+        pad.id,
+        pad.center.x,
+        pad.center.y,
+        pad.center.z,
+      );
+    }
+  }
+
+  /**
+   * Active orb interactions (M4): activation requires BOTH a press edge of
+   * the logical jump action this step AND the swept step path overlapping the
+   * orb window (inside/entering/exiting). No input buffer: a press the step
+   * before entering expires unused. Jump orbs first, then gravity orbs, both
+   * in level definition order — deterministic. One-shot per attempt.
+   */
+  private processOrbs(jumpPressed: boolean): void {
+    if (!jumpPressed) return;
+    for (const orb of this.level.jumpOrbs) {
+      if (this.usedInteractions.has(orb.id)) continue;
+      if (!this.sweptWindowOverlap(orb.center, orb.halfExtents)) continue;
+      this.usedInteractions.add(orb.id);
+      this.applyOrbImpulse(orb.impulse);
+      this.registerInteraction('jumpOrb', orb.id, orb.center.x, orb.center.y, orb.center.z);
+    }
+    for (const orb of this.level.gravityOrbs) {
+      if (this.usedInteractions.has(orb.id)) continue;
+      if (!this.sweptWindowOverlap(orb.center, orb.halfExtents)) continue;
+      this.usedInteractions.add(orb.id);
+      const target: GravityMode = this.gravityModeValue === 'ceiling' ? 'floor' : 'ceiling';
+      this.applyGravityTransition(target);
+      this.registerInteraction('gravityOrb', orb.id, orb.center.x, orb.center.y, orb.center.z);
+    }
+  }
+
+  /**
+   * Orb impulse: replace the velocity component along the CURRENT gravity
+   * surface normal (gameplay-frame relative — away from the current support
+   * surface) with `impulse`; lateral/forward preserved; grounded/support
+   * cleared. Works airborne (the orb's purpose) and supersedes a same-step
+   * ground jump deterministically (later mutation wins the step).
+   */
+  private applyOrbImpulse(impulse: number): void {
+    const n = this.gameplayFrame.surfaceNormal;
+    const v = this.player.velocity;
+    const alongN = v.x * n.x + v.y * n.y + v.z * n.z;
+    const correction = impulse - alongN;
+    v.x += n.x * correction;
+    v.y += n.y * correction;
+    v.z += n.z * correction;
+    this.player.grounded = false;
+    this.player.supportColliderId = null;
+  }
+
+  /**
+   * Exact swept-window test for M4 interaction volumes: the interaction AABB
+   * must overlap one of the three single-axis swept segment volumes of this
+   * step's authoritative Y → Z → X path (same primitive as hazard CCD), so
+   * high-speed motion can never skip a thin pad/orb window and windows the
+   * path never entered can never falsely trigger.
+   */
+  private sweptWindowOverlap(
+    center: Readonly<{ x: number; y: number; z: number }>,
+    halfExtents: Readonly<{ x: number; y: number; z: number }>,
+  ): boolean {
+    const box = this.interactionBoxScratch;
+    box.minX = center.x - halfExtents.x;
+    box.maxX = center.x + halfExtents.x;
+    box.minY = center.y - halfExtents.y;
+    box.maxY = center.y + halfExtents.y;
+    box.minZ = center.z - halfExtents.z;
+    box.maxZ = center.z + halfExtents.z;
+    return sweptPathOverlaps(
+      this.sweptPathScratch,
+      this.prevPosition,
+      this.moveResult.positionAfterY,
+      this.moveResult.positionAfterZ,
+      this.player.position,
+      this.halfExtentsVec,
+      box as Aabb,
+    );
+  }
+
+  /** Record one interaction activation (counters + stable VFX/debug record). */
+  private registerInteraction(
+    kind: InteractionKind,
+    id: string,
+    x: number,
+    y: number,
+    z: number,
+  ): void {
+    this.interactionEventCount += 1;
+    if (kind === 'pad') this.padActivationCount += 1;
+    if (kind === 'jumpOrb' || kind === 'gravityOrb') this.orbActivationCount += 1;
+    if (kind === 'speedPortal') this.speedPortalCount += 1;
+    this.lastInteractionId = id;
+    const record = this.lastInteraction;
+    record.kind = kind;
+    record.id = id;
+    record.x = x;
+    record.y = y;
+    record.z = z;
+    this.hasInteractionEvent = true;
   }
 
   /** The overlapping hazard collider, if any. killFront is NOT an overlap kill:

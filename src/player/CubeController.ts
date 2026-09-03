@@ -19,8 +19,10 @@ import type { CubeTuning } from './cubeTuning';
  *      holding produces automatic re-jump after every valid landing,
  *      never a mid-air extra jump)
  *   4. vertical kinematics (gravity / fast-fall / terminal speed)
- *   5. forward speed enforced constant along forwardAxis (future speed portals
- *      scale this value; no other integration changes)
+ *   5. forward speed enforced constant along forwardAxis (the per-step value
+ *      arrives via context.forwardSpeed — the level's base speed times the
+ *      simulation's authoritative speed multiplier; the controller never
+ *      owns or derives speed policy)
  */
 export interface CubeControllerStepContext {
   /** World-space lane centers along the lane axis, indexed by lane index. */
@@ -29,6 +31,11 @@ export interface CubeControllerStepContext {
   dt: number;
   /** Output: true when a jump was initiated this step. */
   jumpedThisStep: boolean;
+  /**
+   * Authoritative forward speed for THIS step (units/s along forwardAxis):
+   * level base speed × the simulation's current speed multiplier (M4).
+   */
+  forwardSpeed: number;
   /**
    * Gameplay frame for THIS step, supplied by the simulation from its
    * authoritative gravity mode (M3). Optional only so direct controller
@@ -189,9 +196,11 @@ export class CubeController {
     }
 
     // ------------------------------------------------------------------
-    // 5. Forward speed: enforced constant along forwardAxis.
+    // 5. Forward speed: enforced constant along forwardAxis. The value is
+    //    authoritative per-step data from the simulation (level base ×
+    //    current speed multiplier); the controller applies, never decides.
     // ------------------------------------------------------------------
     const f = frame.forwardAxis;
-    state.velocity.z = t.baseForwardSpeed * f.z;
+    state.velocity.z = context.forwardSpeed * f.z;
   }
 }

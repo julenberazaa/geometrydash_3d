@@ -3,8 +3,11 @@
  * Values are arcade feel-first; tune by playing, not by theory.
  */
 export interface CubeTuning {
-  /** Permanent forward speed in units/s along forwardAxis. */
-  baseForwardSpeed: number;
+  // NOTE (M4): the level's baseForwardSpeed is the single forward-speed
+  // authority (LevelDefinition.baseForwardSpeed × the simulation's speed
+  // multiplier, delivered per step as context.forwardSpeed). The old
+  // CUBE_TUNING.baseForwardSpeed duplicate was removed so speed cannot have
+  // two owners.
 
   /** Gravity acceleration in units/s^2 toward gravityVector. */
   gravityAcceleration: number;
@@ -36,8 +39,6 @@ export interface CubeTuning {
 }
 
 export const CUBE_TUNING: CubeTuning = {
-  baseForwardSpeed: 14,
-
   gravityAcceleration: 42,
   fastFallAcceleration: 55,
   maxFallSpeed: 40,
