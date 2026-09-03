@@ -105,7 +105,7 @@ describe('ChaseCamera framing invariants', () => {
     const colliders = sim.level.world.colliders();
 
     // Same deterministic closed-loop script as the gravity playthrough test
-    // (jump takeoff windows + lane taps in traversal order).
+    // (jump takeoff windows + lane taps + M4 orb presses in traversal order).
     const jumps: Array<[number, number]> = [
       [39.8, 45],
       [54.5, 58],
@@ -114,6 +114,12 @@ describe('ChaseCamera framing invariants', () => {
       [138.35, 141.4],
       [151.9, 153.9],
       [228.65, 232.5],
+      [329.5, 331.5], // M4: runway F edge -> jump-orb gap
+      [348.0, 350.5], // M4: runway G edge -> jump toward the gravity orb
+    ];
+    const orbPresses: Array<[number, number]> = [
+      [336.0, 338.0], // M4 jump orb window
+      [351.0, 352.9], // M4 gravity orb window
     ];
     const laneTaps: Array<[number, PhysicalInputSnapshot]> = [
       [110, tapLaneRight],
@@ -121,17 +127,22 @@ describe('ChaseCamera framing invariants', () => {
     ];
     let ji = 0;
     let li = 0;
+    let oi = 0;
     let finished = false;
     let hitCount = 0;
     let worst: { colliderId: string; depth: number; eyeY: number; eyeZ: number; mode: string } | null = null;
 
-    for (let t = 0; t < 6000; t++) {
+    for (let t = 0; t < 9000; t++) {
       const z = sim.player.position.z;
       const laneTap = li < laneTaps.length ? laneTaps[li] : undefined;
+      const orbPress = oi < orbPresses.length ? orbPresses[oi] : undefined;
       let input = idleInput;
       if (laneTap !== undefined && z >= laneTap[0]) {
         input = laneTap[1];
         li++;
+      } else if (orbPress !== undefined && z >= orbPress[0] && z <= orbPress[1]) {
+        input = holdSpace();
+        oi++;
       } else {
         const jump = ji < jumps.length ? jumps[ji] : undefined;
         if (jump !== undefined && sim.player.grounded && z >= jump[0] && z <= jump[1]) {

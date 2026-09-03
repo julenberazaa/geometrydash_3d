@@ -520,6 +520,8 @@ describe('Test-level gravity section playthrough (data-driven content)', () => {
   it('plays Floor -> Ceiling -> Floor end to end and finishes', () => {
     const sim = makeGravitySim(TEST_LEVEL);
     // Jump takeoff windows (z ranges, grounded gate), in traversal order.
+    // M4 additions: runway F edge (jump-orb gap) and runway G edge (jump
+    // before the gravity orb window, which sits above the grounded envelope).
     const jumps: Array<[number, number]> = [
       [39.8, 45],      // runway -> low platform (top 0.8)
       [54.5, 58],      // low platform -> elevated (top 1.6)
@@ -528,6 +530,14 @@ describe('Test-level gravity section playthrough (data-driven content)', () => {
       [138.35, 141.4], // island -> narrow center island (drop to 0)
       [151.9, 153.9],  // center island -> final runway (flat 2.5 gap)
       [228.65, 232.5], // ceiling slab A -> slab B across the 6 u ceiling gap
+      [329.5, 331.5],  // M4: runway F edge -> jump-orb gap (z 332..342)
+      [348.0, 350.5],  // M4: runway G edge -> jump toward the gravity orb
+    ];
+    // M4 orb press windows (z ranges, AIRBORNE press edge, one-shot each):
+    // the jump orb at z 337 and the gravity orb at z 352.
+    const orbPresses: Array<[number, number]> = [
+      [336.0, 338.0],
+      [351.0, 352.9],
     ];
     const laneTaps: Array<[number, PhysicalInputSnapshot]> = [
       [110, tapLaneRight], // screen-right lane before the z=116 spikes
@@ -535,13 +545,20 @@ describe('Test-level gravity section playthrough (data-driven content)', () => {
     ];
     let ji = 0;
     let li = 0;
+    let oi = 0;
     let finished = false;
-    for (let t = 0; t < 6000; t++) {
+    for (let t = 0; t < 9000; t++) {
       const z = sim.player.position.z;
       const laneTap = li < laneTaps.length ? laneTaps[li] : undefined;
       if (laneTap !== undefined && z >= laneTap[0]) {
         sim.update(laneTap[1]);
         li++;
+        continue;
+      }
+      const orbPress = oi < orbPresses.length ? orbPresses[oi] : undefined;
+      if (orbPress !== undefined && z >= orbPress[0] && z <= orbPress[1]) {
+        sim.update(holdSpace()); // press edge while airborne inside the window
+        oi++;
         continue;
       }
       const jump = ji < jumps.length ? jumps[ji] : undefined;
@@ -562,9 +579,15 @@ describe('Test-level gravity section playthrough (data-driven content)', () => {
     }
     expect(finished).toBe(true);
     expect(ji).toBe(jumps.length);
-    // Both portals were crossed exactly once each, ending back on Floor.
-    expect(sim.portalTransitionCount).toBe(2);
-    expect(sim.lastPortalId).toBe('portal-down-1');
+    expect(oi).toBe(orbPresses.length);
+    // M3 portals (up, down) + the M4 gravity orb + M4 portal-down-2.
+    expect(sim.portalTransitionCount).toBe(4);
+    expect(sim.lastPortalId).toBe('portal-down-2');
     expect(sim.gravityMode).toBe('floor');
+    // M4 interactions all fired exactly once: pad, both orbs, 2x portal.
+    expect(sim.padActivationCount).toBe(1);
+    expect(sim.orbActivationCount).toBe(2);
+    expect(sim.speedPortalCount).toBe(1);
+    expect(sim.speedMultiplier).toBe(2);
   });
 });

@@ -29,8 +29,26 @@ import type { LevelDefinition } from '../../level/levelDefinition';
  *   z 232..238  ceiling GAP (6 u — ceiling-jumpable; missed = upper void)
  *   z 238..254  ceiling slab B (underside y=6)
  *   z 248       gravity portal DOWN -> floor (fall ~4.9 u, lands ~z 256)
- *   z 246..278  final runway to finish gate (finishZ 270)
+ *   z 246..278  final runway of the M3 section
  * Upper void bound y=12 terminates upward falls (ceiling side exit).
+ *
+ * M4 interaction section (appended; data-driven demo content, NOT the final
+ * production level — deliberately generous margins):
+ *   z 278..306  runway E (top y=0)
+ *   z 305       JUMP PAD (floor, impulse 22 -> airtime ~1.05 s ~ 14.7 u at 1x)
+ *   z 306..316  GAP (10 u — crossed by the pad launch; a plain jump cannot)
+ *   z 316..332  runway F (top y=0)
+ *   z 332..342  GAP (10 u — plain jump 8.8 u CANNOT cross)
+ *   z 337       JUMP ORB (window y 1.3..3.1; press mid-air -> second impulse)
+ *   z 342..358  runway G (top y=0)
+ *   z 352       GRAVITY ORB (window y 1.5..3.3 — deliberately above the
+ *               grounded envelope, so a press while grounded running cannot
+ *               accidentally flip; requires a jump then a press)
+ *   z 350..368  ceiling slab C (underside y=6) — gravity-orb landing
+ *   z 364       gravity portal DOWN -> floor (fall, lands ~z 371)
+ *   z 366..386  runway H (top y=0)
+ *   z 372       SPEED PORTAL 2x (deterministic crossing demo)
+ *   z 380       finish
  */
 export const TEST_LEVEL: LevelDefinition = {
   id: 'controller-test-01',
@@ -39,13 +57,39 @@ export const TEST_LEVEL: LevelDefinition = {
   startLaneIndex: 1,
   laneCenters: [2.6, 0, -2.6], // index 0 = screen-left, 1 = center, 2 = screen-right
   baseForwardSpeed: 14,
-  finishZ: 270,
+  finishZ: 380,
   deathY: -14,
   deathYMax: 12,
   startGravityMode: 'floor',
   gravityPortals: [
     { id: 'portal-up-1', z: 182, target: 'ceiling' },
     { id: 'portal-down-1', z: 248, target: 'floor' },
+    { id: 'portal-down-2', z: 364, target: 'floor' },
+  ],
+  speedPortals: [{ id: 'speed-2x-1', z: 372, multiplier: 2 }],
+  jumpPads: [
+    {
+      id: 'pad-floor-1',
+      center: { x: 0, y: 0.15, z: 305 },
+      halfExtents: { x: 1.2, y: 0.3, z: 0.8 },
+      surface: 'floor',
+      impulse: 22,
+    },
+  ],
+  jumpOrbs: [
+    {
+      id: 'orb-jump-1',
+      center: { x: 0, y: 2.2, z: 337 },
+      halfExtents: { x: 0.9, y: 0.9, z: 0.9 },
+      impulse: 13.2,
+    },
+  ],
+  gravityOrbs: [
+    {
+      id: 'orb-gravity-1',
+      center: { x: 0, y: 2.4, z: 352 },
+      halfExtents: { x: 0.9, y: 0.9, z: 0.8 },
+    },
   ],
 
   solids: [
@@ -92,8 +136,22 @@ export const TEST_LEVEL: LevelDefinition = {
     // Ceiling GAP z 232..238 (6 u — ceiling jump; miss = upper void death)
     // Ceiling slab B: underside y=6, z 238..254
     { center: { x: 0, y: 7, z: 246 }, halfExtents: { x: 5.4, y: 1, z: 8 } },
-    // Floor runway D: top y=0, z 246..278 (landing after portal-down + finish)
+    // Floor runway D: top y=0, z 246..278 (landing after portal-down)
     { center: { x: 0, y: -0.5, z: 262 }, halfExtents: { x: 5.4, y: 0.5, z: 16 } },
+
+    // --- M4 interaction section ---
+    // Runway E: top y=0, z 278..306 (jump pad sits at its far edge)
+    { center: { x: 0, y: -0.5, z: 292 }, halfExtents: { x: 5.4, y: 0.5, z: 14 } },
+    // GAP z 306..316 (10 u — crossed by the z=305 pad launch)
+    // Runway F: top y=0, z 316..332
+    { center: { x: 0, y: -0.5, z: 324 }, halfExtents: { x: 5.4, y: 0.5, z: 8 } },
+    // GAP z 332..342 (10 u — plain jump cannot cross; jump orb at z 337)
+    // Runway G: top y=0, z 342..358
+    { center: { x: 0, y: -0.5, z: 350 }, halfExtents: { x: 5.4, y: 0.5, z: 8 } },
+    // Ceiling slab C: underside y=6, z 350..368 (gravity-orb landing surface)
+    { center: { x: 0, y: 7, z: 359 }, halfExtents: { x: 5.4, y: 1, z: 9 } },
+    // Runway H: top y=0, z 366..386 (portal-down landing + 2x sprint + finish)
+    { center: { x: 0, y: -0.5, z: 376 }, halfExtents: { x: 5.4, y: 0.5, z: 10 } },
   ],
 
   hazards: [
