@@ -138,6 +138,25 @@ set. HUMAN CEILING FEEL = STILL OPEN (re-playtest on the M3.2 build).
 ## M4 — Interactive mechanics
 
 Pads, orbs, speed portals, moving hazards. Only on top of a validated Cube.
+**STATUS (branch `parallel/m4-interactions`, built on `8cfa2c7`):**
+implementation + validation COMPLETE pending M3.3 parallel integration.
+First production interactive mechanics, data-driven and simulation-owned:
+jump pads (passive contact impulse, surface-relative, explicit per-pad
+magnitude), jump orbs (press-edge inside a swept activation window, airborne,
+no buffer, held-input inert), gravity orbs (same window semantics; flips
+Floor ↔ Ceiling through the ONE shared gravity-transition path — position and
+velocity preserved), speed portals (deterministic forward-crossing multiplier
+tiers 0.5–4×) and ONE authoritative speed state (level baseForwardSpeed ×
+sim multiplier; 1× proven bit-identical by the floorCompat golden gate).
+Trigger order made explicit with lethal checks preceding ALL portal and
+interaction mutations. Original procedural visuals + pooled activation-ring
+VFX (presentation only). Test Level interaction section (z 278..386) playable
+end-to-end (deterministic playthrough test). Moving obstacles explicitly
+deferred (time-varying colliders need their own pathway; see spec). 119/119
+unique automated tests (25 new), `npm run verify` green, browser QA 97/97
+green (76 previous + 21 M4) with zero console/page errors, `qa/screenshots/
+m4-*` proof set. HUMAN FEEL GATE = OPEN (playtest requested for pads/orbs/
+speed feel).
 
 ## M5 — Replay + deterministic verification + second level
 

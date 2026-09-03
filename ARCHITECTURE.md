@@ -74,7 +74,11 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   authoritative gravity mode; the controller's own frame is only a fallback
   for direct construction.
 - `cubeTuning.ts`: ALL gameplay magic numbers live here (see `GAME_DESIGN.md`
-  §2 for values). Tune by playing, not by theory.
+  §2 for values). Tune by playing, not by theory. NOTE (M4): forward speed is
+  NOT tuning — the level's `baseForwardSpeed` × the simulation's speed
+  multiplier is the single authority, delivered per step as
+  `CubeControllerStepContext.forwardSpeed` (the old duplicate
+  `CUBE_TUNING.baseForwardSpeed` was removed).
 
 ## 5. Collision (`src/collision/`)
 
@@ -110,29 +114,41 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
 - `levelDefinition.ts`: declarative `LevelDefinition` (id, display name,
   start, `startGravityMode` (default floor), `startLaneIndex`, `laneCenters`,
   speeds, `finishZ`, `deathY` (lower void), `deathYMax` (optional upper void),
-  `gravityPortals` (id + crossing Z + target mode), solids, hazards, theme).
-  Engine code must not hardcode level coordinates, void heights, or gravity
-  content.
+  `startGravityMode`, `gravityPortals` (id + crossing Z + target mode),
+  `speedPortals` (id + crossing Z + multiplier tier), `jumpPads`
+  (trigger volume + mount surface + explicit impulse), `jumpOrbs` /
+  `gravityOrbs` (activation window AABBs, orbs add an impulse),
+  solids, hazards, theme). Engine code must not hardcode level coordinates,
+  void heights, or gravity/interaction content.
 - `levelRuntime.ts`: `loadLevel` builds the `CollisionWorld` (pure, no THREE)
-  and the Z-sorted portal list; `computeProgress` derives [0,1] progress from
-  real forward distance.
+  and the Z-sorted portal lists; `computeProgress` derives [0,1] progress
+  from real forward distance. `LoadedLevel` also exposes the indexed
+  interaction lists (`jumpPads`, `jumpOrbs`, `gravityOrbs`, Z-sorted
+  `speedPortals`) that `GameSimulation` processes.
 - `testLevel01.ts`: controller test track (gaps ≤ 6.5 u, steps ≤ 1.7 u per
   jump limits; forced lane-change wall; spike weave; void gaps; finish gate)
   plus the appended M3 gravity section (z 176..278: Floor → portal up →
-  ceiling run → ceiling gap → portal down → Floor → finish).
+  ceiling run → ceiling gap → portal down → Floor) and the M4 interaction
+  section (z 278..386: jump pad over a 10 u gap, jump orb over a second gap,
+  gravity orb → ceiling slab → portal down → 2× speed portal → finish at
+  380) — data-driven demo content, not the final production level.
 
 ## 7. Simulation (`src/game/`)
 
 - `GameSimulation`: headless orchestration per fixed step — controller →
-  integrate+collide → grounding → gravity portals → death/finish checks. Owns
-  the AUTHORITATIVE gravity mode (`gravityMode`, reset to the level start mode
-  by `respawn()`), the prebuilt per-mode `gameplayFrame`, and the input
-  interpretation. Step order: controller (input interpreted with the
-  pre-portal mode) → Y→Z→X swept move → frontal kill → grounding (support
-  probe along gravity + head-bump cancel) → gravity portal crossings → void
-  bounds → hazard CCD → finish. Death at any earlier point wins the step
-  (lethal contact is never undone by a portal). Owns `prevPosition`
-  (also the portal forward-crossing reference) for render interpolation,
+  integrate+collide → frontal kill → grounding → lethal checks (void bounds,
+  hazard CCD) → jump pads → jump orbs → gravity orbs → speed portals →
+  gravity portals → finish. Owns the AUTHORITATIVE gravity mode
+  (`gravityMode`, reset to the level start mode by `respawn()`) and the
+  AUTHORITATIVE speed state (`speedMultiplier`: the per-step forward speed is
+  `def.baseForwardSpeed × speedMultiplier`, passed to the controller as
+  `context.forwardSpeed`; reset to `startSpeedMultiplier` by `respawn()`),
+  the prebuilt per-mode `gameplayFrame`, and the input interpretation.
+  Step order (authoritative, M4): the LETHAL CHECKS precede ALL portal and
+  interaction mutations — a lethal step terminates before any pad, orb, or
+  portal can rescue, mutate, or re-tag it (M3.3 invariant extended to M4).
+  Death at any earlier point wins the step. Owns `prevPosition` (also the
+  portal/interaction forward-crossing reference) for render interpolation,
   `status` (`running`/`dead`/`finished`), `attempts`, `elapsedSimTime`,
   36-tick `deathHoldTicksLeft` (0.30 s) with integer-tick authority. Single
   `die()`/`respawn()`/`restart()` paths (`restart()` converges to one
@@ -143,18 +159,35 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   `onDeath`/`onFinish`/`onJump`. Hazard kills use EXACT swept-path CCD:
   a hazard must overlap one of the three single-axis swept segment volumes of
   the authoritative Y → Z → X path (prev → afterY → afterZ → final, including
-  solid clipping), via `sweptSegmentAabb`/`sweptPathOverlaps` in `collider.ts`
+  solid clipping), via `sweptPathOverlaps`/`sweptSegmentAabb` in `collider.ts`
   — the loose pre/post union broadphase box remains only as a superset. No
   thin-hazard skipping at speed, no false kills in never-visited corners.
   **Gravity portals (M3):** deterministic forward-crossing on the swept step
   path (`prevZ < portal.z ≤ currentZ`), processed in ascending Z order (the
-  furthest crossed portal wins). A transition flips the authoritative mode,
-  clears grounded/support, and preserves world position and ALL velocity
-  components (no teleport, no impulse, no snap); crossing a plane whose
-  target equals the current mode is a no-op. Debug/QA surface:
+  furthest crossed portal wins). Transitions go through the ONE shared
+  `applyGravityTransition(target)` path (also used by M4 gravity orbs): flip
+  the authoritative mode, clear grounded/support, preserve world position and
+  ALL velocity components (no teleport, no impulse, no snap). Crossing a
+  plane whose target equals the current mode is a no-op. Debug/QA surface:
   `lastPortalId` (reset per attempt) + monotonic `portalTransitionCount`.
   Debug-only `debugPlaceAt(x,y,z)` exists for browser QA placement (same
   category as the renderer's debug aids; never called by gameplay).
+  **M4 interactions:** activation volumes are tested with the SAME exact
+  swept-path primitive as hazard CCD (`sweptWindowOverlap`), so no pad/orb
+  window can be skipped at any per-step displacement. Pads are passive
+  (contact fires them; velocity along the pad surface normal is REPLACED by
+  the pad impulse). Orbs require a press EDGE of the logical jump action
+  during a step whose swept path overlaps the window (no buffer; held input
+  without a new edge is inert; jump orbs replace the along-surface-normal
+  velocity with their impulse; gravity orbs call the shared gravity
+  transition). Speed portals are forward-crossing planes that set the
+  authoritative `speedMultiplier` (ascending Z, furthest wins). Lifecycle:
+  one-shot per interaction id per attempt (`usedInteractions` set, cleared by
+  `respawn()`). Observability: monotonic `interactionEventCount` +
+  `lastInteraction {kind,id,position}` (VFX edge), per-kind counters
+  (`padActivationCount`, `orbActivationCount`, `speedPortalCount`),
+  `isInteractionUsed(id)`, `lastSpeedPortalId`/`lastInteractionId` (reset per
+  attempt).
 - `Game`: composition root only (input → sim → renderer → UI). No gameplay
   logic. Owns pause, FPS EMA, debug toggles.
 
@@ -191,6 +224,15 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   unit box geometry, ONE shared material per direction — cyan up / warm down;
   translucent pane + neon frame, zero per-frame work). Portal triggering is
   simulation-only; the visuals are pure presentation.
+- `InteractionView` (M4, owned by `RendererHost`): builds pad/orb/speed-portal
+  visuals from level data (shared box/sphere/torus/cone geometries, shared
+  live materials, per-portal tier materials) plus the activation VFX — a
+  pooled ring set (8 rings, materials allocated once) edge-detected from the
+  simulation's `interactionEventCount` (pure presentation read; VFX never
+  drives gameplay). Used interactions dim via `isInteractionUsed` polling;
+  orbs idle-bob (render-side only). Original palette language: yellow family
+  = jump impulse (pads + jump orbs), blue = gravity orb, one color +
+  chevron count per speed tier.
 - `DeathBurstView` (M2, owned by `RendererHost`): 14 pooled fragments, shared
   geometry + 2 shared materials, deterministic radial burst, 0.35 s lifetime,
   shrink-out; zero allocation post-construction; triggered by `deathId` edge.
@@ -227,9 +269,10 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   transition count, and the latched last-death record:
   cause/lethal/hold/contact-normal/pre-impact-velocity) + `DebugView` (F2
   collider wireframes, F3 player hitbox). `__gd3d` probes expose death cause,
-  lethal info, gravity mode/portal state, support id, camera up/eye/look,
-  live-camera world→screen projection (`screenPoint`), renderer stats,
-  scene-child count, burst state, and the debug-only
+  lethal info, gravity mode/portal state, support id, speed multiplier +
+  current forward speed + interaction counters/used-state (M4), camera
+  up/eye/look, live-camera world→screen projection (`screenPoint`), renderer
+  stats, scene-child count, burst state, and the debug-only
   `debugTeleport` placement aid for browser QA.
 
 ## 9. QA (`tests/`, `scripts/`, `qa/`)
@@ -254,6 +297,9 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   presentation geometry: elevated ceiling run surfaces carry 4 underside
   rails incl. 2 longitudinal; ground-resting/buried bottoms none; M3.1
   underside inset pinned).
+- `tests/interactions.test.ts` (M4: pads, jump orbs, gravity orbs, speed
+  model + portals, trigger ordering, input-window semantics, 4× safety,
+  run-twice determinism — 25 tests on compact data-driven fixtures).
 - `scripts/m32-audit.mjs`: M3.2 measurement tool (dev tool, not part of the
   verify gate) — freezes deterministic floor/ceiling framings and measures
   geometric parity (eye distance, screen placement, apparent cube size,
@@ -281,6 +327,13 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   viewport, the lethal gap's lateral edges project beside (not behind) the
   Cube silhouette at gap approach, floor reference framing reached,
   `m32-*` screenshots.
+  M4 section: teleport-assisted passes over the interaction section — pad
+  activation exactly once + apex + gap crossing + re-arm on R, orb no-press
+  pass-through vs press activation + pooled-ring VFX observation, gravity
+  orb Floor→Ceiling grounding + portal-down return, speed portal 2× tier +
+  live forward-rate peak + R reset, 2× sprint through the finish gate,
+  3-pass leak guard (scene children flat, exactly one pad activation per
+  attempt), `m4-*` screenshots.
 - Gate: `npm run verify` = typecheck + lint + tests + build. Full:
   `npm run verify:full` adds browser QA (needs `npm run dev` + browsers).
 
@@ -304,6 +357,9 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
 | Death exactly-once; attempts +1 per respawn/restart only | `death` event/attempt tests |
 | 36-tick death hold; respawn fully resets (incl. gravity mode) | `death` tick + reset tests + `gravity` tests |
 | Gravity portals: exactly once per attempt, no teleport, support cleared, death wins the step | `gravity` portal/precedence tests + browser QA |
+| Lethal checks precede ALL portal + interaction mutations (M3.3 invariant, extended in M4) | `interactions` ordering tests + `gravity` precedence tests |
+| M4 interactions: swept-window detection (no skip at speed), press-edge orbs (no buffer, held-inert), one-shot per attempt, respawn re-arms | `interactions` tests + browser QA m4 section |
+| ONE speed authority: level baseForwardSpeed × sim multiplier; 1× bit-identical; R/death reset | `interactions` speed tests + `floorCompat` golden gate |
 | Reference PNGs never runtime assets | Repo/runtime search + visual review |
 | No milestone passes with failing verification | `npm run verify` + `AGENTS.md` process rule |
 

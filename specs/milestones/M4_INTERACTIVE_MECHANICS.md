@@ -360,4 +360,37 @@ gravity-portal precedence closeout, plus
 
 ## EVIDENCE
 
-(filled at closeout: verify output, browser QA JSON, screenshot set)
+- Baseline: `8cfa2c7`, `npm run verify` green (94/94) re-verified in this
+  worktree before any M4 change.
+- Automated: `npm run verify` green — 119/119 unique tests (25 new in
+  `tests/interactions.test.ts`; all 94 baseline suites unmodified, including
+  the `floorCompat` exact-float golden gate proving 1× Floor behavior is
+  bit-identical, and the extended M3 gravity playthrough that now finishes
+  the FULL level: pad → jump orb → gravity orb → portal-down-2 → 2× portal
+  → finish, asserting interaction counts and the final speed tier).
+- Browser QA: 97/97 checks (76 previous + 21 M4) with zero console/page
+  errors (`npm run qa:browser`, headless Chromium against the dev server).
+  Leak guard: scene children/draw calls flat across three repeated pad
+  passes; exactly one pad activation per attempt.
+- Screenshots: `qa/screenshots/m4-01-jump-pad` (mid-launch frozen frame),
+  `m4-02-jump-orb-window` (orb ahead over the gap),
+  `m4-03-orb-activation` (dimmed used orb post-activation),
+  `m4-04-gravity-orb` (grounded on slab C underside, portal-down ahead),
+  `m4-05-speed-portal` (green 2× gateway, two chevrons),
+  `m4-06-high-speed-gameplay` (2× sprint to the finish gate) + JSON
+  provenance sidecars (git-ignored, regenerable via `npm run qa:browser`
+  with `QA_URL` pointing at a dev server serving this branch).
+- Note: the QA machine had a pre-existing dev server of the MAIN worktree on
+  port 5173; the M4 runs used a dedicated dev server for this worktree
+  (`QA_URL`). Always point `QA_URL` at a server serving this branch.
+
+## PARALLEL M3.3 INTEGRATION — RESULT
+
+(Checkpoints 1 and 2 found `parallel/m3-camera-parity` still at base
+`8cfa2c7` with no commits and no handoff file.)
+
+STATUS AT CLOSEOUT: see the final report. If M3.3 remains unfinished at the
+mandatory Checkpoint 3, this milestone's terminal state is
+"M4 IMPLEMENTATION READY — WAITING FOR M3.3 INTEGRATION" (per the master
+brief); the integration procedure in the section above remains the contract
+for the resuming agent.

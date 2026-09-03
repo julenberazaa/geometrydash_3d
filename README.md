@@ -20,12 +20,19 @@ and cube-material hypotheses and proved the ceiling's readability gap came
 from missing surface cue structure (all neon rails were top-face-only, while
 the below-focus camera makes the cube's own silhouette occlude the ceiling
 surface a few units ahead); ceiling run surfaces now carry the same
-converging neon rail language as the floor. 94 automated tests + 76 browser
-checks green. M2 polish (fair frontal/lateral collision, cause-tagged instant
-death, 0.30 s deterministic respawn with pooled burst feedback) and M2.1
-exact swept-path hazard CCD remain in place. Cube movement feel
-human-approved (frozen); death/restart feel human-approved (M2 playtest);
-**ceiling feel awaiting human re-playtest on the M3.2 build**.
+converging neon rail language as the floor. M4 interactive mechanics (branch
+`parallel/m4-interactions`): data-driven jump pads (passive contact impulse),
+jump orbs (press-edge activation windows, airborne), gravity orbs (Floor ↔
+Ceiling flip through the shared portal transition) and speed portals
+(0.5–4× multiplier tiers) with one authoritative speed state, explicit
+trigger ordering (lethal checks always win the step), original procedural
+visuals + pooled activation VFX, and a playable Test Level interaction
+section. 119 automated tests + 97 browser checks green. M2 polish (fair
+frontal/lateral collision, cause-tagged instant death, 0.30 s deterministic
+respawn with pooled burst feedback) and M2.1 exact swept-path hazard CCD
+remain in place. Cube movement feel human-approved (frozen); death/restart
+feel human-approved (M2 playtest); **ceiling feel and M4 interaction feel
+awaiting human playtest**.
 
 ## Setup
 
@@ -54,9 +61,14 @@ Individual: `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`.
 | `↑` | Jump | Fast-fall (airborne) |
 | `↓` | Fast-fall (airborne) | Jump |
 | `←` / `→` | Lane target (one press = one lane, provisional) | Same — never mirrored |
-| `R` | Instant restart | Instant restart (back to start gravity) |
+| `R` | Instant restart | Instant restart (back to start gravity + speed) |
 | `P` | Pause | Pause |
 | `F1` / `F2` / `F3` | Debug stats / collider wireframes / player hitbox | Same |
+
+Interactions (M4): yellow pads launch on contact (no input); yellow orbs
+grant a mid-air jump on a Space/arrow press inside their window; blue orbs
+flip gravity on a press; green speed portals change the run speed on
+crossing. One activation each per attempt; restart re-arms everything.
 
 ## Folders
 
@@ -76,5 +88,8 @@ M3 Gravity Architecture (Floor ↔ Ceiling) + M3.1 ceiling camera/readability
 `specs/milestones/M3_GRAVITY.md`,
 `specs/milestones/M3_1_CEILING_CAMERA_READABILITY.md`,
 `specs/milestones/M3_2_CEILING_VIEW_PARITY.md` (all PASS
-mechanically/browser-validated; human ceiling-feel gate OPEN). Next: human
-re-playtest of the ceiling on the M3.2 build, then M4 (see `ROADMAP.md`).
+mechanically/browser-validated; human ceiling-feel gate OPEN). M4
+Interactive Mechanics implemented on `parallel/m4-interactions` —
+`specs/milestones/M4_INTERACTIVE_MECHANICS.md` (pending M3.3 parallel
+integration + human feel gate). Next: integrate M3.3, human playtest
+(ceiling + M4 interactions), then M5 (see `ROADMAP.md`).

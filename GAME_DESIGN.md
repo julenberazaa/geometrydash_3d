@@ -157,10 +157,54 @@ Primary future state: Left wall (−X) / Right wall (+X) gravity (PLANNED).
 Frame data and lane conventions are designed so walls can be added without
 mirroring controls; wall gravity itself is not implemented.
 
+## 6.1 Interactive mechanics — CURRENT (M4)
+
+All interactions are data-driven level content (`LevelDefinition`); the
+simulation owns every activation. Detection uses the EXACT swept-path test
+(the same primitive as hazard CCD), so no interaction can be skipped at any
+speed, and no volume the path never entered can falsely trigger. Lifecycle is
+one-shot per interaction id per attempt; death/`R` reset everything (used
+flags, speed tier, gravity mode).
+
+- **Trigger order (per fixed step):** controller → integrate/collide →
+  frontal kill → grounding → LETHAL CHECKS (void, hazards) → jump pads →
+  jump orbs → gravity orbs → speed portals → gravity portals → finish.
+  A lethal step terminates before ANY interaction or portal mutates state —
+  no interaction can rescue, rewind, or re-tag a death.
+- **Jump pads (passive):** contact/crossing fires them — never a button.
+  The velocity component along the pad's surface normal (floor pad +Y,
+  ceiling pad −Y) is REPLACED with the pad's explicit `impulse` (Test Level
+  floor pad: 22 u/s vs jump 13.2); lateral/forward preserved; support
+  cleared. No input semantics, no multi-fire while overlapping.
+- **Jump orbs (active):** require a press EDGE of the logical jump action
+  (Space OR the gravity-appropriate arrow — identical merge to the Cube
+  jump) during a fixed step whose swept path overlaps the orb window.
+  Press-edge only: held input inherited from before the window does
+  nothing, and there is NO input buffer (a press the step before entering
+  expires). Effect: velocity along the CURRENT surface normal replaced with
+  the orb's `impulse` (gameplay-frame relative; works airborne; supersedes
+  a same-step ground jump deterministically). One press = one activation.
+- **Gravity orbs (active):** same input-window semantics; flips Floor ↔
+  Ceiling through the SAME transition as gravity portals (world position and
+  ALL velocity preserved, support cleared, no world/camera rotation). One
+  press = one flip; oscillation is impossible (one-shot per attempt).
+- **Speed portals (passive):** deterministic forward-crossing plane
+  (`prevZ < z <= currentZ`, ascending Z, furthest crossed wins) setting the
+  authoritative speed multiplier (content tiers 0.5×/1×/2×/3×/4×). No
+  teleport, no impulse. There is ONE speed authority: the level's
+  `baseForwardSpeed` × the simulation's current multiplier, delivered to the
+  controller per step. Respawn/`R` restores the level's
+  `startSpeedMultiplier` (default 1).
+- **Fairness windows:** orb activation windows are generous AABBs (Test
+  Level: ~1.8 u across) and sit ABOVE the grounded envelope where a
+  grounded-running press must not accidentally fire (gravity orb); visuals
+  are slightly smaller than the windows (same fairness margin as spikes).
+
 ## 7. Out of scope for the current foundation
 
-Ship mode, orbs, pads, speed portals, moving hazards, final VFX, music/BPM
-sync, public editor, backend, persistence. See `ROADMAP.md`.
+Ship mode, moving hazards/obstacles, final VFX polish, music/BPM sync,
+public editor, backend, persistence. See `ROADMAP.md`. (Pads, orbs, speed
+portals and the trigger infrastructure shipped in M4 — §6.1.)
 
 ## 8. Reference art
 
