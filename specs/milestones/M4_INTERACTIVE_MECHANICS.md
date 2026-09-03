@@ -2,13 +2,13 @@
 
 ## STATUS
 
-**IN PROGRESS (parallel branch `parallel/m4-interactions`, worktree
-`geometrydash_3d_m4`)**. Built on the validated M3.2 baseline
-(`8cfa2c7`). M3.3 is being developed in parallel on
-`parallel/m3-camera-parity` from the same base; see
-PARALLEL M3.3 INTEGRATION at the end of this file. M4 is NOT declared
-complete until M3.3 is integrated (or reported as
-"M4 IMPLEMENTATION READY — WAITING FOR M3.3 INTEGRATION").
+**COMPLETE (mechanically/browser-validated, M3.3 integrated)** on branch
+`parallel/m4-interactions`, built on the validated M3.2 baseline
+(`8cfa2c7`). M3.3 was finished in parallel on `parallel/m3-camera-parity`
+and cherry-picked into this branch in order (A `d3c76bd`, then B
+`d3c250e` — see PARALLEL M3.3 INTEGRATION — RESULT below). Final state:
+123/123 unique automated tests, browser QA 101/101, zero console/page
+errors. HUMAN FEEL GATE = OPEN (playtest requested).
 
 ## OBJECTIVE
 
@@ -386,11 +386,32 @@ gravity-portal precedence closeout, plus
 
 ## PARALLEL M3.3 INTEGRATION — RESULT
 
-(Checkpoints 1 and 2 found `parallel/m3-camera-parity` still at base
-`8cfa2c7` with no commits and no handoff file.)
+**INTEGRATED.** At Checkpoints 1 and 2 the branch was still at base; at
+Checkpoints 3 (mandatory, before final validation) `parallel/m3-camera-parity`
+had completed both commits plus the handoff:
 
-STATUS AT CLOSEOUT: see the final report. If M3.3 remains unfinished at the
-mandatory Checkpoint 3, this milestone's terminal state is
-"M4 IMPLEMENTATION READY — WAITING FOR M3.3 INTEGRATION" (per the master
-brief); the integration procedure in the section above remains the contract
-for the resuming agent.
+- **Commit A — `92b8b19` (cherry-picked as `d3c76bd`):** surface-relative
+  camera projection parity (ChaseCamera mirror framing + QA/audit tooling).
+  Conflicts: `README.md` + `ARCHITECTURE.md` QA sections +
+  `scripts/browser-qa.mjs` (both branches appended sections) — resolved by
+  keeping BOTH sides' content merged (M4 sections renumbered 18/19/20);
+  `tests/cameraFraming.test.ts` merged clean (M4's extended playthrough
+  driver + M3.3's mirror pins coexist and both pass).
+- **Commit B — `0b1ebf5` (cherry-picked as `d3c250e`):** lethal checks
+  precede gravity portal state mutation. Conflicts in
+  `src/game/GameSimulation.ts` + `ARCHITECTURE.md` §7 were exactly the
+  anticipated overlap: M4 had already implemented the invariant (lethal
+  checks precede ALL portal AND interaction mutations). Semantic resolution
+  (never ours/theirs): kept M4's extended step order (which subsumes B's
+  contract) and merged B's explanatory wording — a killing step leaves
+  `gravityMode`/`portalTransitionCount`/`lastPortalId` at pre-step values;
+  portal crossing detection is order-independent (reads only
+  `prevPosition`/`position`). B's two new same-step precedence tests
+  (`tests/gravity.test.ts`) merged clean and pass.
+- M4 branch ancestry now contains M3.3 Commit A → Commit B → M4 work in
+  auditable order; no shared commit rewritten, no force push.
+
+Post-integration validation: `npm run verify` green (123/123 = 94 baseline
++ 25 M4 + 4 M3.3); full browser QA 101/101 (M4 section + M3.3 section
+coexisting; M3.3 live free-face parity ratio measured 1.000 on the merged
+build).
