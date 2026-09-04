@@ -25,7 +25,7 @@ ceiling framing is now the exact mirror of the floor framing, so the cube
 face opposite the support surface projects with identical size/perspective
 on both surfaces (measured free-face area ratio 0.219 → 1.000; the invariant
 is expressed surface-relatively so future gravity surfaces inherit it). M4
-interactive mechanics (branch `parallel/m4-interactions`): data-driven jump
+interactive mechanics (on `main`): data-driven jump
 pads (passive contact impulse), jump orbs (press-edge activation windows,
 airborne), gravity orbs (Floor ↔ Ceiling flip through the shared portal
 transition) and speed portals (0.5–4× multiplier tiers) with one
@@ -35,8 +35,9 @@ playable Test Level interaction section. M2 polish (fair frontal/lateral
 collision, cause-tagged instant death, 0.30 s deterministic respawn with
 pooled burst feedback) and M2.1 exact swept-path hazard CCD remain in place.
 Cube movement feel human-approved (frozen); death/restart feel human-approved
-(M2 playtest); **ceiling feel and M4 interaction feel awaiting human
-playtest**.
+(M2 playtest); **ceiling camera/ceiling feel and M4 interaction feel
+human-approved (2026-09-04 playtest on the final integrated M3.3 + M4
+build)**.
 
 ## Setup
 
@@ -88,12 +89,14 @@ crossing. One activation each per attempt; restart re-arms everything.
 ## Current milestone
 
 M3 Gravity Architecture (Floor ↔ Ceiling) + M3.1 ceiling camera/readability
-+ M3.2 ceiling view-parity polish — specs:
++ M3.2 ceiling view-parity polish + M3.3 surface-relative camera projection
+parity — specs:
 `specs/milestones/M3_GRAVITY.md`,
 `specs/milestones/M3_1_CEILING_CAMERA_READABILITY.md`,
-`specs/milestones/M3_2_CEILING_VIEW_PARITY.md` (all PASS
-mechanically/browser-validated; human ceiling-feel gate OPEN). M4
-Interactive Mechanics implemented on `parallel/m4-interactions` —
-`specs/milestones/M4_INTERACTIVE_MECHANICS.md` (pending M3.3 parallel
-integration + human feel gate). Next: integrate M3.3, human playtest
-(ceiling + M4 interactions), then M5 (see `ROADMAP.md`).
+`specs/milestones/M3_2_CEILING_VIEW_PARITY.md`,
+`specs/milestones/M3_3_CAMERA_SURFACE_SYMMETRY.md` (all PASS; human
+ceiling/ceiling-camera feel gate APPROVED 2026-09-04). M4 Interactive
+Mechanics (jump pads, jump orbs, gravity orbs, speed portals) PASS and
+merged to `main` — `specs/milestones/M4_INTERACTIVE_MECHANICS.md` (human
+interaction-feel gate APPROVED 2026-09-04; M4 fully closed). Next: M5 —
+Replay + deterministic verification + second level (see `ROADMAP.md`).

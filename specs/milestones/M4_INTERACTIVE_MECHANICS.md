@@ -2,13 +2,17 @@
 
 ## STATUS
 
-**COMPLETE (mechanically/browser-validated, M3.3 integrated)** on branch
-`parallel/m4-interactions`, built on the validated M3.2 baseline
-(`8cfa2c7`). M3.3 was finished in parallel on `parallel/m3-camera-parity`
+**COMPLETE (mechanically/browser/human-validated, M3.3 integrated)** on
+`main`; the work originated on branch `parallel/m4-interactions`, built on
+the validated M3.2 baseline `8cfa2c7`. M3.3 was finished in parallel on
+`parallel/m3-camera-parity`
 and cherry-picked into this branch in order (A `d3c76bd`, then B
 `d3c250e` — see PARALLEL M3.3 INTEGRATION — RESULT below). Final state:
 123/123 unique automated tests, browser QA 101/101, zero console/page
-errors. HUMAN FEEL GATE = OPEN (playtest requested).
+errors. HUMAN FEEL GATE = APPROVED (2026-09-04): human playtest on the
+final integrated M3.3 + M4 build confirmed pads/jump orbs/gravity orbs/
+speed portals feel. M4 fully CLOSED — engineering, browser, and human
+gates all passed. Next milestone: M5.
 
 ## OBJECTIVE
 
@@ -326,7 +330,8 @@ Screenshots: `m4-01-jump-pad`, `m4-02-jump-orb-window`, `m4-03-orb-activation`,
       `ROADMAP.md` (M4 entry), this spec.
 - [ ] Test Level interaction section playable end-to-end.
 - [ ] M3.3 integrated (see below) and its tests green on this branch.
-- [ ] Human playtest requested (feel gate for pads/orbs/speed).
+- [x] Human playtest completed — pads/orbs/speed feel APPROVED
+      (2026-09-04, final integrated M3.3 + M4 build).
 
 ## KNOWN LIMITATIONS
 

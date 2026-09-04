@@ -162,15 +162,20 @@ level content: otherwise untouched. `tests/cameraFraming.test.ts` +2
 precedence), browser QA M3.3 section +4 with `m33-*` parity evidence pair.
 98/98 unique automated tests, `npm run verify` green, browser QA 80/80 green
 (40 M2 + 27 M3 + 5 M3.1 + 4 M3.2 + 4 M3.3) with zero console/page errors.
-HUMAN GATE: automated + visual evidence only — human re-playtest still
-authoritative.
+HUMAN CAMERA/CEILING FEEL GATE = APPROVED (2026-09-04): human playtest on
+the final integrated M3.3 + M4 build confirmed the surface-relative
+projection parity and overall ceiling feel — M3 fully closed.
 
-## M4 — Interactive mechanics
+## M4 — Interactive mechanics: PASS (2026-09-04)
 
 Pads, orbs, speed portals, moving hazards. Only on top of a validated Cube.
-**STATUS (branch `parallel/m4-interactions`, built on `8cfa2c7`): COMPLETE
-mechanically/browser-validated, including M3.3 parallel integration
-(cherry-picked A `d3c76bd` + B `d3c250e`; see the M3.3 entry above).**
+**STATUS (built on `8cfa2c7`, on `main`): COMPLETE mechanically/browser/
+validated, including M3.3 parallel integration (cherry-picked A `d3c76bd`
++ B `d3c250e`; see the M3.3 entry above). HUMAN INTERACTION FEEL GATE =
+APPROVED (2026-09-04): human playtest on the final integrated M3.3 + M4
+build confirmed pads/jump orbs/gravity orbs/speed portals feel very well —
+M4 fully closed (engineering, browser, and human gates all passed). Next
+milestone: M5.**
 First production interactive mechanics, data-driven and simulation-owned:
 jump pads (passive contact impulse, surface-relative, explicit per-pad
 magnitude), jump orbs (press-edge inside a swept activation window, airborne,
@@ -187,8 +192,7 @@ Test Level interaction section (z 278..386) playable end-to-end
 (time-varying colliders need their own pathway; see spec). 123/123 unique
 automated tests (25 new M4 + 4 imported M3.3), `npm run verify` green,
 browser QA 101/101 green (40 M2 + 27 M3 + 5 M3.1 + 4 M3.2 + 4 M3.3 + 21 M4)
-with zero console/page errors, `qa/screenshots/m4-*` proof set. HUMAN FEEL
-GATE = OPEN (playtest requested for pads/orbs/speed feel).
+with zero console/page errors, `qa/screenshots/m4-*` proof set.
 
 ## M5 — Replay + deterministic verification + second level
 
