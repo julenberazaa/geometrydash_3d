@@ -9,6 +9,7 @@
 ```text
 main.ts → Game (composition root)
   Game → InputSystem → GameSimulation → { CubeController, CollisionWorld, LevelRuntime }
+  Game → ReplayCoordinator → GameSimulation (M5: recording/playback orchestration ABOVE the sim)
   Game → RendererHost → { LevelView, PlayerView, EnvironmentView, DebugView, ChaseCamera }
   Game → Hud, DebugOverlay
 ```
@@ -16,6 +17,9 @@ main.ts → Game (composition root)
 Hard boundary: **simulation never imports Three.js, DOM, or CSS.**
 Verified: only `src/rendering/*` and `src/debug/DebugView.ts` import `three`.
 Rendering observes simulation state; it never writes gameplay state.
+Replay authority boundary (M5): **`GameSimulation` never imports replay
+code and contains no replay branch** — the coordinator feeds it inputs
+indistinguishable from keyboard input and reads back state for hashing.
 
 ## 2. Fixed-step loop (`src/core/`)
 
@@ -132,6 +136,20 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   section (z 278..386: jump pad over a 10 u gap, jump orb over a second gap,
   gravity orb → ceiling slab → portal down → 2× speed portal → finish at
   380) — data-driven demo content, not the final production level.
+- `levelRegistry.ts` (M5): id → `LevelDefinition` catalog
+  (`registeredLevelIds`, `getLevel`, `resolveLevel`). Missing id selects the
+  default (`controller-test-01`); an unknown id falls back EXPLICITLY with a
+  logged reason (never silent substitution). `main.ts` selects content via
+  `?level=<id>`. Adding a level = one data file + one registry entry + zero
+  engine changes.
+- `validationLevel02.ts` (M5, `validation-02`): the second-level
+  architecture proof — different start lane (0), slower base speed
+  (11 u/s), spike weave over all three safe lanes, plain gap, portal UP,
+  ceiling pad (impulse 20) over a 7.5 u ceiling gap a plain jump cannot
+  cross, ceiling gap jump, gravity orb back down, 2× portal into an 11 u
+  gap a 1× jump cannot cross, final weave, finish at z=258 (~19.5 s).
+  Runs on the unmodified `GameSimulation`; scripted real-input playthrough
+  finishes at tick 2346 (`tests/helpers/level02Script.ts`).
 
 ## 7. Simulation (`src/game/`)
 
@@ -192,7 +210,58 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   `isInteractionUsed(id)`, `lastSpeedPortalId`/`lastInteractionId` (reset per
   attempt).
 - `Game`: composition root only (input → sim → renderer → UI). No gameplay
-  logic. Owns pause, FPS EMA, debug toggles.
+  logic. Owns pause, FPS EMA, debug toggles. M5 replay wiring (still no
+  gameplay logic): owns the `ReplayCoordinator` and drives the per-tick
+  protocol (`beforeSimTick` → `getInputForTick(liveSample)` →
+  `sim.update(fed)` → `afterSimTick`); `input.sample()` is ALWAYS consumed
+  so live edges can never leak across a replay. Owns the non-gameplay keys
+  `R` (abort playback / discard partial tape + restart) and `F4` (replay
+  the last completed attempt), and pushes the coordinator badge to the HUD
+  every frame.
+
+## 7.1 Replay (`src/replay/`, M5)
+
+Recording + playback orchestration living ENTIRELY ABOVE `GameSimulation`
+(conceptual flow in this file's §1). One replay = one attempt = one
+fixed-tick PHYSICAL input tape plus verification evidence.
+
+- `replayInputCodec.ts`: one compact integer per tick (bit
+  `actionIndex*3 + edgeIndex` over 5 physical actions × held/pressed/
+  released; frames ∈ [0, 32767]). Exact round-trip; malformed frames throw.
+- `hash.ts`: deterministic FNV-1a dual-state digest (16 hex chars) over
+  exact IEEE-754 Float64 bytes in fixed big-endian order through a reused
+  module scratch; length-prefixed strings. Verification hash, never
+  `.toFixed()`, never timestamps.
+- `levelFingerprint.ts`: canonical gameplay-content hash (id, start, lanes,
+  speeds, finish/void bounds, start gravity, all portals/pads/orbs,
+  solids, hazards; definition order is authoritative). Renderer-only
+  `displayName`/`theme`/hazard-`visual` excluded, so restyling keeps old
+  replays compatible.
+- `stateFingerprint.ts`: per-tick authoritative-state hash (status,
+  deathCause, player position/velocity, grounded, lane intent/count,
+  support id, gravity mode, speed multiplier, elapsed time, death-hold
+  ticks, used-interaction bits in level order). Session/debug-only records
+  excluded with documented reason (attempts, prevPosition, portal/debug ids,
+  counters, death anchors, derived progress).
+- `replayFormat.ts`: versioned `ReplayV1` container (`schemaVersion` 1,
+  `rulesetVersion` 1 — a deliberate compatibility constant, never
+  auto-derived — `simulationHz`, `levelId`, `levelFingerprint`,
+  `frameCount`, `inputFrames`, per-tick `stateHashes`, `outcome`,
+  `finalStateHash` == last per-tick hash). JSON serialize/parse with
+  structural validation; malformed input rejected with a reason. No render
+  data in the container (pinned key list).
+- `ReplayCoordinator.ts`: mode (`live`|`replay`), in-progress recording
+  (one frame BEFORE + one hash AFTER each update; finalizes on the first
+  dead/finished tick; dead-hold/respawn ticks excluded), active playback
+  playhead (one recorded frame per tick, hash compared after every update,
+  FIRST mismatch stops with `{tick, expectedHash, actualHash}` — never
+  corrected/snapped/continued), `lastReplay` (most recent COMPLETED
+  attempt; playback never writes it), verification state
+  (`idle|running|pass|diverged|rejected`), compatibility rejection (schema
+  → ruleset → level id → fingerprint, before the sim is touched).
+  Starting or aborting playback discards any partial live recording, so a
+  stale partial can never finalize into a hybrid tape (regression-pinned).
+  `hudBadge`, `exportLastReplay`, tick/frame observability.
 
 ## 8. Presentation (`src/camera/`, `src/rendering/`, `src/ui/`, `src/debug/`)
 
@@ -276,6 +345,9 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   tall and all hazards untouched — no new systems), `EnvironmentView` (fog,
   deterministic starfield/pillars — seeded PRNG, visuals only), finish gate.
 - `Hud`: level name, real progress %, attempt count, key help, messages.
+  M5 adds the minimal replay badge (`REPLAY` / `REPLAY VERIFIED` /
+  `REPLAY DIVERGED` / `REPLAY REJECTED`, hidden otherwise) driven by `Game`
+  from `ReplayCoordinator.hudBadge`, plus the F4 hint in the help line.
 - `DebugOverlay` (F1 text stats, incl. the live gravity frame (mode,
   gravityVector, surfaceNormal, laneAxis), support id, last portal id +
   transition count, and the latched last-death record:
@@ -285,7 +357,14 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   current forward speed + interaction counters/used-state (M4), camera
   up/eye/look, live-camera world→screen projection (`screenPoint`), renderer
   stats, scene-child count, burst state, and the debug-only
-  `debugTeleport` placement aid for browser QA.
+  `debugTeleport` placement aid for browser QA. M5 adds:
+  `levelId`/`levelDisplayName`, `hasReplay`, `replayMode`, `replayTick`,
+  `replayFrameCount`, `replayVerification` (kind + tick/reason),
+  `replayLevelId`, `replayLevelFingerprint`, `replayBadge`,
+  `replayLastHash`, `startReplay` (the F4 path), `exportLastReplay`, and the
+  QA-only `debugStartReplayJson` (arbitrary-tape injection for the
+  cross-level rejection proof). The F1 overlay carries two replay lines
+  (mode/tick/frames/verification + level/hash/frequency).
 
 ## 9. QA (`tests/`, `scripts/`, `qa/`)
 
@@ -315,6 +394,32 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
 - `tests/interactions.test.ts` (M4: pads, jump orbs, gravity orbs, speed
   model + portals, trigger ordering, input-window semantics, 4× safety,
   run-twice determinism — 25 tests on compact data-driven fixtures).
+- `tests/replay.test.ts` (M5, 29 tests, all through the REAL coordinator +
+  REAL simulation): codec round-trips (5 actions × 8 edge combos +
+  simultaneous + bounds + malformed rejection), lifecycle (exactly one frame
+  per tick, finish/death finalization, R discards partials, playback
+  start/abort discards stale partials — incl. fault-proven hybrid-tape
+  regressions), determinism (per-tick hashes, double replay, finish/death
+  outcomes, gravity/interaction/speed reproduction), divergence (meaningful
+  input mutation → same-tick divergence with expected/actual hashes;
+  tampered hash → exact-tick failure; lied outcome → divergence;
+  final-hash mismatch → structural reject), compatibility (wrong
+  schema/ruleset/level-id/fingerprint rejected; serialize round-trip exact;
+  empty tape rejected), fingerprints (stable, gameplay-sensitive incl.
+  array order, visual-insensitive), render-cadence independence (chunk-1 vs
+  chunk-7 identical trajectories; container carries no render data).
+- `tests/replayGolden.test.ts` (M5, 2 tests): the committed fixture
+  `tests/fixtures/replays/validation-level-02-v1.json` (2346 frames,
+  ~83 KB, `_provenance` block) verifies on a fresh sim (frame count
+  pinned); a single meaningful mutation (first jump press at tick 651 →
+  zeroed) diverges at exactly tick 651 (pinned literal + tape-derived
+  index). Fixture NEVER regenerated by tests; manual tool
+  `scripts/generate-replay-fixture.ts` (`npx vite-node
+  scripts/generate-replay-fixture.ts`) self-checks before writing.
+- `tests/level02.test.ts` (M5, 8 tests): registry contract (both levels,
+  unique ids, default, explicit unknown-id fallback), Level 02 as distinct
+  data-driven content (own identity + different fingerprint), deterministic
+  real-input finish with every mechanic exercised, record → replay pass.
 - `scripts/m32-audit.mjs`: M3.2 measurement tool (dev tool, not part of the
   verify gate) — freezes deterministic floor/ceiling framings and measures
   geometric parity (eye distance, screen placement, apparent cube size,
@@ -360,6 +465,20 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   live forward-rate peak + R reset, 2× sprint through the finish gate,
   3-pass leak guard (scene children flat, exactly one pad activation per
   attempt), `m4-*` screenshots.
+  M5 section (16 checks, `m5-*` screenshots): fresh page, then — default
+  level loads; live death finalizes into an available versioned input tape
+  (no transforms); F4 starts playback with the REPLAY badge; keyboard input
+  injected mid-playback does not deflect the tape (tick-advance + final
+  pass); death replay reproduces death with matching frame count (end
+  state observed atomically with the pass — the 36-tick hold expires fast);
+  REPLAY VERIFIED badge; F1 replay lines; R resumes live play;
+  `?level=validation-02` loads with HUD confirmation; in-page real-DOM-input
+  playthrough finishes with no teleport (CDP round-trips exceed the
+  tightest takeoff windows, so the scripted policy drives real
+  KeyboardEvents through the real `InputSystem`; CDP observes); completion
+  records a level-02 tape; level-02 replay verifies end-to-end (finish);
+  the level-01 tape on level 02 is explicitly rejected; unknown level ids
+  fall back to default.
 - Gate: `npm run verify` = typecheck + lint + tests + build. Full:
   `npm run verify:full` adds browser QA (needs `npm run dev` + browsers).
 
@@ -386,6 +505,12 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
 | Gravity portals: exactly once per attempt, no teleport, support cleared, death wins the step | `gravity` portal/precedence tests + browser QA |
 | Lethal checks precede ALL portal + interaction mutations (M3.3 invariant, extended in M4) | `interactions` ordering tests + `gravity` precedence tests |
 | M4 interactions: swept-window detection (no skip at speed), press-edge orbs (no buffer, held-inert), one-shot per attempt, respawn re-arms | `interactions` tests + browser QA m4 section |
+| Replay records physical fixed-tick input only; playback feeds the real sim; sim stays replay-agnostic | `replay` lifecycle/determinism tests + `Game` protocol review (no sim import of replay code) |
+| Same level + same initial state + same input tape reproduces the run tick-for-tick; first divergence stops and reports | `replay` determinism/divergence tests + golden fixture (load-and-verify + negative proof) |
+| Replays are bound to exact gameplay content; renderer-only changes keep compatibility | `replay` fingerprint tests (gameplay-sensitive, visual-insensitive) + compatibility rejection tests |
+| Old tapes never silently run after intentional gameplay changes | `REPLAY_RULESET_VERSION` discipline + ruleset rejection test + manual fixture regen procedure (M5 spec) |
+| One replay = one attempt; partials never finalize; playbacks never contaminate tapes | `replay` lifecycle tests incl. fault-proven hybrid-tape regressions |
+| Engine is level-agnostic: Level 02 runs with zero engine changes and finishes via real inputs | `level02` tests (distinct content, scripted finish, record→replay) + browser QA m5 section |
 | ONE speed authority: level baseForwardSpeed × sim multiplier; 1× bit-identical; R/death reset | `interactions` speed tests + `floorCompat` golden gate |
 | Reference PNGs never runtime assets | Repo/runtime search + visual review |
 | No milestone passes with failing verification | `npm run verify` + `AGENTS.md` process rule |
@@ -399,3 +524,10 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   segment envelope boxes live in a reused scratch (`SweptPathScratch`), the
   post-clip positions ride the reused `MoveResult`, and the loose union
   broadphase box is a per-step stack literal as before.
+- M5 replay recording adds one small integer + one 16-char hash string per
+  fixed tick; hashing runs over a reused module scratch (no per-tick buffer
+  allocation). Representative cost: 2346-frame Level 02 tape ≈ 83 KB JSON
+  (~35 bytes/frame; the input tape itself ≈ 2.3 KB, hashes dominate); the
+  replay suite runs ~20 full record+replay cycles headless in well under a
+  second. No compression (unnecessary at this scale); revisit in the M6
+  performance pass only if tapes grow orders of magnitude.

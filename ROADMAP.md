@@ -194,10 +194,35 @@ automated tests (25 new M4 + 4 imported M3.3), `npm run verify` green,
 browser QA 101/101 green (40 M2 + 27 M3 + 5 M3.1 + 4 M3.2 + 4 M3.3 + 21 M4)
 with zero console/page errors, `qa/screenshots/m4-*` proof set.
 
-## M5 — Replay + deterministic verification + second level
+## M5 — Replay + deterministic verification + second level: ENGINEERING PASS (2026-09-04)
 
-Input-timeline replay proving determinism; second level as data-only proof
-that the engine is level-agnostic.
+Deterministic replay + second-level architecture proof, zero new gameplay
+mechanics. One completed attempt = one fixed-tick PHYSICAL input tape (one
+compact integer per tick: 5 actions × held/pressed/released; no transforms,
+no camera, no timestamps) recorded ABOVE a replay-agnostic `GameSimulation`
+and replayed through the real sim with per-tick authoritative-state-hash
+verification (first mismatch stops with tick + expected/actual hashes —
+never corrected). Versioned V1 container (schema + explicit ruleset
+versions, level binding via gameplay-content fingerprint, terminal
+outcome); JSON serialization; committed golden fixture
+(`tests/fixtures/replays/validation-level-02-v1.json`, 2346 frames) with a
+manual generator (`npx vite-node scripts/generate-replay-fixture.ts`, never
+in verify) and a negative divergence proof (one mutated input → divergence
+at exactly tick 651). App integration: `Game` owns the `ReplayCoordinator`,
+F4 replays the last attempt, HUD badge (REPLAY / VERIFIED / DIVERGED /
+REJECTED), F1 replay lines, `__gd3d` replay probes, `?level=` selection via
+a level registry with explicit unknown-id fallback. Validation Level 02
+(`validation-02`, ~20 s, 11 u/s, ceiling pad/orb + 2× sections) is genuinely
+separate content on the unmodified engine: real-input playthrough finishes
+(tick 2346) and its live record replays to pass. Implemented across two
+agent sessions (takeover audit preserved the replay core, fixed a
+stale-partial hybrid-tape bug in `startReplay`/`abortReplay` and the Level
+02 lane plan — see the M5 spec). 162/162 automated tests (39 new),
+`npm run verify` green, browser QA M5 section 16/16 green with zero
+console/page errors (`qa/screenshots/m5-*`); historical QA sections flap on
+the same CDP-timing checks that flap on pristine pre-M5 HEAD in loaded
+environments (proven via control run; no M5 causation). HUMAN REPLAY +
+LEVEL-02 FEEL GATE = OPEN (playtest requested, not yet performed).
 
 ## M6 — Visual production system
 

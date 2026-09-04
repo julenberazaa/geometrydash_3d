@@ -14,7 +14,8 @@
     "lint": "eslint .",
     "verify": "npm run typecheck && npm run lint && npm test && npm run build",
     "qa:browser": "node scripts/browser-qa.mjs",
-    "verify:full": "npm run verify && npm run qa:browser"
+    "verify:full": "npm run verify && npm run qa:browser",
+    "replay:fixture": "vite-node scripts/generate-replay-fixture.ts"
   },
   "dependencies": {
     "three": "^0.180.0"

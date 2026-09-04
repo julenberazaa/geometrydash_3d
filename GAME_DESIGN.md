@@ -147,6 +147,17 @@ is a new data file plus zero engine changes. A level declares: geometry
 (solids/hazards), lanes, speeds, `finishZ`, void bounds (`deathY`, optional
 `deathYMax`), start gravity mode (default Floor), and gravity portals.
 
+Two levels ship (selected via `?level=<id>`, default Test Level):
+
+- **Test Level 01** (`controller-test-01`): the controller/gravity/
+  interaction demo track with the M3 gravity section and the M4
+  interaction section.
+- **Validation Level 02** (`validation-02`, M5): the engine-portability
+  proof — different start lane, slower base speed (11 u/s), spike weave,
+  gap jump, ceiling run with a REQUIRED ceiling pad, ceiling gap, gravity
+  orb return, 2× speed gap, final weave, real finish (~20 s). A validation
+  and verification level, NOT the final production level.
+
 ## 6. Gravity surfaces and transitions — CURRENT (Floor/Ceiling); walls PLANNED
 
 Gravity is a real gameplay state owned by the simulation. Two surfaces ship:
@@ -210,6 +221,22 @@ flags, speed tier, gravity mode).
   Level: ~1.8 u across) and sit ABOVE the grounded envelope where a
   grounded-running press must not accidentally fire (gravity orb); visuals
   are slightly smaller than the windows (same fairness margin as spikes).
+
+## 6.2 Deterministic replay — CURRENT (M5)
+
+One completed attempt = one reproducible run. The game records the exact
+physical inputs (jump/lane keys with held/pressed/released edges) at every
+fixed simulation tick — never positions, never camera, never video. Pressing
+**F4** replays the last completed attempt through the real simulation:
+identical inputs reproduce the run tick-for-tick, and the game verifies
+this live, stopping with `REPLAY DIVERGED` at the first mismatching tick
+instead of silently drifting. During playback your keyboard input is
+ignored (the replay shows `REPLAY`, then `REPLAY VERIFIED`); `R` returns to
+live play. Replays are bound to the exact level content they were recorded
+on — a restyled level still accepts its old replays, but changed gameplay
+rejected explicitly rather than mis-played. Deaths replay too (a death tape
+reproduces the same death). This is a determinism proof and a practice/
+verification tool, not a menu, timeline, or editor feature.
 
 ## 7. Out of scope for the current foundation
 

@@ -37,7 +37,10 @@ pooled burst feedback) and M2.1 exact swept-path hazard CCD remain in place.
 Cube movement feel human-approved (frozen); death/restart feel human-approved
 (M2 playtest); **ceiling camera/ceiling feel and M4 interaction feel
 human-approved (2026-09-04 playtest on the final integrated M3.3 + M4
-build)**.
+build)**. M5 deterministic replay + Validation Level 02 engineering-complete
+(every attempt records a verifiable fixed-tick input tape, F4 replays with
+live per-tick verification, the second level finishes via real inputs on
+the unmodified engine); human replay/Level-02 feel gate OPEN.
 
 ## Setup
 
@@ -56,6 +59,18 @@ npm run verify:full  # verify + headless browser QA (needs dev server + Playwrig
 npm run qa:browser   # browser QA alone (needs dev server on :5173, see QA_URL env)
 ```
 
+Levels and replays:
+
+```sh
+# Play the second (validation) level:
+http://localhost:5173/?level=validation-02
+# Unknown ?level= ids fall back to the default with a logged reason.
+
+# Regenerate the committed golden replay ONLY intentionally
+# (gameplay/script change + ruleset rationale — see specs/milestones/M5_REPLAY_AND_SECOND_LEVEL.md):
+npx vite-node scripts/generate-replay-fixture.ts
+```
+
 Individual: `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`.
 
 ## Controls
@@ -69,6 +84,7 @@ Individual: `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`.
 | `R` | Instant restart | Instant restart (back to start gravity + speed) |
 | `P` | Pause | Pause |
 | `F1` / `F2` / `F3` | Debug stats / collider wireframes / player hitbox | Same |
+| `F4` | Replay the last completed attempt (input ignored during playback) | Same |
 
 Interactions (M4): yellow pads launch on contact (no input); yellow orbs
 grant a mid-air jump on a Space/arrow press inside their window; blue orbs
@@ -98,5 +114,13 @@ parity — specs:
 ceiling/ceiling-camera feel gate APPROVED 2026-09-04). M4 Interactive
 Mechanics (jump pads, jump orbs, gravity orbs, speed portals) PASS and
 merged to `main` — `specs/milestones/M4_INTERACTIVE_MECHANICS.md` (human
-interaction-feel gate APPROVED 2026-09-04; M4 fully closed). Next: M5 —
-Replay + deterministic verification + second level (see `ROADMAP.md`).
+interaction-feel gate APPROVED 2026-09-04; M4 fully closed). M5
+Deterministic Replay + Second Level — ENGINEERING PASS —
+`specs/milestones/M5_REPLAY_AND_SECOND_LEVEL.md`: every completed attempt
+records its fixed-tick physical input tape and replays it through the real
+simulation with per-tick verification (F4 replays the last attempt; HUD
+badge + F1 replay lines + `__gd3d` probes; committed golden fixture with a
+manual regeneration tool). Validation Level 02 (`?level=validation-02`)
+proves the unmodified engine is level-agnostic (real-input finish +
+verified replay). Human replay/Level-02 feel gate OPEN (playtest
+requested). Next: M6 (see `ROADMAP.md`).
