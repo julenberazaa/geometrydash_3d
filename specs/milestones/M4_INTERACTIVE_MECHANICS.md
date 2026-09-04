@@ -328,8 +328,8 @@ Screenshots: `m4-01-jump-pad`, `m4-02-jump-orb-window`, `m4-03-orb-activation`,
 - [ ] Docs updated in the same commit set: `GAME_DESIGN.md` (mechanics
       sections), `ARCHITECTURE.md` (speed state, interaction model, order),
       `ROADMAP.md` (M4 entry), this spec.
-- [ ] Test Level interaction section playable end-to-end.
-- [ ] M3.3 integrated (see below) and its tests green on this branch.
+- [x] Test Level interaction section playable end-to-end.
+- [x] M3.3 integrated (see below) and its tests green on this branch.
 - [x] Human playtest completed — pads/orbs/speed feel APPROVED
       (2026-09-04, final integrated M3.3 + M4 build).
 
