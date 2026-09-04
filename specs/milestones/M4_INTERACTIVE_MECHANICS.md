@@ -321,11 +321,11 @@ Screenshots: `m4-01-jump-pad`, `m4-02-jump-orb-window`, `m4-03-orb-activation`,
 
 ## DEFINITION OF DONE
 
-- [ ] All contracts above implemented and documented.
-- [ ] `npm run verify` green with the full M4 test matrix + all regressions.
-- [ ] Browser QA M4 section green + `m4-*` screenshot set; zero console/page
+- [x] All contracts above implemented and documented.
+- [x] `npm run verify` green with the full M4 test matrix + all regressions.
+- [x] Browser QA M4 section green + `m4-*` screenshot set; zero console/page
       errors; leak guard flat.
-- [ ] Docs updated in the same commit set: `GAME_DESIGN.md` (mechanics
+- [x] Docs updated in the same commit set: `GAME_DESIGN.md` (mechanics
       sections), `ARCHITECTURE.md` (speed state, interaction model, order),
       `ROADMAP.md` (M4 entry), this spec.
 - [x] Test Level interaction section playable end-to-end.
