@@ -7,6 +7,7 @@ import { DeathSfx } from '../audio/deathSfx';
 import { Hud } from '../ui/Hud';
 import { DebugOverlay } from '../debug/DebugOverlay';
 import { TEST_LEVEL } from '../content/levels/testLevel01';
+import { ReplayCoordinator, type ReplayVerification } from '../replay/ReplayCoordinator';
 import type { LevelDefinition } from '../level/levelDefinition';
 
 /**
@@ -18,6 +19,7 @@ export class Game {
   private readonly loop: FixedStepLoop;
   private readonly input = new InputSystem();
   private readonly simulation: GameSimulation;
+  private readonly replay: ReplayCoordinator;
   private readonly rendererHost: RendererHost;
   private readonly deathSfx: DeathSfx;
   private readonly hud: Hud;
@@ -50,6 +52,10 @@ export class Game {
         this.hud.setMessage('LEVEL COMPLETE — press R to run again');
       },
     });
+    // Replay orchestration lives ABOVE the simulation: the coordinator picks
+    // the live-vs-tape input source each fixed tick and verifies playback.
+    // GameSimulation never knows replay exists.
+    this.replay = new ReplayCoordinator(this.simulation);
     this.rendererHost = new RendererHost(container, this.simulation);
     this.hud = new Hud(container);
     this.debugOverlay = new DebugOverlay(container);
@@ -57,7 +63,14 @@ export class Game {
     this.loop = new FixedStepLoop(
       {
         update: (_dt) => {
-          this.simulation.update(this.input.sample());
+          // M5 replay protocol, same order as the headless test helpers:
+          // arm recording -> pick live-vs-tape input -> simulate -> verify.
+          // input.sample() is ALWAYS consumed so live edges can never leak
+          // across a replay (keyboard input during playback is dropped).
+          this.replay.beforeSimTick();
+          const liveInput = this.input.sample();
+          this.simulation.update(this.replay.getInputForTick(liveInput));
+          this.replay.afterSimTick();
         },
         render: (alpha: number, renderDt: number) => {
           this.frameRender(alpha, renderDt);
@@ -78,6 +91,19 @@ export class Game {
 
   public get totalJumps(): number {
     return this.jumpCount;
+  }
+
+  /** Replay observability for main.ts probes, HUD and debug overlay. */
+  public get replayCoordinator(): ReplayCoordinator {
+    return this.replay;
+  }
+
+  public get gameSimulation(): GameSimulation {
+    return this.simulation;
+  }
+
+  public get gameRendererHost(): RendererHost {
+    return this.rendererHost;
   }
 
   public stop(): void {
@@ -106,6 +132,10 @@ export class Game {
     this.deathSfx.ensure();
     switch (event.code) {
       case 'KeyR':
+        // Manual restart ends the current context: abort an active playback,
+        // otherwise discard the partial live tape, then restart the attempt.
+        if (this.replay.isPlaying) this.replay.abortReplay();
+        else this.replay.discardRecording();
         this.simulation.restart();
         this.hud.setMessage('');
         break;
@@ -130,6 +160,18 @@ export class Game {
         this.debugPlayerBoxOn = !this.debugPlayerBoxOn;
         this.rendererHost.setDebugPlayerBoxVisible(this.debugPlayerBoxOn);
         break;
+      case 'F4': {
+        // Minimal replay control: replay the last completed attempt.
+        // Ignored while a playback is already active.
+        event.preventDefault();
+        const last = this.replay.lastReplay;
+        if (last !== null) {
+          const started = this.replay.startReplay(last);
+          if (!started.ok) this.hud.setMessage(`REPLAY REJECTED — ${started.reason}`);
+          else this.hud.setMessage('');
+        }
+        break;
+      }
       default:
         break;
     }
@@ -160,6 +202,7 @@ export class Game {
       progress: this.simulation.progress,
       attempts: this.simulation.attempts,
     });
+    this.hud.setReplayBadge(this.replay.hudBadge);
 
     if (this.debugInfoVisible) {
       this.updateDebugOverlay();
@@ -183,8 +226,26 @@ export class Game {
       `speed: ${sim.speedMultiplier}x (${sim.currentForwardSpeed.toFixed(1)} u/s) | pads: ${sim.padActivationCount} | orbs: ${sim.orbActivationCount} | speedPortals: ${sim.speedPortalCount} | last: ${sim.lastInteractionId ?? '—'}`,
       `status: ${sim.status} | attempt: ${sim.attempts} | progress: ${(sim.progress * 100).toFixed(1)}%`,
       `death: cause=${sim.lastDeathCause ?? '—'} | lethal=${sim.lastDeathLethalId ?? '—'} | holdTicks=${sim.deathHoldTicksLeft} | status=${sim.status}`,
+      `replay: mode=${this.replay.mode} | tick=${this.replay.replayTick} | frames=${this.replay.replayFrameCount ?? this.replay.lastReplay?.frameCount ?? '—'} | hasReplay=${this.replay.lastReplay !== null} | verify=${formatVerification(this.replay.verification)}`,
+      `replayLevel: ${this.replay.lastReplay?.levelId ?? this.simulation.level.def.id} | fp=${this.replay.levelFingerprint.slice(0, 8)} | hash=${this.replay.lastStateHash?.slice(0, 8) ?? '—'} | hz=${SIMULATION_HZ}`,
       `contactN: (${sim.lastContactNormal.x.toFixed(1)}, ${sim.lastContactNormal.y.toFixed(1)}, ${sim.lastContactNormal.z.toFixed(1)}) | preVel: (${sim.lastPreImpactVelocity.x.toFixed(1)}, ${sim.lastPreImpactVelocity.y.toFixed(1)}, ${sim.lastPreImpactVelocity.z.toFixed(1)})`,
       `draw calls: ${stats.calls} | tris: ${stats.triangles}`,
     ]);
   }
 }
+
+/** Compact one-line replay verification state for the F1 overlay. */
+const formatVerification = (v: ReplayVerification): string => {
+  switch (v.kind) {
+    case 'idle':
+      return 'idle';
+    case 'running':
+      return 'running';
+    case 'pass':
+      return 'pass';
+    case 'rejected':
+      return `rejected(${v.reason})`;
+    case 'diverged':
+      return `diverged@tick${v.tick}`;
+  }
+};

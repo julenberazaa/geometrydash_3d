@@ -13,6 +13,7 @@ export interface HudElements {
 
 export class Hud {
   public readonly els: HudElements;
+  private readonly replayBadge: HTMLElement;
 
   constructor(container: HTMLElement) {
     const root = document.createElement('div');
@@ -49,17 +50,24 @@ export class Hud {
     message.className = 'hud-message';
     message.textContent = '';
 
+    const replayBadge = document.createElement('div');
+    replayBadge.className = 'hud-replay-badge';
+    replayBadge.textContent = '';
+    replayBadge.style.display = 'none';
+
     const help = document.createElement('div');
     help.className = 'hud-help';
     help.textContent =
-      'SPACE/↑ jump · ←/→ lanes · ↓ fast-fall · R restart · P pause · F1 debug info · F2 colliders · F3 player hitbox';
+      'SPACE/↑ jump · ←/→ lanes · ↓ fast-fall · R restart · P pause · F1 debug info · F2 colliders · F3 player hitbox · F4 replay last attempt';
 
     root.appendChild(top);
     root.appendChild(message);
+    root.appendChild(replayBadge);
     root.appendChild(help);
     container.appendChild(root);
 
     this.els = { root, name, progressFill: fill, progressText, attempts, message };
+    this.replayBadge = replayBadge;
   }
 
   public update(opts: {
@@ -76,6 +84,16 @@ export class Hud {
 
   public setMessage(text: string): void {
     this.els.message.textContent = text;
+  }
+
+  /** Minimal replay indicator (null hides it). Driven by Game each frame. */
+  public setReplayBadge(text: string | null): void {
+    if (text === null) {
+      this.replayBadge.style.display = 'none';
+      return;
+    }
+    this.replayBadge.style.display = 'block';
+    if (this.replayBadge.textContent !== text) this.replayBadge.textContent = text;
   }
 
   public setVisible(visible: boolean): void {

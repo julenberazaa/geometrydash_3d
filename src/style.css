@@ -116,6 +116,22 @@ body {
   white-space: nowrap;
 }
 
+.hud-replay-badge {
+  position: absolute;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: #7df9ff;
+  text-shadow: 0 0 14px rgba(125, 249, 255, 0.7);
+  background: rgba(4, 18, 28, 0.6);
+  padding: 4px 14px;
+  border-radius: 6px;
+  text-align: center;
+}
+
 .debug-overlay {
   position: absolute;
   top: 64px;

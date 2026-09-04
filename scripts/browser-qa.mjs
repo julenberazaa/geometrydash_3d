@@ -1642,7 +1642,288 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   await page.waitForTimeout(300);
 }
 
-// --- 20. Console audit ---
+// --- 20. M5: deterministic replay + second level ---
+// Replay is fixed-tick physical input recorded above GameSimulation (F4
+// replays the last completed attempt); Validation Level 02 proves the
+// engine is level-agnostic. Automated per-tick proof lives in
+// tests/replay.test.ts + tests/replayGolden.test.ts; these checks observe
+// the LIVE integrated app (HUD badge, input isolation, level routes).
+{
+  // Fresh page: the M5 section follows ~15 minutes of prior sections on a
+  // long-lived headless page (the M2 section documents this degradation
+  // and reloads for the same reason). M5 asserts app-level behavior, not
+  // cross-section continuity.
+  await page.goto(URL, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2000);
+  const hasReplay = () => page.evaluate(() => window.__gd3d.hasReplay());
+  // Poll verification AND end state in ONE evaluate: after a death-tape
+  // pass the 36-tick death hold expires quickly (auto-respawn), so a later
+  // round-trip would observe the fresh live run instead of the replayed
+  // death. The single snapshot below is atomic against that race.
+  const waitVerify = async (timeoutMs = 60000) => {
+    const t0 = Date.now();
+    for (;;) {
+      const snap = await page.evaluate(() => ({
+        verify: window.__gd3d.replayVerification(),
+        status: window.__gd3d.status(),
+        cause: window.__gd3d.deathCause(),
+        badge: window.__gd3d.replayBadge(),
+        frames: window.__gd3d.replayFrameCount(),
+      }));
+      if (snap.verify.kind === 'pass' || snap.verify.kind === 'diverged') return snap;
+      if (Date.now() - t0 > timeoutMs) return snap;
+      await page.waitForTimeout(200);
+    }
+  };
+
+  // M5a: default level still loads; a live death attempt becomes a replay.
+  const m5Level = await page.evaluate(() => window.__gd3d.levelId());
+  log('m5 default level loads (controller-test-01)', m5Level === 'controller-test-01', m5Level);
+  for (let i = 0; i < 3; i++) {
+    await page.keyboard.press('KeyR');
+    await page.waitForTimeout(300);
+    if ((await pos()).z < 10) break;
+  }
+  await capture('m5-01-live-recording');
+  // Roll blind into the low-platform face: a frontImpact death finalizes.
+  let m5Dead = null;
+  for (let i = 0; i < 120; i++) {
+    await page.waitForTimeout(100);
+    const s = await page.evaluate(() => ({
+      status: window.__gd3d.status(),
+      cause: window.__gd3d.deathCause(),
+    }));
+    if (s.status === 'dead') {
+      m5Dead = s;
+      break;
+    }
+  }
+  log('m5 live death attempt completes', m5Dead !== null, m5Dead ? `cause=${m5Dead.cause}` : 'never died');
+  const m5HasReplay = await hasReplay();
+  log('m5 replay becomes available after the attempt', m5HasReplay === true);
+  const level01Tape = await page.evaluate(() => window.__gd3d.exportLastReplay());
+  const level01Parsed = level01Tape === null ? null : JSON.parse(level01Tape);
+  log('m5 exported replay is a versioned input tape (no transforms)',
+    level01Parsed !== null && level01Parsed.schemaVersion === 1 &&
+    Array.isArray(level01Parsed.inputFrames) && level01Parsed.frameCount > 0 &&
+    level01Parsed.levelId === 'controller-test-01' && !('camera' in level01Parsed),
+    level01Parsed ? `frames=${level01Parsed.frameCount} outcome=${level01Parsed.outcome.status}` : 'export null');
+  // Clean slate for the replay below (R during dead respawns immediately).
+  await page.keyboard.press('KeyR');
+  await page.waitForTimeout(300);
+
+  // M5b: F4 playback with live keyboard injection (input isolation proof).
+  await page.keyboard.press('F4');
+  await page.waitForTimeout(400);
+  const m5Mode = await page.evaluate(() => window.__gd3d.replayMode());
+  const m5Badge = await page.evaluate(() => window.__gd3d.replayBadge());
+  const m5BadgeDom = await page.evaluate(() => {
+    const el = document.querySelector('.hud-replay-badge');
+    return el && el.style.display !== 'none' ? el.textContent : null;
+  });
+  log('m5 F4 starts playback (mode=replay, HUD badge REPLAY)',
+    m5Mode === 'replay' && m5Badge === 'REPLAY' && m5BadgeDom === 'REPLAY',
+    `mode=${m5Mode} badge=${m5Badge}`);
+  await capture('m5-02-replay-playback');
+  // Inject real gameplay input EARLY in the run (the death tape is 441
+  // ticks, so playback is provably still active): it must not alter the tape.
+  const m5TickBefore = await page.evaluate(() => window.__gd3d.replayTick());
+  await page.keyboard.down('Space');
+  await page.waitForTimeout(150);
+  await page.keyboard.up('Space');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowLeft');
+  const m5During = await page.evaluate(() => ({
+    mode: window.__gd3d.replayMode(),
+    tick: window.__gd3d.replayTick(),
+  }));
+  log('m5 injected input does not knock playback off the tape',
+    m5During.mode === 'replay' && m5During.tick > m5TickBefore,
+    `mode=${m5During.mode} tick=${m5TickBefore}->${m5During.tick}`);
+  const m5Result = await waitVerify();
+  log('m5 death replay verifies (input isolation holds, death reproduced)',
+    m5Result.verify.kind === 'pass' && m5Result.status === 'dead' &&
+    m5Result.cause === level01Parsed?.outcome.deathCause &&
+    m5Result.frames === level01Parsed?.frameCount,
+    `verify=${m5Result.verify.kind} status=${m5Result.status} cause=${m5Result.cause} frames=${m5Result.frames}`);
+  log('m5 HUD reports REPLAY VERIFIED', m5Result.badge === 'REPLAY VERIFIED',
+    `badge=${m5Result.badge}`);
+  await capture('m5-03-replay-verified');
+  // F1 replay observability lines (mode/tick/hashes/fingerprint).
+  await page.keyboard.press('F1');
+  await page.waitForTimeout(300);
+  const m5Overlay = await page.evaluate(() => document.querySelector('.debug-overlay')?.textContent ?? '');
+  log('m5 F1 overlay shows replay state (mode/verify/fingerprint)',
+    m5Overlay.includes('replay: mode=') && m5Overlay.includes('replayLevel:'),
+    (m5Overlay.split('\n').find((l) => l.startsWith('replay:')) ?? 'line missing').trim());
+  await capture('m5-07-replay-debug');
+  await page.keyboard.press('F1');
+  // R after a verified replay returns to clean live play.
+  await page.keyboard.press('KeyR');
+  await page.waitForTimeout(400);
+  log('m5 R after replay resumes live play',
+    (await page.evaluate(() => window.__gd3d.replayMode())) === 'live' &&
+    (await page.evaluate(() => window.__gd3d.status())) === 'running');
+
+  // M5c: Validation Level 02 via the real level route.
+  await page.goto(`${URL}?level=validation-02`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2000);
+  const m5L2 = await page.evaluate(() => ({
+    id: window.__gd3d.levelId(),
+    name: window.__gd3d.levelDisplayName(),
+    hud: document.querySelector('.hud-name')?.textContent ?? '',
+  }));
+  log('m5 level 02 route loads the second level (HUD confirms)',
+    m5L2.id === 'validation-02' && m5L2.hud === 'VALIDATION LEVEL 02',
+    `id=${m5L2.id} hud=${m5L2.hud}`);
+  await page.keyboard.press('KeyR');
+  await page.waitForTimeout(300);
+  await capture('m5-04-level02-start');
+
+  // M5d: real-input Level 02 playthrough (no debug teleport).
+  //
+  // The driver lives IN THE PAGE and dispatches real DOM KeyboardEvents
+  // through the REAL InputSystem -> GameSimulation pipeline (the same
+  // listeners a physical keyboard drives; `code`-addressed, no trusted-event
+  // checks anywhere on the path). CDP round-trips here cost ~150 ms (~1.9 u
+  // at level speed) — wider than the tightest physics-safe takeoff windows
+  // — so CDP polling cannot time the jumps/orb deterministically. The
+  // in-page policy is the SAME z-triggered LEVEL02_SCRIPT the automated
+  // suite runs (tests/helpers/level02Script.ts); CDP only observes.
+  const runLevel02Attempt = async () => {
+    // Verified fresh start (a swallowed CDP R corrupts every trigger).
+    for (let i = 0; i < 3; i++) {
+      await page.keyboard.press('KeyR');
+      await page.waitForTimeout(300);
+      if ((await pos()).z < 10) break;
+    }
+    await page.evaluate(() => {
+      if (window.__m5driver) clearInterval(window.__m5driver);
+      window.__m5done = null;
+      window.__m5ceil = false;
+      const down = (code) => window.dispatchEvent(new KeyboardEvent('keydown', { code }));
+      const up = (code) => window.dispatchEvent(new KeyboardEvent('keyup', { code }));
+      const tap = (code) => {
+        down(code);
+        setTimeout(() => up(code), 30);
+      };
+      // [triggerZ, action] — mirrors LEVEL02_SCRIPT intents.
+      const plan = [
+        [25, () => tap('ArrowRight')],
+        [40, () => tap('ArrowRight')],
+        [50, () => tap('ArrowLeft')],
+        [55.6, () => tap('Space')],
+        [133, () => tap('Space')],
+        [145.5, () => tap('Space')],
+      ];
+      let step = 0;
+      let orbPresses = 0;
+      let lastOrbTap = 0;
+      window.__m5driver = setInterval(() => {
+        const now = performance.now();
+        const g = window.__gd3d;
+        const s = { z: g.playerPosition().z, status: g.status(), mode: g.gravityMode() };
+        if (s.status === 'finished') {
+          clearInterval(window.__m5driver);
+          window.__m5driver = null;
+          window.__m5done = 'finished';
+          return;
+        }
+        if (s.status !== 'running') {
+          clearInterval(window.__m5driver);
+          window.__m5driver = null;
+          window.__m5done = `dead:${g.deathCause()}@${s.z.toFixed(1)}`; 
+          return;
+        }
+        if (s.mode === 'ceiling' && g.grounded()) window.__m5ceil = true;
+        // Scripted z-triggers (lane taps + timed jump presses).
+        if (step < plan.length && s.z >= plan[step][0]) {
+          const action = plan[step][1];
+          step += 1;
+          action();
+          return;
+        }
+        // Gravity orb: repeated DISCRETE presses across the window until it
+        // fires (each press is one edge; the first edge inside the swept
+        // window with y in range activates — robust to single-edge timing).
+        if (step >= plan.length && s.mode === 'ceiling' && s.z >= 147.5 && s.z <= 150.2 &&
+            !g.isInteractionUsed('v2-orb-gravity') && orbPresses < 6 &&
+            now - lastOrbTap > 45) {
+          lastOrbTap = now;
+          orbPresses += 1;
+          tap('Space');
+        }
+        // 2x gap + final lane, gated on the post-orb floor state.
+        if (s.mode === 'floor' && g.isInteractionUsed('v2-orb-gravity')) {
+          if (!window.__m5jump3 && g.grounded() && s.z >= 190 && s.z <= 193) {
+            window.__m5jump3 = true;
+            tap('Space');
+          }
+          if (window.__m5jump3 && s.z >= 204 && g.laneIndex() < 2) tap('ArrowRight');
+        }
+      }, 5);
+    });
+    // Observe from CDP: ceiling evidence + terminal state.
+    let mechShotLocal = false;
+    const t0 = Date.now();
+    for (;;) {
+      const done = await page.evaluate(() => window.__m5done);
+      if (done !== null) return done;
+      if (!mechShotLocal && (await page.evaluate(() => window.__m5ceil)) === true) {
+        mechShotLocal = true;
+        await page.keyboard.press('KeyP');
+        await page.waitForTimeout(400);
+        await capture('m5-05-level02-mechanics');
+        await page.keyboard.press('KeyP');
+        await page.waitForTimeout(200);
+      }
+      if (Date.now() - t0 > 90000) {
+        await page.evaluate(() => {
+          if (window.__m5driver) clearInterval(window.__m5driver);
+          window.__m5driver = null;
+        });
+        return 'timeout';
+      }
+      await page.waitForTimeout(250);
+    }
+  };
+  let m5L2Result = null;
+  for (let attempt = 1; attempt <= 3 && m5L2Result !== 'finished'; attempt++) {
+    await page.evaluate(() => {
+      window.__m5jump3 = false;
+    });
+    const outcome = await runLevel02Attempt();
+    if (outcome === 'finished') m5L2Result = 'finished';
+    else console.log(`  (m5 level02 attempt ${attempt}: ${outcome}, retrying)`);
+  }
+  log('m5 level 02 real playthrough reaches the finish (no teleport)', m5L2Result === 'finished');
+  await capture('m5-06-level02-finish');
+  const m5L2Replay = await page.evaluate(() => ({
+    has: window.__gd3d.hasReplay(),
+    level: window.__gd3d.replayLevelId(),
+  }));
+  log('m5 level 02 completion records a level-02 replay',
+    m5L2Replay.has === true && m5L2Replay.level === 'validation-02',
+    JSON.stringify(m5L2Replay));
+
+  // M5e: level-02 replay verifies; the level-01 tape is rejected here.
+  await page.keyboard.press('F4');
+  const m5L2Verify = await waitVerify();
+  log('m5 level 02 replay verifies end-to-end', m5L2Verify.verify.kind === 'pass',
+    `verify=${m5L2Verify.verify.kind} status=${m5L2Verify.status}`);
+  const m5Cross = await page.evaluate((tape) => window.__gd3d.debugStartReplayJson(tape), level01Tape);
+  log('m5 level-01 replay cannot silently run on level 02 (explicit reject)',
+    m5Cross.ok === false && (m5Cross.reason ?? '').includes('controller-test-01'),
+    `ok=${m5Cross.ok} reason=${m5Cross.reason ?? '-'}`);
+  // Unknown level ids fall back explicitly to the default.
+  await page.goto(`${URL}?level=does-not-exist`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2000);
+  const m5Fallback = await page.evaluate(() => window.__gd3d.levelId());
+  log('m5 unknown level id falls back to the default level', m5Fallback === 'controller-test-01',
+    `id=${m5Fallback}`);
+}
+
+// --- 21. Console audit ---
 log('no console errors', consoleErrors.length === 0, JSON.stringify(consoleErrors.slice(0, 3)));
 log('no page errors', pageErrors.length === 0, JSON.stringify(pageErrors.slice(0, 3)));
 

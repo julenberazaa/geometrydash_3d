@@ -1,16 +1,32 @@
 import { Game } from './game/Game';
+import { resolveLevel } from './content/levelRegistry';
+import { parseReplay } from './replay/replayFormat';
 
 /**
  * Entry point. Owns the canvas container and the Game lifecycle.
  * No gameplay logic here.
+ *
+ * Level selection is data-driven through the level registry:
+ * `?level=<id>` (e.g. `?level=validation-02`). A missing id plays the
+ * default level; an unknown id falls back explicitly with a logged reason
+ * and a HUD notice — content is never silently substituted.
  */
 const container = document.getElementById('app');
 if (!container) {
   throw new Error('#app container missing from DOM');
 }
 
-const game = new Game(container);
+const requestedLevelId = new URLSearchParams(window.location.search).get('level');
+const resolution = resolveLevel(requestedLevelId);
+
+const game = new Game(container, resolution.level);
 game.start();
+
+if (!resolution.ok) {
+  // Explicit fallback: visible in the console AND the HUD so QA screenshots
+  // capture it (a silent substitution would hide content bugs).
+  console.warn(`[level] ${resolution.reason ?? 'unknown level requested'}`);
+}
 
 // Expose for QA harnesses (evidence-capture sidecars read plain data from this).
 declare global {
@@ -57,6 +73,22 @@ declare global {
       debugFreezeFrame: (frozen: boolean) => void;
       debugReplayBurst: () => void;
       toggleDebug: () => void;
+      // M5 replay observability (read-only unless noted).
+      levelId: () => string;
+      levelDisplayName: () => string;
+      hasReplay: () => boolean;
+      replayMode: () => 'live' | 'replay';
+      replayTick: () => number;
+      replayFrameCount: () => number | null;
+      replayVerification: () => { kind: string; tick?: number; reason?: string };
+      replayLevelId: () => string | null;
+      replayLevelFingerprint: () => string;
+      replayBadge: () => string | null;
+      replayLastHash: () => string | null;
+      startReplay: () => boolean;
+      exportLastReplay: () => string | null;
+      /** QA-only: parse + start an arbitrary serialized tape (cross-level rejection proof). */
+      debugStartReplayJson: (json: string) => { ok: boolean; reason?: string };
     };
   }
 }
@@ -115,6 +147,36 @@ window.__gd3d = {
   },
   toggleDebug: () => {
     /* toggled via F1/F2/F3 keyboard events */
+  },
+  // M5 replay probes. startReplay() replays the last completed attempt
+  // (same path as the F4 key); it never touches private sim state.
+  levelId: () => game.gameSimulation.level.def.id,
+  levelDisplayName: () => game.gameSimulation.level.def.displayName,
+  hasReplay: () => game.replayCoordinator.lastReplay !== null,
+  replayMode: () => game.replayCoordinator.mode,
+  replayTick: () => game.replayCoordinator.replayTick,
+  replayFrameCount: () => game.replayCoordinator.replayFrameCount ?? game.replayCoordinator.lastReplay?.frameCount ?? null,
+  replayVerification: () => {
+    const v = game.replayCoordinator.verification;
+    if (v.kind === 'diverged') return { kind: v.kind, tick: v.tick };
+    if (v.kind === 'rejected') return { kind: v.kind, reason: v.reason };
+    return { kind: v.kind };
+  },
+  replayLevelId: () => game.replayCoordinator.lastReplay?.levelId ?? null,
+  replayLevelFingerprint: () => game.replayCoordinator.levelFingerprint,
+  replayBadge: () => game.replayCoordinator.hudBadge,
+  replayLastHash: () => game.replayCoordinator.lastStateHash,
+  startReplay: (): boolean => {
+    const last = game.replayCoordinator.lastReplay;
+    if (last === null) return false;
+    return game.replayCoordinator.startReplay(last).ok;
+  },
+  exportLastReplay: () => game.replayCoordinator.exportLastReplay(),
+  debugStartReplayJson: (json: string): { ok: boolean; reason?: string } => {
+    const parsed = parseReplay(json);
+    if (!parsed.ok) return { ok: false, reason: parsed.reason };
+    const started = game.replayCoordinator.startReplay(parsed.replay);
+    return started.ok ? { ok: true } : { ok: false, reason: started.reason };
   },
 };
 
