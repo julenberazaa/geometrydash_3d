@@ -1,23 +1,34 @@
 /**
  * Deterministic hashing for replay verification (M5).
  *
- * FNV-1a over exact binary representations — never formatted decimal strings.
- * Floats are hashed as IEEE-754 Float64 bytes in a fixed (big-endian) byte
- * order through a REUSED scratch buffer, so per-tick state hashing stays
- * allocation-free apart from the small final digest string.
+ * FNV-1a-shaped dual-state hash over exact binary representations — never
+ * formatted decimal strings. Floats are hashed as IEEE-754 Float64 bytes in
+ * EXPLICIT big-endian byte order (DataView, littleEndian=false) through a
+ * REUSED scratch buffer, so per-tick state hashing stays allocation-free
+ * apart from the small final digest string. The byte order is explicit in
+ * code — never inferred from host endianness — so the hashed byte sequence
+ * is identical on every platform.
  *
- * Two independent FNV-1a states (different offset bases, second one folding a
- * byte rotation) are maintained in ONE pass and combined into a 16-hex-char
- * digest. This is a verification hash, NOT cryptography — no crypto dependency.
+ * PRECISION NOTE: the per-byte mixing step multiplies in IEEE-754 double
+ * precision and truncates with `>>> 0` — it does NOT use Math.imul's exact
+ * 32-bit wrapping multiply, so these digests are NOT standard FNV-1a test
+ * vectors. The algorithm is intentionally FROZEN as-is: every persisted
+ * replay hash depends on its exact arithmetic, and "correcting" it to
+ * Math.imul would invalidate all existing tapes and the golden fixture.
+ *
+ * Two independent states (different offset bases, second one folding a byte
+ * rotation) are maintained in ONE pass and combined into a 16-hex-char
+ * digest. This is a verification hash, NOT cryptography — no crypto
+ * dependency.
  */
 
 const FNV_PRIME = 0x01000193;
 const BASIS_A = 0x811c9dc5; // standard FNV-1a 32-bit offset basis
 const BASIS_B = 0x84222325; // second independent basis (arbitrary odd constant)
 
-/** Reusable scratch: float64 -> 8 bytes. Shared module-level buffer. */
+/** Reusable scratch: float64 -> 8 bytes via an explicit-order DataView. */
 const SCRATCH = new ArrayBuffer(8);
-const SCRATCH_F64 = new Float64Array(SCRATCH);
+const SCRATCH_VIEW = new DataView(SCRATCH);
 const SCRATCH_BYTES = new Uint8Array(SCRATCH);
 
 export class DeterministicHasher {
@@ -41,16 +52,19 @@ export class DeterministicHasher {
 
   /** Hash a float by its exact IEEE-754 Float64 bytes (big-endian order). */
   public writeFloat64(value: number): void {
-    SCRATCH_F64[0] = value;
-    // DataView-free byte walk: Float64Array storage is little-endian on all
-    // mainstream platforms, so read backwards for a stable big-endian order.
-    for (let i = 7; i >= 0; i--) this.mixByte(SCRATCH_BYTES[i] ?? 0);
+    // EXPLICIT big-endian store: identical bytes on every host, no
+    // native-endian assumption. Forward walk 0..7 reads MSB first.
+    SCRATCH_VIEW.setFloat64(0, value, false);
+    for (let i = 0; i < 8; i++) this.mixByte(SCRATCH_BYTES[i] ?? 0);
   }
 
   public writeInt32(value: number): void {
-    // Exact int32 bit pattern via the same float scratch (|0 to normalize).
-    SCRATCH_F64[0] = value | 0;
-    for (let i = 7; i >= 0; i--) this.mixByte(SCRATCH_BYTES[i] ?? 0);
+    // Normalizes with |0, then hashes the IEEE-754 Float64 BYTES of that
+    // integer value (8 bytes, big-endian) — NOT a raw 4-byte int32 bit
+    // pattern. Integers and their float64 images therefore share digests
+    // (writeInt32(1) === writeFloat64(1)) by construction.
+    SCRATCH_VIEW.setFloat64(0, value | 0, false);
+    for (let i = 0; i < 8; i++) this.mixByte(SCRATCH_BYTES[i] ?? 0);
   }
 
   public writeBoolean(value: boolean): void {
@@ -76,7 +90,7 @@ export class DeterministicHasher {
     }
   }
 
-  /** 16-hex-char digest combining both FNV-1a states. */
+  /** 16-hex-char digest combining both hash states. */
   public digest(): string {
     const a = this.h1 >>> 0;
     const b = (this.h2 ^ this.byteCount) >>> 0;
