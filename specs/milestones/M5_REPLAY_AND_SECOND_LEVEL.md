@@ -2,11 +2,13 @@
 
 ## STATUS
 
-Engineering PASS (2026-09-04). Human playtest gate: OPEN (requested, not yet
-performed — no human has played the replay build or Validation Level 02).
+M5 PASS (2026-09-07): Engineering PASS (2026-09-04) + hash-portability
+hardening (`74a7695`) + human playtest gate APPROVED (2026-09-07).
 
-Automated: 162/162 tests green (`npm run verify`: typecheck + lint + tests +
-build). Browser QA: M5 section 16/16 green; historical sections flap on the
+Automated: 170/170 tests green (`npm run verify`: typecheck + lint + tests +
+build) — 162 pre-hardening + 8 pinned hash-contract tests (see § HASH-
+PORTABILITY HARDENING). Browser QA: M5 section 16/16 green with zero
+console/page errors; historical sections flap on the
 same CDP-timing checks that flap on pristine pre-M5 HEAD in this environment
 (see § AUTOMATED QA / BROWSER QA and the takeover note).
 
@@ -174,6 +176,19 @@ length-prefixed UTF-16 code units. Verification hash, not cryptography. No
 float formatting, no timestamps, no nondeterministic metadata anywhere in
 the hashed content.
 
+## HASH-PORTABILITY HARDENING (commit `74a7695`, post-engineering)
+
+Float64 values were hashed through a native-endian `Float64Array` with a
+hand-reversed byte walk that only yielded big-endian on little-endian
+hosts. `hash.ts` now stores through a `DataView` with explicit big-endian
+order (`setFloat64(..., false)`) and walks bytes forward: the hashed byte
+sequence is identical on every platform and byte-identical to the
+little-endian baseline, so no persisted digest changed. The mixing step is
+deliberately untouched (changing it would invalidate every tape). The
+committed golden fixture was NOT regenerated and remains compatible.
+Pinned by 8 regression tests (`tests/hash.test.ts`) capturing exact digest
+outputs. Post-hardening total: 170/170.
+
 ## RECORDING LIFECYCLE
 
 One replay = one attempt. Recording arms at the first running tick of a live
@@ -298,7 +313,8 @@ levels with unique ids; unknown ids fall back explicitly.
   deterministic finish with mechanics exercised, record → replay pass.
 - Regressions: all 123 pre-M5 tests green unchanged (M1–M4, floorCompat
   golden, hazard CCD, camera parity, interactions).
-- Total: 162/162.
+- Hash hardening (`tests/hash.test.ts`, 8): pinned-output regression tests capturing exact digests across representative float/string/level/state inputs, so any byte-order or mixing change fails loudly.
+- Total: 170/170 (162 pre-hardening + 8 hash-contract).
 
 ## BROWSER QA
 
@@ -342,14 +358,14 @@ end-to-end input coverage.
   gameplay/script changes require the documented regen procedure.
 - Browser QA historical sections flap on CDP-timing checks in loaded
   environments (proven identical on pristine pre-M5 HEAD; unrelated to M5).
-- Human gates (replay UX feel, Level 02 fun) are OPEN by design at this
-  stage.
+- Human gates (replay UX feel, Level 02 fun) are APPROVED (2026-09-07) —
+  M5 fully closed.
 
 ## HUMAN GATE
 
-Playtest requested (see final report): live record → F4 replay → input
-isolation confidence → Level 02 → Level 02 replay. Do NOT approve without
-playing.
+APPROVED (2026-09-07): human playtest confirmed M5 works well — live
+record → F4 replay → input isolation → Level 02 → Level 02 replay gate
+closed. M5 fully closed.
 
 ## DEFINITION OF DONE
 
@@ -363,5 +379,6 @@ playing.
 - [x] Serialization round-trip exact; golden fixture committed + manual gen.
 - [x] Test Level works; Level 02 separate, finishable, replay-verified.
 - [x] Render-cadence independence tested.
-- [x] 162/162 automated green; M5 browser QA 16/16 green; zero errors.
-- [x] Docs updated; human playtest requested (gate OPEN).
+- [x] 170/170 automated green (162 + 8 hash-contract); M5 browser QA 16/16 green; zero errors.
+- [x] Hash byte order hardened (explicit big-endian DataView); golden fixture unchanged + compatible.
+- [x] Docs updated; human playtest APPROVED (2026-09-07) — gate CLOSED.

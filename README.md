@@ -37,10 +37,11 @@ pooled burst feedback) and M2.1 exact swept-path hazard CCD remain in place.
 Cube movement feel human-approved (frozen); death/restart feel human-approved
 (M2 playtest); **ceiling camera/ceiling feel and M4 interaction feel
 human-approved (2026-09-04 playtest on the final integrated M3.3 + M4
-build)**. M5 deterministic replay + Validation Level 02 engineering-complete
+build)**. M5 deterministic replay + Validation Level 02 PASS
 (every attempt records a verifiable fixed-tick input tape, F4 replays with
 live per-tick verification, the second level finishes via real inputs on
-the unmodified engine); human replay/Level-02 feel gate OPEN.
+the unmodified engine); human replay/Level-02 feel gate APPROVED
+(2026-09-07). M0–M5 complete — next: M6 visual production system.
 
 ## Setup
 
@@ -115,12 +116,12 @@ ceiling/ceiling-camera feel gate APPROVED 2026-09-04). M4 Interactive
 Mechanics (jump pads, jump orbs, gravity orbs, speed portals) PASS and
 merged to `main` — `specs/milestones/M4_INTERACTIVE_MECHANICS.md` (human
 interaction-feel gate APPROVED 2026-09-04; M4 fully closed). M5
-Deterministic Replay + Second Level — ENGINEERING PASS —
+Deterministic Replay + Second Level — PASS —
 `specs/milestones/M5_REPLAY_AND_SECOND_LEVEL.md`: every completed attempt
 records its fixed-tick physical input tape and replays it through the real
 simulation with per-tick verification (F4 replays the last attempt; HUD
 badge + F1 replay lines + `__gd3d` probes; committed golden fixture with a
 manual regeneration tool). Validation Level 02 (`?level=validation-02`)
 proves the unmodified engine is level-agnostic (real-input finish +
-verified replay). Human replay/Level-02 feel gate OPEN (playtest
-requested). Next: M6 (see `ROADMAP.md`).
+verified replay). Human replay/Level-02 feel gate APPROVED (2026-09-07).
+M0–M5 complete. Next: M6 visual production system (not started; see `ROADMAP.md`).

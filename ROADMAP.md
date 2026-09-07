@@ -168,7 +168,7 @@ projection parity and overall ceiling feel — M3 fully closed.
 
 ## M4 — Interactive mechanics: PASS (2026-09-04)
 
-Pads, orbs, speed portals, moving hazards. Only on top of a validated Cube.
+Pads, orbs, speed portals; moving obstacles deferred. Only on top of a validated Cube.
 **STATUS (built on `8cfa2c7`, on `main`): COMPLETE mechanically/browser/
 validated, including M3.3 parallel integration (cherry-picked A `d3c76bd`
 + B `d3c250e`; see the M3.3 entry above). HUMAN INTERACTION FEEL GATE =
@@ -194,7 +194,7 @@ automated tests (25 new M4 + 4 imported M3.3), `npm run verify` green,
 browser QA 101/101 green (40 M2 + 27 M3 + 5 M3.1 + 4 M3.2 + 4 M3.3 + 21 M4)
 with zero console/page errors, `qa/screenshots/m4-*` proof set.
 
-## M5 — Replay + deterministic verification + second level: ENGINEERING PASS (2026-09-04)
+## M5 — Replay + deterministic verification + second level: PASS (2026-09-07)
 
 Deterministic replay + second-level architecture proof, zero new gameplay
 mechanics. One completed attempt = one fixed-tick PHYSICAL input tape (one
@@ -217,12 +217,11 @@ separate content on the unmodified engine: real-input playthrough finishes
 (tick 2346) and its live record replays to pass. Implemented across two
 agent sessions (takeover audit preserved the replay core, fixed a
 stale-partial hybrid-tape bug in `startReplay`/`abortReplay` and the Level
-02 lane plan — see the M5 spec). 162/162 automated tests (39 new),
+02 lane plan — see the M5 spec). 170/170 automated tests (39 new M5 + 8 hash-contract hardening — see below),
 `npm run verify` green, browser QA M5 section 16/16 green with zero
 console/page errors (`qa/screenshots/m5-*`); historical QA sections flap on
 the same CDP-timing checks that flap on pristine pre-M5 HEAD in loaded
-environments (proven via control run; no M5 causation). HUMAN REPLAY +
-LEVEL-02 FEEL GATE = OPEN (playtest requested, not yet performed).
+environments (proven via control run; no M5 causation). Hash-portability hardening (commit `74a7695`): `hash.ts` now stores Float64 bytes through an explicit big-endian `DataView.setFloat64(..., false)` — identical bytes on every host, byte-identical to the little-endian baseline, so the persisted golden replay stayed compatible and unchanged (no regen); 8 pinned hash-contract regression tests added (`tests/hash.test.ts`). HUMAN REPLAY + LEVEL-02 FEEL GATE = APPROVED (2026-09-07): human playtest confirmed M5 works well — M5 fully closed (engineering, browser, and human gates all passed). `npm run verify` green; browser QA M5 section 16/16 green with zero console/page errors. Next milestone: M6 — Visual production system.
 
 ## M6 — Visual production system
 
