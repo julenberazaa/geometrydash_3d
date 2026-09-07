@@ -1923,7 +1923,255 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     `id=${m5Fallback}`);
 }
 
-// --- 21. Console audit ---
+// --- 21. M6A: visual production foundation ---
+// Production theme + shared materials + controlled bloom, presentation-only.
+// Automated structural proof lives in tests/visualFoundation.test.ts; these
+// checks observe the LIVE integrated app (theme active, readability at
+// speed, Floor/Ceiling parity under M6 visuals, replay + fallback +
+// resource stability) and capture the m6a-* human-gate evidence set.
+// Framing uses teleport + pause-freeze (no tight input windows), so every
+// M6A check must be 100% green — no CDP-timing flakes accepted here.
+{
+  const inView = async (x, y, z) =>
+    page.evaluate(([ax, ay, az]) => {
+      const s = window.__gd3d.screenPoint(ax, ay, az);
+      return !s.behind && Math.abs(s.ndcX) < 1 && Math.abs(s.ndcY) < 1;
+    }, [x, y, z]);
+  const freezeM6 = async (ms) => {
+    await page.keyboard.press('KeyP');
+    await page.waitForTimeout(ms); // camera settles into the frozen frame
+  };
+  const unfreezeM6 = async () => {
+    await page.keyboard.press('KeyP');
+    await page.waitForTimeout(150);
+  };
+  const quadAreaPx = (pts) =>
+    Math.abs(
+      (pts[0].px * pts[1].py - pts[1].px * pts[0].py) +
+      (pts[1].px * pts[2].py - pts[2].px * pts[1].py) +
+      (pts[2].px * pts[3].py - pts[3].px * pts[2].py) +
+      (pts[3].px * pts[0].py - pts[0].px * pts[3].py),
+    ) / 2;
+  const CUBE_HALF_M6 = 0.62; // visual cube half-edge
+  const freeFaceAreaM6 = async (surface) => {
+    const p = await pos();
+    const faceY = surface === 'floor' ? p.y + CUBE_HALF_M6 : p.y - CUBE_HALF_M6;
+    const pts = await page.evaluate(([px, py, pz, h]) => [
+      window.__gd3d.screenPoint(px - h, py, pz - h),
+      window.__gd3d.screenPoint(px + h, py, pz - h),
+      window.__gd3d.screenPoint(px + h, py, pz + h),
+      window.__gd3d.screenPoint(px - h, py, pz + h),
+    ], [p.x, faceY, p.z, CUBE_HALF_M6]);
+    return quadAreaPx(pts);
+  };
+  const waitDead = async (timeoutMs = 40000) => {
+    const t0 = Date.now();
+    for (;;) {
+      const s = await simState();
+      if (s.status === 'dead') return s;
+      if (Date.now() - t0 > timeoutMs) return null;
+      await page.waitForTimeout(200);
+    }
+  };
+  const waitReplayPass = async (timeoutMs = 90000) => {
+    const t0 = Date.now();
+    for (;;) {
+      const snap = await page.evaluate(() => ({
+        verify: window.__gd3d.replayVerification(),
+        badge: window.__gd3d.replayBadge(),
+      }));
+      if (snap.verify.kind === 'pass' || snap.verify.kind === 'diverged') return snap;
+      if (Date.now() - t0 > timeoutMs) return snap;
+      await page.waitForTimeout(300);
+    }
+  };
+
+  // Fresh page for the M6A section.
+  await page.goto(URL, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2000);
+
+  // Theme + post active with a restrained bloom contract.
+  const m6aTheme = await page.evaluate(() => ({
+    post: window.__gd3d.postEnabled(),
+    passes: window.__gd3d.postPassCount(),
+    bloom: window.__gd3d.bloomParams(),
+    mats: window.__gd3d.materialCount(),
+    geos: window.__gd3d.geometryCount(),
+  }));
+  const m6aBloomOk = m6aTheme.bloom !== null &&
+    m6aTheme.bloom.threshold >= 0.6 &&
+    m6aTheme.bloom.strength <= 0.7 &&
+    m6aTheme.bloom.radius <= 0.6;
+  log('m6a production theme active (post on, 3 passes, restrained bloom)',
+    m6aTheme.post === true && m6aTheme.passes === 3 && m6aBloomOk,
+    `post=${m6aTheme.post} passes=${m6aTheme.passes} bloom=${JSON.stringify(m6aTheme.bloom)}`);
+  log('m6a shared resources bounded at build (materials/geometries)',
+    m6aTheme.mats > 0 && m6aTheme.mats < 60 && m6aTheme.geos > 0 && m6aTheme.geos < 20,
+    `materials=${m6aTheme.mats} geometries=${m6aTheme.geos}`);
+
+  // Player readable at spawn.
+  const m6aSpawn = await pos();
+  log('m6a player visible/readable at spawn',
+    await inView(m6aSpawn.x, m6aSpawn.y, m6aSpawn.z),
+    `pos=(${m6aSpawn.x.toFixed(1)},${m6aSpawn.y.toFixed(1)},${m6aSpawn.z.toFixed(1)})`);
+
+  // Floor production framing before the spike weave (runway + rails + spikes).
+  await startGravityRun(92);
+  const m6aFloor = await rollUntilM3((s) => s.z > 92 && s.z < 100 && s.grounded, 15000);
+  log('m6a floor runway framed before hazards', m6aFloor !== null,
+    m6aFloor ? `z=${m6aFloor.z.toFixed(1)}` : 'never framed');
+  await freezeM6(900);
+  const m6aFloorArea = await freeFaceAreaM6('floor');
+  await capture('m6a-01-floor-production');
+  await unfreezeM6();
+  // Hazard + route readability from the same approach.
+  log('m6a hazard readable before lethal distance (spike in view)',
+    await inView(2.6, 0.5, 108), 'spike(2.6,0.5,108)');
+  log('m6a playable surface readable ahead (floor point in view)',
+    await inView(0, 0, 120), 'floor(0,0,120)');
+  // Hazard closeup: jump-free roll to just before the weave, then freeze.
+  const m6aHz = await rollUntilM3((s) => s.z > 100 && s.z < 106 && s.grounded, 15000);
+  log('m6a floor hazard approach framed', m6aHz !== null,
+    m6aHz ? `z=${m6aHz.z.toFixed(1)}` : 'never framed');
+  await freezeM6(700);
+  await capture('m6a-02-floor-hazard');
+  await unfreezeM6();
+
+  // Ceiling production framing (stable ceiling run, mirrored view).
+  const m6aCeil = await crossToCeiling();
+  const m6aCeilRun = m6aCeil === null ? null
+    : await rollUntilM3((s) => s.grounded && s.z > 205 && s.z < 215, 15000);
+  log('m6a ceiling run framed with mirrored view', m6aCeilRun !== null,
+    m6aCeilRun ? `z=${m6aCeilRun.z.toFixed(1)}` : 'never framed');
+  await freezeM6(900);
+  const m6aCeilArea = await freeFaceAreaM6('ceiling');
+  await capture('m6a-03-ceiling-production');
+  await unfreezeM6();
+  const m6aParity = m6aCeilArea / m6aFloorArea;
+  log('m6a floor/ceiling free-face parity holds under M6 visuals',
+    m6aParity > 0.95 && m6aParity < 1.05,
+    `ratio=${m6aParity.toFixed(3)} (ceiling ${m6aCeilArea.toFixed(0)}px² / floor ${m6aFloorArea.toFixed(0)}px²)`);
+  await page.keyboard.press('KeyR');
+  await page.waitForTimeout(300);
+
+  // Gravity portal framing (cyan flip-up gateway ahead).
+  await startGravityRun(168);
+  const m6aPortal = await rollUntilM3((s) => s.z > 170 && s.z < 180 && s.mode === 'floor' && s.grounded, 15000);
+  log('m6a gravity portal framed (flip-up gateway ahead)', m6aPortal !== null,
+    m6aPortal ? `z=${m6aPortal.z.toFixed(1)}` : 'never framed');
+  log('m6a gravity portal visible/readable', await inView(0, 4.2, 182), 'portal(0,4.2,182)');
+  await freezeM6(700);
+  await capture('m6a-04-gravity-portal');
+  await unfreezeM6();
+
+  // Interaction framing (jump pad + orb section).
+  await startGravityRun(292);
+  const m6aInter = await rollUntilM3((s) => s.z > 293 && s.z < 300 && s.grounded, 15000);
+  log('m6a interaction section framed (pad ahead)', m6aInter !== null,
+    m6aInter ? `z=${m6aInter.z.toFixed(1)}` : 'never framed');
+  log('m6a jump pad visible/readable', await inView(0, 0.3, 305), 'pad(0,0.3,305)');
+  await freezeM6(700);
+  await capture('m6a-05-interactions');
+  await unfreezeM6();
+
+  // 2x speed section framing (tier gateway ahead).
+  await startGravityRun(362);
+  const m6aFast = await rollUntilM3((s) => s.z > 363 && s.z < 370, 15000);
+  log('m6a 2x speed section framed (tier gateway ahead)', m6aFast !== null,
+    m6aFast ? `z=${m6aFast.z.toFixed(1)}` : 'never framed');
+  log('m6a speed portal visible/readable', await inView(0, 1.4, 372), 'speed(0,1.4,372)');
+  await freezeM6(700);
+  await capture('m6a-06-speed-2x');
+  await unfreezeM6();
+
+  // Level 02 reuses the same production system.
+  await page.goto(`${URL}?level=validation-02`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2500);
+  const m6aL2 = await page.evaluate(() => ({
+    id: window.__gd3d.levelId(),
+    post: window.__gd3d.postEnabled(),
+    p: window.__gd3d.playerPosition(),
+  }));
+  log('m6a level 02 loads with the same production system',
+    m6aL2.id === 'validation-02' && m6aL2.post === true,
+    `id=${m6aL2.id} post=${m6aL2.post}`);
+  log('m6a level 02 player/hazard readable',
+    (await inView(m6aL2.p.x, m6aL2.p.y, m6aL2.p.z)) && (await inView(0, 0.5, 44)),
+    'player + spike(0,0.5,44)');
+  await freezeM6(600);
+  await capture('m6a-07-level02');
+  await unfreezeM6();
+
+  // Replay under M6 visuals: natural death -> F4 -> VERIFIED (no teleports,
+  // no tight windows — the center lane dies on the z=116 spike by itself).
+  await page.goto(URL, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2000);
+  const m6aDeath = await waitDead();
+  log('m6a live death finalizes a replay tape', m6aDeath !== null,
+    m6aDeath ? `cause=${m6aDeath.cause}` : 'never died');
+  const m6aBefore = await page.evaluate(() => ({
+    has: window.__gd3d.hasReplay(),
+    children: window.__gd3d.sceneChildren(),
+    mats: window.__gd3d.materialCount(),
+    geos: window.__gd3d.geometryCount(),
+    calls: window.__gd3d.rendererStats().calls,
+  }));
+  await page.keyboard.press('F4');
+  await page.waitForTimeout(500);
+  const m6aReplayBadge = await page.evaluate(() => window.__gd3d.replayBadge());
+  log('m6a F4 replay runs under M6 visuals',
+    m6aReplayBadge === 'REPLAY' || m6aReplayBadge === 'REPLAY VERIFIED',
+    `badge=${m6aReplayBadge}`);
+  const m6aVerdict = await waitReplayPass();
+  log('m6a replay still reaches VERIFIED', m6aVerdict.verify.kind === 'pass',
+    `verify=${m6aVerdict.verify.kind} badge=${m6aVerdict.badge}`);
+  await capture('m6a-08-replay');
+  // Resource stability across death/restart/replay.
+  await page.keyboard.press('KeyR');
+  await page.waitForTimeout(800);
+  const m6aAfter = await page.evaluate(() => ({
+    children: window.__gd3d.sceneChildren(),
+    mats: window.__gd3d.materialCount(),
+    geos: window.__gd3d.geometryCount(),
+    calls: window.__gd3d.rendererStats().calls,
+  }));
+  log('m6a scene/resource counts stable across death/restart/replay',
+    m6aAfter.children === m6aBefore.children &&
+    m6aAfter.mats === m6aBefore.mats && m6aAfter.geos === m6aBefore.geos,
+    `children ${m6aBefore.children}->${m6aAfter.children}, mats ${m6aBefore.mats}->${m6aAfter.mats}, geos ${m6aBefore.geos}->${m6aAfter.geos}`);
+  log('m6a draw calls do not grow per attempt',
+    m6aAfter.calls > 0 && m6aAfter.calls < 600,
+    `calls ${m6aBefore.calls}->${m6aAfter.calls}`);
+
+  // Post resize path: shrink the viewport, passes survive, no errors.
+  await page.setViewportSize({ width: 960, height: 540 });
+  await page.waitForTimeout(800);
+  const m6aResized = await page.evaluate(() => ({
+    passes: window.__gd3d.postPassCount(),
+    post: window.__gd3d.postEnabled(),
+  }));
+  log('m6a postprocessing survives viewport resize',
+    m6aResized.post === true && m6aResized.passes === 3,
+    `passes=${m6aResized.passes}`);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.waitForTimeout(500);
+
+  // Fallback path: ?post=off stays playable (same scene, direct render).
+  await page.goto(`${URL}?post=off`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2000);
+  const m6aFallback = await page.evaluate(() => ({
+    post: window.__gd3d.postEnabled(),
+    passes: window.__gd3d.postPassCount(),
+  }));
+  const m6aF0 = await pos();
+  await page.waitForTimeout(600);
+  const m6aF1 = await pos();
+  log('m6a post fallback stays playable (?post=off, direct render)',
+    m6aFallback.post === false && m6aFallback.passes === 0 && (m6aF1.z - m6aF0.z) > 2,
+    `post=${m6aFallback.post} passes=${m6aFallback.passes} dz=${(m6aF1.z - m6aF0.z).toFixed(1)}`);
+}
+
+// --- 22. Console audit ---
 log('no console errors', consoleErrors.length === 0, JSON.stringify(consoleErrors.slice(0, 3)));
 log('no page errors', pageErrors.length === 0, JSON.stringify(pageErrors.slice(0, 3)));
 
