@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { LoadedLevel } from '../level/levelRuntime';
-import { PALETTE } from '../visuals/palette';
+import type { MaterialLibrary } from './MaterialLibrary';
 
 /** Solids shorter than this carry no face trims (markers, thin inlays). */
 const FACE_TRIM_MIN_HEIGHT = 0.8;
@@ -20,28 +20,27 @@ const UNDER_RAIL_MIN_BOTTOM_Y = 2.0;
 
 /**
  * Level view: builds Three.js representations from level data.
- * Shared geometries + shared materials; colliders remain the gameplay truth,
- * these meshes are visuals only.
+ * Shared library geometries + shared library materials (M6A material
+ * ownership: this view creates Meshes only — never materials/geometries).
+ * Colliders remain the gameplay truth; these meshes are visuals only.
  */
 export class LevelView {
   public readonly group: THREE.Group;
-  private readonly disposables: Array<{ dispose(): void }> = [];
 
-  constructor(level: LoadedLevel) {
+  constructor(
+    level: LoadedLevel,
+    private readonly library: MaterialLibrary,
+  ) {
     this.group = new THREE.Group();
 
-    const box = new THREE.BoxGeometry(1, 1, 1);
-    const spike = new THREE.ConeGeometry(0.5, 1, 4);
-    this.disposables.push(box, spike);
+    const box = library.unitBox;
+    const spike = library.spikeCone;
 
-    const bodyMat = new THREE.MeshLambertMaterial({
-      color: PALETTE.platformBody,
-    });
-    const topMat = new THREE.MeshLambertMaterial({ color: PALETTE.platformTop });
-    const underMat = new THREE.MeshBasicMaterial({ color: PALETTE.platformUnder });
-    const edgeMat = new THREE.MeshBasicMaterial({ color: PALETTE.platformEdge });
-    const hazardMat = new THREE.MeshBasicMaterial({ color: PALETTE.hazardGlow });
-    this.disposables.push(bodyMat, topMat, underMat, edgeMat, hazardMat);
+    const bodyMat = library.routeBody;
+    const topMat = library.routeTop;
+    const underMat = library.routeUnder;
+    const edgeMat = library.routeEdge;
+    const hazardMat = library.hazard;
 
     for (const solid of level.def.solids) {
       const mesh = new THREE.Mesh(box, bodyMat);
@@ -195,7 +194,7 @@ export class LevelView {
       this.group.add(mesh);
     }
 
-    this.buildGravityPortals(level, box);
+    this.buildGravityPortals(level);
   }
 
   /**
@@ -205,23 +204,13 @@ export class LevelView {
    * and ONE shared material per direction (up = cyan, down = warm); zero
    * per-frame work.
    */
-  private buildGravityPortals(level: LoadedLevel, unitBox: THREE.BoxGeometry): void {
+  private buildGravityPortals(level: LoadedLevel): void {
     if (level.gravityPortals.length === 0) return;
-    const frameMatUp = new THREE.MeshBasicMaterial({ color: PALETTE.portalUp });
-    const frameMatDown = new THREE.MeshBasicMaterial({ color: PALETTE.portalDown });
-    const paneMatUp = new THREE.MeshBasicMaterial({
-      color: PALETTE.portalUp,
-      transparent: true,
-      opacity: 0.14,
-      side: THREE.DoubleSide,
-    });
-    const paneMatDown = new THREE.MeshBasicMaterial({
-      color: PALETTE.portalDown,
-      transparent: true,
-      opacity: 0.14,
-      side: THREE.DoubleSide,
-    });
-    this.disposables.push(frameMatUp, frameMatDown, paneMatUp, paneMatDown);
+    const frameMatUp = this.library.portalUp;
+    const frameMatDown = this.library.portalDown;
+    const paneMatUp = this.library.portalPaneUp;
+    const paneMatDown = this.library.portalPaneDown;
+    const unitBox = this.library.unitBox;
 
     // Span the route: lateral extent from the lane layout, vertical extent
     // from the floor up past the ceiling band. Presentation values only.
@@ -259,7 +248,7 @@ export class LevelView {
   }
 
   public dispose(): void {
-    for (const d of this.disposables) d.dispose();
+    // Meshes only — materials/geometries belong to the MaterialLibrary.
     this.group.clear();
   }
 }

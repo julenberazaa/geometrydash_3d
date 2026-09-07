@@ -16,10 +16,16 @@ if (!container) {
   throw new Error('#app container missing from DOM');
 }
 
-const requestedLevelId = new URLSearchParams(window.location.search).get('level');
+const gameParams = new URLSearchParams(window.location.search);
+const requestedLevelId = gameParams.get('level');
 const resolution = resolveLevel(requestedLevelId);
 
-const game = new Game(container, resolution.level);
+// M6A post fallback: `?post=off` forces the direct-render path (same scene,
+// no composer passes) — the game stays fully playable without post.
+const postParam = gameParams.get('post');
+const game = new Game(container, resolution.level, {
+  postEnabled: postParam === null ? undefined : postParam !== 'off',
+});
 game.start();
 
 if (!resolution.ok) {
@@ -69,6 +75,13 @@ declare global {
       };
       rendererStats: () => { calls: number; triangles: number };
       sceneChildren: () => number;
+      // M6A visual-foundation observability (presentation only).
+      materialCount: () => number;
+      geometryCount: () => number;
+      postEnabled: () => boolean;
+      postPassCount: () => number;
+      bloomParams: () => { strength: number; radius: number; threshold: number } | null;
+      setPostEnabled: (enabled: boolean) => void;
       burstActive: () => boolean;
       debugFreezeFrame: (frozen: boolean) => void;
       debugReplayBurst: () => void;
@@ -136,6 +149,15 @@ window.__gd3d = {
   }),
   rendererStats: () => ({ ...game['rendererHost'].stats }),
   sceneChildren: () => game['rendererHost'].sceneChildren,
+  // M6A visual-foundation observability (presentation only).
+  materialCount: () => game['rendererHost'].materialCount,
+  geometryCount: () => game['rendererHost'].geometryCount,
+  postEnabled: () => game['rendererHost'].postEnabled,
+  postPassCount: () => game['rendererHost'].postPassCount,
+  bloomParams: () => game['rendererHost'].bloomParams,
+  setPostEnabled: (enabled: boolean): void => {
+    game['rendererHost'].setPostEnabled(enabled);
+  },
   burstActive: () => game['rendererHost'].deathBurstActive,
   // Debug-only freeze for burst photography (see RendererHost.debugFreezeFrame).
   debugFreezeFrame: (frozen: boolean): void => {

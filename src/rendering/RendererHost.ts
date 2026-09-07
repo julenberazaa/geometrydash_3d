@@ -7,16 +7,26 @@ import { PlayerView } from './PlayerView';
 import { DeathBurstView } from './DeathBurstView';
 import { InteractionView } from './InteractionView';
 import { EnvironmentView } from './EnvironmentView';
+import { MaterialLibrary } from './MaterialLibrary';
+import { PostPipeline } from './PostPipeline';
 import { DebugView } from '../debug/DebugView';
 import { lerp } from '../core/math';
-import { PALETTE } from '../visuals/palette';
+import {
+  RENDERER_CONFIG,
+  resolveProductionTheme,
+  type ProductionTheme,
+} from '../visuals/productionTheme';
 
 /**
  * RendererHost — THE ONLY module allowed to own WebGLRenderer and apply
  * simulation state to Three.js objects.
  *
  * Responsibilities:
- * - create renderer/camera/lights/scene content,
+ * - resolve the production visual theme (renderer-owned; level overlay only),
+ * - own the shared MaterialLibrary (sole material/geometry owner),
+ * - own the PostPipeline (controlled bloom + OutputPass; direct-render
+ *   fallback when disabled),
+ * - configure the renderer once (tone mapping, exposure, color space, DPR),
  * - per rendered frame: interpolate visual transforms between simulation's
  *   previous and current state (gameplay itself never interpolates),
  * - advance the pure-math ChaseCamera with render dt,
@@ -27,12 +37,21 @@ export interface RendererStatsSnapshot {
   triangles: number;
 }
 
+export interface RendererOptions {
+  /** Post pipeline on/off (default per RENDERER_CONFIG; `?post=off` forces off). */
+  postEnabled?: boolean;
+}
+
 export class RendererHost {
   public readonly renderer: THREE.WebGLRenderer;
   public readonly camera: THREE.PerspectiveCamera;
   public readonly scene: THREE.Scene;
   public readonly chaseCamera: ChaseCamera;
+  /** Effective production theme (level overlay applied; gameplay-agnostic). */
+  public readonly theme: ProductionTheme;
 
+  private readonly library: MaterialLibrary;
+  private readonly post: PostPipeline;
   private readonly levelView: LevelView;
   /** M4 interaction visuals + activation VFX (presentation only). */
   private readonly interactionView: InteractionView;
@@ -65,14 +84,28 @@ export class RendererHost {
   constructor(
     container: HTMLElement,
     private readonly simulation: GameSimulation,
+    options: RendererOptions = {},
   ) {
-    // Cap DPR at 1.5 for perf headroom (spec §28); still crisp on HiDPI laptops.
+    // Theme first: every visual decision below derives from it.
+    this.theme = resolveProductionTheme(simulation.level.def);
+    this.library = new MaterialLibrary(this.theme);
+
+    // Centralized renderer configuration (single owner — see
+    // RENDERER_CONFIG / ProductionTheme). ACES tone mapping is honored both
+    // by the composer OutputPass and by the direct-render fallback path.
     this.renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      powerPreference: 'high-performance',
+      antialias: RENDERER_CONFIG.antialias,
+      powerPreference: RENDERER_CONFIG.powerPreference,
     });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = this.theme.exposure;
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    // Manual info accounting: under the composer path `renderer.info` would
+    // otherwise only reflect the final quad pass. Reset per presented frame
+    // so `stats` honestly reports scene + post cost (QA comparability).
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.theme.dprCap));
     this.renderer.setSize(container.clientWidth, container.clientHeight);
+    this.renderer.info.autoReset = false;
     container.appendChild(this.renderer.domElement);
 
     this.camera = new THREE.PerspectiveCamera(
@@ -82,16 +115,16 @@ export class RendererHost {
       400,
     );
 
-    const env = new EnvironmentView(simulation.level.def.finishZ + 20);
+    const env = new EnvironmentView(simulation.level.def.finishZ + 20, this.theme);
     this.scene = env.scene;
 
-    this.levelView = new LevelView(simulation.level);
+    this.levelView = new LevelView(simulation.level, this.library);
     this.scene.add(this.levelView.group);
 
-    this.interactionView = new InteractionView(simulation.level, simulation);
+    this.interactionView = new InteractionView(simulation.level, simulation, this.library, this.theme);
     this.scene.add(this.interactionView.group);
 
-    this.playerViewInternal = new PlayerView();
+    this.playerViewInternal = new PlayerView(this.library);
     this.scene.add(this.playerViewInternal.group);
 
     this.deathBurst = new DeathBurstView();
@@ -101,24 +134,29 @@ export class RendererHost {
     this.debugView.buildColliders(simulation.level.world);
     this.scene.add(this.debugView.group);
 
-    // Lights: hemisphere + one directional; cheap.
-    const hemi = new THREE.HemisphereLight(0x9d7bff, 0x140a24, 0.9);
-    const dir = new THREE.DirectionalLight(0xb9a5ff, 1.15);
+    // Minimum viable lighting (theme-owned values): hemisphere + one
+    // directional. No point lights — emissive/material design carries the
+    // neon response (M6A lighting audit decision).
+    const hemi = new THREE.HemisphereLight(
+      this.theme.hemiSky,
+      this.theme.hemiGround,
+      this.theme.hemiIntensity,
+    );
+    const dir = new THREE.DirectionalLight(this.theme.dirColor, this.theme.dirIntensity);
     dir.position.set(-14, 26, -10);
     this.lights.add(hemi, dir);
     this.scene.add(this.lights);
 
     // Finish gate marker at finishZ.
-    const gate = new THREE.Mesh(
-      new THREE.BoxGeometry(16, 9, 0.35),
-      new THREE.MeshBasicMaterial({
-        color: PALETTE.finishGate,
-        transparent: true,
-        opacity: 0.32,
-      }),
-    );
+    const gate = new THREE.Mesh(this.library.unitBox, this.library.finishGate);
+    gate.scale.set(16, 9, 0.35);
     gate.position.set(0, 4.5, simulation.level.def.finishZ);
     this.scene.add(gate);
+
+    // Controlled bloom foundation (theme-parameterized; direct-render
+    // fallback when disabled — game stays fully playable either way).
+    const postEnabled = options.postEnabled ?? RENDERER_CONFIG.enabledByDefault;
+    this.post = new PostPipeline(this.renderer, this.scene, this.camera, this.theme, postEnabled);
 
     this.chaseCamera = new ChaseCamera();
     this.applyFrame(0, 0);
@@ -209,7 +247,10 @@ export class RendererHost {
     this.camera.position.set(camPos.x, camPos.y + this.heightKick, camPos.z);
     this.camera.up.set(0, 1, 0); // never rolls
     this.camera.lookAt(look.x, look.y, look.z);
-    this.renderer.render(this.scene, this.camera);
+    // Composer path when enabled (controlled bloom), direct render fallback
+    // otherwise — identical scene, no gameplay dependency either way.
+    this.renderer.info.reset();
+    this.post.render();
   }
 
   public setDebugCollidersVisible(visible: boolean): void {
@@ -230,6 +271,34 @@ export class RendererHost {
   /** Live scene child count (leak guard for repeated death/respawn QA). */
   public get sceneChildren(): number {
     return this.scene.children.length;
+  }
+
+  /** Shared material count (resource-guard observability). */
+  public get materialCount(): number {
+    return this.library.materialCount;
+  }
+
+  /** Shared geometry count (resource-guard observability). */
+  public get geometryCount(): number {
+    return this.library.geometryCount;
+  }
+
+  /** Post pipeline state (QA observability). */
+  public get postEnabled(): boolean {
+    return this.post.isEnabled;
+  }
+
+  public get postPassCount(): number {
+    return this.post.passCount;
+  }
+
+  public get bloomParams(): { strength: number; radius: number; threshold: number } | null {
+    return this.post.liveBloomParams;
+  }
+
+  /** Runtime post toggle (debug/QA; presentation only). */
+  public setPostEnabled(enabled: boolean): void {
+    this.post.setEnabled(enabled);
   }
 
   /**
@@ -290,15 +359,18 @@ export class RendererHost {
     this.camera.aspect = width / Math.max(1, height);
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
+    this.post.resize(width, height);
   }
 
   public dispose(): void {
+    this.post.dispose();
     this.renderer.dispose();
     this.levelView.dispose();
     this.interactionView.dispose();
     this.playerViewInternal.dispose();
     this.deathBurst.dispose();
     this.debugView.dispose();
+    this.library.dispose();
     this.renderer.domElement.remove();
   }
 }

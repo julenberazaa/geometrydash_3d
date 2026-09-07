@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { LevelView } from '../src/rendering/LevelView';
 import { loadLevel } from '../src/level/levelRuntime';
+import { makeTestLibrary } from './helpers/visuals';
 import { TEST_LEVEL } from '../src/content/levels/testLevel01';
 import type { LevelDefinition } from '../src/level/levelDefinition';
 
@@ -65,7 +66,7 @@ const runwayA = findSolid(TEST_LEVEL, 10, -0.5);
 
 describe('underside rail parity (M3.2)', () => {
   it('gives every elevated ceiling run surface 4 underside rails (2 longitudinal)', () => {
-    const view = new LevelView(loadLevel(TEST_LEVEL));
+    const view = new LevelView(loadLevel(TEST_LEVEL), makeTestLibrary());
     for (const slab of [slabA, slabB]) {
       const bottomY = slab.center.y - slab.halfExtents.y;
       expect(bottomY).toBeGreaterThanOrEqual(2);
@@ -93,7 +94,7 @@ describe('underside rail parity (M3.2)', () => {
   });
 
   it('keeps ground-resting and buried bottoms rail-free (no poke-through)', () => {
-    const view = new LevelView(loadLevel(TEST_LEVEL));
+    const view = new LevelView(loadLevel(TEST_LEVEL), makeTestLibrary());
     // Runway A: bottom y = -1 (buried).
     expect(
       anyRailAtY(view.group, runwayA.center.y - runwayA.halfExtents.y - 0.01),
@@ -105,7 +106,7 @@ describe('underside rail parity (M3.2)', () => {
   });
 
   it('keeps the M3.1 underside inset on the ceiling run surfaces', () => {
-    const view = new LevelView(loadLevel(TEST_LEVEL));
+    const view = new LevelView(loadLevel(TEST_LEVEL), makeTestLibrary());
     for (const slab of [slabA, slabB]) {
       const bottomY = slab.center.y - slab.halfExtents.y;
       const insets = view.group.children.filter(

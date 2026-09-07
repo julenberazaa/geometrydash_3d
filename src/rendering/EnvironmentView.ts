@@ -1,19 +1,28 @@
 import * as THREE from 'three';
-import { PALETTE } from '../visuals/palette';
+import type { ProductionTheme } from '../visuals/productionTheme';
 import { mulberry32 } from '../core/math';
 
 /**
- * Cheap original environment: fog, gradient sky, starfield points, a few
- * emissive pillars for parallax. No expensive effects; all shared materials.
+ * Production environment (M6A): fog, near-black gradient backdrop, a
+ * deterministic starfield and distant emissive pillars for parallax.
+ *
+ * Lowest gameplay priority by design: dim silhouettes that reinforce motion
+ * and depth without competing with the player/hazard/route hierarchy. No
+ * expensive effects; library-independent shared materials owned here and
+ * disposed with the view (the environment is per-RendererHost, built once —
+ * no per-frame allocation, no restart/replay growth).
+ *
+ * Fog + background come from the resolved ProductionTheme (per-level route
+ * identity flows through; the shared production mood stays constant).
  */
 export class EnvironmentView {
   public readonly scene: THREE.Scene;
   private readonly disposables: Array<{ dispose(): void }> = [];
 
-  constructor(levelLengthZ: number) {
+  constructor(levelLengthZ: number, theme: ProductionTheme) {
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(PALETTE.background);
-    this.scene.fog = new THREE.Fog(PALETTE.fog, 30, 130);
+    this.scene.background = new THREE.Color(theme.background);
+    this.scene.fog = new THREE.Fog(theme.fogColor, theme.fogNear, theme.fogFar);
 
     // --- Star points (single Points object, deterministic layout) ---
     const rand = mulberry32(20260826);
@@ -28,20 +37,22 @@ export class EnvironmentView {
     const starGeo = new THREE.BufferGeometry();
     starGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     const starMat = new THREE.PointsMaterial({
-      color: PALETTE.starField,
+      color: theme.starField,
       size: 0.55,
       sizeAttenuation: true,
       transparent: true,
-      opacity: 0.75,
+      opacity: 0.6,
       fog: false,
     });
     this.disposables.push(starGeo, starMat);
     this.scene.add(new THREE.Points(starGeo, starMat));
 
     // --- Distant emissive pillars (parallax dressing, both sides) ---
+    // Kept deliberately darker than the route edge language: silhouettes,
+    // not light sources. Below the bloom threshold by construction.
     const pillarGeo = new THREE.BoxGeometry(1, 1, 1);
-    const pillarMat = new THREE.MeshBasicMaterial({ color: 0x1b1038 });
-    const windowMat = new THREE.MeshBasicMaterial({ color: 0x3c1f66 });
+    const pillarMat = new THREE.MeshBasicMaterial({ color: 0x181031 });
+    const windowMat = new THREE.MeshBasicMaterial({ color: 0x352063 });
     this.disposables.push(pillarGeo, pillarMat, windowMat);
     const randP = mulberry32(7777);
     for (let i = 0; i < 26; i++) {

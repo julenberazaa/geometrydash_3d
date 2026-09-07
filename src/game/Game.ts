@@ -2,7 +2,7 @@ import { FixedStepLoop } from '../core/FixedStepLoop';
 import { SIMULATION_DT, SIMULATION_HZ } from '../core/constants';
 import { InputSystem } from '../input/InputSystem';
 import { GameSimulation } from './GameSimulation';
-import { RendererHost } from '../rendering/RendererHost';
+import { RendererHost, type RendererOptions } from '../rendering/RendererHost';
 import { DeathSfx } from '../audio/deathSfx';
 import { Hud } from '../ui/Hud';
 import { DebugOverlay } from '../debug/DebugOverlay';
@@ -38,6 +38,7 @@ export class Game {
   constructor(
     private readonly container: HTMLElement,
     levelDef: LevelDefinition = TEST_LEVEL,
+    rendererOptions: RendererOptions = {},
   ) {
     this.deathSfx = new DeathSfx();
     this.simulation = new GameSimulation(levelDef, {
@@ -56,7 +57,7 @@ export class Game {
     // the live-vs-tape input source each fixed tick and verifies playback.
     // GameSimulation never knows replay exists.
     this.replay = new ReplayCoordinator(this.simulation);
-    this.rendererHost = new RendererHost(container, this.simulation);
+    this.rendererHost = new RendererHost(container, this.simulation, rendererOptions);
     this.hud = new Hud(container);
     this.debugOverlay = new DebugOverlay(container);
 

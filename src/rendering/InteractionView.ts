@@ -2,15 +2,16 @@ import * as THREE from 'three';
 import type { GameSimulation } from '../game/GameSimulation';
 import type { LoadedLevel } from '../level/levelRuntime';
 import type { InteractionOrbDef } from '../level/levelDefinition';
-import { PALETTE, speedTierColor } from '../visuals/palette';
+import type { MaterialLibrary } from './MaterialLibrary';
+import type { ProductionTheme } from '../visuals/productionTheme';
 
 /**
  * InteractionView (M4): procedural visuals for pads, orbs and speed portals,
  * built from level data — PURE presentation. Activation lives only in the
  * simulation; this view reads `isInteractionUsed` for the dim-after-use
  * state and edge-detects `interactionEventCount` to fire a restrained pooled
- * activation ring. Shared geometries; shared live materials; per-ring VFX
- * materials are created ONCE (pooled, no per-frame allocation).
+ * activation ring. Library geometries/materials (M6A ownership); pooled ring
+ * materials are owned by the library (fixed set, no per-frame allocation).
  */
 
 /** Pooled activation rings: lifetime, max simultaneous effects. */
@@ -28,14 +29,13 @@ interface PooledRing {
 interface DimmableEntry {
   id: string;
   meshes: THREE.Mesh[];
-  liveMaterial: THREE.MeshBasicMaterial;
+  liveMaterial: THREE.Material;
   /** Idle-bob base Y (orbs only; pads/portals do not bob). */
   baseY: number | null;
 }
 
 export class InteractionView {
   public readonly group: THREE.Group = new THREE.Group();
-  private readonly disposables: Array<{ dispose(): void }> = [];
 
   private readonly dimmables: DimmableEntry[] = [];
   private readonly dimMaterial: THREE.MeshBasicMaterial;
@@ -44,22 +44,37 @@ export class InteractionView {
   private lastEventCount = 0;
   /** Presentation clock for idle orb motion (render-side only). */
   private clock = 0;
+  /** Semantic VFX colors (theme-owned; material color is set per event). */
+  private readonly theme: ProductionTheme;
+  private readonly library: MaterialLibrary;
+
+  /** Shared per-tier library material (cached; never per-portal). */
+  private speedTierMaterial(multiplier: number): THREE.Material {
+    return this.library.speedTier(multiplier);
+  }
+
+  /** Library-owned fixed ring-material set (reused, never allocated). */
+  private ringPoolMaterials(): readonly THREE.MeshBasicMaterial[] {
+    return this.library.ringMaterials();
+  }
 
   constructor(
     level: LoadedLevel,
     private readonly simulation: GameSimulation,
+    library: MaterialLibrary,
+    theme: ProductionTheme,
   ) {
-    const unitBox = new THREE.BoxGeometry(1, 1, 1);
-    const sphere = new THREE.SphereGeometry(0.42, 18, 14);
-    const halo = new THREE.TorusGeometry(0.62, 0.045, 8, 36);
-    const chevron = new THREE.ConeGeometry(0.26, 0.55, 4);
-    this.disposables.push(unitBox, sphere, halo, chevron);
+    this.library = library;
+    this.theme = theme;
+    const unitBox = library.unitBox;
+    const sphere = library.orbSphere;
+    const halo = library.orbHalo;
+    const chevron = library.chevron;
 
-    const padMat = new THREE.MeshBasicMaterial({ color: PALETTE.padJump });
-    const orbJumpMat = new THREE.MeshBasicMaterial({ color: PALETTE.orbJump });
-    const orbGravityMat = new THREE.MeshBasicMaterial({ color: PALETTE.orbGravity });
-    this.dimMaterial = new THREE.MeshBasicMaterial({ color: PALETTE.interactionDim });
-    this.disposables.push(padMat, orbJumpMat, orbGravityMat, this.dimMaterial);
+    const padMat = library.padJump;
+    const orbJumpMat = library.orbJump;
+    const orbGravityMat = library.orbGravity;
+    this.dimMaterial = library.interactionDim;
 
     this.buildPads(level, unitBox, padMat);
     this.buildOrbs(level, sphere, halo, orbJumpMat, orbGravityMat);
@@ -67,13 +82,16 @@ export class InteractionView {
     this.buildRingPool(halo);
   }
 
-  /** Jump pads: a glowing slab filling the trigger volume + a thin base
-   *  frame. Floor pads sit on top faces; ceiling pads mirror downward (the
-   *  trigger data encodes the mount, the visual just follows it). */
+  /**
+   * Jump pads: a glowing slab filling the trigger volume + a thin base
+   * frame. Floor pads sit on top faces; ceiling pads mirror downward (the
+   * trigger data encodes the mount, the visual just follows it). `liveMat`
+   * is the library accent material for pads.
+   */
   private buildPads(
     level: LoadedLevel,
     unitBox: THREE.BoxGeometry,
-    padMat: THREE.MeshBasicMaterial,
+    padMat: THREE.Material,
   ): void {
     for (const pad of level.jumpPads) {
       const slab = new THREE.Mesh(unitBox, padMat);
@@ -104,12 +122,12 @@ export class InteractionView {
     level: LoadedLevel,
     sphere: THREE.SphereGeometry,
     halo: THREE.TorusGeometry,
-    jumpMat: THREE.MeshBasicMaterial,
-    gravityMat: THREE.MeshBasicMaterial,
+    jumpMat: THREE.Material,
+    gravityMat: THREE.Material,
   ): void {
     const build = (
       defs: readonly InteractionOrbDef[],
-      material: THREE.MeshBasicMaterial,
+      material: THREE.Material,
     ): void => {
       for (const orb of defs) {
         const core = new THREE.Mesh(sphere, material);
@@ -130,16 +148,16 @@ export class InteractionView {
   }
 
   /** Speed portals: a tier-colored gateway + one forward chevron per tier
-   *  step — tier reads from color AND chevron count, never tiny text. */
+   *  step — tier reads from color AND chevron count, never tiny text.
+   *  Tier materials are cached in the library (rare, created once). */
   private buildSpeedPortals(
     level: LoadedLevel,
     unitBox: THREE.BoxGeometry,
     chevron: THREE.ConeGeometry,
   ): void {
     for (const portal of level.speedPortals) {
-      // Per-portal material (rare objects, created once, shared by its parts).
-      const mat = new THREE.MeshBasicMaterial({ color: speedTierColor(portal.multiplier) });
-      this.disposables.push(mat);
+      // Shared per-tier library material (not per-portal).
+      const mat = this.speedTierMaterial(portal.multiplier);
 
       const lateralHalf = 3.2;
       const ringHalf = 1.4;
@@ -167,19 +185,13 @@ export class InteractionView {
     }
   }
 
-  /** Pooled activation rings (fixed allocation at construction). */
+  /** Pooled activation rings (library-owned fixed material set). */
   private buildRingPool(halo: THREE.TorusGeometry): void {
-    for (let i = 0; i < RING_POOL_SIZE; i++) {
-      const material = new THREE.MeshBasicMaterial({
-        color: 0xffffff,
-        transparent: true,
-        opacity: 0,
-      });
+    for (const material of this.ringPoolMaterials()) {
       const mesh = new THREE.Mesh(halo, material);
       mesh.visible = false;
       this.group.add(mesh);
       this.ringPool.push({ mesh, material, age: 0, active: false });
-      this.disposables.push(material);
     }
   }
 
@@ -237,10 +249,10 @@ export class InteractionView {
     ring.mesh.rotation.z = 0;
     const color =
       sim.lastInteraction.kind === 'gravityOrb'
-        ? PALETTE.orbGravity
+        ? this.theme.orbGravity
         : sim.lastInteraction.kind === 'speedPortal'
           ? 0xffffff
-          : PALETTE.orbJump;
+          : this.theme.orbJump;
     ring.material.color.setHex(color);
     ring.material.opacity = 0.85;
     ring.mesh.scale.setScalar(0.5);
@@ -267,7 +279,7 @@ export class InteractionView {
   }
 
   public dispose(): void {
-    for (const d of this.disposables) d.dispose();
+    // Meshes only — geometries/materials belong to the MaterialLibrary.
     this.group.clear();
   }
 }
