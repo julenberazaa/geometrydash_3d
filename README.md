@@ -41,7 +41,11 @@ build)**. M5 deterministic replay + Validation Level 02 PASS
 (every attempt records a verifiable fixed-tick input tape, F4 replays with
 live per-tick verification, the second level finishes via real inputs on
 the unmodified engine); human replay/Level-02 feel gate APPROVED
-(2026-09-07). M0–M5 complete — next: M6 visual production system.
+(2026-09-07). M0–M5 complete. M6A visual production foundation
+engineering-complete (production theme + shared materials + controlled
+bloom/post, zero gameplay change, 182/182 tests, M6A browser QA 24/24
+green, golden replay intact) — HUMAN VISUAL GATE OPEN
+(`specs/milestones/M6_VISUAL_PRODUCTION_SYSTEM.md`).
 
 ## Setup
 
@@ -124,4 +128,5 @@ badge + F1 replay lines + `__gd3d` probes; committed golden fixture with a
 manual regeneration tool). Validation Level 02 (`?level=validation-02`)
 proves the unmodified engine is level-agnostic (real-input finish +
 verified replay). Human replay/Level-02 feel gate APPROVED (2026-09-07).
-M0–M5 complete. Next: M6 visual production system (not started; see `ROADMAP.md`).
+M0–M5 complete. M6A visual production foundation engineering-complete —
+HUMAN VISUAL GATE OPEN (see `specs/milestones/M6_VISUAL_PRODUCTION_SYSTEM.md`).

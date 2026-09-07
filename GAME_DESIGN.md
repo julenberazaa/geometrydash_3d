@@ -249,3 +249,14 @@ portals and the trigger infrastructure shipped in M4 — §6.1.)
 `normal.png` / `cohete.png` / `arriba.png` are visual MOOD references only
 (neon-on-dark modular 3D, cyan player, orange hazards, readable void). All
 gameplay is real runtime 3D geometry. Never ship reference pixels.
+
+## 9. Visual language — CURRENT (M6A foundation)
+
+Deliberate production hierarchy (presentation-only; gameplay in §§1–6 is
+unaffected): player (cyan, highest priority) > hazards (warm orange,
+readable before contact, never bloom-hidden) > playable route (dark body +
+violet/blue edge language, obvious surface plane) > interactions (semantic
+accents: yellow = jump impulse, blue = gravity, per-tier speed colors) >
+environment (depth only, never competes). Dark surfaces stay dark; bloom
+reinforces edges instead of washing the scene. The Cube reads identically
+on Floor and Ceiling (free-face accents on both faces; §4 symmetry holds).

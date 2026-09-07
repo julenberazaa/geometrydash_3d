@@ -263,7 +263,7 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   stale partial can never finalize into a hybrid tape (regression-pinned).
   `hudBadge`, `exportLastReplay`, tick/frame observability.
 
-## 8. Presentation (`src/camera/`, `src/rendering/`, `src/ui/`, `src/debug/`)
+## 8. Presentation (`src/camera/`, `src/rendering/`, `src/ui/`, `src/debug/`, `src/visuals/`)
 
 - `ChaseCamera` (pure math): track-centered + tiny damped bias (max 0.55 u,
   factor 0.12), follow 8.5 / look-ahead 10 / FOV 62, no roll, render-dt
@@ -289,12 +289,33 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   across the real full-level playthrough is pinned by
   `tests/cameraFraming.test.ts` (level-data-aware auditor; the camera itself
   still never reads level data).
-- `RendererHost`: SOLE owner of `WebGLRenderer`. Per frame interpolates
+- `RendererHost`: SOLE owner of `WebGLRenderer`. Resolves the production
+  theme (`resolveProductionTheme`, renderer-owned with a per-level route
+  overlay) and owns the shared `MaterialLibrary` (sole material/geometry
+  owner — views create Meshes only, never allocate per-frame, dispose
+  nothing) plus the `PostPipeline` (RenderPass → UnrealBloomPass →
+  OutputPass, theme-parameterized, resize-safe, disposable, with a
+  direct-render fallback via `?post=off` / `setPostEnabled`). Centralized
+  renderer config (ACES tone mapping, exposure 1.15, sRGB, DPR cap 1.5) +
+  minimum lighting (one hemisphere + one directional, theme values — no
+  point lights). Manual `renderer.info` accounting per frame (honest
+  scene + post cost). Per frame interpolates
   visuals between `prevPosition`→`position` (gameplay never interpolates),
-  advances camera, exposes `renderer.info` stats. DPR capped at 1.5. QA probe
+  advances camera, exposes `renderer.info` stats. QA probe
   support: `projectToScreen(x,y,z)` (live-camera world→NDC/pixel projection;
-  observability only, cold path).
-- `PlayerView`: original procedural cyan cube (visual 1.24 vs collider 1.1);
+  observability only, cold path) + `materialCount` / `geometryCount` /
+  `postEnabled` / `postPassCount` / `bloomParams`.
+- `productionTheme.ts` (`src/visuals/`, M6A): ONE owner for all visual tuning
+  (palette hierarchy, material response, fog, lights, exposure,
+  bloom 0.45/0.5/0.8 under BLOOM_CONTRACT, DPR cap). Renderer-only: the
+  level fingerprint never reads it (replay-compatible restyling, pinned).
+  `LevelDefinition.theme` (previously written but never read) is now the
+  per-level route overlay — same code path for every level, no engine
+  special-case.
+- `PlayerView`: production Cube (M6A) — dark cyan metal body + bright
+  emissive free-face accents on BOTH faces (top = Floor free face, bottom =
+  Ceiling free face; children of the cube so they inherit tumble/rest roll)
+  + cyan edge lines + camera-side marker. Visual 1.24 vs collider 1.1;
   airtime tumble is render-only and snaps to rest on landing — rest
   orientation aligns to the surface normal (180° Z roll presentation on
   Ceiling; the CAMERA never rolls and the collider never rotates). Collider
@@ -306,9 +327,10 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   translucent pane + neon frame, zero per-frame work). Portal triggering is
   simulation-only; the visuals are pure presentation.
 - `InteractionView` (M4, owned by `RendererHost`): builds pad/orb/speed-portal
-  visuals from level data (shared box/sphere/torus/cone geometries, shared
-  live materials, per-portal tier materials) plus the activation VFX — a
-  pooled ring set (8 rings, materials allocated once) edge-detected from the
+  visuals from level data (library box/sphere/halo/chevron geometries,
+  library emissive accent materials, per-tier cached speed materials) plus the
+  activation VFX — a pooled ring set (8 rings, library-owned fixed material
+  set) edge-detected from the
   simulation's `interactionEventCount` (pure presentation read; VFX never
   drives gameplay). Used interactions dim via `isInteractionUsed` polling;
   orbs idle-bob (render-side only). Original palette language: yellow family
@@ -325,8 +347,10 @@ fixed-tick PHYSICAL input tape plus verification evidence.
 - `DeathSfx` (`src/audio/`, M2): lazy guarded Web Audio death blip (0.18 s),
   created on first user gesture; silence-on-failure; gameplay never depends
   on it.
-- `LevelView` (shared geometries/materials; M1.1/M1.2 face applique — thin
-  unlit trims in the shared edge material riding PROUD of solid faces:
+- `LevelView` builds route/hazard/portal meshes from level data (library
+  unit-box/cone geometries, library route/hazard/portal materials — no owned
+  materials/geometries; M1.1/M1.2 face applique — thin emissive trims in the
+  shared edge material riding PROUD of solid faces:
   outboard corner posts, front-face bottom strips (gap faces read as framed
   portals), center seams on faces ≥ 6 wide; M3.1 underside inset — a dim
   UNLIT panel (`PALETTE.platformUnder`) riding proud of each tall solid's
@@ -343,7 +367,9 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   Cube silhouette occlude the ceiling surface ~4..16 u ahead, so the lateral
   underside edges are the only viable forward cue); solids < 0.8
   tall and all hazards untouched — no new systems), `EnvironmentView` (fog,
-  deterministic starfield/pillars — seeded PRNG, visuals only), finish gate.
+  deterministic starfield/pillars — seeded PRNG, visuals only;
+  theme-driven, below the bloom threshold by construction), finish gate
+  (library material).
 - `Hud`: level name, real progress %, attempt count, key help, messages.
   M5 adds the minimal replay badge (`REPLAY` / `REPLAY VERIFIED` /
   `REPLAY DIVERGED` / `REPLAY REJECTED`, hidden otherwise) driven by `Game`
@@ -513,6 +539,9 @@ fixed-tick PHYSICAL input tape plus verification evidence.
 | Engine is level-agnostic: Level 02 runs with zero engine changes and finishes via real inputs | `level02` tests (distinct content, scripted finish, record→replay) + browser QA m5 section |
 | ONE speed authority: level baseForwardSpeed × sim multiplier; 1× bit-identical; R/death reset | `interactions` speed tests + `floorCompat` golden gate |
 | Reference PNGs never runtime assets | Repo/runtime search + visual review |
+| Visual theme changes never alter gameplay or fingerprints; sim imports no rendering | `visualFoundation` theme/fingerprint + import-boundary tests + golden replay (unit + in-page) |
+| Shared materials/geometries only; no per-frame allocation; bounded resources | `visualFoundation` library tests + browser QA resource/draw-call guards |
+| Controlled bloom (contract-pinned), resize-safe post, playable no-post fallback | `visualFoundation` contract tests + browser QA m6a resize/fallback checks |
 | No milestone passes with failing verification | `npm run verify` + `AGENTS.md` process rule |
 
 ## 11. Known non-defects / deferred perf notes

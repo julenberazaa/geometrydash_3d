@@ -223,10 +223,24 @@ console/page errors (`qa/screenshots/m5-*`); historical QA sections flap on
 the same CDP-timing checks that flap on pristine pre-M5 HEAD in loaded
 environments (proven via control run; no M5 causation). Hash-portability hardening (commit `74a7695`): `hash.ts` now stores Float64 bytes through an explicit big-endian `DataView.setFloat64(..., false)` — identical bytes on every host, byte-identical to the little-endian baseline, so the persisted golden replay stayed compatible and unchanged (no regen); 8 pinned hash-contract regression tests added (`tests/hash.test.ts`). HUMAN REPLAY + LEVEL-02 FEEL GATE = APPROVED (2026-09-07): human playtest confirmed M5 works well — M5 fully closed (engineering, browser, and human gates all passed). `npm run verify` green; browser QA M5 section 16/16 green with zero console/page errors. Next milestone: M6 — Visual production system.
 
-## M6 — Visual production system
+## M6 — Visual production system: IN PROGRESS (M6A engineering complete, human visual gate OPEN)
 
-Themes, neon materials, trails, particles, controlled bloom, triggers,
-performance pass (incl. hot-loop allocation review per `ARCHITECTURE.md` §11).
+M6A foundation (production visual language + material/lighting/post
+foundation) is ENGINEERING-COMPLETE on `main`: renderer-owned production
+theme (`src/visuals/productionTheme.ts`, bloom contract + ACES + exposure in
+one owner), shared `MaterialLibrary` (26 materials / 8 geometries, zero
+per-frame allocation, disposable), `PostPipeline` (RenderPass →
+UnrealBloomPass → OutputPass, resize-safe, `?post=off` fallback), production
+treatment for route/hazards/player/portals/interactions/environment,
+per-level route overlay (validation-02 keeps its teal identity, same code
+path), Floor/Ceiling parity re-proven (live free-face ratio 1.000, zero
+camera changes). ZERO gameplay change: sim untouched, 182/182 automated
+tests (12 new visual-foundation), M6A browser QA 24/24 green with zero
+console/page errors, golden replay verifies unchanged (unit + in-page),
+`qa/screenshots/m6a-*` evidence set. Spec:
+`specs/milestones/M6_VISUAL_PRODUCTION_SYSTEM.md`. HUMAN VISUAL GATE = OPEN
+(visual-direction approval required before M6B). M6B (trails/particles/juice),
+M6C (triggers), M6D (performance closeout): PLANNED, not started.
 
 ## M7 — 45–60 s Cube vertical slice
 
