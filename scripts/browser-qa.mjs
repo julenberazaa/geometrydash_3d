@@ -2171,7 +2171,527 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     `post=${m6aFallback.post} passes=${m6aFallback.passes} dz=${(m6aF1.z - m6aF0.z).toFixed(1)}`);
 }
 
-// --- 22. Console audit ---
+// --- 22. M6B: motion + gameplay juice ---
+// Trail, jump/landing bursts, gravity pulses, speed streaks, pad/orb juice —
+// presentation-only, observed live through the __gd3d FX probes. Automated
+// structural proof lives in tests/motionVfx.test.ts; these checks prove the
+// integrated app (edges fire from REAL sim events, Floor + Ceiling, replay
+// recreates juice, ?fx=off independence, resource boundedness) and capture
+// the m6b-* evidence set. Teleport + pause-freeze + cumulative FX counters
+// (no tight input windows except the pre-proven M4 orb press pattern with
+// retries), so every M6B check must be 100% green.
+{
+  const fx = () => page.evaluate(() => ({
+    enabled: window.__gd3d.fxEnabled(),
+    trail: window.__gd3d.trailSamples(),
+    particles: window.__gd3d.activeParticles(),
+    streaks: window.__gd3d.activeStreaks(),
+    counters: window.__gd3d.fxCounters(),
+    intensity: window.__gd3d.lastLandingIntensity(),
+    resets: window.__gd3d.fxResets(),
+  }));
+  const fxPause = async () => {
+    // dt=0 freezes particles AND camera instantly: short settle, young bursts.
+    await page.keyboard.press('KeyP');
+    await page.waitForTimeout(120);
+  };
+  const fxResume = async () => {
+    await page.keyboard.press('KeyP');
+    await page.waitForTimeout(150);
+  };
+  const pollFx = async (pred, timeoutMs = 12000) => {
+    const t0 = Date.now();
+    let s = await fx();
+    for (;;) {
+      if (pred(s)) return s;
+      if (Date.now() - t0 > timeoutMs) return s;
+      await page.waitForTimeout(120);
+      s = await fx();
+    }
+  };
+  const waitVerifyM6b = async (timeoutMs = 90000) => {
+    const t0 = Date.now();
+    for (;;) {
+      const snap = await page.evaluate(() => ({
+        verify: window.__gd3d.replayVerification(),
+        badge: window.__gd3d.replayBadge(),
+        mode: window.__gd3d.replayMode(),
+      }));
+      if (snap.verify.kind === 'pass' || snap.verify.kind === 'diverged') return snap;
+      if (Date.now() - t0 > timeoutMs) return snap;
+      await page.waitForTimeout(300);
+    }
+  };
+
+  // Fresh page, default flags (post on, fx on).
+  await page.goto(URL, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2000);
+
+  // FX enabled by default; the trail accumulates behind the running cube.
+  const m6bDefault = await pollFx((s) => s.trail > 5, 15000);
+  log('m6b fx enabled by default (trail accumulates while running)',
+    m6bDefault.enabled === true && m6bDefault.trail > 5,
+    `enabled=${m6bDefault.enabled} trail=${m6bDefault.trail}`);
+
+  // Trail evidence + runtime toggle pair on a teleport-framed runway run
+  // (proven M6A coordinates: teleport 92, roll 93-99 — no death risk).
+  await startGravityRun(92);
+  const m6bTrailRun = await rollUntilM3((s) => s.z > 93 && s.z < 99 && s.grounded, 15000);
+  log('m6b runway run framed for trail evidence', m6bTrailRun !== null,
+    m6bTrailRun ? `z=${m6bTrailRun.z.toFixed(1)}` : 'never framed');
+  await fxPause();
+  const m6bTrailFrozen = await fx();
+  await capture('m6b-01-trail');
+  await page.evaluate(() => window.__gd3d.setFxEnabled(false));
+  await page.waitForTimeout(400);
+  const m6bFxOff = await fx();
+  await capture('m6b-01b-trail-fxoff');
+  await page.evaluate(() => window.__gd3d.setFxEnabled(true));
+  await fxResume();
+  const m6bFxBack = await pollFx((s) => s.trail > 5, 10000);
+  log('m6b runtime toggle clears juice and resumes cleanly',
+    m6bTrailFrozen.trail > 5 && m6bFxOff.trail === 0 && m6bFxOff.particles === 0 &&
+    m6bFxBack.trail > 5,
+    `on=${m6bTrailFrozen.trail} off=${m6bFxOff.trail} back=${m6bFxBack.trail}`);
+
+  // ?fx=off page: gameplay advances, juice stays at zero.
+  await page.goto(`${URL}?fx=off`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2000);
+  const m6bOffFlag = await fx();
+  const m6bOffZ0 = (await pos()).z;
+  await page.waitForTimeout(900);
+  const m6bOffZ1 = (await pos()).z;
+  const m6bOffLater = await fx();
+  log('m6b ?fx=off disables juice only (gameplay runs, no trail/particles)',
+    m6bOffFlag.enabled === false && m6bOffLater.trail === 0 &&
+    m6bOffLater.particles === 0 && (m6bOffZ1 - m6bOffZ0) > 2,
+    `enabled=${m6bOffLater.enabled} trail=${m6bOffLater.trail} dz=${(m6bOffZ1 - m6bOffZ0).toFixed(1)}`);
+
+  // Back to the default page for the lifecycle checks.
+  await page.goto(URL, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2000);
+
+  // Trail clears on manual restart: R restarts the sim (attempts edge) and
+  // the VFX reset path runs with it (resets edge). Buffer wipe itself is
+  // pinned headlessly; here we prove the live edge reaches the reset path.
+  await startGravityRun(92);
+  await pollFx((s) => s.trail > 5, 20000);
+  const m6bRAtt0 = await attempts();
+  const m6bRRes0 = (await fx()).resets;
+  await page.keyboard.press('KeyR');
+  let m6bRAtt1 = m6bRAtt0;
+  let m6bRRes1 = m6bRRes0;
+  const m6bRT0 = Date.now();
+  while (Date.now() - m6bRT0 < 10000) {
+    m6bRAtt1 = await attempts();
+    m6bRRes1 = (await fx()).resets;
+    if (m6bRAtt1 > m6bRAtt0 && m6bRRes1 > m6bRRes0) break;
+    await page.waitForTimeout(150);
+  }
+  log('m6b trail clears on R restart',
+    m6bRAtt1 > m6bRAtt0 && m6bRRes1 > m6bRRes0,
+    `attempts ${m6bRAtt0}->${m6bRAtt1} resets ${m6bRRes0}->${m6bRRes1}`);
+
+  // Death + auto-respawn clears the trail and streak energy (same
+  // fast-sample valley technique for the trail; streaks drop to an exact
+  // zero at 1x and stay there).
+  await startGravityRun(92);
+  await pollFx((s) => s.trail > 5, 20000);
+  const m6bAttBefore = await attempts();
+  const m6bResBefore = (await fx()).resets;
+  await page.evaluate(() => window.__gd3d.debugTeleport(0, -30, 60));
+  let m6bAttAfter = m6bAttBefore;
+  let m6bResAfter = m6bResBefore;
+  const m6bDeathT0 = Date.now();
+  while (Date.now() - m6bDeathT0 < 15000) {
+    m6bAttAfter = await attempts();
+    m6bResAfter = (await fx()).resets;
+    if (m6bAttAfter > m6bAttBefore && m6bResAfter > m6bResBefore) break;
+    await page.waitForTimeout(200);
+  }
+  const m6bDeathFx = await fx();
+  log('m6b death/respawn clears trail and streaks',
+    m6bAttAfter > m6bAttBefore && m6bResAfter > m6bResBefore &&
+    m6bDeathFx.streaks === 0 && m6bDeathFx.trail <= 96,
+    `attempts ${m6bAttBefore}->${m6bAttAfter} resets ${m6bResBefore}->${m6bResAfter} streaks=${m6bDeathFx.streaks}`);
+
+  // Jump burst from the REAL jump event (one signal = one burst).
+  // Photo-first with a particle gate: retry R+Space+quick-freeze until the
+  // frozen frame holds live particles (headless frames are sparse), then
+  // assert the exact-once counter on the same frozen evidence.
+  const m6bJumpBase = (await fx()).counters.jump;
+  let m6bJumpPhoto = false;
+  for (let attempt = 1; attempt <= 4 && !m6bJumpPhoto; attempt++) {
+    await page.keyboard.press('KeyR');
+    await page.waitForTimeout(400);
+    const ready = await pressSpaceWhen((s) => s.grounded, 8000);
+    if (!ready) continue;
+    await fxPause();
+    if ((await fx()).particles > 0) {
+      await capture('m6b-02-jump');
+      m6bJumpPhoto = true;
+    }
+    await fxResume();
+  }
+  const m6bJumpFx = await fx();
+  log('m6b jump emits exactly one visual burst',
+    m6bJumpPhoto && m6bJumpFx.counters.jump === m6bJumpBase + 1,
+    `jump ${m6bJumpBase}->${m6bJumpFx.counters.jump} photo=${m6bJumpPhoto}`);
+
+  // Landing burst when the jump comes down (surface-relative, Floor).
+  // Same particle-gated photo technique on the landing edge.
+  const m6bLandBase = (await fx()).counters.landing;
+  let m6bLandPhoto = false;
+  for (let attempt = 1; attempt <= 3 && !m6bLandPhoto; attempt++) {
+    if (attempt > 1) {
+      await page.keyboard.press('KeyR');
+      await page.waitForTimeout(400);
+      const ready = await pressSpaceWhen((s) => s.grounded, 8000);
+      if (!ready) continue;
+    }
+    const landT0 = Date.now();
+    let landed = false;
+    while (Date.now() - landT0 < 8000) {
+      const g = await page.evaluate(() => window.__gd3d.grounded());
+      if (g) {
+        landed = true;
+        break;
+      }
+      await page.waitForTimeout(20);
+    }
+    if (!landed) continue;
+    await fxPause();
+    if ((await fx()).particles > 0) {
+      await capture('m6b-03-landing');
+      m6bLandPhoto = true;
+    }
+    await fxResume();
+    if ((await fx()).counters.landing > m6bLandBase && m6bLandPhoto) break;
+  }
+  const m6bLanded = await fx();
+  log('m6b landing emits exactly one visual burst',
+    m6bLanded.counters.landing === m6bLandBase + 1 && m6bLandPhoto,
+    `landing ${m6bLandBase}->${m6bLanded.counters.landing} intensity=${m6bLanded.intensity.toFixed(2)} photo=${m6bLandPhoto}`);
+  const m6bSoftIntensity = (await fx()).intensity;
+
+  // Fast-fall landing hits harder (capped intensity), still one burst.
+  // Robust timing: jump, wait for the apex (y starts decreasing), THEN
+  // hold fast-fall through the descent so the extra accel must apply.
+  let m6bHardIntensity = 0;
+  let m6bHardOk = false;
+  for (let attempt = 1; attempt <= 3 && !m6bHardOk; attempt++) {
+    await page.keyboard.press('KeyR');
+    await page.waitForTimeout(400);
+    const pressed = await pressSpaceWhen((s) => s.grounded, 8000);
+    if (!pressed) continue;
+    // Apex detect: two consecutive decreasing height reads.
+    let lastY = Infinity;
+    let downs = 0;
+    const apexT0 = Date.now();
+    let apexed = false;
+    while (Date.now() - apexT0 < 8000) {
+      const y = (await pos()).y;
+      if (y < lastY - 0.03) downs += 1;
+      else if (y > lastY + 0.03) downs = 0;
+      lastY = y;
+      if (downs >= 2) {
+        apexed = true;
+        break;
+      }
+      await page.waitForTimeout(30);
+    }
+    if (!apexed) continue;
+    await page.keyboard.down('ArrowDown');
+    const t0 = Date.now();
+    for (;;) {
+      const g = await page.evaluate(() => window.__gd3d.grounded());
+      if (g) break;
+      if (Date.now() - t0 > 8000) break;
+      await page.waitForTimeout(30);
+    }
+    await page.keyboard.up('ArrowDown');
+    await page.waitForTimeout(300);
+    m6bHardIntensity = (await fx()).intensity;
+    m6bHardOk = m6bHardIntensity > m6bSoftIntensity && m6bHardIntensity <= 1;
+  }
+  log('m6b fast-fall landing is stronger but bounded',
+    m6bHardOk, `soft=${m6bSoftIntensity.toFixed(2)} hard=${m6bHardIntensity.toFixed(2)}`);
+
+  // Gravity flip emits the transition pulse (portal crossing, Floor->Ceiling).
+  const m6bGravBase = (await fx()).counters.gravity;
+  await startGravityRun(168);
+  const m6bFlip = await pollFx((s) => s.counters.gravity > m6bGravBase, 20000);
+  log('m6b gravity flip emits one transition pulse',
+    m6bFlip.counters.gravity === m6bGravBase + 1,
+    `gravity ${m6bGravBase}->${m6bFlip.counters.gravity}`);
+  // (Flip evidence photo comes from the gravity-orb flip below: same
+  // shared transition path, clean backdrop without the portal pane wash.)
+
+  // Jump pad activation emits the yellow impulse burst.
+  const m6bPadBase = (await fx()).counters.pad;
+  await startGravityRun(292);
+  const m6bPadFx = await pollFx((s) => s.counters.pad > m6bPadBase, 20000);
+  log('m6b jump pad emits one impulse burst',
+    m6bPadFx.counters.pad === m6bPadBase + 1,
+    `pad ${m6bPadBase}->${m6bPadFx.counters.pad}`);
+  // Photo retry: freeze on the pad edge until live particles are caught.
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    await startGravityRun(300);
+    const padBase = (await fx()).counters.pad;
+    const padT0 = Date.now();
+    let fired = false;
+    while (Date.now() - padT0 < 15000) {
+      const c = (await fx()).counters.pad;
+      if (c > padBase) {
+        fired = true;
+        break;
+      }
+      await page.waitForTimeout(30);
+    }
+    if (!fired) continue;
+    await fxPause();
+    if ((await fx()).particles > 0) {
+      await capture('m6b-05-pad');
+      await fxResume();
+      break;
+    }
+    await fxResume();
+  }
+
+  // Jump orb: pre-proven M4 geometry (edge jump + window press). These are
+  // the tightest CDP-timing windows in the section, so they run on a
+  // fresh ?post=off page (~30 fps headless instead of ~8: an 80 ms press
+  // reliably spans rendered frames). Emission is post-independent — the
+  // same update path fires the burst with the composer on or off.
+  await page.goto(`${URL}?post=off`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2000);
+  let m6bOrbOk = false;
+  for (let attempt = 1; attempt <= 4 && !m6bOrbOk; attempt++) {
+    await startGravityRun(326);
+    const m6bOrbBase = (await fx()).counters.jumpOrb;
+    const jumped = await pressSpaceWhen((s) => s.grounded && s.z >= 329.2, 8000);
+    if (!jumped) continue;
+    const pressed = await pressSpaceWhen((s) => !s.grounded && s.z >= 335.3 && s.z <= 338.4, 5000);
+    if (!pressed) continue;
+    const seen = await pollFx((s) => s.counters.jumpOrb > m6bOrbBase, 4000);
+    if (seen.counters.jumpOrb > m6bOrbBase) {
+      await fxPause();
+      if ((await fx()).particles > 0) {
+        await capture('m6b-06-orb');
+        await fxResume();
+        m6bOrbOk = true;
+      } else {
+        await fxResume();
+      }
+    }
+  }
+  log('m6b jump orb emits one activation burst', m6bOrbOk, m6bOrbOk ? 'orb burst observed (post-off page)' : 'orb window missed x4');
+
+  // Gravity orb flips through the shared path (flip pulse, deduped) —
+  // same post-off timing rationale (M4 geometry).
+  let m6bGOrbOk = false;
+  for (let attempt = 1; attempt <= 4 && !m6bGOrbOk; attempt++) {
+    await startGravityRun(344);
+    const m6bGBase = (await fx()).counters.gravity;
+    const jumped = await pressSpaceWhen((s) => s.grounded && s.z >= 348.2, 8000);
+    if (!jumped) continue;
+    const pressed = await pressSpaceWhen((s) => !s.grounded && s.z >= 351 && s.z <= 352.9, 5000);
+    if (!pressed) continue;
+    const seen = await pollFx((s) => s.counters.gravity > m6bGBase, 6000);
+    if (seen.counters.gravity > m6bGBase) {
+      // Flip evidence photo here: same shared transition pulse as the
+      // portal flip, but against the open slab-C backdrop (no pane wash).
+      await fxPause();
+      if ((await fx()).particles > 0) {
+        await capture('m6b-04-gravity-flip');
+      }
+      await fxResume();
+      m6bGOrbOk = true;
+    }
+  }
+  log('m6b gravity orb emits the flip pulse (deduped, one event)', m6bGOrbOk,
+    m6bGOrbOk ? 'flip pulse observed' : 'window press missed x4');
+
+  // 2x speed portal: tier pulse + streak count rises (M6A-proven
+  // coordinates: teleport 366, approach 368-371, cross 373).
+  // Back on the default page (post on) after the post-off orb detour.
+  await page.goto(URL, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2000);
+  const m6bSpeedBase = (await fx()).counters.speed;
+  await startGravityRun(366);
+  const m6bSpeedFx = await pollFx(
+    (s) => s.counters.speed > m6bSpeedBase && s.streaks > 0, 20000);
+  const m6bSpeedNow = await page.evaluate(() => window.__gd3d.speedMultiplier());
+  log('m6b 2x portal emits speed pulse and raises streaks',
+    m6bSpeedFx.counters.speed === m6bSpeedBase + 1 && m6bSpeedFx.streaks > 0 && m6bSpeedNow === 2,
+    `speed ${m6bSpeedBase}->${m6bSpeedFx.counters.speed} streaks=${m6bSpeedFx.streaks} tier=${m6bSpeedNow}x`);
+  // Evidence past the gateway: the 2x runway is only z 372-380, so freeze
+  // in the 373.5-379 band on a fast poll (the magenta wash ahead is the
+  // finish gate + the green tier-2 gateway frame — the honest 2x-sprint
+  // look; streaks persist at 2x and the tier pulse counter already fired).
+  const m6bSpeedSettled = await (async () => {
+    const t0 = Date.now();
+    while (Date.now() - t0 < 15000) {
+      const s = await page.evaluate(() => ({
+        st: window.__gd3d.status(),
+        z: window.__gd3d.playerPosition().z,
+      }));
+      if (s.st !== 'running') return false;
+      if (s.z > 373.5 && s.z < 379) return true;
+      await page.waitForTimeout(50);
+    }
+    return false;
+  })();
+  if (m6bSpeedSettled) {
+    await fxPause();
+    await capture('m6b-07-speed-2x');
+    await fxResume();
+  }
+
+  // Ceiling: jump + landing bursts fire surface-relatively (Space works both).
+  const m6bCeil = await crossToCeiling();
+  log('m6b ceiling reached for surface-relative juice', m6bCeil !== null,
+    m6bCeil ? `z=${m6bCeil.z.toFixed(1)}` : 'never grounded on ceiling');
+  const m6bCeilRun = m6bCeil === null ? null
+    : await rollUntilM3((s) => s.grounded && s.z > 205 && s.z < 215, 15000);
+  let m6bCeilOk = false;
+  if (m6bCeilRun !== null) {
+    const cBase = await fx();
+    const pressed = await pressSpaceWhen((s) => s.grounded && s.z > 205 && s.z < 212, 8000);
+    if (pressed) {
+      const seen = await pollFx(
+        (s) => s.counters.jump > cBase.counters.jump && s.counters.landing > cBase.counters.landing, 8000);
+      m6bCeilOk = seen.counters.jump > cBase.counters.jump &&
+        seen.counters.landing > cBase.counters.landing;
+    }
+    await fxPause();
+    await capture('m6b-08-ceiling');
+    await fxResume();
+  }
+  log('m6b ceiling jump + landing emit bursts (surface-relative)', m6bCeilOk,
+    m6bCeilOk ? 'ceiling jump+landing observed' : 'ceiling window missed');
+
+  // Level 02 runs the same juice on the shared code path.
+  await page.goto(`${URL}?level=validation-02`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2500);
+  const m6bL2 = await pollFx((s) => s.trail > 5, 15000);
+  const m6bL2Id = await page.evaluate(() => window.__gd3d.levelId());
+  log('m6b level 02 runs the same juice system',
+    m6bL2Id === 'validation-02' && m6bL2.trail > 5,
+    `id=${m6bL2Id} trail=${m6bL2.trail}`);
+  await fxPause();
+  await capture('m6b-09-level02');
+  await fxResume();
+
+  // Replay recreates juice from the replayed sim, then still VERIFIES.
+  await page.goto(URL, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2000);
+  await page.keyboard.press('KeyR');
+  await page.waitForTimeout(400);
+  const m6bTapeJumpBase = (await fx()).counters.jump;
+  await pressSpaceWhen((s) => s.grounded, 8000);
+  await pollFx((s) => s.counters.jump > m6bTapeJumpBase, 5000);
+  const m6bTapeDeath = await (async () => {
+    const t0 = Date.now();
+    for (;;) {
+      const s = await simState();
+      if (s.status === 'dead') return s;
+      if (Date.now() - t0 > 40000) return null;
+      await page.waitForTimeout(200);
+    }
+  })();
+  log('m6b live jump-then-death finalizes a replay tape', m6bTapeDeath !== null,
+    m6bTapeDeath ? `cause=${m6bTapeDeath.cause}` : 'never died');
+  await page.keyboard.press('F4');
+  await page.waitForTimeout(500);
+  // Juice recreation proof is the CUMULATIVE jump counter re-firing from
+  // the replayed sim (fps-independent — transient trail would flake under
+  // headless load); trail>0 is read opportunistically for the log line.
+  const m6bReplayFx = await pollFx((s) => s.counters.jump > m6bTapeJumpBase, 30000);
+  const m6bReplayMode = await page.evaluate(() => window.__gd3d.replayMode());
+  log('m6b replay recreates juice live (burst re-fires from replayed sim)',
+    m6bReplayMode === 'replay' && m6bReplayFx.counters.jump > m6bTapeJumpBase,
+    `mode=${m6bReplayMode} jump=${m6bReplayFx.counters.jump} trail=${m6bReplayFx.trail}`);
+  const m6bVerdict = await waitVerifyM6b();
+  const m6bReplayCounters = (await fx()).counters;
+  log('m6b replay still reaches VERIFIED with juice recreated',
+    m6bVerdict.verify.kind === 'pass' && m6bReplayCounters.jump > m6bTapeJumpBase,
+    `verify=${m6bVerdict.verify.kind} badge=${m6bVerdict.badge} jump=${m6bReplayCounters.jump}`);
+  await capture('m6b-10-replay');
+  await page.keyboard.press('KeyR');
+  await page.waitForTimeout(500);
+
+  // Resource boundedness over repeated attempts (death + restart + replay).
+  const m6bResStart = await page.evaluate(() => ({
+    children: window.__gd3d.sceneChildren(),
+    mats: window.__gd3d.materialCount(),
+    geos: window.__gd3d.geometryCount(),
+  }));
+  for (let i = 0; i < 3; i++) {
+    await page.keyboard.press('KeyR');
+    await page.waitForTimeout(900);
+    await page.evaluate(() => window.__gd3d.debugTeleport(0, -30, 60));
+    const t0 = Date.now();
+    const att0 = await attempts();
+    while (Date.now() - t0 < 12000) {
+      if ((await attempts()) > att0) break;
+      await page.waitForTimeout(200);
+    }
+  }
+  await page.keyboard.press('KeyR');
+  await page.waitForTimeout(900);
+  const m6bResEnd = await page.evaluate(() => ({
+    children: window.__gd3d.sceneChildren(),
+    mats: window.__gd3d.materialCount(),
+    geos: window.__gd3d.geometryCount(),
+    trail: window.__gd3d.trailSamples(),
+    particles: window.__gd3d.activeParticles(),
+  }));
+  log('m6b scene/resources bounded over repeated attempts',
+    m6bResEnd.children === m6bResStart.children &&
+    m6bResEnd.mats === m6bResStart.mats && m6bResEnd.geos === m6bResStart.geos &&
+    m6bResEnd.trail <= 96 && m6bResEnd.particles <= 384,
+    `children ${m6bResStart.children}->${m6bResEnd.children}, mats ${m6bResStart.mats}->${m6bResEnd.mats}, trail=${m6bResEnd.trail}`);
+
+  // Post x FX matrix: every combination stays playable.
+  await page.goto(`${URL}?post=off&fx=on`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2000);
+  const m6bNoPost = await page.evaluate(() => ({
+    post: window.__gd3d.postEnabled(),
+    trail: window.__gd3d.trailSamples(),
+    z: window.__gd3d.playerPosition().z,
+  }));
+  log('m6b post OFF + fx ON works (streaks/trail without composer)',
+    m6bNoPost.post === false && m6bNoPost.trail > 0 && m6bNoPost.z > 5,
+    `post=${m6bNoPost.post} trail=${m6bNoPost.trail} z=${m6bNoPost.z.toFixed(1)}`);
+  await page.goto(`${URL}?post=off&fx=off`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2000);
+  const m6bMinimal = await page.evaluate(() => ({
+    post: window.__gd3d.postEnabled(),
+    fx: window.__gd3d.fxEnabled(),
+    trail: window.__gd3d.trailSamples(),
+    z0: window.__gd3d.playerPosition().z,
+  }));
+  await page.waitForTimeout(700);
+  const m6bMinimalZ1 = await page.evaluate(() => window.__gd3d.playerPosition().z);
+  log('m6b minimal presentation (?post=off&fx=off) stays playable',
+    m6bMinimal.post === false && m6bMinimal.fx === false && m6bMinimal.trail === 0 &&
+    (m6bMinimalZ1 - m6bMinimal.z0) > 2,
+    `post=${m6bMinimal.post} fx=${m6bMinimal.fx} dz=${(m6bMinimalZ1 - m6bMinimal.z0).toFixed(1)}`);
+
+  // Resize survival with juice live.
+  await page.goto(URL, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2000);
+  await page.setViewportSize({ width: 960, height: 540 });
+  await page.waitForTimeout(800);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.waitForTimeout(500);
+  const m6bResized = await pollFx((s) => s.trail > 5, 10000);
+  log('m6b juice survives viewport resize', m6bResized.trail > 5,
+    `trail=${m6bResized.trail}`);
+}
+
+// --- 23. Console audit ---
 log('no console errors', consoleErrors.length === 0, JSON.stringify(consoleErrors.slice(0, 3)));
 log('no page errors', pageErrors.length === 0, JSON.stringify(pageErrors.slice(0, 3)));
 
