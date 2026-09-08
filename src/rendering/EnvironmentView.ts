@@ -125,4 +125,20 @@ export class EnvironmentView {
     const t = this.theme;
     this.applyVisualState(t.background, t.fogColor, t.fogNear, t.fogFar, 1);
   }
+
+  /**
+   * M6C2 punch-flash observability (cold QA path only): the LIVE applied
+   * background/fog hexes (timeline base + punch flash), as opposed to the
+   * timeline-resolved section values. Lets browser QA prove the flash is
+   * applied to the scene and fully restored at rest.
+   */
+  public liveBackgroundHex(): number {
+    return (this.scene.background as THREE.Color).getHex();
+  }
+
+  public liveFogHex(): number {
+    const fog = this.scene.fog as THREE.Fog | null;
+    if (fog === null) return 0x000000;
+    return fog.color.getHex();
+  }
 }

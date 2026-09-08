@@ -2799,7 +2799,18 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     m6c1BlendProbe ? `t=${m6c1BlendProbe.t.toFixed(2)} bg=0x${m6c1BlendProbe.bg.toString(16)} exp=${m6c1BlendProbe.exp.toFixed(3)}` : 'never framed');
   // Settle on the ceiling run via the proven natural portal crossing
   // (teleport 176, flip at 182, ground on the slab — crossToCeiling).
+  // M6C2 quiesce: the flip fires a gravity punch (bloom/exposure lift)
+  // that decays in <2 s wall — wait it out so the strict section pins
+  // below measure the section, not the transient (intent unchanged).
   const m6c1Ceil = await crossToCeiling();
+  {
+    const t0 = Date.now();
+    while (Date.now() - t0 < 10000) {
+      const e = await page.evaluate(() => window.__gd3d.eventPunchEnergy());
+      if (e === 0) break;
+      await page.waitForTimeout(100);
+    }
+  }
   const m6c1GravProbe = await tl();
   log('m6c1 gravity-descent section resolves on the ceiling run',
     m6c1Ceil !== null && m6c1GravProbe.section === 'gravity-descent' &&
@@ -2851,7 +2862,17 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     `hazard=0x${m6c1SpeedProbe.hazard.toString(16)}`);
 
   // R returns to the starting visual state (position-driven reset).
+  // M6C2 quiesce (same transient rationale as above: the sprint pass
+  // fires pad/speed punches that must drain before strict pins).
   await page.keyboard.press('KeyR');
+  {
+    const t0 = Date.now();
+    while (Date.now() - t0 < 10000) {
+      const e = await page.evaluate(() => window.__gd3d.eventPunchEnergy());
+      if (e === 0) break;
+      await page.waitForTimeout(100);
+    }
+  }
   const m6c1Restart = await pollTl((s) => s.section === 'runway' && s.bg === BASE_BG, 15000);
   log('m6c1 R returns to the opening visual state',
     m6c1Restart.section === 'runway' && m6c1Restart.bg === BASE_BG && m6c1Restart.exp === 1.15,
@@ -3024,7 +3045,308 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     `section=${m6c1Resized.section}`);
 }
 
-// --- 24. Console audit ---
+// --- 24. M6C2: reactive visual authoring + ground contact FX ---
+// Event punches (bloom/exposure/environment flash above the section base
+// look) + continuous support-plane skid. Automated envelope/contact rules
+// live in tests/eventPunch.test.ts; these checks prove the integrated app:
+// real pad/gravity/speed/orb events spike the envelope with family colors,
+// grounded running carries contact samples on Floor AND Ceiling, the
+// envelope restores the exact section look, triggers-off stays silent,
+// fx-off splits juice from flash, replay verifies, resources stay flat.
+// Pause-freeze framing (proven M3/M4/M6A pattern): pausing passes render
+// dt 0, which freezes the punch envelope at its peak for photography.
+{
+  const punchProbe = () => page.evaluate(() => ({
+    energy: window.__gd3d.eventPunchEnergy(),
+    color: window.__gd3d.eventPunchColor(),
+    contact: window.__gd3d.contactSamples(),
+    trail: window.__gd3d.trailSamples(),
+    parts: window.__gd3d.activeParticles(),
+    fx: window.__gd3d.fxCounters(),
+    counts: window.__gd3d.interactionCounts(),
+    bloom: window.__gd3d.bloomParams(),
+    exp: window.__gd3d.visualExposure(),
+    bg: window.__gd3d.visualBackground(),
+    fog: window.__gd3d.visualFogColor(),
+    liveBg: window.__gd3d.visualLiveBackground(),
+    liveFog: window.__gd3d.visualLiveFog(),
+    section: window.__gd3d.visualSectionId(),
+    speed: window.__gd3d.speedMultiplier(),
+    flips: window.__gd3d.portalTransitionCount(),
+    mats: window.__gd3d.materialCount(),
+    geos: window.__gd3d.geometryCount(),
+    passes: window.__gd3d.postPassCount(),
+    children: window.__gd3d.sceneChildren(),
+    z: window.__gd3d.playerPosition().z,
+  }));
+  const pauseM6c2 = async () => {
+    await page.keyboard.press('KeyP');
+    await page.waitForTimeout(100);
+  };
+  const resumeM6c2 = async () => {
+    await page.keyboard.press('KeyP');
+    await page.waitForTimeout(200);
+  };
+  const pollPunch = async (pred, timeoutMs = 15000) => {
+    const t0 = Date.now();
+    let s = await punchProbe();
+    for (;;) {
+      if (pred(s)) return s;
+      if (Date.now() - t0 > timeoutMs) return s;
+      await page.waitForTimeout(40);
+      s = await punchProbe();
+    }
+  };
+  const waitVerifyM6c2 = async (timeoutMs = 90000) => {
+    const t0 = Date.now();
+    for (;;) {
+      const snap = await page.evaluate(() => ({
+        verify: window.__gd3d.replayVerification(),
+        mode: window.__gd3d.replayMode(),
+      }));
+      if (snap.verify.kind === 'pass' || snap.verify.kind === 'diverged') return snap;
+      if (Date.now() - t0 > timeoutMs) return snap;
+      await page.waitForTimeout(300);
+    }
+  };
+  const PAD_YELLOW = 0xffd23f;
+  const GRAVITY_BLUE = 0x4fc3ff;
+  const TIER2_GREEN = 0x66ff8a;
+
+  // Fresh page, default flags (post on, fx on, triggers on).
+  await page.goto(URL, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2000);
+  const m6c2Probes = await punchProbe();
+  log('m6c2 reactive probes live, envelope at rest on load',
+    m6c2Probes.energy === 0 && m6c2Probes.contact >= 0 && m6c2Probes.passes === 3,
+    `energy=${m6c2Probes.energy} contact=${m6c2Probes.contact} passes=${m6c2Probes.passes}`);
+
+  // Floor contact: grounded runway run carries skid samples + trail.
+  await startGravityRun(8);
+  const m6c2FloorRun = await rollUntilM3((s) => s.z > 8 && s.z < 14 && s.grounded, 15000);
+  const m6c2FloorProbe = await punchProbe();
+  log('m6c2 floor run shows ground-contact skid under the cube',
+    m6c2FloorRun !== null && m6c2FloorProbe.contact > 0 && m6c2FloorProbe.trail > 0,
+    m6c2FloorRun ? `z=${m6c2FloorRun.z.toFixed(1)} contact=${m6c2FloorProbe.contact} trail=${m6c2FloorProbe.trail}` : 'never framed');
+  await pauseM6c2();
+  await capture('m6c2-01-floor-contact');
+  await resumeM6c2();
+
+  // Pad punch: passive fire at z~305, freeze the envelope at its peak.
+  await page.keyboard.press('KeyR');
+  await page.waitForTimeout(350);
+  const m6c2PadPre = await punchProbe();
+  await page.evaluate(() => window.__gd3d.debugTeleport(0, 1.5, 300));
+  const m6c2PadFired = await pollPunch((s) => s.counts.pads > m6c2PadPre.counts.pads, 15000);
+  let m6c2PadPeak = null;
+  if (m6c2PadFired.counts.pads > m6c2PadPre.counts.pads) {
+    await pauseM6c2();
+    m6c2PadPeak = await punchProbe();
+    await capture('m6c2-02-pad-punch');
+    await resumeM6c2();
+  }
+  log('m6c2 pad event fires a warm punch (energy + yellow tint)',
+    m6c2PadPeak !== null && m6c2PadPeak.energy > 0.15 && m6c2PadPeak.color === PAD_YELLOW,
+    m6c2PadPeak ? `energy=${m6c2PadPeak.energy.toFixed(2)} color=0x${m6c2PadPeak.color.toString(16)}` : 'pad never fired');
+  // NOTE (sticky section inheritance, M6C1 design): interaction-run sets
+  // no bg/exposure override, so at the pad the section resolves to the
+  // gravity-descent values (bg 0x040213, exp 1.08) with bloom 0.5 — the
+  // punch assertions below measure against THOSE, not the runway base.
+  log('m6c2 pad punch lifts bloom/exposure/environment above the section',
+    m6c2PadPeak !== null && m6c2PadPeak.bloom !== null &&
+    m6c2PadPeak.bloom.strength > 0.5 && m6c2PadPeak.exp > 1.08 &&
+    m6c2PadPeak.liveBg !== m6c2PadPeak.bg && m6c2PadPeak.liveFog !== m6c2PadPeak.fog,
+    m6c2PadPeak ? `bloom=${m6c2PadPeak.bloom.strength.toFixed(3)} exp=${m6c2PadPeak.exp.toFixed(3)} liveBg=0x${m6c2PadPeak.liveBg.toString(16)}` : 'no peak captured');
+  // The envelope must decay back to the EXACT section look (no residue).
+  await page.waitForTimeout(3500);
+  const m6c2PadRest = await punchProbe();
+  log('m6c2 punch envelope decays to exact rest (bloom/exposure restored)',
+    m6c2PadPeak !== null && m6c2PadRest.energy === 0 &&
+    m6c2PadRest.bloom !== null && Math.abs(m6c2PadRest.bloom.strength - 0.5) < 0.001 &&
+    Math.abs(m6c2PadRest.exp - 1.08) < 0.005 &&
+    m6c2PadRest.liveBg === m6c2PadRest.bg && m6c2PadRest.liveFog === m6c2PadRest.fog,
+    `energy=${m6c2PadRest.energy} bloom=${m6c2PadRest.bloom?.strength.toFixed(3)} exp=${m6c2PadRest.exp.toFixed(3)}`);
+
+  // Gravity punch: natural portal-up flip (z=182), photographed PAST the
+  // portal pane (z>186 — pausing inside the translucent pane fills the
+  // frame with wash, the documented M6B/M6C1 pane context, not the punch).
+  // Poll threshold 0.05 (not the 0.15 peak): under headless load a frame
+  // can drain most of the envelope between samples — anything above the
+  // exact-0 rest snap still proves a live envelope, and the pause freezes
+  // it for the probe + photo. The peak magnitude itself is evidenced by
+  // the probe series across runs (0.2–0.4 hot captures, blue tint stable).
+  await startGravityRun(172);
+  const m6c2GravPre = await punchProbe();
+  const m6c2Flipped = await pollPunch(
+    (s) => s.flips > m6c2GravPre.flips && s.energy > 0.05 && s.z > 186,
+    20000);
+  let m6c2GravPeak = null;
+  if (m6c2Flipped.flips > m6c2GravPre.flips) {
+    await pauseM6c2();
+    m6c2GravPeak = await punchProbe();
+    await capture('m6c2-03-gravity-punch');
+    await resumeM6c2();
+  }
+  log('m6c2 gravity flip fires a blue punch (energy + blue tint)',
+    m6c2GravPeak !== null && m6c2GravPeak.energy > 0.02 && m6c2GravPeak.color === GRAVITY_BLUE,
+    m6c2GravPeak ? `energy=${m6c2GravPeak.energy.toFixed(2)} color=0x${m6c2GravPeak.color.toString(16)}` : 'flip never framed');
+
+  // Ceiling contact: stable ceiling run carries support-side skid too.
+  const m6c2Ceil = await rollUntilM3((s) => s.mode === 'ceiling' && s.grounded && s.z > 190 && s.z < 230, 20000);
+  const m6c2CeilProbe = await punchProbe();
+  log('m6c2 ceiling run shows ground-contact skid on the support side',
+    m6c2Ceil !== null && m6c2CeilProbe.contact > 0,
+    m6c2Ceil ? `z=${m6c2Ceil.z.toFixed(1)} contact=${m6c2CeilProbe.contact}` : 'never framed');
+  await pauseM6c2();
+  await capture('m6c2-04-ceiling-contact');
+  await resumeM6c2();
+
+  // Speed punch: proven M4-5 approach (teleport 366, grounded 368..371
+  // run-up, natural 2x crossing at z=372), tier-colored flash. The photo is
+  // reframed past the crossing: at 28 u/s CDP pause latency carries the
+  // cube into the finish-gate pane (documented wash context), so after
+  // freezing the envelope we step back to 367 — envelope and speed state
+  // are position-independent, the portal frame stays in view, the probes
+  // remain the proof.
+  await startGravityRun(366);
+  const m6c2SpeedCatch = await pollPunch((s) => s.speed === 2, 20000);
+  let m6c2SpeedPeak = null;
+  if (m6c2SpeedCatch.speed === 2) {
+    await pauseM6c2();
+    await page.evaluate(() => window.__gd3d.debugTeleport(0, 1.5, 367));
+    await page.waitForTimeout(400);
+    m6c2SpeedPeak = await punchProbe();
+    await capture('m6c2-05-speed-punch');
+    await resumeM6c2();
+  }
+  log('m6c2 speed portal fires a tier-colored punch',
+    m6c2SpeedPeak !== null && m6c2SpeedPeak.energy > 0.1 && m6c2SpeedPeak.color === TIER2_GREEN,
+    m6c2SpeedPeak ? `energy=${m6c2SpeedPeak.energy.toFixed(2)} color=0x${m6c2SpeedPeak.color.toString(16)}` : '2x never framed');
+
+  // Jump-orb punch: press inside the z337 window (M4-3 pattern, retries).
+  let m6c2OrbPeak = null;
+  for (let attempt = 1; attempt <= 4 && m6c2OrbPeak === null; attempt++) {
+    await startGravityRun(326);
+    const jumped = await pressSpaceWhen((s) => s.grounded && s.z >= 329.2, 8000);
+    if (!jumped) { console.log(`  (m6c2 orb attempt ${attempt}: edge jump missed)`); continue; }
+    const pressed = await pressSpaceWhen((s) => !s.grounded && s.z >= 335.3 && s.z <= 338.4, 5000);
+    if (!pressed) { console.log(`  (m6c2 orb attempt ${attempt}: window press missed)`); continue; }
+    // Pause on a HOT envelope, not just on activation: the orb punch is
+    // the snappiest (0.25 s tau) and CDP latency drains it. The browser
+    // proof is firing + tint + residual (peak magnitude is pinned by the
+    // headless envelope unit tests, not photographable under CDP).
+    const m6c2OrbFired = await pollPunch((s) => s.fx.jumpOrb >= 1 && s.energy > 0.1, 4000);
+    if (m6c2OrbFired.fx.jumpOrb < 1 || m6c2OrbFired.energy <= 0.1) {
+      console.log(`  (m6c2 orb attempt ${attempt}: hot envelope missed)`);
+      continue;
+    }
+    await pauseM6c2();
+    m6c2OrbPeak = await punchProbe();
+    await capture('m6c2-06-orb-punch');
+    await resumeM6c2();
+  }
+  log('m6c2 jump-orb event fires a warm punch (tint + residual envelope)',
+    m6c2OrbPeak !== null && m6c2OrbPeak.fx.jumpOrb >= 1 &&
+    m6c2OrbPeak.color === PAD_YELLOW && m6c2OrbPeak.energy > 0.02,
+    m6c2OrbPeak ? `orbs=${m6c2OrbPeak.fx.jumpOrb} energy=${m6c2OrbPeak.energy.toFixed(2)} color=0x${m6c2OrbPeak.color.toString(16)}` : 'orb never activated');
+
+  // triggers=off: events still simulate, but the envelope stays silent.
+  await page.evaluate(() => window.__gd3d.setVisualTriggersEnabled(false));
+  await page.waitForTimeout(300);
+  await page.keyboard.press('KeyR');
+  await page.waitForTimeout(350);
+  const m6c2OffPre = await punchProbe();
+  await page.evaluate(() => window.__gd3d.debugTeleport(0, 1.5, 300));
+  const m6c2OffFired = await pollPunch((s) => s.counts.pads > m6c2OffPre.counts.pads, 15000);
+  await page.waitForTimeout(300);
+  const m6c2OffProbe = await punchProbe();
+  const m6c2OffBloom = m6c2OffProbe.bloom;
+  log('m6c2 triggers-off keeps the punch envelope silent (exact baseline)',
+    m6c2OffFired.counts.pads > m6c2OffPre.counts.pads && m6c2OffProbe.energy === 0 &&
+    m6c2OffBloom !== null && Math.abs(m6c2OffBloom.strength - 0.45) < 0.001,
+    `pads=${m6c2OffFired.counts.pads} energy=${m6c2OffProbe.energy} bloom=${m6c2OffBloom?.strength.toFixed(3)}`);
+  await page.evaluate(() => window.__gd3d.setVisualTriggersEnabled(true));
+  await page.waitForTimeout(300);
+
+  // fx=off split: pad still simulates, particles + skid silent, game runs.
+  await page.goto(`${URL}?fx=off`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2000);
+  await page.keyboard.press('KeyR');
+  await page.waitForTimeout(350);
+  const m6c2NoFxPre = await punchProbe();
+  await page.evaluate(() => window.__gd3d.debugTeleport(0, 1.5, 300));
+  const m6c2NoFxFired = await pollPunch((s) => s.counts.pads > m6c2NoFxPre.counts.pads, 15000);
+  await page.waitForTimeout(600);
+  const m6c2NoFxProbe = await punchProbe();
+  log('m6c2 fx-off silences particles + skid while gameplay continues',
+    m6c2NoFxFired.counts.pads > m6c2NoFxPre.counts.pads &&
+    m6c2NoFxProbe.parts === 0 && m6c2NoFxProbe.contact === 0 && m6c2NoFxProbe.trail === 0,
+    `pads=${m6c2NoFxFired.counts.pads} parts=${m6c2NoFxProbe.parts} contact=${m6c2NoFxProbe.contact}`);
+
+  // Level 02 shares the contact language (teal identity untouched).
+  await page.goto(`${URL}?level=validation-02`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2000);
+  await startGravityRun(8);
+  const m6c2L2Run = await rollUntilM3((s) => s.z > 8 && s.z < 14 && s.grounded, 15000);
+  const m6c2L2Probe = await punchProbe();
+  log('m6c2 level02 run shows ground-contact skid on the shared path',
+    m6c2L2Run !== null && m6c2L2Probe.contact > 0,
+    m6c2L2Run ? `z=${m6c2L2Run.z.toFixed(1)} contact=${m6c2L2Probe.contact}` : 'never framed');
+  await pauseM6c2();
+  await capture('m6c2-07-level02-contact');
+  await resumeM6c2();
+
+  // Replay under the new visuals: natural death -> F4 -> VERIFIED.
+  await page.goto(URL, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2000);
+  await page.keyboard.press('KeyR');
+  await page.waitForTimeout(300);
+  let m6c2NaturalDeath = null;
+  {
+    const t0 = Date.now();
+    while (Date.now() - t0 < 30000) {
+      const s = await simState();
+      if (s.status === 'dead') { m6c2NaturalDeath = s; break; }
+      await page.waitForTimeout(60);
+    }
+  }
+  const m6c2HasTape = await page.evaluate(() => window.__gd3d.hasReplay());
+  let m6c2ReplayMode = null;
+  if (m6c2HasTape === true) {
+    await page.evaluate(() => window.__gd3d.startReplay());
+    await page.waitForTimeout(500);
+    m6c2ReplayMode = await page.evaluate(() => window.__gd3d.replayMode());
+  }
+  await pauseM6c2();
+  await capture('m6c2-08-replay');
+  await resumeM6c2();
+  const m6c2Verify = await waitVerifyM6c2(90000);
+  log('m6c2 F4 replay verifies under reactive visuals',
+    m6c2NaturalDeath !== null && m6c2HasTape === true && m6c2Verify.verify.kind === 'pass',
+    `died=${m6c2NaturalDeath !== null} tape=${m6c2HasTape} verification=${m6c2Verify.verify.kind} mode=${m6c2ReplayMode}`);
+  await page.keyboard.press('KeyR');
+  await page.waitForTimeout(500);
+  const m6c2TapeJson = await page.evaluate(() => window.__gd3d.exportLastReplay());
+  let m6c2TapeClean = false;
+  let m6c2TapeDetail = 'no tape';
+  if (m6c2TapeJson !== null) {
+    const tape = JSON.parse(m6c2TapeJson);
+    const keys = Object.keys(tape);
+    const leaked = keys.filter((k) => /punch|contact|section|visual|bloom|fog|exposure|trigger|timeline/i.test(k));
+    m6c2TapeClean = leaked.length === 0 && tape.schemaVersion === 1;
+    m6c2TapeDetail = `keys=${keys.length} leaked=[${leaked.join(',')}]`;
+  }
+  log('m6c2 replay carries zero punch/contact state', m6c2TapeClean, m6c2TapeDetail);
+
+  // Resource stability: still 26/8/3, one scene group (50 children).
+  const m6c2ResEnd = await punchProbe();
+  log('m6c2 resources flat (26/8/3, no new draws or pools)',
+    m6c2ResEnd.mats === 26 && m6c2ResEnd.geos === 8 && m6c2ResEnd.passes === 3 &&
+    m6c2ResEnd.children === 50,
+    `mats=${m6c2ResEnd.mats} geos=${m6c2ResEnd.geos} passes=${m6c2ResEnd.passes} children=${m6c2ResEnd.children}`);
+}
+
+// --- 25. Console audit ---
 log('no console errors', consoleErrors.length === 0, JSON.stringify(consoleErrors.slice(0, 3)));
 log('no page errors', pageErrors.length === 0, JSON.stringify(pageErrors.slice(0, 3)));
 

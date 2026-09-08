@@ -337,9 +337,20 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   `VfxSystem.setIntensity`, owned exposure) — zero new scene content,
   zero new draws, every system restored exactly on the off-edge.
   `?triggers=off` (URL + runtime) composes with `?post=off`/`?fx=off`.
+- `eventPunch.ts` (`src/visuals/`, M6C2) — the ONE renderer-side owner
+  computing the EVENT PUNCH ENVELOPE (per-family 0..1 energy + dominant
+  tint, THREE-free pure numbers like `visualTimeline.ts`). The RendererHost
+  feeds it from the same pre-existing sim edges the VFX reads and maps it
+  onto the existing in-place hooks ABOVE the section base look (bloom
+  re-clamped in-contract, exposure nudge clamped 0.5..2, environment flash
+  toward the family tint, all absolute writes, exact rest-restore).
+  Trigger-owned: `?triggers=off` holds it at rest. Nothing punch-related
+  in replays (energy derives from replayed trajectory).
 - `VfxSystem` (`src/rendering/`, M6B) — the ONE presentation owner for
   motion language + gameplay juice (Cube trail, jump/landing bursts,
-  gravity-transition pulses, speed streaks + tier pulses, pad/orb bursts).
+  gravity-transition pulses, speed streaks + tier pulses, pad/orb bursts,
+  M6C2 surface-contact skid sharing the trail buffer + gravity/pad streak
+  kicks + amplified event counts within the same bounded pools).
   Owned by `RendererHost` (one scene group: trail Points + burst Points +
   one streak InstancedMesh = 3 draw calls; `?fx=off` hides it). Observes
   pre-existing sim seams only (bridged `onJump`, grounded edge,
@@ -587,6 +598,7 @@ fixed-tick PHYSICAL input tape plus verification evidence.
 | Controlled bloom (contract-pinned), resize-safe post, playable no-post fallback | `visualFoundation` contract tests + browser QA m6a resize/fallback checks |
 | VFX observes but never writes sim; sim imports no VFX/rendering/visuals; nothing visual in replays | `motionVfx` boundary + golden-integration tests + browser QA m6b replay checks |
 | VFX pools bounded; no per-frame/per-event allocation; exact-once emission per real edge; reset on attempt/death/teleport; `?fx=off` preserves gameplay | `motionVfx` lifecycle tests + browser QA m6b section (counters, resets, resource guards, post×fx matrix) |
+| Event punch envelope peaks/decays/composes by max with family tints; contact skid grounded-only, Floor/Ceiling-relative, speed-scaled, timeline-calmed, reset-safe; worst-case event volume << burst pool; sim trigger-free; punch excluded from replays; `?triggers=off` holds the envelope at rest | `eventPunch` tests + browser QA m6c2 section (peak/tint/rest-restore proofs, skid floor+ceiling, fallback split, replay proof, 26/8/3 guards) |
 | Timeline section identity position-driven; state never accumulates/drifts; bloom ⇒ contract, exposure ⇒ 0.5..2; player/hazard stable; sequence excluded from fingerprint; sim trigger-free; transitions add zero draws/materials/geometries; `?triggers=off` restores exact base; nothing timeline in replays | `visualTimeline` tests + browser QA m6c1 section (interpolation bounds, identity pins, reset/replay proofs, 26/8/3 guards, fallback matrix) |
 | No milestone passes with failing verification | `npm run verify` + `AGENTS.md` process rule |
 

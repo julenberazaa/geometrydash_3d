@@ -19,12 +19,22 @@ import {
 } from '../visuals/productionTheme';
 import {
   evaluateVisualSequence,
+  lerpHex,
   makeVisualState,
   prepareVisualSequence,
   resetVisualState,
   type PreparedVisualSequence,
   type VisualState,
 } from '../visuals/visualTimeline';
+import {
+  clearPunch,
+  combinedPunchEnergy,
+  dominantPunchColor,
+  makeEventPunchState,
+  triggerPunch,
+  updatePunch,
+  type EventPunchState,
+} from '../visuals/eventPunch';
 
 /**
  * RendererHost — THE ONLY module allowed to own WebGLRenderer and apply
@@ -74,6 +84,15 @@ export class RendererHost {
   private triggersEnabled: boolean;
   /** Whether a timeline state is currently applied (off-restore edge). */
   private timelineApplied = false;
+  /** M6C2 event-reactive punch: short envelope per event family, applied
+   *  on top of the timeline base look (bloom in-contract, exposure nudge,
+   *  environment flash). Trigger-owned: `?triggers=off` keeps it at rest. */
+  private readonly punch: EventPunchState = makeEventPunchState();
+  private lastPunchPortal = 0;
+  private lastPunchSpeed = 0;
+  private lastPunchEvents = 0;
+  /** Whether a punch overlay is currently applied (rest-restore edge). */
+  private punchApplied = false;
   private readonly levelView: LevelView;
   /** M6C1 environment presentation (timeline-modulated, pre-existing objects). */
   private readonly environmentView: EnvironmentView;
@@ -147,6 +166,10 @@ export class RendererHost {
     this.visualState = makeVisualState();
     resetVisualState(this.theme, this.visualState);
     this.triggersEnabled = options.triggersEnabled ?? true;
+    // M6C2 punch edges start synced (no false fire on the first frame).
+    this.lastPunchPortal = simulation.portalTransitionCount;
+    this.lastPunchSpeed = simulation.speedPortalCount;
+    this.lastPunchEvents = simulation.interactionEventCount;
 
     this.levelView = new LevelView(simulation.level, this.library);
     this.scene.add(this.levelView.group);
@@ -249,6 +272,10 @@ export class RendererHost {
     // M6C1 timeline: position-driven presentation from the same
     // interpolated Z (pause-safe: same z re-resolves the same state).
     this.updateVisualTimeline(ip.z);
+    // M6C2 event punch: sim edges feed the envelope, the overlay maps it
+    // onto bloom/exposure/environment above the timeline base look.
+    this.updateEventPunch(renderDtSeconds);
+    this.applyEventPunch();
     this.debugView.updatePlayerBox(p, sim.halfExtents);
     this.deathBurst.update(renderDtSeconds);
     this.interactionView.update(renderDtSeconds);
@@ -407,8 +434,79 @@ export class RendererHost {
       this.post.resetBloomToTheme();
       this.renderer.toneMappingExposure = this.theme.exposure;
       this.vfx.setIntensity(1, 1);
+      clearPunch(this.punch);
+      this.punchApplied = false;
       this.timelineApplied = false;
     }
+  }
+
+  /**
+   * M6C2 event punch: observe the same pre-existing sim edges the VFX
+   * reads (portal/speed/interaction counters — no sim change) and feed
+   * the punch envelope. Same-frame dedup mirrors the VFX rules (a
+   * gravity-orb flip or speed crossing already has its dedicated pulse).
+   * Trigger-owned: with triggers disabled the envelope stays at rest so
+   * `?triggers=off` remains the exact baseline. Render-dt evolution only
+   * (dt 0 while paused freezes the envelope with presentation pause).
+   */
+  private updateEventPunch(renderDtSeconds: number): void {
+    const sim = this.simulation;
+    if (!this.triggersEnabled) {
+      if (combinedPunchEnergy(this.punch) > 0) clearPunch(this.punch);
+    } else {
+      const gravityFired = sim.portalTransitionCount !== this.lastPunchPortal;
+      if (gravityFired) triggerPunch(this.punch, 'gravity');
+      if (sim.speedPortalCount !== this.lastPunchSpeed) {
+        const tierColor = this.theme.speedTierColors[String(sim.speedMultiplier)] ?? 0xffffff;
+        triggerPunch(this.punch, 'speed', tierColor);
+      }
+      const events = sim.interactionEventCount - this.lastPunchEvents;
+      if (events > 0) {
+        const kind = sim.lastInteraction.kind;
+        if (kind === 'pad') triggerPunch(this.punch, 'pad');
+        else if (kind === 'jumpOrb') triggerPunch(this.punch, 'jumpOrb');
+        else if (kind === 'gravityOrb' && !gravityFired) triggerPunch(this.punch, 'gravity');
+        // kind 'speedPortal': covered by the speed edge above — skip.
+      }
+    }
+    this.lastPunchPortal = sim.portalTransitionCount;
+    this.lastPunchSpeed = sim.speedPortalCount;
+    this.lastPunchEvents = sim.interactionEventCount;
+    updatePunch(this.punch, renderDtSeconds);
+  }
+
+  /**
+   * Map the punch envelope onto the existing in-place hooks ABOVE the
+   * timeline base look: bloom strength lift (re-clamped to BLOOM_CONTRACT
+   * inside setBloomParams — a sprint-section punch can never exceed 0.7),
+   * a small exposure nudge (clamped 0.5..2), and an environment flash
+   * toward the dominant family color (bg/fog lerp + intensity lift,
+   * clamped 0..2). Absolute writes every frame from the timeline-resolved
+   * base — no accumulation, no drift; at rest the exact section look is
+   * restored through the same applyVisualState path. Player / hazard /
+   * route materials are never touched (identities stable by structure).
+   */
+  private applyEventPunch(): void {
+    const energy = combinedPunchEnergy(this.punch);
+    if (energy < 0.003) {
+      if (this.punchApplied) {
+        this.applyVisualState();
+        this.punchApplied = false;
+      }
+      return;
+    }
+    const s = this.visualState;
+    const tint = dominantPunchColor(this.punch);
+    this.post.setBloomParams(s.bloomStrength + energy * 0.15, s.bloomRadius, s.bloomThreshold);
+    this.renderer.toneMappingExposure = Math.min(2, Math.max(0.5, s.exposure + energy * 0.1));
+    this.environmentView.applyVisualState(
+      lerpHex(s.background, tint, energy * 0.22),
+      lerpHex(s.fogColor, tint, energy * 0.18),
+      s.fogNear,
+      s.fogFar,
+      Math.min(2, Math.max(0, s.environmentIntensity + energy * 0.6)),
+    );
+    this.punchApplied = true;
   }
 
   private applyVisualState(): void {
@@ -424,6 +522,31 @@ export class RendererHost {
     this.post.setBloomParams(s.bloomStrength, s.bloomRadius, s.bloomThreshold);
     this.renderer.toneMappingExposure = s.exposure;
     this.vfx.setIntensity(s.vfxIntensity, s.streakIntensity);
+  }
+
+  /** Live M6C2 punch envelope 0..1 (QA observability; 0 at rest/off). */
+  public get eventPunchEnergy(): number {
+    return combinedPunchEnergy(this.punch);
+  }
+
+  /** Dominant M6C2 punch tint (QA observability; environment flash color). */
+  public get eventPunchColor(): number {
+    return dominantPunchColor(this.punch);
+  }
+
+  /** Live contact-skid samples (subset of trailSamples, QA observability). */
+  public get contactSamples(): number {
+    return this.vfx.contactSamples;
+  }
+
+  /** Live applied background (timeline base + M6C2 punch flash, QA). */
+  public get visualLiveBackground(): number {
+    return this.environmentView.liveBackgroundHex();
+  }
+
+  /** Live applied fog color (timeline base + M6C2 punch flash, QA). */
+  public get visualLiveFog(): number {
+    return this.environmentView.liveFogHex();
   }
 
   /** Active timeline section id (`base` with triggers off / no sequence). */

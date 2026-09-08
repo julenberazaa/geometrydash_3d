@@ -112,6 +112,12 @@ declare global {
       visualRouteAccent: () => number;
       visualPlayerColor: () => number;
       visualHazardColor: () => number;
+      // M6C2 reactive-visual observability (presentation only).
+      eventPunchEnergy: () => number;
+      eventPunchColor: () => number;
+      visualLiveBackground: () => number;
+      visualLiveFog: () => number;
+      contactSamples: () => number;
       debugFreezeFrame: (frozen: boolean) => void;
       debugReplayBurst: () => void;
       toggleDebug: () => void;
@@ -213,6 +219,12 @@ window.__gd3d = {
   visualRouteAccent: () => game['rendererHost'].visualRouteAccent,
   visualPlayerColor: () => game['rendererHost'].visualPlayerColor,
   visualHazardColor: () => game['rendererHost'].visualHazardColor,
+  // M6C2 probes: punch envelope + dominant tint + contact skid (cold path).
+  eventPunchEnergy: () => game['rendererHost'].eventPunchEnergy,
+  eventPunchColor: () => game['rendererHost'].eventPunchColor,
+  visualLiveBackground: () => game['rendererHost'].visualLiveBackground,
+  visualLiveFog: () => game['rendererHost'].visualLiveFog,
+  contactSamples: () => game['rendererHost'].contactSamples,
   // Debug-only freeze for burst photography (see RendererHost.debugFreezeFrame).
   debugFreezeFrame: (frozen: boolean): void => {
     game['rendererHost'].debugFreezeFrame = frozen;

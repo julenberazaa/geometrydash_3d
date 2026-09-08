@@ -54,7 +54,13 @@ infrastructure engineering-complete (position-driven sections +
 interpolation, in-place application, zero new draws, `?triggers=off`
 exact baseline, 226/226 tests, M6C1 25/25 browser green, replay
 timeline-free) — ARTISTIC TIMELINE HUMAN GATE NOT PERFORMED, M6A/M6B
-gates STILL OPEN.
+gates STILL OPEN. M6C2 reactive visual authoring + ground contact FX
+engineering-complete (event punch envelopes with family-tinted
+bloom/exposure/environment flash above the section look + continuous
+support-plane skid on Floor/Ceiling + bounded burst/streak amplification,
+zero gameplay change, 238/238 tests, M6C2 15/15 browser green, replay
+punch/contact-free) — HUMAN REACTIVE/CONTACT GATE NOT PERFORMED, all
+prior gates STILL OPEN, final artistic timeline still remaining.
 
 ## Setup
 
@@ -141,5 +147,8 @@ M0–M5 complete. M6A visual production foundation engineering-complete —
 HUMAN VISUAL GATE OPEN — plus M6B motion juice engineering-complete
 (HUMAN MOTION/JUICE GATE OPEN, M6A still provisional) plus M6C1 visual
 trigger infrastructure engineering-complete (ARTISTIC TIMELINE GATE NOT
-PERFORMED, all prior gates still provisional; see
+PERFORMED, all prior gates still provisional) plus M6C2 reactive visual
+authoring + ground contact FX engineering-complete (HUMAN
+REACTIVE/CONTACT GATE NOT PERFORMED, final artistic timeline still
+remaining; see
 `specs/milestones/M6_VISUAL_PRODUCTION_SYSTEM.md`).

@@ -271,7 +271,29 @@ automated tests (21 new timeline), M6C1 browser QA 25/25 + M6A/M6B 24/24
 green, zero console/page errors, `qa/screenshots/m6c1-*` evidence set
 (wash contexts documented, not hidden). Spec: M6C1 sections in
 `M6_VISUAL_PRODUCTION_SYSTEM.md`. ARTISTIC TIMELINE HUMAN GATE = NOT
-PERFORMED. M6C2 (final authoring)/M6D: still PLANNED, not started.
+PERFORMED. M6C2 (reactive pass, below, not the full timeline
+re-authoring)/M6D: M6C2 engineering-complete, M6D still PLANNED, not started.
+
+M6C2 appendage (reactive visual authoring + ground contact FX
+ENGINEERING-COMPLETE, built at the user's direction without waiting for
+prior human gates — M6A/M6B/M6C1 gates all STILL OPEN, nothing
+re-canonicalized): event-reactive punch (`visuals/eventPunch.ts`
+envelope: pad/jumpOrb warm, gravity blue, speed tier-tinted — bloom
++0.15 in-contract, exposure +0.1, bg/fog flash + environment lift above
+the section base, exact rest-restore, trigger-owned so `?triggers=off`
+stays silent) + continuous support-plane skid sharing the trail buffer
+(Floor/Ceiling surface-relative, speed-scaled, timeline-calmed, silent
+airborne/off, existing reset path) + bounded companion amplification
+(pad 20 / gravity 34 / speed 24 / orb 16 + gravity/pad streak kicks,
+worst-case 124 << 384 pool). Zero gameplay change (sim untouched),
+replay carries zero punch/contact state (in-page F4 VERIFIED), player/
+hazard identities structurally stable, 26/8/3 + 50 children flat.
+238/238 automated tests (12 new event-punch/contact), M6C2 browser QA
+15/15 + M6C1 25/25 green, zero console/page errors, `qa/screenshots/
+m6c2-*` evidence set (pane-wash contexts documented, not hidden). Spec:
+M6C2 sections in `M6_VISUAL_PRODUCTION_SYSTEM.md`. HUMAN
+REACTIVE/CONTACT GATE = NOT PERFORMED (final artistic timeline also
+still remaining).
 
 ## M7 — 45–60 s Cube vertical slice
 

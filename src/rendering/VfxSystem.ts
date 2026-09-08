@@ -100,6 +100,10 @@ export class VfxSystem {
   private readonly trailAge: Float32Array;
   private readonly trailLife: Float32Array;
   private readonly trailBase: Float32Array; // base brightness per sample
+  /** M6C2 contact flag per trail sample (1 = support-plane skid, 0 = rear ribbon). */
+  private readonly trailContact: Uint8Array;
+  /** M6C2 contact emission accumulator (rate-limited, speed-scaled). */
+  private contactAcc = 0;
   private readonly trailGeo: THREE.BufferGeometry;
   private readonly trailMat: THREE.PointsMaterial;
   private trailCursor = 0;
@@ -174,6 +178,7 @@ export class VfxSystem {
     this.trailAge = new Float32Array(this.trailMax).fill(1);
     this.trailLife = new Float32Array(this.trailMax).fill(1);
     this.trailBase = new Float32Array(this.trailMax * 3);
+    this.trailContact = new Uint8Array(this.trailMax);
     this.trailGeo = new THREE.BufferGeometry();
     this.trailGeo.setAttribute('position', new THREE.BufferAttribute(this.trailPos, 3).setUsage(THREE.DynamicDrawUsage));
     this.trailGeo.setAttribute('color', new THREE.BufferAttribute(this.trailCol, 3).setUsage(THREE.DynamicDrawUsage));
@@ -317,6 +322,7 @@ export class VfxSystem {
     if (sim.status === 'running') {
       this.processEdges(sim, renderPos, dt);
       this.emitTrail(sim, renderPos, dt);
+      this.emitContact(sim, renderPos, dt);
     } else {
       // Dead/finished: no emission; let in-flight particles fade.
       this.pendingJump = false;
@@ -340,6 +346,8 @@ export class VfxSystem {
     this.trailAge.fill(1);
     this.trailCol.fill(0);
     this.trailBase.fill(0);
+    this.trailContact.fill(0);
+    this.contactAcc = 0;
     this.trailEmitAcc = 0;
     this.burstAge.fill(1);
     this.burstCol.fill(0);
@@ -406,6 +414,8 @@ export class VfxSystem {
         renderPos, fx.gravityCount, fx.gravityColor, fx.gravitySpeed, fx.gravityLife,
         n.x, n.y, n.z, 0.9, 0.7,
       );
+      // M6C2: flips also kick environment streak energy (no new system).
+      this.streakSpike = Math.max(this.streakSpike, 0.7);
       this.counters.gravity += 1;
     }
 
@@ -431,6 +441,8 @@ export class VfxSystem {
       for (let i = 0; i < shots; i++) {
         if (kind === 'pad') {
           this.spawnBurst(anchor, fx.padCount, fx.padColor, 6.5, fx.padLife, n.x, n.y, n.z, 1.8, 0.5);
+          // M6C2: pad launches kick a small streak surge (launch energy).
+          this.streakSpike = Math.max(this.streakSpike, 0.35);
           this.counters.pad += 1;
         } else if (kind === 'jumpOrb') {
           this.spawnBurst(anchor, fx.orbCount, fx.orbColor, 5, fx.orbLife, n.x, n.y, n.z, 0.6, 0.75);
@@ -471,6 +483,7 @@ export class VfxSystem {
       guard -= 1;
       const i = this.trailCursor;
       this.trailCursor = (this.trailCursor + 1) % this.trailMax;
+      this.trailContact[i] = 0; // rear-ribbon sample (not contact skid)
       this.trailPos[i * 3] = renderPos.x;
       this.trailPos[i * 3 + 1] = renderPos.y;
       this.trailPos[i * 3 + 2] = renderPos.z - 0.7; // rear-face spawn
@@ -483,6 +496,59 @@ export class VfxSystem {
       this.trailBase[i * 3 + 2] = this.scratchColor.b;
     }
     if (this.trailEmitAcc > interval * 8) this.trailEmitAcc = 0; // stall guard
+  }
+
+  /**
+   * M6C2 surface-contact FX: while grounded and running, the cube drags a
+   * faint skid/splash along the CURRENT support plane — the "contact
+   * language" the rear trail alone never provided. Samples spawn on the
+   * contact side (surface-normal-relative, so Floor and Ceiling mirror
+   * naturally), jittered in-plane, static in world space so the cube
+   * visibly carves past them. Pale ice family (landing-dust relative),
+   * dimmer and shorter-lived than the trail ribbon — subordinate by design.
+   *
+   * Shares the trail point buffer (one draw call, zero new resources):
+   * contact samples are flagged in `trailContact` for QA. Rate-scaled by
+   * speed tier, calmed by the timeline `vfxLevel`, silent while airborne,
+   * dead, finished, or `?fx=off`. Attempt/death/teleport clears ride the
+   * existing clearAll path (no stale skid lines across respawns).
+   */
+  private emitContact(
+    sim: VfxSimView,
+    renderPos: Readonly<{ x: number; y: number; z: number }>,
+    dt: number,
+  ): void {
+    const fx = this.theme.fx;
+    if (this.vfxLevel <= 0.01 || !sim.player.grounded) {
+      this.contactAcc = 0;
+      return;
+    }
+    const speed = sim.speedMultiplier;
+    const rate = Math.min(1.5, Math.max(0.6, 0.7 + 0.2 * speed)) * Math.max(0.3, this.vfxLevel);
+    const interval = 0.06 / rate;
+    this.contactAcc += dt;
+    let guard = 4; // never a flood: at most a few skid samples per frame
+    const n = sim.gameplayFrame.surfaceNormal;
+    while (this.contactAcc >= interval && guard > 0) {
+      this.contactAcc -= interval;
+      guard -= 1;
+      const i = this.trailCursor;
+      this.trailCursor = (this.trailCursor + 1) % this.trailMax;
+      this.trailContact[i] = 1;
+      // Contact-side spawn (just outside the visual cube on the support
+      // side) with in-plane jitter; slight normal lift so samples sit in
+      // the surface light instead of inside the slab.
+      this.trailPos[i * 3] = renderPos.x - n.x * 0.62 + (this.rand() - 0.5) * 0.9;
+      this.trailPos[i * 3 + 1] = renderPos.y - n.y * 0.62 + (this.rand() - 0.5) * 0.2;
+      this.trailPos[i * 3 + 2] = renderPos.z - n.z * 0.62 - 0.2 + (this.rand() - 0.5) * 1.2;
+      this.trailAge[i] = 0;
+      this.trailLife[i] = fx.trailLifetime1x * 0.8;
+      this.scratchColor.setHex(fx.landingColor).multiplyScalar(0.65 * Math.min(1.2, this.vfxLevel));
+      this.trailBase[i * 3] = this.scratchColor.r;
+      this.trailBase[i * 3 + 1] = this.scratchColor.g;
+      this.trailBase[i * 3 + 2] = this.scratchColor.b;
+    }
+    if (this.contactAcc > interval * 4) this.contactAcc = 0; // stall guard
   }
 
   private integrateTrail(dt: number): void {
@@ -681,6 +747,15 @@ export class VfxSystem {
     let n = 0;
     for (let i = 0; i < this.burstMax; i++) {
       if ((this.burstAge[i] ?? 1) < (this.burstLife[i] ?? 1)) n += 1;
+    }
+    return n;
+  }
+
+  /** Live contact-skid samples (subset of trailSamples, QA observability). */
+  public get contactSamples(): number {
+    let n = 0;
+    for (let i = 0; i < this.trailMax; i++) {
+      if (this.trailContact[i] === 1 && (this.trailAge[i] ?? 1) < (this.trailLife[i] ?? 1)) n += 1;
     }
     return n;
   }

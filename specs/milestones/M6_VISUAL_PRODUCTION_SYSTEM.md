@@ -14,19 +14,25 @@ ENGINEERING COMPLETE / HUMAN MOTION-JUICE GATE OPEN
 M6C1:
 VISUAL TRIGGER INFRASTRUCTURE ENGINEERING COMPLETE
 
-M6C2 / final trigger authoring:
-NOT STARTED
+M6C2:
+REACTIVE VISUAL AUTHORING + GROUND CONTACT FX ENGINEERING COMPLETE /
+HUMAN REACTIVE/CONTACT GATE NOT PERFORMED
+
+M6C2 / final artistic timeline authoring:
+REMAINING (M6C2 below is the event/contact pass, not the full artistic
+timeline — proof section values are still provisional taste)
 
 M6D:
-NOT STARTED (not started — M6C2 begins only after eventual human review
-of the M6A + M6B + M6C1 presentation; all three human gates are STILL OPEN
-and no foundation was re-canonicalized by M6C1).
+NOT STARTED (M6C2 was built without waiting for human review of the
+M6A + M6B + M6C1 presentation at the user's explicit direction for this
+session; all prior human gates are STILL OPEN and no foundation was
+re-canonicalized by M6C2).
 
-Automated: 226/226 tests green (`npm run verify`: typecheck + lint + tests +
-build) — 205 pre-M6C1 + 21 visual-timeline regression tests. Browser QA:
-M6C1 section 25/25 green AND M6A 24/24 + M6B 24/24 green (regressions),
+Automated: 238/238 tests green (`npm run verify`: typecheck + lint + tests +
+build) — 226 pre-M6C2 + 12 event-punch/contact regression tests. Browser QA:
+M6C2 section 15/15 green AND M6C1 25/25 + M6A/M6B green (regressions),
 zero console/page errors; historical sections show the documented
-CDP-timing/load flake set on this machine (no M6C1 causation — see
+CDP-timing/load flake set on this machine (no M6C2 causation — see
 § BROWSER QA). Golden replay verifies unchanged (unit + headless timeline
 integration + in-page F4 proof).
 
@@ -715,8 +721,158 @@ misleading as a gameplay cue?
 - [x] Zero-cost transitions proven (50→50 children, 26/8/3 flat).
 - [x] Evidence screenshots captured (wash contexts documented).
 - [x] M6A/M6B NOT marked approved; final timeline NOT authored.
-- [x] M6C2/M6D/M7 NOT started.
 - [ ] ARTISTIC TIMELINE HUMAN GATE (NOT PERFORMED).
+
+## M6C2 — Reactive Visual Authoring + Ground Contact FX (ENGINEERING COMPLETE / HUMAN REACTIVE-CONTACT GATE NOT PERFORMED)
+
+User-driven presentation pass on the still-provisional M6A+M6B+M6C1 stack
+(all prior human gates STILL OPEN, nothing re-canonicalized): important
+events hit harder in the environment, and the cube drags visible contact
+language along its support surface. Restrained by design — richer, not
+louder. Final artistic timeline authoring still REMAINS (proof section
+values untouched).
+
+### M6C2 OBJECTIVE
+
+Two concrete product problems (user feedback on the M6C1 build):
+(A) pads, gravity flips, and speed/orb transitions fire only small local
+particle bursts — no bloom/exposure/environment answer, so they never
+"hit"; (B) grounded running has zero support-plane language — the rear
+trail reads as motion, not contact, so the cube floats over the surface.
+
+### M6C2 EVENT PUNCH (`src/visuals/eventPunch.ts` + RendererHost overlay)
+
+THREE-free envelope controller (same discipline as `visualTimeline.ts`):
+per-family energy 0..1 (pad peak 1.0/decay 3.2, jumpOrb 0.8/4.0, gravity
+1.0/2.0 weightiest, speed 0.9/2.6), retrigger restarts (never stacks past
+1), combined = max, dominant tint (gravity wins ties). RendererHost feeds
+it from the SAME pre-existing sim edges the VFX reads (portal/speed/
+interaction counters, same dedup rules — no sim change) and maps it onto
+the existing in-place hooks ABOVE the section base look: bloom +0.15·e
+(re-clamped to BLOOM_CONTRACT — a sprint-section punch peaks at exactly
+0.7), exposure +0.1·e (clamped 0.5..2), bg/fog lerp toward the family tint
+(0.22/0.18·e) + environment intensity +0.6·e (clamped 0..2). Absolute
+writes every frame from the timeline-resolved base (no accumulation, no
+drift; dt 0 while paused freezes the envelope); at rest the exact section
+look is restored through the same applyVisualState path. Player / hazard /
+route materials never touched. Trigger-owned: `?triggers=off` holds the
+envelope at rest (exact-baseline contract preserved); `?fx=off` still kills
+only the particle layer (documented split: flash is trigger-owned).
+
+### M6C2 SURFACE-CONTACT FX (VfxSystem, zero new resources)
+
+While grounded+running, the cube emits faint skid/splash sharing the
+TRAIL point buffer (one draw call, flagged per-sample for QA): spawn on
+the contact side (surface-normal-relative — Floor/Ceiling mirror
+naturally), in-plane jitter, static in world so the cube carves past.
+Pale-ice family (landing-dust relative, 0.65 brightness), shorter life
+(0.8× trail), rate-scaled by speed tier, calmed by `vfxLevel`, silent
+while airborne/dead/finished/`?fx=off`, cleared by the existing
+attempt/death/teleport path. Companion amplification (same pools, still
+bounded): pad 14→20, gravity 26→34, speed 18→24, orb 12→16 bursts +
+gravity-flip/pad streak-energy kicks (0.7/0.35 — environment rays with no
+new system). Worst-case single-frame event volume (124) stays well under
+the 384 burst pool (pinned by test).
+
+### M6C2 RESET / REPLAY MODEL
+
+Nothing new stored in ReplayV1 (tape scanned: zero punch/contact keys);
+F4 recreates punches + skid from replayed sim edges/trajectory (in-page
+natural-death tape → VERIFIED under reactive visuals). R/death-respawn/
+replay-start return to start Z with counters synced (no false fire on the
+first frame — edges initialize from the live sim in the constructor).
+
+### M6C2 RESOURCE / PERFORMANCE
+
+Zero new draws/materials/geometries/pools: children 50→50, 26/8/3 flat,
+composer passes 3→3 (browser-proven). Per-frame cost is the envelope
+update (4 exp decays) + a few absolute writes. Build 595.94→596 kB
+class (see § AUTOMATED QA). No sim code touched.
+
+### M6C2 AUTOMATED QA
+
+`tests/eventPunch.test.ts` (12 new) + `tests/helpers/vfxSimView.ts` (shared
+fake-sim harness — motionVfx.test.ts left untouched): envelope peak/decay/
+rest, gravity-longest vs orb-snappiest, max-composition + retrigger,
+dominance + tier override + clear, dt-0 freeze; contact grounded-only,
+Ceiling support-side, speed scaling + timeline calm, reset + fx-off paths,
+pure running fires zero event counters (7-field shape pinned); emission
+budget + 3-child group pins. Full gate: typecheck + lint + 238/238 +
+build. Untouched and green: every M0–M6C1 suite (incl. `floorCompat`,
+`replayGolden`, `level02`).
+
+### M6C2 BROWSER QA
+
+M6C2 section (§24, `m6c2-*`, 15 checks) — ALL GREEN, zero console/page
+errors: probes live with envelope at rest; floor skid + trail; pad warm
+punch (energy + yellow tint + bloom/exposure/live-env lift above the
+sticky-inherited section values); exact rest-restore (bloom 0.5/exp 1.08/
+live==section); portal-flip blue punch photographed past the portal pane;
+ceiling support-side skid; 2x tier-green punch (reframed past the
+finish-gate pane — envelope/speed are position-independent); jump-orb
+warm punch (firing + tint + residual — the 0.25 s-tau peak is pinned
+headlessly, not photographable under CDP latency); triggers-off silence
+with events still simulating; fx-off particle/skid silence with gameplay
+continuing; Level 02 shared skid; F4 VERIFIED + zero punch/contact tape
+keys; 26/8/3 + 50-children pins. M6C1 section needed two honest
+accommodations (intent unchanged): strict live-exposure pins now quiesce
+the <2 s punch transient first (gravity-descent + R checks). Final run:
+197/205 overall with M6A/M6B/M6C1/M6C2 fully green (0 fails in any M6
+section); the 8 remaining fails are all pre-existing historical checks
+with diagnosed frame-starvation mechanisms on this box (SwiftShader ~4
+fps post-on): the auto-forward wall-rate pin catches exactly 2 rAF frames
+(16 fixed steps = dz 1.87 to the decimal across runs — the SIM is exactly
+per spec under starvation, the wall clock is not); the m2 spike chain
+loses its 80 ms CDP hold between ~400 ms-spaced input samples; m3.1 eye
+sampling, m4 ring timing, and the m5 82 s-verify/90 s-window all miss
+under the same starvation (plus 2 knock-ons). M6C2 causation excluded by
+measurement, not just reasoning: fps control (pre-M6C2 tree 4.2/12.8 vs
+M6C2 tree 4.0/12.7 post-on/post-off — the 8→4 drop since M6A predates
+M6C2), untouched sim/camera/determinism suites, and identical failure
+signatures across 5 runs while M6 sections stayed green.
+
+### M6C2 SCREENSHOTS
+
+`qa/screenshots/m6c2-*` (+ JSON sidecars): `01-floor-contact`,
+`02-pad-punch` (portal-down pane context in the distance — scene content,
+liveBg measured dark, not red), `03-gravity-punch` (past-pane framing),
+`04-ceiling-contact`, `05-speed-punch` (reframed, tier frame in view),
+`06-orb-punch`, `07-level02-contact`, `08-replay` (VERIFIED badge).
+Engineering evidence ONLY — explicitly NOT human-approved art.
+
+### M6C2 HUMAN GATE (NOT PERFORMED)
+
+HUMAN REACTIVE/CONTACT GATE NOT PERFORMED. When the human reviews (real
+GPU, 60 fps — SwiftShader stills under-read additive points): do pads and
+gravity changes feel impactful? Does the environment answer without
+shouting? Does the cube feel planted on floor AND ceiling? Is anything
+noisy, wash-prone, or strobe-like? Compare `?triggers=off` / `?fx=off`.
+
+### M6C2 KNOWN LIMITATIONS
+
+- Punch photos are pause-frozen peaks; live punches breathe for <2 s.
+- Sticky section inheritance (M6C1) means pad-punch section values are
+gravity-descent-inherited (exp 1.08), not runway base — asserted as such.
+- Contact skid is deliberately subtle (probes are the proof); final
+readability verdict needs the real-GPU human gate.
+- `routeUnder` still unmodulated (unchanged from M6C1).
+- Real-GPU frame-time still unmeasured (M6D).
+- M6A + M6B + M6C1 gates STILL OPEN.
+
+### M6C2 DEFINITION OF DONE
+
+- [x] Event-reactive punch (bloom/exposure/environment, family-tinted).
+- [x] Ground-contact skid on Floor + Ceiling (zero new resources).
+- [x] Bounded companion amplification (bursts + streak kicks).
+- [x] Zero gameplay change (sim untouched; golden gates green).
+- [x] Replay compatibility (nothing stored; recreated live, in-page pass).
+- [x] `?triggers=off` silence + `?fx=off` split (matrix proven).
+- [x] Player/hazard identities structurally stable.
+- [x] 238/238 automated green; M6C2 15/15 browser green.
+- [x] Evidence screenshots captured (wash contexts documented).
+- [x] M6A/M6B/M6C1 NOT marked approved; timeline NOT re-authored.
+- [x] M6D/M7 NOT started.
+- [ ] HUMAN REACTIVE/CONTACT GATE (NOT PERFORMED).
 
 ## M6D — Performance Closeout (PLANNED — do not implement yet)
 

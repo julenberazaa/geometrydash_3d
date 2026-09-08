@@ -287,4 +287,25 @@ flash, or strobe. The cyan player anchor and warm hazard identity NEVER
 change with sections. All evolution is reversibly disableable
 (`?triggers=off` = exact baseline) with zero gameplay difference. The
 shipped section values are ENGINEERING PROOF, not direction (M6C1 proof
-gate NOT performed; final artistic timeline is M6C2).
+gate NOT performed; full artistic timeline authoring still remains after
+the M6C2 reactive pass — see §9.3). NOT human-approved
+(M6C1 artistic-timeline gate NOT PERFORMED).
+
+## 9.3 Event-reactive punch + surface-contact language — CURRENT (M6C2, presentation only)
+
+High-salience interactions answer in the ENVIRONMENT, not just in local
+particles (gameplay in §§1–6 unaffected): pads and jump orbs punch warm
+yellow (bloom lift, exposure nudge, background/fog flash toward the family
+tint, environment-energy lift); gravity flips (portals and gravity orbs
+share the transition) punch blue, longer and weightier; speed portals
+punch in their tier color. Punches are short (<2 s), composable by maximum
+(never stacked), and decay to the exact section look with no residue —
+flashes stay controlled, never strobe-like, and never touch player/hazard/
+route identities. While grounded and running on Floor or Ceiling alike, the
+Cube drags a faint skid/splash along the current support plane
+(continuous contact language complementing the rear trail and the
+one-shot landing disk) — readable but subordinate, silent while airborne.
+Both layers are reversibly disableable (`?triggers=off` silences the
+punch envelope to the exact baseline; `?fx=off` silences particles and
+skid) with zero gameplay difference. NOT human-approved (M6C2
+reactive/contact gate NOT PERFORMED).
