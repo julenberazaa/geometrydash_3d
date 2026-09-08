@@ -311,7 +311,28 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   level fingerprint never reads it (replay-compatible restyling, pinned).
   `LevelDefinition.theme` (previously written but never read) is now the
   per-level route overlay — same code path for every level, no engine
-  special-case.
+  special-case. M6B adds the `fx` block in the SAME authority (trail/burst/
+  streak counts, lifetimes, speeds, sizes, colors — presentation only,
+  clamped by `validateProductionTheme`; the M6A provisional values above
+  are untouched by it).
+- `VfxSystem` (`src/rendering/`, M6B) — the ONE presentation owner for
+  motion language + gameplay juice (Cube trail, jump/landing bursts,
+  gravity-transition pulses, speed streaks + tier pulses, pad/orb bursts).
+  Owned by `RendererHost` (one scene group: trail Points + burst Points +
+  one streak InstancedMesh = 3 draw calls; `?fx=off` hides it). Observes
+  pre-existing sim seams only (bridged `onJump`, grounded edge,
+  portal/speed/interaction counters, attempts/death/teleport reset edges);
+  never writes gameplay, owns no replay data (replays recreate effects
+  from replayed sim events). Fixed pools (96/384/24), zero per-frame
+  allocation, render-dt evolution (freezes with presentation pause via
+  Game's dt=0), idempotent dispose. Owns 3 fixed materials + 3 fixed
+  buffers/geometries (DeathBurstView precedent — NOT a second material
+  manager; the library is untouched). QA surface: live counts, cumulative
+  per-kind counters, monotonic reset counter, landing intensity.
+- `Game` (M6B wiring, composition root only): bridges the REAL `onJump`
+  sim event to `RendererHost.notifyJump` (one signal = one burst) and
+  passes render-dt 0 while paused so ALL presentation (VFX, rings, burst,
+  tumble, camera) freezes with pause — sim pause untouched.
 - `PlayerView`: production Cube (M6A) — dark cyan metal body + bright
   emissive free-face accents on BOTH faces (top = Floor free face, bottom =
   Ceiling free face; children of the cube so they inherit tumble/rest roll)
@@ -542,6 +563,8 @@ fixed-tick PHYSICAL input tape plus verification evidence.
 | Visual theme changes never alter gameplay or fingerprints; sim imports no rendering | `visualFoundation` theme/fingerprint + import-boundary tests + golden replay (unit + in-page) |
 | Shared materials/geometries only; no per-frame allocation; bounded resources | `visualFoundation` library tests + browser QA resource/draw-call guards |
 | Controlled bloom (contract-pinned), resize-safe post, playable no-post fallback | `visualFoundation` contract tests + browser QA m6a resize/fallback checks |
+| VFX observes but never writes sim; sim imports no VFX/rendering/visuals; nothing visual in replays | `motionVfx` boundary + golden-integration tests + browser QA m6b replay checks |
+| VFX pools bounded; no per-frame/per-event allocation; exact-once emission per real edge; reset on attempt/death/teleport; `?fx=off` preserves gameplay | `motionVfx` lifecycle tests + browser QA m6b section (counters, resets, resource guards, post×fx matrix) |
 | No milestone passes with failing verification | `npm run verify` + `AGENTS.md` process rule |
 
 ## 11. Known non-defects / deferred perf notes

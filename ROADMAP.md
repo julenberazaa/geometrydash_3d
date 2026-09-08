@@ -239,8 +239,22 @@ tests (12 new visual-foundation), M6A browser QA 24/24 green with zero
 console/page errors, golden replay verifies unchanged (unit + in-page),
 `qa/screenshots/m6a-*` evidence set. Spec:
 `specs/milestones/M6_VISUAL_PRODUCTION_SYSTEM.md`. HUMAN VISUAL GATE = OPEN
-(visual-direction approval required before M6B). M6B (trails/particles/juice),
-M6C (triggers), M6D (performance closeout): PLANNED, not started.
+(M6B was explicitly scoped as a reversible layer on the provisional
+foundation — no re-approval implied). M6C (triggers),
+M6D (performance closeout): PLANNED, not started.
+
+M6B appendage (built on the provisional M6A foundation — M6A gate STILL
+OPEN, nothing re-canonicalized): reversible motion-juice layer
+ENGINEERING-COMPLETE — `VfxSystem` (trail 96 + bursts 384 + streaks 24,
+pooled, 3 draw calls, `?fx=off` fallback, all four post×fx combos
+playable), exact-once emission from real sim edges, surface-relative
+Floor/Ceiling, replay recreates juice live (golden tape verifies WHILE
+VFX observes, headless + in-page), zero sim change. 205/205 automated
+tests (23 new motion-juice), M6B browser QA 24/24 + M6A 24/24 green, zero
+console/page errors, `qa/screenshots/m6b-*` evidence set (review findings
+fixed in-run: rear-face/shell spawns, snappier-but-photographable lives).
+Spec: M6B sections in `M6_VISUAL_PRODUCTION_SYSTEM.md`. HUMAN
+MOTION/JUICE GATE = OPEN. M6C/M6D: still PLANNED, not started.
 
 ## M7 — 45–60 s Cube vertical slice
 

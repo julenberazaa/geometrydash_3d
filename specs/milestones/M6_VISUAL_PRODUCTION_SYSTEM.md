@@ -8,15 +8,21 @@ IN PROGRESS
 M6A:
 ENGINEERING COMPLETE / HUMAN VISUAL GATE OPEN
 
-M6B / M6C / M6D:
-PLANNED (not started — begin only after the human visual-direction gate approves M6A).
+M6B:
+ENGINEERING COMPLETE / HUMAN MOTION-JUICE GATE OPEN
 
-Automated: 182/182 tests green (`npm run verify`: typecheck + lint + tests +
-build) — 170 pre-M6A + 12 visual-foundation regression tests. Browser QA:
-M6A section 24/24 green with zero console/page errors; historical sections
-show the documented CDP-timing/load flake set on this machine (no M6A
-causation — see § BROWSER QA). Golden replay verifies unchanged (unit +
-in-page proof).
+M6C / M6D:
+PLANNED (not started — M6C begins only after eventual human review of
+the M6A + M6B presentation; M6A's human visual gate is STILL OPEN and its
+provisional foundation was NOT re-canonicalized by M6B).
+
+Automated: 205/205 tests green (`npm run verify`: typecheck + lint + tests +
+build) — 182 pre-M6B + 23 motion-juice regression tests. Browser QA:
+M6B section 24/24 green AND M6A section 24/24 green (regression), zero
+console/page errors; historical sections show the documented
+CDP-timing/load flake set on this machine (no M6B causation — see
+§ BROWSER QA). Golden replay verifies unchanged (unit + headless VFX
+integration + in-page proof).
 
 ## OBJECTIVE
 
@@ -338,17 +344,207 @@ Suggested URLs: `http://localhost:5173/` and
 
 ---
 
-## M6B — Motion + Juice (PLANNED — do not implement yet)
+## M6B — Motion + Juice (ENGINEERING COMPLETE / HUMAN MOTION-JUICE GATE OPEN)
 
-Cube trail system, jump/landing particles, speed streaks, gravity-flip
-bursts, richer orb activation bursts. Builds on the M6A material/post
-foundation; must respect the same bloom contract + hierarchy + determinism
-(sim never owns particles; presentation-only).
+Built as a REVERSIBLE presentation layer on the current provisional M6A
+foundation (M6A NOT re-approved, NOT re-canonicalized — still OPEN). No
+M6A visual tuning was redesigned; two M6B-camp config additions only
+(FxConfig block + burst lifetimes, all presentation). M6C/M6D not started.
+
+### M6B OBJECTIVE
+
+Motion language + gameplay juice without changing ANY authoritative
+gameplay: Cube trail, jump/landing feedback, gravity-transition pulses,
+speed streaks + transition bursts, richer pad/orb activation bursts —
+presentation only, pooled, bounded, `?fx=off`-reversible.
+
+### M6B VFX OWNERSHIP
+
+`src/rendering/VfxSystem.ts` — the ONE presentation VFX owner, owned by
+`RendererHost` (scene group +1 child: trail Points + burst Points +
+streak InstancedMesh = exactly 3 draw calls when active, 0 when `?fx=off`
+— group hidden). Observes pre-existing sim seams only (`onJump` bridged by
+the Game composition root; `grounded` edge + pre-landing velocity;
+`portalTransitionCount`; `speedPortalCount`; `interactionEventCount` +
+`lastInteraction`; `deathId`/`attempts`/status/position-discontinuity for
+reset). No sim change, no new sim event, no THREE in sim (pinned).
+`MaterialLibrary` untouched (VFX owns 3 fixed materials + 3 fixed
+buffers/geometries like the DeathBurstView precedent — no second
+manager). FX tuning lives in the SAME authority (`ProductionTheme.fx`,
+clamped by `validateProductionTheme`).
+
+### M6B CUBE TRAIL
+
+Fixed-capacity (96) additive cyan Points ring following the SAME
+interpolated cube position as PlayerView. Spawns at the rear face
+(surface-agnostic +Z offset — center-spawned points die inside the opaque
+mesh to the depth test; found by screenshot review). Lifetime + density
+scale with the authoritative speed multiplier (0.5x subtler → 4x
+stronger, capped); fades to additive-black; Floor + Ceiling identical.
+
+### M6B JUMP / LANDING FX
+
+Jump: one burst per REAL `onJump` (consumed signal — no polling
+synthesis), biased along the frame surface normal. Landing: renderer-side
+grounded edge, radial disk in the support plane, intensity from
+pre-landing along-gravity speed (capped 0.25..1 — fast-fall lands harder
+without exploding). No squash (particles alone). Collider untouched.
+
+### M6B GRAVITY FX
+
+One cyan/blue spatial pulse per `portalTransitionCount` edge (portals AND
+gravity orbs share the one transition path), biased along the NEW surface
+normal — mirrors naturally, no ceiling constant. Same-frame gravity-orb
+interaction events deduplicated (no double burst). No camera/world motion.
+
+### M6B SPEED FX
+
+ONE InstancedMesh (24) of thin forward-aligned slivers recycled in a
+corridor volume around the player: 0 at ≤1x (nearly absent by design),
+8/16/24 at 2x/3x/4x + opacity tier + transition-spike surge. No motion
+blur. Works with bloom on AND off (orb sections prove FX on the direct
+path). Tier-colored one-shot pulse per `speedPortalCount` edge
+(same-frame `speedPortal` interaction event deduped).
+
+### M6B INTERACTION FX
+
+M4 pooled rings KEPT (not deleted). Complemented: pad = yellow burst
+along the surface normal; jump orb = compact yellow pulse; gravity orb =
+blue flip pulse (or the shared flip pulse when the transition edge
+coincides); speed portal = tier-colored pulse. Semantic M6A colors kept.
+Fires only on real `interactionEventCount` edges at the `lastInteraction`
+anchor — used/inert interactions emit nothing.
+
+### M6B POOLING
+
+Trail 96 + bursts 384 + streaks 24: preallocated Float32Arrays /
+InstancedMesh, ring cursors, zero per-frame/per-event allocation (scratch
+Vector3/Matrix4/Color only), dead slots fade to additive-black,
+`frustumCulled=false`, idempotent dispose. Counts observable
+(`trailSamples`/`activeParticles`/`activeStreaks`/cumulative per-kind
+counters/monotonic `fxResets`).
+
+### M6B RESET LIFECYCLE
+
+Any `attempts` edge (death-respawn, manual R, replay start —
+`startReplay()` respawns), any death edge, any >5 u teleport clears
+transients: no respawn-to-death trail line, no stale streaks/particles.
+Cumulative QA counters never reset (evidence).
+
+### M6B REPLAY BEHAVIOR
+
+Nothing stored (no positions/trail/bloom/timestamps in ReplayV1 —
+unchanged schema/ruleset). F4 recreates juice naturally: the same
+replayed sim events re-fire the same edges (proven headlessly: full
+2346-frame golden tape verifies WHILE VFX observes every tick with
+jump/landing/gravity/speed/pad all re-firing; proven in-page: replayed
+jump re-fires the burst counter, then VERIFIED).
+
+### M6B FX FALLBACK
+
+`?fx=off` (or runtime `setFxEnabled(false)`) hides the whole layer:
+group invisible + transients cleared, gameplay identical, M6A foundation
+intact. Matrix proven: post×fx all four combos playable. No settings UI.
+Pause passes dt=0 (Game composition root): trail/particles/rings/burst/
+tumble/camera all freeze with presentation pause — sim pause untouched.
+This also gives deterministic QA photography (freeze young bursts).
+
+### M6B RESOURCE BUDGET
+
+Draw calls +3 steady-state (2 Points + 1 InstancedMesh); triangles +288
+max (streaks); scene children 49→50 (one group); library materials 26
++ geometries 8 UNCHANGED; VFX fixed +3/+3 outside the library;
+active particles ≤384, trail ≤96, streaks ≤24; flat across
+death/restart/replay (browser-proven). Build +15.81 kB (588.04 total;
+>500 kB warning remains pre-existing three.js).
+
+### M6B AUTOMATED QA
+
+`tests/motionVfx.test.ts` (23 new): pool boundedness under spam + long
+runs, exactly-once emission per edge (jump/landing/gravity/speed/pad/
+orb/dedup rules/used-orb silence/ceiling surface-relativity), landing
+intensity scaling + cap, reset paths (restart/death/teleport/replay-start
++ monotonic reset counter), `?fx=off` independence + clean resume,
+library counts stable across events, idempotent dispose, fx-clamp + theme/
+fingerprint decoupling, GameSimulation VFX-free boundary, golden-tape
+headless VFX integration (verifies pass + juice re-fires).
+Full gate: typecheck + lint + 205/205 + build. Untouched and green:
+`floorCompat`, `cameraFraming`, `gravity`, `interactions`, `replay` +
+`replayGolden`, `level02`, `hash`, `visualFoundation`.
+
+### M6B BROWSER QA
+
+M6A section intact (24/24, no check weakened). M6B section (§22,
+`m6b-*`, 24 checks) — ALL GREEN, zero console/page errors: default-on +
+runtime toggle + `?fx=off` independence, trail lifecycle (R + death +
+resets edges), exact-once jump/landing/fast-fall-scaling/gravity/pad/
+orb/g-orb/speed+streaks, Ceiling surface-relativity, Level 02 shared path,
+F4 recreation + VERIFIED, resource boundedness, post×fx matrix, resize.
+Tight-window orb presses run on a fresh `?post=off` page (~30 fps
+headless; emission is post-independent) — documented in-section.
+Historical-section note (unchanged): this machine's CDP-timing/load flake
+set (wall-rate assertions, VFX-ring timing windows, M5 60 s verify
+window); M4/M5 sections flap identically with and without M6B. No M6B
+causation: sim untouched, all determinism tests green, M6A+M6B 100%
+green across consecutive runs.
+
+### M6B SCREENSHOTS
+
+`qa/screenshots/m6b-*` (+ JSON sidecars): `01-trail` (+ `01b` fx-off
+pair on the same frozen frame), `02-jump`, `03-landing`, `04-gravity-flip`
+(orb-flip pulse — same shared path, clean backdrop), `05-pad`, `06-orb`
+(post-off page), `07-speed-2x` (tier-2 sprint into the finish gate),
+`08-ceiling`, `09-level02`, `10-replay` (VERIFIED + recreated trail).
+Review findings (fixed in-run): center-spawned points died inside the
+opaque cube (→ rear-face/shell spawns); 0.35 s lives expired before
+headless photography (→ 0.45-0.6 s lives, still snappy); portal-pane wash
+(→ orb-flip evidence + settled 2x framing).
+
+### M6B PERFORMANCE DELTA
+
+Same-machine headless (SwiftShader — comparative only, NOT a GPU
+benchmark; real-GPU verdict stays M6D): calls ~363→~364 at spawn (+3
+steady-state FX draws), tris ~6.2k (+288 max streaks), children 49→50,
+materials 26 + geometries 8 (library flat), trail ≤96 / particles ≤384 /
+streaks ≤24 observed live, build 572.23→588.04 kB. No sim hot-loop
+impact (no sim code touched). 60 FPS on hardware still the target,
+measurement deferred (M6D).
+
+### M6B HUMAN GATE (OPEN)
+
+Same URLs as M6A (`/` and `?level=validation-02`, plus `?fx=off` /
+`&fx=off` for the foundation comparison). Added questions: does motion
+read better (trail direction, jump/landing weight, flip cue, 2x energy)?
+Is anything noisy, obscuring, or over-bright? Do effects stay subordinate
+to hazards/player? `?fx=off` comparison: is the juice worth it?
+
+### M6B KNOWN LIMITATIONS
+
+- Headless 1-3 fps cannot show full trail shapes (0.45 s ≈ 6 u at 1x);
+  evidence shows the language (glow/sparks/streaks), not the full ribbon.
+- Tight-window orb photography needs the post-off page under load.
+- Streaks are deliberately subtle (thin slivers, ≤0.5 opacity).
+- Real-GPU frame-time still unmeasured (M6D).
+- M6A gate STILL OPEN — M6B tuned against the provisional foundation.
+
+### M6B DEFINITION OF DONE
+
+- [x] Trail / jump / landing / gravity / speed / pad-orb juice, pooled.
+- [x] Zero gameplay change (sim untouched; golden gates green).
+- [x] Replay compatibility (nothing stored; recreated live, unit+in-page).
+- [x] `?fx=off` independent fallback (all 4 post×fx combos playable).
+- [x] Floor/Ceiling surface-relative (no ceiling hacks; zero camera edits).
+- [x] 205/205 automated green; M6B 24/24 + M6A 24/24 browser green.
+- [x] Performance BEFORE/AFTER recorded; bounded pools proven.
+- [x] Evidence screenshots captured (review findings fixed, not hidden).
+- [x] M6A NOT marked approved; M6C/M6D NOT started.
+- [ ] HUMAN MOTION-JUICE GATE approval (OPEN).
 
 ## M6C — Visual Triggers (PLANNED — do not implement yet)
 
 Environment visual timeline/triggers, beat sync hooks, presentation events
-driven by (never driving) simulation state. Design after M6A gate + M6B.
+driven by (never driving) simulation state. Design after eventual human
+review of the M6A + M6B presentation.
 
 ## M6D — Performance Closeout (PLANNED — do not implement yet)
 

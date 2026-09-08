@@ -45,7 +45,11 @@ the unmodified engine); human replay/Level-02 feel gate APPROVED
 engineering-complete (production theme + shared materials + controlled
 bloom/post, zero gameplay change, 182/182 tests, M6A browser QA 24/24
 green, golden replay intact) — HUMAN VISUAL GATE OPEN
-(`specs/milestones/M6_VISUAL_PRODUCTION_SYSTEM.md`).
+(`specs/milestones/M6_VISUAL_PRODUCTION_SYSTEM.md`). M6B motion juice
+engineering-complete on the provisional foundation (pooled trail/bursts/
+streaks, exact-once real-event emission, `?fx=off` fallback, 205/205
+tests, M6B 24/24 + M6A 24/24 browser green, replay recreates juice) —
+HUMAN MOTION/JUICE GATE OPEN, M6A gate STILL OPEN.
 
 ## Setup
 
@@ -129,4 +133,6 @@ manual regeneration tool). Validation Level 02 (`?level=validation-02`)
 proves the unmodified engine is level-agnostic (real-input finish +
 verified replay). Human replay/Level-02 feel gate APPROVED (2026-09-07).
 M0–M5 complete. M6A visual production foundation engineering-complete —
-HUMAN VISUAL GATE OPEN (see `specs/milestones/M6_VISUAL_PRODUCTION_SYSTEM.md`).
+HUMAN VISUAL GATE OPEN — plus M6B motion juice engineering-complete
+(HUMAN MOTION/JUICE GATE OPEN, M6A still provisional; see
+`specs/milestones/M6_VISUAL_PRODUCTION_SYSTEM.md`).

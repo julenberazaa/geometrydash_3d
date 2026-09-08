@@ -260,3 +260,16 @@ accents: yellow = jump impulse, blue = gravity, per-tier speed colors) >
 environment (depth only, never competes). Dark surfaces stay dark; bloom
 reinforces edges instead of washing the scene. The Cube reads identically
 on Floor and Ceiling (free-face accents on both faces; §4 symmetry holds).
+
+## 9.1 Motion language — CURRENT (M6B juice, presentation only)
+
+Deliberate product-facing motion cues (gameplay in §§1–6 unaffected): the
+Cube carries a cyan trail communicating forward motion (stronger at higher
+speed tiers); gravity transitions fire a distinct spatial pulse; speed
+tiers gain increasing motion energy (streaks ~absent at 1x, clearly
+present at 2x+); pads/orbs/portals answer activation with semantic-color
+bursts (yellow = jump impulse, blue = gravity, tier colors = speed).
+Effect hierarchy never obscures hazards: particles stay subordinate to
+the player/hazard/route readability order (§9). All juice is reversibly
+disableable (`?fx=off`) with zero gameplay difference. NOT human-approved
+(M6B motion/juice gate OPEN).
