@@ -23,8 +23,12 @@ const resolution = resolveLevel(requestedLevelId);
 // M6A post fallback: `?post=off` forces the direct-render path (same scene,
 // no composer passes) — the game stays fully playable without post.
 const postParam = gameParams.get('post');
+// M6B FX fallback: `?fx=off` disables the motion-juice layer only (trail,
+// bursts, streaks) — same scene, same gameplay, M6A foundation intact.
+const fxParam = gameParams.get('fx');
 const game = new Game(container, resolution.level, {
   postEnabled: postParam === null ? undefined : postParam !== 'off',
+  fxEnabled: fxParam === null ? undefined : fxParam !== 'off',
 });
 game.start();
 
@@ -82,6 +86,15 @@ declare global {
       postPassCount: () => number;
       bloomParams: () => { strength: number; radius: number; threshold: number } | null;
       setPostEnabled: (enabled: boolean) => void;
+      // M6B motion-juice observability (presentation only).
+      fxEnabled: () => boolean;
+      setFxEnabled: (enabled: boolean) => void;
+      activeParticles: () => number;
+      trailSamples: () => number;
+      activeStreaks: () => number;
+      fxCounters: () => { jump: number; landing: number; gravity: number; speed: number; pad: number; jumpOrb: number; gravityOrb: number };
+      lastLandingIntensity: () => number;
+      fxResets: () => number;
       burstActive: () => boolean;
       debugFreezeFrame: (frozen: boolean) => void;
       debugReplayBurst: () => void;
@@ -158,6 +171,17 @@ window.__gd3d = {
   setPostEnabled: (enabled: boolean): void => {
     game['rendererHost'].setPostEnabled(enabled);
   },
+  // M6B probes: toggle + boundedness/counter observability (cold path).
+  fxEnabled: () => game['rendererHost'].fxEnabled,
+  setFxEnabled: (enabled: boolean): void => {
+    game['rendererHost'].setFxEnabled(enabled);
+  },
+  activeParticles: () => game['rendererHost'].activeParticles,
+  trailSamples: () => game['rendererHost'].trailSamples,
+  activeStreaks: () => game['rendererHost'].activeStreaks,
+  fxCounters: () => ({ ...game['rendererHost'].fxCounters }),
+  lastLandingIntensity: () => game['rendererHost'].lastLandingIntensity,
+  fxResets: () => game['rendererHost'].fxResets,
   burstActive: () => game['rendererHost'].deathBurstActive,
   // Debug-only freeze for burst photography (see RendererHost.debugFreezeFrame).
   debugFreezeFrame: (frozen: boolean): void => {

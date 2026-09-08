@@ -44,6 +44,10 @@ export class Game {
     this.simulation = new GameSimulation(levelDef, {
       onJump: () => {
         this.jumpCount++;
+        // M6B: bridge the REAL jump event to presentation (one signal =
+        // one visual burst). Composition-root wiring only — the sim is
+        // untouched and never knows the renderer exists.
+        this.rendererHost.notifyJump();
       },
       onDeath: () => {
         this.hud.setMessage('');
@@ -191,9 +195,12 @@ export class Game {
       this.fpsEma += (1000 / measuredDt - this.fpsEma) * 0.05;
     }
 
-    this.rendererHost.applyFrame(alpha, renderDtSeconds);
+    // Presentation pause freeze (M6B): while paused the sim takes no
+    // steps AND visuals take no render time — trail, particles, rings,
+    // burst, tumble and camera smoothing all freeze instead of drifting on
+    // wall-clock dt. Simulation pause behavior is untouched.
+    this.rendererHost.applyFrame(alpha, this.paused ? 0 : renderDtSeconds);
     this.rendererHost.render();
-
     // DOM overlays follow the render freeze so frozen QA frames (and their
     // screenshots) show death-moment HUD/debug state, not live respawn state.
     if (this.rendererHost.debugFreezeFrame) return;

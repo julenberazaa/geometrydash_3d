@@ -22,6 +22,51 @@ import { PALETTE, SPEED_TIER_COLORS } from './palette';
  * it, so re-theming keeps committed M5 replays compatible (pinned by
  * tests/visualFoundation.test.ts).
  */
+/**
+ * M6B motion-juice configuration (presentation only).
+ *
+ * Lives in the SAME renderer-owned visual authority as the M6A theme — no
+ * second config system. Every value shapes visual energy only: particle
+ * counts, lifetimes, speeds, sizes, colors. Nothing here can change
+ * gameplay, fingerprints, or replay content (pinned by test). The M6A
+ * provisional foundation above is untouched by this block.
+ */
+export interface FxConfig {
+  /** Cube trail (cyan-family pooled points following the rendered cube). */
+  trailMax: number;
+  trailLifetime1x: number;
+  trailEmitInterval: number;
+  trailSize: number;
+  trailColor: number;
+  /** Shared burst pool (jump/landing/gravity/speed/pad/orb particles). */
+  burstMax: number;
+  burstSize: number;
+  jumpCount: number;
+  jumpSpeed: number;
+  jumpLife: number;
+  jumpColor: number;
+  landingBase: number;
+  landingMax: number;
+  landingLife: number;
+  landingColor: number;
+  gravityCount: number;
+  gravitySpeed: number;
+  gravityLife: number;
+  gravityColor: number;
+  speedCount: number;
+  speedLife: number;
+  padCount: number;
+  padLife: number;
+  padColor: number;
+  orbCount: number;
+  orbLife: number;
+  orbColor: number;
+  /** Speed streaks (environment-side instanced slivers, 2x+ only). */
+  streakMax: number;
+  streakLength: number;
+  streakColor: number;
+}
+
 export interface ProductionTheme {
   /** Scene background (near-black) + fog envelope. */
   background: number;
@@ -75,6 +120,8 @@ export interface ProductionTheme {
   bloomThreshold: number;
   /** Device-pixel-ratio cap (perf headroom). */
   dprCap: number;
+  /** M6B motion-juice tuning (presentation only; see FxConfig). */
+  fx: FxConfig;
 }
 
 /**
@@ -142,6 +189,38 @@ export const PRODUCTION_THEME: ProductionTheme = {
   bloomRadius: 0.5,
   bloomThreshold: 0.8,
   dprCap: 1.5,
+  fx: {
+    trailMax: 96,
+    trailLifetime1x: 0.45,
+    trailEmitInterval: 0.016,
+    trailSize: 0.5,
+    trailColor: 0x35d5ff,
+    burstMax: 384,
+    burstSize: 0.3,
+    jumpCount: 10,
+    jumpSpeed: 6,
+    jumpLife: 0.5,
+    jumpColor: 0x7fe9ff,
+    landingBase: 8,
+    landingMax: 20,
+    landingLife: 0.5,
+    landingColor: 0xbfe9ff,
+    gravityCount: 26,
+    gravitySpeed: 7,
+    gravityLife: 0.6,
+    gravityColor: 0x4fc3ff,
+    speedCount: 18,
+    speedLife: 0.55,
+    padCount: 14,
+    padLife: 0.5,
+    padColor: 0xffd23f,
+    orbCount: 12,
+    orbLife: 0.45,
+    orbColor: 0xffd23f,
+    streakMax: 24,
+    streakLength: 2.4,
+    streakColor: 0x8fd8ff,
+  },
 };
 
 /**
@@ -193,5 +272,21 @@ export const validateProductionTheme = (
   merged.routeEdgeEmissiveIntensity = clamp(merged.routeEdgeEmissiveIntensity, 0, 4);
   merged.hazardEmissiveIntensity = clamp(merged.hazardEmissiveIntensity, 0, 4);
   merged.playerFaceEmissiveIntensity = clamp(merged.playerFaceEmissiveIntensity, 0, 4);
+  // M6B FX guards: pools stay bounded, lifetimes stay short (no lingering
+  // fog of particles), counts stay well under draw-call sanity.
+  // (Clone: the default merge shares PRODUCTION_THEME.fx by reference.)
+  const fx = { ...merged.fx };
+  merged.fx = fx;
+  fx.trailMax = Math.floor(clamp(fx.trailMax, 16, 128));
+  fx.burstMax = Math.floor(clamp(fx.burstMax, 64, 512));
+  fx.streakMax = Math.floor(clamp(fx.streakMax, 0, 32));
+  fx.trailLifetime1x = clamp(fx.trailLifetime1x, 0.1, 1.2);
+  fx.trailEmitInterval = clamp(fx.trailEmitInterval, 0.004, 0.1);
+  fx.jumpLife = clamp(fx.jumpLife, 0.1, 1.2);
+  fx.landingLife = clamp(fx.landingLife, 0.1, 1.2);
+  fx.gravityLife = clamp(fx.gravityLife, 0.1, 1.2);
+  fx.speedLife = clamp(fx.speedLife, 0.1, 1.2);
+  fx.padLife = clamp(fx.padLife, 0.1, 1.2);
+  fx.orbLife = clamp(fx.orbLife, 0.1, 1.2);
   return merged;
 };

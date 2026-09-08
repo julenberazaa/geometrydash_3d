@@ -9,6 +9,7 @@ import { InteractionView } from './InteractionView';
 import { EnvironmentView } from './EnvironmentView';
 import { MaterialLibrary } from './MaterialLibrary';
 import { PostPipeline } from './PostPipeline';
+import { VfxSystem } from './VfxSystem';
 import { DebugView } from '../debug/DebugView';
 import { lerp } from '../core/math';
 import {
@@ -40,6 +41,8 @@ export interface RendererStatsSnapshot {
 export interface RendererOptions {
   /** Post pipeline on/off (default per RENDERER_CONFIG; `?post=off` forces off). */
   postEnabled?: boolean;
+  /** M6B motion-juice on/off (default on; `?fx=off` forces off). */
+  fxEnabled?: boolean;
 }
 
 export class RendererHost {
@@ -52,6 +55,8 @@ export class RendererHost {
 
   private readonly library: MaterialLibrary;
   private readonly post: PostPipeline;
+  /** M6B motion-juice VFX (presentation only; observes, never writes). */
+  private readonly vfx: VfxSystem;
   private readonly levelView: LevelView;
   /** M4 interaction visuals + activation VFX (presentation only). */
   private readonly interactionView: InteractionView;
@@ -130,6 +135,12 @@ export class RendererHost {
     this.deathBurst = new DeathBurstView();
     this.scene.add(this.deathBurst.group);
 
+    // M6B motion language + gameplay juice (trail, bursts, streaks).
+    // Independent toggle: `?fx=off` hides it with zero gameplay effect.
+    this.vfx = new VfxSystem(this.theme);
+    this.scene.add(this.vfx.group);
+    if (options.fxEnabled === false) this.vfx.setEnabled(false);
+
     this.debugView = new DebugView();
     this.debugView.buildColliders(simulation.level.world);
     this.scene.add(this.debugView.group);
@@ -207,6 +218,9 @@ export class RendererHost {
       renderDtSeconds,
       sim.player.gravityMode === 'ceiling',
     );
+    // Motion juice follows the SAME interpolated cube position (trail
+    // integrity) with the same render dt (pause-freeze parity).
+    this.vfx.update(renderDtSeconds, sim, ip);
     this.debugView.updatePlayerBox(p, sim.halfExtents);
     this.deathBurst.update(renderDtSeconds);
     this.interactionView.update(renderDtSeconds);
@@ -302,6 +316,54 @@ export class RendererHost {
   }
 
   /**
+   * Ground-jump signal from the REAL `onJump` sim event (bridged by Game).
+   * One signal = one visual burst; never synthesized from polling.
+   */
+  public notifyJump(): void {
+    this.vfx.notifyJump();
+  }
+
+  /** M6B effects state (QA observability). */
+  public get fxEnabled(): boolean {
+    return this.vfx.isEnabled;
+  }
+
+  /** Runtime FX toggle (debug/QA; presentation only). */
+  public setFxEnabled(enabled: boolean): void {
+    this.vfx.setEnabled(enabled);
+  }
+
+  /** Live M6B burst particles (QA boundedness observability). */
+  public get activeParticles(): number {
+    return this.vfx.activeParticles;
+  }
+
+  /** Live trail samples (QA boundedness observability). */
+  public get trailSamples(): number {
+    return this.vfx.trailSamples;
+  }
+
+  /** Visible speed-streak instances (QA observability). */
+  public get activeStreaks(): number {
+    return this.vfx.activeStreaks;
+  }
+
+  /** Cumulative M6B emission counters (QA observability). */
+  public get fxCounters(): { jump: number; landing: number; gravity: number; speed: number; pad: number; jumpOrb: number; gravityOrb: number } {
+    return this.vfx.countersSnapshot;
+  }
+
+  /** Last landing intensity 0..1 (impact-scaling observability). */
+  public get lastLandingIntensity(): number {
+    return this.vfx.lastLandingIntensityValue;
+  }
+
+  /** Monotonic VFX transient-reset count (QA observability). */
+  public get fxResets(): number {
+    return this.vfx.resetCountValue;
+  }
+
+  /**
    * Debug-only frame freeze (QA photography aid, same category as F1/F2/F3).
    * When true, applyFrame skips every visual update while render() keeps
    * presenting the frozen frame — a 0.35 s death burst can then be captured
@@ -369,6 +431,7 @@ export class RendererHost {
     this.interactionView.dispose();
     this.playerViewInternal.dispose();
     this.deathBurst.dispose();
+    this.vfx.dispose();
     this.debugView.dispose();
     this.library.dispose();
     this.renderer.domElement.remove();
