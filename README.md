@@ -49,7 +49,12 @@ green, golden replay intact) — HUMAN VISUAL GATE OPEN
 engineering-complete on the provisional foundation (pooled trail/bursts/
 streaks, exact-once real-event emission, `?fx=off` fallback, 205/205
 tests, M6B 24/24 + M6A 24/24 browser green, replay recreates juice) —
-HUMAN MOTION/JUICE GATE OPEN, M6A gate STILL OPEN.
+HUMAN MOTION/JUICE GATE OPEN, M6A gate STILL OPEN. M6C1 visual trigger
+infrastructure engineering-complete (position-driven sections +
+interpolation, in-place application, zero new draws, `?triggers=off`
+exact baseline, 226/226 tests, M6C1 25/25 browser green, replay
+timeline-free) — ARTISTIC TIMELINE HUMAN GATE NOT PERFORMED, M6A/M6B
+gates STILL OPEN.
 
 ## Setup
 
@@ -134,5 +139,7 @@ proves the unmodified engine is level-agnostic (real-input finish +
 verified replay). Human replay/Level-02 feel gate APPROVED (2026-09-07).
 M0–M5 complete. M6A visual production foundation engineering-complete —
 HUMAN VISUAL GATE OPEN — plus M6B motion juice engineering-complete
-(HUMAN MOTION/JUICE GATE OPEN, M6A still provisional; see
+(HUMAN MOTION/JUICE GATE OPEN, M6A still provisional) plus M6C1 visual
+trigger infrastructure engineering-complete (ARTISTIC TIMELINE GATE NOT
+PERFORMED, all prior gates still provisional; see
 `specs/milestones/M6_VISUAL_PRODUCTION_SYSTEM.md`).

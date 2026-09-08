@@ -11,18 +11,24 @@ ENGINEERING COMPLETE / HUMAN VISUAL GATE OPEN
 M6B:
 ENGINEERING COMPLETE / HUMAN MOTION-JUICE GATE OPEN
 
-M6C / M6D:
-PLANNED (not started — M6C begins only after eventual human review of
-the M6A + M6B presentation; M6A's human visual gate is STILL OPEN and its
-provisional foundation was NOT re-canonicalized by M6B).
+M6C1:
+VISUAL TRIGGER INFRASTRUCTURE ENGINEERING COMPLETE
 
-Automated: 205/205 tests green (`npm run verify`: typecheck + lint + tests +
-build) — 182 pre-M6B + 23 motion-juice regression tests. Browser QA:
-M6B section 24/24 green AND M6A section 24/24 green (regression), zero
-console/page errors; historical sections show the documented
-CDP-timing/load flake set on this machine (no M6B causation — see
-§ BROWSER QA). Golden replay verifies unchanged (unit + headless VFX
-integration + in-page proof).
+M6C2 / final trigger authoring:
+NOT STARTED
+
+M6D:
+NOT STARTED (not started — M6C2 begins only after eventual human review
+of the M6A + M6B + M6C1 presentation; all three human gates are STILL OPEN
+and no foundation was re-canonicalized by M6C1).
+
+Automated: 226/226 tests green (`npm run verify`: typecheck + lint + tests +
+build) — 205 pre-M6C1 + 21 visual-timeline regression tests. Browser QA:
+M6C1 section 25/25 green AND M6A 24/24 + M6B 24/24 green (regressions),
+zero console/page errors; historical sections show the documented
+CDP-timing/load flake set on this machine (no M6C1 causation — see
+§ BROWSER QA). Golden replay verifies unchanged (unit + headless timeline
+integration + in-page F4 proof).
 
 ## OBJECTIVE
 
@@ -540,11 +546,177 @@ to hazards/player? `?fx=off` comparison: is the juice worth it?
 - [x] M6A NOT marked approved; M6C/M6D NOT started.
 - [ ] HUMAN MOTION-JUICE GATE approval (OPEN).
 
-## M6C — Visual Triggers (PLANNED — do not implement yet)
+## M6C1 — Visual Trigger Infrastructure (ENGINEERING COMPLETE /
+ARTISTIC TIMELINE HUMAN GATE NOT YET PERFORMED)
 
-Environment visual timeline/triggers, beat sync hooks, presentation events
-driven by (never driving) simulation state. Design after eventual human
-review of the M6A + M6B presentation.
+Reusable, reversible, data-driven presentation timeline on the provisional
+M6A+M6B foundation (neither re-approved nor re-canonicalized — all human
+gates STILL OPEN). A restrained engineering PROOF (3–4 sections per level),
+NOT the final artistic timeline. M6C2 / final trigger authoring NOT STARTED.
+
+### M6C1 OBJECTIVE
+
+Let a level change its PRESENTATION as the player moves through it —
+background/fog evolution, route accents, environment intensity, restrained
+bloom/exposure modulation, VFX multipliers — with zero gameplay effect,
+position-driven (never wall-clock), level-agnostic, replay-compatible,
+cheap, testable, and `?triggers=off`-reversible to the EXACT baseline.
+
+### M6C1 DATA OWNERSHIP (Pattern B — presentation field on level data)
+
+`VisualSectionOverride` / `VisualSection` / `VisualSequenceDefinition`
+types live in `src/level/levelDefinition.ts` (same precedent as
+`LevelTheme`: presentation data rides with the level file it belongs to);
+`LevelDefinition.visualSequence?` is optional (absent = baseline
+everywhere). `computeLevelFingerprint()` deliberately never reads it —
+the established theme-exclusion pattern, pinned by test (add/mutate/
+remove sequence → identical fingerprint). WHY NOT a renderer-side
+registry: a second id-keyed lookup would duplicate level-presentation
+ownership (AGENTS.md §7: one concept, one owner) and add fallback/sync
+risk; the field keeps one source per level with zero engine special-case.
+Section identity uses pure Z ranges (no gameplay object ids duplicated).
+
+### M6C1 EVALUATION MODEL
+
+`src/visuals/visualTimeline.ts` — the ONE renderer-side controller:
+BASE THEME + CURRENT SECTION + TRANSITION INTERPOLATION = CURRENT VISUAL
+STATE, written into a caller-owned scratch `VisualState` every frame.
+Active section = last with `startZ <= playerZ` (forward-only motion +
+respawn-to-start make this robust); blend `t = smoothstep((z-startZ)/
+blendIn)`; sparse overrides inherit the previous section's resolved value
+(sticky), else base. Pure function of (base, sequence, z): no
+accumulation, no drift (forward/backward sampling pinned bit-identical).
+THREE-free (hex RGB lerp) — the sim could never import it for gameplay.
+`resetVisualState` restores the exact base through the SAME path
+(triggers-off === base structurally, never an approximation). No player /
+hazard fields exist in the model (semantic identities stable by structure).
+All overrides clamped at resolve time: bloom through BLOOM_CONTRACT,
+exposure 0.5..2, intensities 0..2, fog guards.
+
+### M6C1 SYSTEM INTEGRATION (all in-place, zero new scene content)
+
+- `MaterialLibrary.applyRouteState` / `resetRouteToTheme`: retints the
+  EXISTING shared route materials (body, surface + self-emissive, edge +
+  emissive). `routeUnder` deliberately untouched (M3.3 parity calibration).
+- `PostPipeline.setBloomParams` / `resetBloomToTheme`: retunes the
+  EXISTING bloom pass (re-clamped; staged when the composer is off so
+  post on/off never loses intent). Composer never rebuilds (passes 3→3).
+- `EnvironmentView.applyVisualState` / `resetToTheme`: background + fog
+  envelope + dressing intensity (star opacity, pillar/window color scale —
+  no transparency-flag or object churn).
+- `VfxSystem.setIntensity(vfx, streak)`: scales emission counts, trail
+  density/brightness, streak count/opacity. Pool capacities fixed;
+  `?fx=off` still wins.
+- `RendererHost` owns the prepared sequence + scratch state + enabled
+  flag; evaluates from the SAME interpolated Z as the trail (pause-safe:
+  same z re-resolves the same state); restores every system on the
+off-edge. Exposure applied on the owned renderer (clamped).
+- Toggles compose independently: `?triggers=off`, `?fx=off`, `?post=off`
+  (all eight combos coherent; all-off = playable baseline). No settings UI.
+- Probes: `visualSectionId/Progress/TriggersEnabled`,
+  `setVisualTriggersEnabled`, `visualExposure/VfxIntensity/Background/
+  FogColor/RouteAccent/PlayerColor/HazardColor` (+ existing `bloomParams`).
+
+### M6C1 PROOF CONTENT (PROVISIONAL — explicitly not art direction)
+
+Level 01: `runway` (identity) → `gravity-descent` (cooler/deeper,
+calmer dressing/juice) → `interaction-run` (route-accent shift, lifted
+environment/bloom/juice) → `speed-sprint` (bloom 0.55, exposure 1.2,
+max juice). Level 02 (teal retained): `v2-weave` → `v2-ceiling`
+(calmer) → `v2-speed` (restrained lift). No palette shocks, no strobes,
+no camera/music/beat (all explicitly excluded).
+
+### M6C1 RESET / REPLAY MODEL
+
+Position-driven ⇒ resets are natural: R/death-respawn/replay-start all
+return to start Z ⇒ opening section (browser-proven). NOTHING timeline
+is stored in ReplayV1 (exported tape scanned: zero section/visual/bloom/
+fog/exposure/trigger keys); F4 recreates sections from the replayed
+trajectory (headless: full 2346-frame golden tape verifies WHILE the
+timeline observes every tick and walks v2-weave→v2-ceiling→v2-speed;
+in-page: natural-death tape → F4 → section `runway` → VERIFIED).
+Fixture NEVER regenerated.
+
+### M6C1 RESOURCE / PERFORMANCE
+
+Section changes add NOTHING: draw calls +0, triangles +0, children
+50→50, materials 26→26, geometries 8→8, composer passes 3→3
+(browser-proven across every transition + death/restart/replay). Per-frame
+cost is one evaluation (∼15 lerps into scratch, zero allocation) + a few
+setHex/opacity writes. Build 588.04→595.94 kB (+7.90). No sim code
+touched (no hot-loop impact by construction).
+
+### M6C1 AUTOMATED QA
+
+`tests/visualTimeline.test.ts` (21 new): Z-determinism + boundaries +
+endpoints, exact-base restore, start-section resolution, drift-free
+resampling, color determinism, bloom/exposure/intensity clamps,
+player/hazard stability across a full proof sweep, fingerprint
+decoupling, sim trigger-free boundary (incl. type-only visuals import in
+level data + THREE-free controller), post pass constancy, VFX capacity
+constancy, idempotent reset/prepare, golden-tape timeline integration.
+Full gate: typecheck + lint + 226/226 + build. Untouched and green:
+every M0–M6B suite (incl. `floorCompat`, `replayGolden`, `level02`).
+
+### M6C1 BROWSER QA
+
+M6A 24/24 + M6B 24/24 intact (no check weakened). M6C1 section (§23,
+`m6c1-*`, 25 checks) — ALL GREEN, zero console/page errors: default-on +
+opening sections both levels, gravity mid-blend bounded (bg/exposure
+strictly between), settled gravity/fog shift, interaction accent +
+lifted juice, speed bloom in-contract, route-accent with zero geometry
+growth, player/hazard identity pins, R + death reset, natural-death F4 →
+VERIFIED + tape-carries-zero-timeline-state proof, 26/8/3 resource pins,
+`?triggers=off` exact-baseline (+ deep-level stay-baseline), Level 02
+same-infra (teal/ceiling/speed), post-off/fx-off/all-off matrix, resize.
+Historical-section note (unchanged): this machine's CDP-timing/load flake
+set; M6C1 causation excluded (sim untouched, all determinism green,
+25/25 across the final run).
+
+### M6C1 SCREENSHOTS
+
+`qa/screenshots/m6c1-*` (+ JSON sidecars): `01-level01-base` (runway),
+`02-gravity-transition` (mid-blend frame, portal-pane wash context —
+numbers are the proof), `03-ceiling-section`, `04-interaction-section`,
+`05-speed-section` (inside the finish-gate wash at the sprint photo —
+bloom 0.55 in-contract is the proof; wash documented, not hidden),
+`06/07/08-level02-*`, `09-replay` (REPLAY badge + runway section),
+`10-triggers-off` (exact-baseline pair of 01). Engineering evidence ONLY
+— explicitly NOT human-approved art.
+
+### M6C1 HUMAN GATE (NOT PERFORMED)
+
+ARTISTIC TIMELINE HUMAN GATE NOT YET PERFORMED. When the human can
+review: same URLs (`/`, `?level=validation-02`, `?triggers=off` /
+`&triggers=off` comparison). Questions: does presentation evolution read
+as progression (not distraction)? Do sections stay subordinate to
+hazards/player? Is `?triggers=off` comparison favorable? Is anything
+misleading as a gameplay cue?
+
+### M6C1 KNOWN LIMITATIONS
+
+- Proof values are provisional taste, not direction (M6C2 authors taste).
+- Mid-blend/sprint photos can sit inside portal/finish-gate washes under
+  headless framing (documented; probes are the proof).
+- `routeUnder` (ceiling panel) intentionally not modulated (M6C2 may
+  revisit with parity evidence).
+- Real-GPU frame-time still unmeasured (M6D).
+- M6A + M6B gates STILL OPEN — proof tuned against provisional ground.
+
+### M6C1 DEFINITION OF DONE
+
+- [x] Data-driven, renderer-owned, position-driven trigger infra.
+- [x] Zero gameplay change (sim untouched; golden gates green).
+- [x] Replay compatibility (nothing stored; recreated live, unit+in-page).
+- [x] `?triggers=off` exact-baseline fallback (matrix proven).
+- [x] Player/hazard identities structurally stable.
+- [x] Floor/Ceiling + Level 01/02 shared path (zero camera edits).
+- [x] 226/226 automated green; M6C1 25/25 + M6A/M6B 24/24 browser green.
+- [x] Zero-cost transitions proven (50→50 children, 26/8/3 flat).
+- [x] Evidence screenshots captured (wash contexts documented).
+- [x] M6A/M6B NOT marked approved; final timeline NOT authored.
+- [x] M6C2/M6D/M7 NOT started.
+- [ ] ARTISTIC TIMELINE HUMAN GATE (NOT PERFORMED).
 
 ## M6D — Performance Closeout (PLANNED — do not implement yet)
 

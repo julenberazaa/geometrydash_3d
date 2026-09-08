@@ -273,3 +273,18 @@ Effect hierarchy never obscures hazards: particles stay subordinate to
 the player/hazard/route readability order (§9). All juice is reversibly
 disableable (`?fx=off`) with zero gameplay difference. NOT human-approved
 (M6B motion/juice gate OPEN).
+
+## 9.2 Presentation evolution — CURRENT INFRASTRUCTURE (M6C1),
+PROOF TUNING PROVISIONAL
+
+Product rules (gameplay in §§1–6 unaffected): presentation MAY evolve
+across a level as the player advances — atmosphere, route accents,
+environment energy, restrained bloom/exposure, juice multipliers. Visual
+section semantics are STRICTLY position-driven (same location → same
+section, every machine); transitions are smooth presentation
+interpolation that must never obscure gameplay, mislead as gameplay cues,
+flash, or strobe. The cyan player anchor and warm hazard identity NEVER
+change with sections. All evolution is reversibly disableable
+(`?triggers=off` = exact baseline) with zero gameplay difference. The
+shipped section values are ENGINEERING PROOF, not direction (M6C1 proof
+gate NOT performed; final artistic timeline is M6C2).

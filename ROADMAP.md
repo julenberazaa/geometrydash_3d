@@ -254,7 +254,24 @@ tests (23 new motion-juice), M6B browser QA 24/24 + M6A 24/24 green, zero
 console/page errors, `qa/screenshots/m6b-*` evidence set (review findings
 fixed in-run: rear-face/shell spawns, snappier-but-photographable lives).
 Spec: M6B sections in `M6_VISUAL_PRODUCTION_SYSTEM.md`. HUMAN
-MOTION/JUICE GATE = OPEN. M6C/M6D: still PLANNED, not started.
+MOTION/JUICE GATE = OPEN. M6C1 trigger infrastructure (below) built on
+the still-provisional M6A+M6B presentation — no re-approval implied.
+
+M6C1 appendage (visual trigger infrastructure ENGINEERING-COMPLETE):
+position-driven presentation timeline (`VisualSection` data on the level +
+`visualTimeline.ts` controller: base + section + smooth interpolation =
+scratch state, no drift), applied through in-place hooks only (route
+retint, bloom retune in-contract, environment modulation, VFX
+multipliers, exposure) — zero new draws/materials/geometries (children
+50→50, 26/8/3 flat), `?triggers=off` exact-baseline fallback composing
+with post/fx flags, replay carries zero timeline state (F4 recreates from
+trajectory; golden tape verifies WHILE the timeline observes). Restrained
+PROOF sections on both levels (explicitly not art direction). 226/226
+automated tests (21 new timeline), M6C1 browser QA 25/25 + M6A/M6B 24/24
+green, zero console/page errors, `qa/screenshots/m6c1-*` evidence set
+(wash contexts documented, not hidden). Spec: M6C1 sections in
+`M6_VISUAL_PRODUCTION_SYSTEM.md`. ARTISTIC TIMELINE HUMAN GATE = NOT
+PERFORMED. M6C2 (final authoring)/M6D: still PLANNED, not started.
 
 ## M7 — 45–60 s Cube vertical slice
 

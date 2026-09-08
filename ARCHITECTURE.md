@@ -315,6 +315,28 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   streak counts, lifetimes, speeds, sizes, colors — presentation only,
   clamped by `validateProductionTheme`; the M6A provisional values above
   are untouched by it).
+- `visualTimeline.ts` (`src/visuals/`, M6C1) — the ONE renderer-side
+  owner computing CURRENT VISUAL STATE = base theme + current section +
+  transition interpolation. Position-driven only (active = last section
+  with `startZ <= playerZ`; `endZ` documents intent + drives section
+  progress); pure function of (base, prepared sequence, z) into
+  caller-owned scratch — no accumulation, no drift. Sparse overrides
+  inherit the previous section's resolved value, else base; everything
+  clamped at resolve (bloom ⇒ BLOOM_CONTRACT, exposure 0.5..2,
+  intensities 0..2). THREE-free (hex RGB lerp). No player/hazard fields
+  by construction. `resetVisualState` restores the exact base through the
+  same path (triggers-off === base structurally).
+- `LevelDefinition.visualSequence?` (M6C1 data, Pattern B): optional
+  presentation timeline riding with the level file (the `LevelTheme`
+  precedent — presentation lives in level data, fingerprint excludes it).
+  Absent = baseline everywhere. Section identity is pure Z ranges (no
+  gameplay ids duplicated). `RendererHost` prepares it once (cold,
+  sorted copy), evaluates per frame from the interpolated Z, and applies
+  it through in-place hooks only (`MaterialLibrary.applyRouteState`,
+  `PostPipeline.setBloomParams`, `EnvironmentView.applyVisualState`,
+  `VfxSystem.setIntensity`, owned exposure) — zero new scene content,
+  zero new draws, every system restored exactly on the off-edge.
+  `?triggers=off` (URL + runtime) composes with `?post=off`/`?fx=off`.
 - `VfxSystem` (`src/rendering/`, M6B) — the ONE presentation owner for
   motion language + gameplay juice (Cube trail, jump/landing bursts,
   gravity-transition pulses, speed streaks + tier pulses, pad/orb bursts).
@@ -565,6 +587,7 @@ fixed-tick PHYSICAL input tape plus verification evidence.
 | Controlled bloom (contract-pinned), resize-safe post, playable no-post fallback | `visualFoundation` contract tests + browser QA m6a resize/fallback checks |
 | VFX observes but never writes sim; sim imports no VFX/rendering/visuals; nothing visual in replays | `motionVfx` boundary + golden-integration tests + browser QA m6b replay checks |
 | VFX pools bounded; no per-frame/per-event allocation; exact-once emission per real edge; reset on attempt/death/teleport; `?fx=off` preserves gameplay | `motionVfx` lifecycle tests + browser QA m6b section (counters, resets, resource guards, post×fx matrix) |
+| Timeline section identity position-driven; state never accumulates/drifts; bloom ⇒ contract, exposure ⇒ 0.5..2; player/hazard stable; sequence excluded from fingerprint; sim trigger-free; transitions add zero draws/materials/geometries; `?triggers=off` restores exact base; nothing timeline in replays | `visualTimeline` tests + browser QA m6c1 section (interpolation bounds, identity pins, reset/replay proofs, 26/8/3 guards, fallback matrix) |
 | No milestone passes with failing verification | `npm run verify` + `AGENTS.md` process rule |
 
 ## 11. Known non-defects / deferred perf notes
