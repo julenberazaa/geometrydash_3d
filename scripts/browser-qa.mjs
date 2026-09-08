@@ -2691,7 +2691,340 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     `trail=${m6bResized.trail}`);
 }
 
-// --- 23. Console audit ---
+// --- 23. M6C1: visual triggers (position-driven presentation) ---
+// Timeline sections resolve from player Z only (same location → same
+// section on every machine); interpolation is render-side smoothing.
+// Automated structural proof lives in tests/visualTimeline.test.ts; these
+// checks prove the integrated app (real trajectory walks the proof
+// sequence on BOTH levels, triggers-off restores the exact baseline,
+// replay recreates sections with no stored timeline state, resources flat)
+// and capture the m6c1-* evidence set. Teleport + pause-freeze framing
+// (proven M6A/M6B coordinates), so every M6C1 check must be 100% green.
+{
+  const tl = () => page.evaluate(() => ({
+    section: window.__gd3d.visualSectionId(),
+    t: window.__gd3d.visualSectionProgress(),
+    enabled: window.__gd3d.visualTriggersEnabled(),
+    bg: window.__gd3d.visualBackground(),
+    fog: window.__gd3d.visualFogColor(),
+    accent: window.__gd3d.visualRouteAccent(),
+    exp: window.__gd3d.visualExposure(),
+    vfx: window.__gd3d.visualVfxIntensity(),
+    player: window.__gd3d.visualPlayerColor(),
+    hazard: window.__gd3d.visualHazardColor(),
+    bloom: window.__gd3d.bloomParams(),
+    passes: window.__gd3d.postPassCount(),
+    mats: window.__gd3d.materialCount(),
+    geos: window.__gd3d.geometryCount(),
+    children: window.__gd3d.sceneChildren(),
+  }));
+  const pollTl = async (pred, timeoutMs = 15000) => {
+    const t0 = Date.now();
+    let s = await tl();
+    for (;;) {
+      if (pred(s)) return s;
+      if (Date.now() - t0 > timeoutMs) return s;
+      await page.waitForTimeout(100);
+      s = await tl();
+    }
+  };
+  const tlPause = async () => {
+    await page.keyboard.press('KeyP');
+    await page.waitForTimeout(150);
+  };
+  const tlResume = async () => {
+    await page.keyboard.press('KeyP');
+    await page.waitForTimeout(150);
+  };
+  const waitVerifyM6c1 = async (timeoutMs = 90000) => {
+    const t0 = Date.now();
+    for (;;) {
+      const snap = await page.evaluate(() => ({
+        verify: window.__gd3d.replayVerification(),
+        mode: window.__gd3d.replayMode(),
+      }));
+      if (snap.verify.kind === 'pass' || snap.verify.kind === 'diverged') return snap;
+      if (Date.now() - t0 > timeoutMs) return snap;
+      await page.waitForTimeout(300);
+    }
+  };
+  const BASE_BG = 0x07040f;
+  const BASE_FOG = 0x140b26;
+  const BASE_ACCENT = 0xb44dff;
+  const PLAYER_HEX = 0x0e4a56;
+  const HAZARD_HEX = 0xff9d00;
+
+  // Fresh page, default flags (post on, fx on, triggers on).
+  await page.goto(URL, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2000);
+  const m6c1Base = await pollTl((s) => s.section === 'runway', 15000);
+  log('m6c1 triggers enabled by default, opening section resolves',
+    m6c1Base.enabled === true && m6c1Base.section === 'runway' && m6c1Base.bg === BASE_BG,
+    `enabled=${m6c1Base.enabled} section=${m6c1Base.section} bg=0x${m6c1Base.bg.toString(16)}`);
+  // Base evidence on a framed runway run.
+  await startGravityRun(8);
+  const m6c1BaseFrame = await rollUntilM3((s) => s.z > 8 && s.z < 14 && s.grounded, 15000);
+  log('m6c1 level01 base framed for evidence', m6c1BaseFrame !== null,
+    m6c1BaseFrame ? `z=${m6c1BaseFrame.z.toFixed(1)}` : 'never framed');
+  await tlPause();
+  await capture('m6c1-01-level01-base');
+  await tlResume();
+
+  // Gravity descent: teleport before the blend zone, roll through the
+  // mid-blend (24 u wide — no tight window), then settle past it.
+  // Gravity descent: teleport before the blend zone, then catch the
+  // mid-blend directly off the timeline probe (the 24 u zone always
+  // passes through 0<t<1 while running — no tight z-window, no grounded
+  // requirement; the paused frame is a genuine mid-transition shot).
+  // Gravity descent: teleport before the blend zone, then catch the
+  // mid-blend directly off the timeline probe. NOTE the probe `t` is
+  // SECTION progress ((z-150)/128), not the blend factor ((z-150)/24):
+  // t in (0.04,0.15) ⇔ blend smooth-factor in (0.2,0.8) ⇔ bg/exp strictly
+  // between base and target. The ~10 u window crosses even at crawl speed.
+  await startGravityRun(148);
+  const m6c1BlendCatch = await pollTl(
+    (s) => s.section === 'gravity-descent' && s.t > 0.04 && s.t < 0.15, 45000);
+  let m6c1BlendProbe = null;
+  if (m6c1BlendCatch.section === 'gravity-descent' && m6c1BlendCatch.t > 0.04 && m6c1BlendCatch.t < 0.15) {
+    await tlPause();
+    m6c1BlendProbe = await tl();
+    await capture('m6c1-02-gravity-transition');
+    await tlResume();
+  }
+  log('m6c1 mid-blend interpolation is bounded (between base and target)',
+    m6c1BlendProbe !== null && m6c1BlendProbe.section === 'gravity-descent' &&
+    m6c1BlendProbe.t > 0 && m6c1BlendProbe.t < 1 &&
+    m6c1BlendProbe.bg !== BASE_BG && m6c1BlendProbe.bg !== 0x040213 &&
+    m6c1BlendProbe.exp < 1.15 && m6c1BlendProbe.exp > 1.08,
+    m6c1BlendProbe ? `t=${m6c1BlendProbe.t.toFixed(2)} bg=0x${m6c1BlendProbe.bg.toString(16)} exp=${m6c1BlendProbe.exp.toFixed(3)}` : 'never framed');
+  // Settle on the ceiling run via the proven natural portal crossing
+  // (teleport 176, flip at 182, ground on the slab — crossToCeiling).
+  const m6c1Ceil = await crossToCeiling();
+  const m6c1GravProbe = await tl();
+  log('m6c1 gravity-descent section resolves on the ceiling run',
+    m6c1Ceil !== null && m6c1GravProbe.section === 'gravity-descent' &&
+    m6c1GravProbe.bg === 0x040213 && m6c1GravProbe.exp === 1.08,
+    m6c1Ceil ? `z=${m6c1Ceil.z.toFixed(1)} bg=0x${m6c1GravProbe.bg.toString(16)}` : 'never framed');
+  await tlPause();
+  await capture('m6c1-03-ceiling-section');
+  await tlResume();
+  log('m6c1 background/fog transition reads against base',
+    m6c1GravProbe.fog === 0x0d0722 && m6c1GravProbe.fog !== BASE_FOG,
+    `fog=0x${m6c1GravProbe.fog.toString(16)}`);
+
+  // Interaction run: full blend by z=298 (blendIn 20 from 278).
+  await startGravityRun(290);
+  const m6c1Inter = await rollUntilM3((s) => s.z > 295 && s.z < 305 && s.grounded, 15000);
+  const m6c1InterProbe = await tl();
+  const m6c1GeosBefore = m6c1InterProbe.geos;
+  log('m6c1 interaction-run section resolves with route accent shift',
+    m6c1Inter !== null && m6c1InterProbe.section === 'interaction-run' &&
+    m6c1InterProbe.accent === 0xc44dff && m6c1InterProbe.vfx > 1.1,
+    m6c1Inter ? `z=${m6c1Inter.z.toFixed(1)} accent=0x${m6c1InterProbe.accent.toString(16)} vfx=${m6c1InterProbe.vfx}` : 'never framed');
+  await tlPause();
+  await capture('m6c1-04-interaction-section');
+  await tlResume();
+
+  // Speed sprint (M6B-proven coordinates: teleport 366, approach 368-371).
+  await startGravityRun(366);
+  const m6c1Speed = await rollUntilM3((s) => s.z > 368 && s.z < 371 && s.grounded, 15000);
+  const m6c1SpeedProbe = await tl();
+  log('m6c1 speed-sprint section resolves inside the bloom contract',
+    m6c1Speed !== null && m6c1SpeedProbe.section === 'speed-sprint' &&
+    m6c1SpeedProbe.bloom !== null && Math.abs(m6c1SpeedProbe.bloom.strength - 0.55) < 0.02 &&
+    m6c1SpeedProbe.bloom.strength <= 0.7 && m6c1SpeedProbe.bloom.radius <= 0.6 &&
+    m6c1SpeedProbe.bloom.threshold >= 0.6,
+    m6c1Speed ? `z=${m6c1Speed.z.toFixed(1)} bloom=${m6c1SpeedProbe.bloom.strength}` : 'never framed');
+  await tlPause();
+  await capture('m6c1-05-speed-section');
+  await tlResume();
+  log('m6c1 route accent changed with zero geometry growth',
+    m6c1SpeedProbe.geos === m6c1GeosBefore && m6c1SpeedProbe.accent !== BASE_ACCENT,
+    `geos=${m6c1GeosBefore}->${m6c1SpeedProbe.geos} accent=0x${m6c1SpeedProbe.accent.toString(16)}`);
+  const m6c1PlayerStable = m6c1SpeedProbe.player === PLAYER_HEX && m6c1Base.player === PLAYER_HEX &&
+    m6c1GravProbe.player === PLAYER_HEX && m6c1InterProbe.player === PLAYER_HEX;
+  log('m6c1 player cyan identity unchanged across every section', m6c1PlayerStable,
+    `player=0x${m6c1SpeedProbe.player.toString(16)}`);
+  const m6c1HazardStable = m6c1SpeedProbe.hazard === HAZARD_HEX && m6c1Base.hazard === HAZARD_HEX &&
+    m6c1GravProbe.hazard === HAZARD_HEX && m6c1InterProbe.hazard === HAZARD_HEX;
+  log('m6c1 hazard warm identity unchanged across every section', m6c1HazardStable,
+    `hazard=0x${m6c1SpeedProbe.hazard.toString(16)}`);
+
+  // R returns to the starting visual state (position-driven reset).
+  await page.keyboard.press('KeyR');
+  const m6c1Restart = await pollTl((s) => s.section === 'runway' && s.bg === BASE_BG, 15000);
+  log('m6c1 R returns to the opening visual state',
+    m6c1Restart.section === 'runway' && m6c1Restart.bg === BASE_BG && m6c1Restart.exp === 1.15,
+    `section=${m6c1Restart.section} bg=0x${m6c1Restart.bg.toString(16)}`);
+
+  // Death/respawn returns correctly (void fall → auto-respawn at start).
+  const m6c1Att0 = await attempts();
+  await page.evaluate(() => window.__gd3d.debugTeleport(0, -30, 60));
+  let m6c1Respawn = null;
+  {
+    const t0 = Date.now();
+    for (;;) {
+      const a = await attempts();
+      const s = await tl();
+      if (a > m6c1Att0 && s.section === 'runway') { m6c1Respawn = s; break; }
+      if (Date.now() - t0 > 20000) { m6c1Respawn = s; break; }
+      await page.waitForTimeout(200);
+    }
+  }
+  log('m6c1 death/respawn returns to the opening visual state',
+    m6c1Respawn !== null && m6c1Respawn.section === 'runway' && m6c1Respawn.bg === BASE_BG,
+    m6c1Respawn ? `section=${m6c1Respawn.section}` : 'no respawn observed');
+
+  // F4 recreates the timeline from trajectory alone (no stored state).
+  // NATURAL death tape only: the center lane dies on the z=116 spike by
+  // itself (M6A-proven, no teleports — a teleported death cannot replay
+  // because teleports are not inputs). Fresh page for a clean tape.
+  await page.goto(URL, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2000);
+  await page.keyboard.press('KeyR');
+  let m6c1NaturalDeath = null;
+  {
+    const t0 = Date.now();
+    for (;;) {
+      const s = await simState();
+      if (s.status === 'dead') { m6c1NaturalDeath = s; break; }
+      if (Date.now() - t0 > 90000) break;
+      await page.waitForTimeout(200);
+    }
+  }
+  const m6c1HasTape = await page.evaluate(() => window.__gd3d.hasReplay());
+  await page.keyboard.press('F4');
+  await page.waitForTimeout(800);
+  const m6c1ReplayMode = await page.evaluate(() => window.__gd3d.replayMode());
+  const m6c1ReplayTl = await tl();
+  await capture('m6c1-09-replay');
+  const m6c1Verify = await waitVerifyM6c1(90000);
+  log('m6c1 F4 replay walks the position-driven sections',
+    m6c1NaturalDeath !== null && m6c1HasTape === true && m6c1ReplayMode === 'replay' && m6c1ReplayTl.section === 'runway',
+    `died=${m6c1NaturalDeath !== null} tape=${m6c1HasTape} mode=${m6c1ReplayMode} section=${m6c1ReplayTl.section}`);
+  log('m6c1 F4 replay ends VERIFIED under timeline visuals',
+    m6c1Verify.verify.kind === 'pass',
+    `verification=${m6c1Verify.verify.kind}`);
+  await page.keyboard.press('KeyR');
+  await page.waitForTimeout(500);
+  const m6c1TapeJson = await page.evaluate(() => window.__gd3d.exportLastReplay());
+  let m6c1TapeClean = false;
+  let m6c1TapeDetail = 'no tape';
+  if (m6c1TapeJson !== null) {
+    const tape = JSON.parse(m6c1TapeJson);
+    const keys = Object.keys(tape);
+    const leaked = keys.filter((k) => /section|visual|bloom|fog|exposure|trigger|timeline/i.test(k));
+    m6c1TapeClean = leaked.length === 0 && tape.schemaVersion === 1;
+    m6c1TapeDetail = `keys=${keys.length} leaked=[${leaked.join(',')}]`;
+  }
+  log('m6c1 replay carries zero timeline state', m6c1TapeClean, m6c1TapeDetail);
+
+  // Resource stability across the whole Level 01 pass.
+  const m6c1ResEnd = await tl();
+  log('m6c1 resources flat across every transition (26/8/3)',
+    m6c1ResEnd.mats === 26 && m6c1ResEnd.geos === 8 && m6c1ResEnd.passes === 3 &&
+    m6c1ResEnd.children === m6c1Base.children,
+    `mats=${m6c1ResEnd.mats} geos=${m6c1ResEnd.geos} passes=${m6c1ResEnd.passes} children=${m6c1Base.children}->${m6c1ResEnd.children}`);
+
+  // ?triggers=off: the exact M6A+M6B baseline, then the evidence pair.
+  await page.goto(`${URL}?triggers=off`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2000);
+  await startGravityRun(8);
+  await rollUntilM3((s) => s.z > 8 && s.z < 14 && s.grounded, 15000);
+  const m6c1Off = await tl();
+  await tlPause();
+  await capture('m6c1-10-triggers-off');
+  await tlResume();
+  log('m6c1 ?triggers=off resolves the exact baseline (no stale sections)',
+    m6c1Off.enabled === false && m6c1Off.section === 'base' && m6c1Off.bg === BASE_BG &&
+    m6c1Off.fog === BASE_FOG && m6c1Off.accent === BASE_ACCENT && m6c1Off.exp === 1.15 &&
+    m6c1Off.vfx === 1,
+    `section=${m6c1Off.section} bg=0x${m6c1Off.bg.toString(16)} exp=${m6c1Off.exp}`);
+  // A deep teleport with triggers off must NOT pick up any section.
+  await startGravityRun(200);
+  await page.waitForTimeout(1200);
+  const m6c1OffDeep = await tl();
+  log('m6c1 triggers-off stays baseline deep in the level',
+    m6c1OffDeep.section === 'base' && m6c1OffDeep.bg === BASE_BG,
+    `section=${m6c1OffDeep.section} z far past blend zones`);
+
+  // Level 02 uses the same infrastructure (teal identity retained).
+  await page.goto(`${URL}?level=validation-02`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2000);
+  const m6c1L2Base = await pollTl((s) => s.section === 'v2-weave', 15000);
+  log('m6c1 level02 opening section resolves with teal identity',
+    m6c1L2Base.section === 'v2-weave' && m6c1L2Base.accent === 0x18e0a0,
+    `section=${m6c1L2Base.section} accent=0x${m6c1L2Base.accent.toString(16)}`);
+  await startGravityRun(8);
+  await rollUntilM3((s) => s.z > 8 && s.z < 14 && s.grounded, 15000);
+  await tlPause();
+  await capture('m6c1-06-level02-base');
+  await tlResume();
+  // Ceiling passage via the natural portal crossing at z=82.
+  await startGravityRun(70);
+  const m6c1L2Ceil = await rollUntilM3((s) => s.mode === 'ceiling' && s.z > 88 && s.z < 100, 20000);
+  const m6c1L2CeilProbe = await tl();
+  log('m6c1 level02 ceiling section resolves after the portal flip',
+    m6c1L2Ceil !== null && m6c1L2CeilProbe.section === 'v2-ceiling',
+    m6c1L2Ceil ? `z=${m6c1L2Ceil.z.toFixed(1)} section=${m6c1L2CeilProbe.section}` : 'never framed');
+  await tlPause();
+  await capture('m6c1-07-level02-ceiling');
+  await tlResume();
+  // Speed section via the natural 2x crossing at z=164 (runway D).
+  await startGravityRun(155);
+  const m6c1L2Speed = await rollUntilM3((s) => s.z > 167 && s.z < 174 && s.grounded, 20000);
+  const m6c1L2SpeedProbe = await tl();
+  log('m6c1 level02 speed section resolves with lifted juice',
+    m6c1L2Speed !== null && m6c1L2SpeedProbe.section === 'v2-speed' && m6c1L2SpeedProbe.vfx > 1.05,
+    m6c1L2Speed ? `z=${m6c1L2Speed.z.toFixed(1)} vfx=${m6c1L2SpeedProbe.vfx}` : 'never framed');
+  await tlPause();
+  await capture('m6c1-08-level02-speed');
+  await tlResume();
+
+  // Fallback matrix: post-off + triggers, fx-off + triggers, all-off.
+  await page.goto(`${URL}?post=off`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2000);
+  await startGravityRun(148);
+  const m6c1NoPost = await pollTl((s) => s.section === 'gravity-descent', 20000);
+  const m6c1NoPostBloom = await page.evaluate(() => window.__gd3d.bloomParams());
+  log('m6c1 post OFF + triggers ON still walks sections',
+    m6c1NoPost.section === 'gravity-descent' && m6c1NoPostBloom === null,
+    `section=${m6c1NoPost.section} bloom=${m6c1NoPostBloom}`);
+  await page.goto(`${URL}?fx=off`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2000);
+  await startGravityRun(290);
+  const m6c1NoFx = await pollTl((s) => s.section === 'interaction-run' && s.accent === 0xc44dff, 20000);
+  const m6c1NoFxAdv = await page.evaluate(() => window.__gd3d.playerPosition().z);
+  log('m6c1 fx OFF + triggers ON still walks sections',
+    m6c1NoFx.section === 'interaction-run' && m6c1NoFxAdv > 290,
+    `section=${m6c1NoFx.section} z=${m6c1NoFxAdv.toFixed(1)}`);
+  await page.goto(`${URL}?post=off&fx=off&triggers=off`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2000);
+  const m6c1Min0 = await page.evaluate(() => ({
+    section: window.__gd3d.visualSectionId(),
+    bg: window.__gd3d.visualBackground(),
+    z: window.__gd3d.playerPosition().z,
+  }));
+  await page.waitForTimeout(700);
+  const m6c1MinZ1 = await page.evaluate(() => window.__gd3d.playerPosition().z);
+  log('m6c1 minimal presentation (all-off) stays playable at baseline',
+    m6c1Min0.section === 'base' && m6c1Min0.bg === BASE_BG && (m6c1MinZ1 - m6c1Min0.z) > 2,
+    `section=${m6c1Min0.section} dz=${(m6c1MinZ1 - m6c1Min0.z).toFixed(1)}`);
+
+  // Resize survival with a section live.
+  await page.goto(URL, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2000);
+  await startGravityRun(200);
+  await page.setViewportSize({ width: 960, height: 540 });
+  await page.waitForTimeout(800);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.waitForTimeout(500);
+  const m6c1Resized = await pollTl((s) => s.section === 'gravity-descent', 15000);
+  log('m6c1 timeline survives viewport resize', m6c1Resized.section === 'gravity-descent',
+    `section=${m6c1Resized.section}`);
+}
+
+// --- 24. Console audit ---
 log('no console errors', consoleErrors.length === 0, JSON.stringify(consoleErrors.slice(0, 3)));
 log('no page errors', pageErrors.length === 0, JSON.stringify(pageErrors.slice(0, 3)));
 
