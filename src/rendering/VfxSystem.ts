@@ -129,6 +129,10 @@ export class VfxSystem {
   // --- Deterministic-looking presentation PRNG (render-time only) ---
   private readonly rand = mulberry32(0x6b3d);
 
+  /** M6C1 presentation multipliers (timeline-driven; pool sizes fixed). */
+  private vfxLevel = 1;
+  private streakLevel = 1;
+
   // --- Last-seen sim edges ---
   private lastAttempts = -1;
   private lastDeathId = 0;
@@ -245,6 +249,18 @@ export class VfxSystem {
 
   public get isEnabled(): boolean {
     return this.enabled;
+  }
+
+  /**
+   * M6C1 timeline hook: scale EXISTING presentation output only (burst
+   * counts, trail density/brightness, streak count/opacity). Pool
+   * capacities, lifetimes, and gameplay events are untouched; no
+   * reallocation, no new draws. Clamped 0..2 (0 = calm). `?fx=off`
+   * still wins (update returns early while disabled).
+   */
+  public setIntensity(vfx: number, streak: number): void {
+    this.vfxLevel = Math.min(2, Math.max(0, vfx));
+    this.streakLevel = Math.min(2, Math.max(0, streak));
   }
 
   /**
@@ -443,9 +459,11 @@ export class VfxSystem {
     dt: number,
   ): void {
     const fx = this.theme.fx;
+    if (this.vfxLevel <= 0.01) return; // timeline calm: no emission
     const speed = sim.speedMultiplier;
     const lifeScale = Math.min(1.7, Math.max(0.7, 0.75 + 0.3 * speed));
-    const interval = fx.trailEmitInterval * Math.min(1.3, Math.max(0.7, 1.4 - 0.15 * speed));
+    const density = Math.max(0.3, this.vfxLevel);
+    const interval = (fx.trailEmitInterval * Math.min(1.3, Math.max(0.7, 1.4 - 0.15 * speed))) / density;
     this.trailEmitAcc += dt;
     let guard = 8; // at most a few samples per frame, never a flood
     while (this.trailEmitAcc >= interval && guard > 0) {
@@ -458,7 +476,7 @@ export class VfxSystem {
       this.trailPos[i * 3 + 2] = renderPos.z - 0.7; // rear-face spawn
       this.trailAge[i] = 0;
       this.trailLife[i] = fx.trailLifetime1x * lifeScale;
-      const brightness = Math.min(1.3, 1 + 0.1 * speed);
+      const brightness = Math.min(1.3, 1 + 0.1 * speed) * Math.min(1.2, this.vfxLevel);
       this.scratchColor.setHex(fx.trailColor).multiplyScalar(brightness);
       this.trailBase[i * 3] = this.scratchColor.r;
       this.trailBase[i * 3 + 1] = this.scratchColor.g;
@@ -500,6 +518,11 @@ export class VfxSystem {
     biasStrength: number,
     spread: number,
   ): void {
+    // M6C1: timeline scales output volume (event counters still fire —
+    // the gameplay event happened; only its visual answer is calmed).
+    const scaled = Math.round(count * this.vfxLevel);
+    if (scaled <= 0) return;
+    count = scaled;
     this.scratchColor.setHex(colorHex);
     for (let k = 0; k < count; k++) {
       const i = this.burstCursor;
@@ -541,6 +564,9 @@ export class VfxSystem {
     life: number,
     intensity: number,
   ): void {
+    const scaled = Math.round(count * this.vfxLevel);
+    if (scaled <= 0) return;
+    count = scaled;
     this.scratchColor.setHex(colorHex);
     const speed = 3 + 4 * intensity;
     for (let k = 0; k < count; k++) {
@@ -615,9 +641,11 @@ export class VfxSystem {
     this.streakSpike *= Math.exp(-dt * 4);
     if (this.streakSpike < 0.01) this.streakSpike = 0;
     const speed = sim.speedMultiplier;
-    const active = sim.status === 'running'
+    const baseActive = sim.status === 'running'
       ? Math.min(this.streakMax, Math.max(0, Math.round((this.streakMax * (speed - 1)) / 3)))
       : 0;
+    // M6C1: timeline scales streak presence (pool size fixed).
+    const active = Math.round(baseActive * this.streakLevel);
     for (let i = 0; i < this.streakMax; i++) {
       let sz = this.streakZ[i] ?? renderPos.z;
       if (sz < renderPos.z - 8) {
@@ -637,7 +665,8 @@ export class VfxSystem {
     this.streaks.instanceMatrix.needsUpdate = true;
     this.streaks.count = active;
     const tierGlow = Math.min(1, Math.max(0, speed - 1)) / 3;
-    this.streakMat.opacity = Math.min(0.85, tierGlow * 0.5 + this.streakSpike * 0.4);
+    this.streakMat.opacity =
+      Math.min(0.85, tierGlow * 0.5 + this.streakSpike * 0.4) * Math.min(1.2, this.streakLevel);
   }
 
   private writeBuffers(): void {

@@ -18,8 +18,18 @@ import { mulberry32 } from '../core/math';
 export class EnvironmentView {
   public readonly scene: THREE.Scene;
   private readonly disposables: Array<{ dispose(): void }> = [];
+  private readonly theme: ProductionTheme;
+  // M6C1 timeline handles (pre-existing objects + property modulation —
+  // never create/destroy scene content per section).
+  private readonly starMat: THREE.PointsMaterial;
+  private readonly pillarMat: THREE.MeshBasicMaterial;
+  private readonly windowMat: THREE.MeshBasicMaterial;
+  private readonly starBaseOpacity: number;
+  private readonly pillarBase: THREE.Color;
+  private readonly windowBase: THREE.Color;
 
   constructor(levelLengthZ: number, theme: ProductionTheme) {
+    this.theme = theme;
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(theme.background);
     this.scene.fog = new THREE.Fog(theme.fogColor, theme.fogNear, theme.fogFar);
@@ -44,6 +54,8 @@ export class EnvironmentView {
       opacity: 0.6,
       fog: false,
     });
+    this.starMat = starMat;
+    this.starBaseOpacity = starMat.opacity;
     this.disposables.push(starGeo, starMat);
     this.scene.add(new THREE.Points(starGeo, starMat));
 
@@ -53,6 +65,10 @@ export class EnvironmentView {
     const pillarGeo = new THREE.BoxGeometry(1, 1, 1);
     const pillarMat = new THREE.MeshBasicMaterial({ color: 0x181031 });
     const windowMat = new THREE.MeshBasicMaterial({ color: 0x352063 });
+    this.pillarMat = pillarMat;
+    this.windowMat = windowMat;
+    this.pillarBase = pillarMat.color.clone();
+    this.windowBase = windowMat.color.clone();
     this.disposables.push(pillarGeo, pillarMat, windowMat);
     const randP = mulberry32(7777);
     for (let i = 0; i < 26; i++) {
@@ -75,5 +91,38 @@ export class EnvironmentView {
 
   public dispose(): void {
     for (const d of this.disposables) d.dispose();
+  }
+
+  /**
+   * M6C1 timeline hook: modulate PRE-EXISTING environment properties in
+   * place (background + fog envelope + dressing intensity). Dressing
+   * intensity scales pillar/window colors toward black and star opacity —
+   * no transparency flags change, no objects created or destroyed, fully
+   * reversible via `resetToTheme`. Clamped 0..2 (0 = void-black calm).
+   */
+  public applyVisualState(
+    background: number,
+    fogColor: number,
+    fogNear: number,
+    fogFar: number,
+    environmentIntensity: number,
+  ): void {
+    (this.scene.background as THREE.Color).setHex(background);
+    const fog = this.scene.fog as THREE.Fog | null;
+    if (fog !== null) {
+      fog.color.setHex(fogColor);
+      fog.near = fogNear;
+      fog.far = fogFar;
+    }
+    const k = Math.min(2, Math.max(0, environmentIntensity));
+    this.starMat.opacity = this.starBaseOpacity * k;
+    this.pillarMat.color.copy(this.pillarBase).multiplyScalar(Math.min(1, k));
+    this.windowMat.color.copy(this.windowBase).multiplyScalar(Math.min(1, k));
+  }
+
+  /** Restore the exact theme environment (triggers-off === base). */
+  public resetToTheme(): void {
+    const t = this.theme;
+    this.applyVisualState(t.background, t.fogColor, t.fogNear, t.fogFar, 1);
   }
 }

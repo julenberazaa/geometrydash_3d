@@ -173,4 +173,54 @@ export const TEST_LEVEL: LevelDefinition = {
     edge: 0xb44dff,
     hazard: 0xff9d00,
   },
+  /**
+   * M6C1 ENGINEERING PROOF (PROVISIONAL — not human-approved art).
+   * Restrained position-driven sections: identity runway, a cooler/deeper
+   * gravity descent, a slightly higher-energy interaction run, and a
+   * bloom-bounded speed sprint. No palette shocks, no strobes, no camera
+   * or gameplay coupling (presentation only, fingerprint-excluded).
+   */
+  visualSequence: {
+    sections: [
+      { id: 'runway', startZ: -10, endZ: 150, blendIn: 1, overrides: {} },
+      {
+        id: 'gravity-descent',
+        startZ: 150,
+        endZ: 278,
+        blendIn: 24,
+        overrides: {
+          background: 0x040213,
+          fogColor: 0x0d0722,
+          exposure: 1.08,
+          environmentIntensity: 0.8,
+          vfxIntensity: 0.9,
+        },
+      },
+      {
+        id: 'interaction-run',
+        startZ: 278,
+        endZ: 364,
+        blendIn: 20,
+        overrides: {
+          routeAccent: 0xc44dff,
+          environmentIntensity: 1.25,
+          bloomStrength: 0.5,
+          vfxIntensity: 1.2,
+          streakIntensity: 1.3,
+        },
+      },
+      {
+        id: 'speed-sprint',
+        startZ: 364,
+        endZ: 390,
+        blendIn: 8,
+        overrides: {
+          bloomStrength: 0.55,
+          exposure: 1.2,
+          vfxIntensity: 1.25,
+          streakIntensity: 1.5,
+        },
+      },
+    ],
+  },
 };

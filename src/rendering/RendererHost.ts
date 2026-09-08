@@ -17,6 +17,14 @@ import {
   resolveProductionTheme,
   type ProductionTheme,
 } from '../visuals/productionTheme';
+import {
+  evaluateVisualSequence,
+  makeVisualState,
+  prepareVisualSequence,
+  resetVisualState,
+  type PreparedVisualSequence,
+  type VisualState,
+} from '../visuals/visualTimeline';
 
 /**
  * RendererHost — THE ONLY module allowed to own WebGLRenderer and apply
@@ -43,6 +51,8 @@ export interface RendererOptions {
   postEnabled?: boolean;
   /** M6B motion-juice on/off (default on; `?fx=off` forces off). */
   fxEnabled?: boolean;
+  /** M6C1 visual triggers on/off (default on; `?triggers=off` forces off). */
+  triggersEnabled?: boolean;
 }
 
 export class RendererHost {
@@ -57,7 +67,16 @@ export class RendererHost {
   private readonly post: PostPipeline;
   /** M6B motion-juice VFX (presentation only; observes, never writes). */
   private readonly vfx: VfxSystem;
+  /** M6C1 visual timeline: prepared position-driven sequence (possibly empty). */
+  private readonly timelineSections: PreparedVisualSequence;
+  /** Current resolved visual state (caller-owned scratch, reused per frame). */
+  private readonly visualState: VisualState;
+  private triggersEnabled: boolean;
+  /** Whether a timeline state is currently applied (off-restore edge). */
+  private timelineApplied = false;
   private readonly levelView: LevelView;
+  /** M6C1 environment presentation (timeline-modulated, pre-existing objects). */
+  private readonly environmentView: EnvironmentView;
   /** M4 interaction visuals + activation VFX (presentation only). */
   private readonly interactionView: InteractionView;
   public get playerView(): Readonly<PlayerView> {
@@ -120,8 +139,14 @@ export class RendererHost {
       400,
     );
 
-    const env = new EnvironmentView(simulation.level.def.finishZ + 20, this.theme);
-    this.scene = env.scene;
+    this.environmentView = new EnvironmentView(simulation.level.def.finishZ + 20, this.theme);
+    this.scene = this.environmentView.scene;
+    // M6C1 timeline: prepared once per level (cold path); the state
+    // scratch starts at the exact base so probes read baseline pre-frame.
+    this.timelineSections = prepareVisualSequence(simulation.level.def.visualSequence);
+    this.visualState = makeVisualState();
+    resetVisualState(this.theme, this.visualState);
+    this.triggersEnabled = options.triggersEnabled ?? true;
 
     this.levelView = new LevelView(simulation.level, this.library);
     this.scene.add(this.levelView.group);
@@ -221,6 +246,9 @@ export class RendererHost {
     // Motion juice follows the SAME interpolated cube position (trail
     // integrity) with the same render dt (pause-freeze parity).
     this.vfx.update(renderDtSeconds, sim, ip);
+    // M6C1 timeline: position-driven presentation from the same
+    // interpolated Z (pause-safe: same z re-resolves the same state).
+    this.updateVisualTimeline(ip.z);
     this.debugView.updatePlayerBox(p, sim.halfExtents);
     this.deathBurst.update(renderDtSeconds);
     this.interactionView.update(renderDtSeconds);
@@ -363,6 +391,97 @@ export class RendererHost {
     return this.vfx.resetCountValue;
   }
 
+  // --- M6C1 visual triggers (position-driven presentation) ---
+
+  private updateVisualTimeline(z: number): void {
+    if (this.triggersEnabled && this.timelineSections.length > 0) {
+      evaluateVisualSequence(this.theme, this.timelineSections, z, this.visualState);
+      this.applyVisualState();
+      this.timelineApplied = true;
+    } else if (this.timelineApplied) {
+      // Triggers-off edge: restore the EXACT M6A+M6B baseline — never an
+      // approximation, no stale section state may remain.
+      resetVisualState(this.theme, this.visualState);
+      this.library.resetRouteToTheme();
+      this.environmentView.resetToTheme();
+      this.post.resetBloomToTheme();
+      this.renderer.toneMappingExposure = this.theme.exposure;
+      this.vfx.setIntensity(1, 1);
+      this.timelineApplied = false;
+    }
+  }
+
+  private applyVisualState(): void {
+    const s = this.visualState;
+    this.library.applyRouteState(s.routeBody, s.routeSurface, s.routeAccent);
+    this.environmentView.applyVisualState(
+      s.background,
+      s.fogColor,
+      s.fogNear,
+      s.fogFar,
+      s.environmentIntensity,
+    );
+    this.post.setBloomParams(s.bloomStrength, s.bloomRadius, s.bloomThreshold);
+    this.renderer.toneMappingExposure = s.exposure;
+    this.vfx.setIntensity(s.vfxIntensity, s.streakIntensity);
+  }
+
+  /** Active timeline section id (`base` with triggers off / no sequence). */
+  public get visualSectionId(): string {
+    return this.visualState.sectionId;
+  }
+
+  /** 0..1 progress within the active section (QA interpolation bounds). */
+  public get visualSectionProgress(): number {
+    return this.visualState.sectionT;
+  }
+
+  public get visualTriggersEnabled(): boolean {
+    return this.triggersEnabled;
+  }
+
+  /** Runtime trigger toggle (debug/QA; presentation only, immediate). */
+  public setVisualTriggersEnabled(enabled: boolean): void {
+    if (enabled === this.triggersEnabled) return;
+    this.triggersEnabled = enabled;
+    this.updateVisualTimeline(this.interpPos.z);
+  }
+
+  /** Live tone-mapping exposure (timeline-modulated, QA observability). */
+  public get visualExposure(): number {
+    return this.renderer.toneMappingExposure;
+  }
+
+  /** Live timeline VFX multiplier (QA observability). */
+  public get visualVfxIntensity(): number {
+    return this.visualState.vfxIntensity;
+  }
+
+  /** Live timeline background (QA observability). */
+  public get visualBackground(): number {
+    return this.visualState.background;
+  }
+
+  /** Live timeline fog color (QA observability). */
+  public get visualFogColor(): number {
+    return this.visualState.fogColor;
+  }
+
+  /** Live timeline route accent (QA geometry-change-free proof). */
+  public get visualRouteAccent(): number {
+    return this.visualState.routeAccent;
+  }
+
+  /** Player body color — timeline MUST never move it (identity proof). */
+  public get visualPlayerColor(): number {
+    return this.library.playerBody.color.getHex();
+  }
+
+  /** Hazard color — timeline MUST never move it (identity proof). */
+  public get visualHazardColor(): number {
+    return this.library.hazard.color.getHex();
+  }
+
   /**
    * Debug-only frame freeze (QA photography aid, same category as F1/F2/F3).
    * When true, applyFrame skips every visual update while render() keeps
@@ -433,6 +552,7 @@ export class RendererHost {
     this.deathBurst.dispose();
     this.vfx.dispose();
     this.debugView.dispose();
+    this.environmentView.dispose();
     this.library.dispose();
     this.renderer.domElement.remove();
   }

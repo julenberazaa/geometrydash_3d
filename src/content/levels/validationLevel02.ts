@@ -109,4 +109,36 @@ export const VALIDATION_LEVEL_02: LevelDefinition = {
     edge: 0x18e0a0,
     hazard: 0xffb300,
   },
+  /**
+   * M6C1 ENGINEERING PROOF (PROVISIONAL — not human-approved art).
+   * Teal identity retained throughout: a calmer ceiling passage, then a
+   * restrained speed-section lift. Same infrastructure as Level 01.
+   */
+  visualSequence: {
+    sections: [
+      { id: 'v2-weave', startZ: -10, endZ: 82, blendIn: 1, overrides: {} },
+      {
+        id: 'v2-ceiling',
+        startZ: 82,
+        endZ: 164,
+        blendIn: 16,
+        overrides: {
+          fogColor: 0x081418,
+          exposure: 1.08,
+          environmentIntensity: 0.85,
+        },
+      },
+      {
+        id: 'v2-speed',
+        startZ: 164,
+        endZ: 268,
+        blendIn: 10,
+        overrides: {
+          bloomStrength: 0.5,
+          vfxIntensity: 1.15,
+          streakIntensity: 1.4,
+        },
+      },
+    ],
+  },
 };

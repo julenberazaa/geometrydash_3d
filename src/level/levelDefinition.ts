@@ -95,6 +95,68 @@ export interface LevelTheme {
   hazard: number;
 }
 
+/**
+ * Presentation-only per-field overrides for ONE visual timeline section
+ * (M6C1). Every field is optional; absent fields inherit the resolved
+ * production base theme. There is deliberately NO player / hazard entry:
+ * the cyan player anchor and the warm hazard identity stay stable across
+ * every section (structural prohibition, pinned by test).
+ *
+ * Renderer-only like LevelTheme: `computeLevelFingerprint()` never reads
+ * this, so authoring proof sections keeps committed replays compatible.
+ */
+export interface VisualSectionOverride {
+  background?: number;
+  fogColor?: number;
+  fogNear?: number;
+  fogFar?: number;
+  routeBody?: number;
+  /** Playable surface plane accent (route top inset). */
+  routeSurface?: number;
+  /** Neon edge-rail language. */
+  routeAccent?: number;
+  /** Environment dressing multiplier (0..2, 1 = base). */
+  environmentIntensity?: number;
+  /** Bloom overrides — always re-clamped through BLOOM_CONTRACT. */
+  bloomStrength?: number;
+  bloomRadius?: number;
+  bloomThreshold?: number;
+  /** Tone-mapping exposure override (clamped 0.5..2 like the theme). */
+  exposure?: number;
+  /** M6B juice multipliers (0..2, 1 = base; pool capacities untouched). */
+  vfxIntensity?: number;
+  streakIntensity?: number;
+}
+
+/**
+ * ONE presentation section of a level's visual timeline (M6C1).
+ * Identity is purely positional: the active section is the last one with
+ * `startZ <= playerZ` (forward-only motion + respawn-to-start make this
+ * robust; `endZ` documents intent and drives section progress). No clocks,
+ * no frame counts — the same gameplay location always resolves the same
+ * section on every machine.
+ */
+export interface VisualSection {
+  /** Stable identifier (debug/QA probes). */
+  id: string;
+  /** World Z where this section takes over. */
+  startZ: number;
+  /** World Z where this section conceptually ends (progress + docs). */
+  endZ: number;
+  /** Blend distance in world units from startZ (default 10). */
+  blendIn?: number;
+  overrides: VisualSectionOverride;
+}
+
+/**
+ * A level's visual timeline (M6C1): an ordered list of presentation
+ * sections. Optional per level; absent = the M6A+M6B baseline everywhere.
+ * Presentation-only: excluded from the level fingerprint (like `theme`).
+ */
+export interface VisualSequenceDefinition {
+  sections: VisualSection[];
+}
+
 /** One declarative solid box. */
 export interface LevelSolid {
   kind?: Extract<ColliderKind, 'solid'>;
@@ -176,4 +238,11 @@ export interface LevelDefinition {
   solids: LevelSolid[];
   hazards: LevelHazard[];
   theme: LevelTheme;
+  /**
+   * Optional presentation timeline (M6C1): position-driven visual sections
+   * (background/fog/route/bloom/exposure/juice modulation). Renderer-only:
+   * never read by simulation, collision, replay, or the level fingerprint.
+   * Absent = the M6A+M6B baseline for the whole level.
+   */
+  visualSequence?: VisualSequenceDefinition;
 }

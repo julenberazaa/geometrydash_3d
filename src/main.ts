@@ -26,9 +26,13 @@ const postParam = gameParams.get('post');
 // M6B FX fallback: `?fx=off` disables the motion-juice layer only (trail,
 // bursts, streaks) — same scene, same gameplay, M6A foundation intact.
 const fxParam = gameParams.get('fx');
+// M6C1 trigger fallback: `?triggers=off` resolves the scene to the exact
+// M6A+M6B baseline (no section state) — same scene, same gameplay.
+const triggersParam = gameParams.get('triggers');
 const game = new Game(container, resolution.level, {
   postEnabled: postParam === null ? undefined : postParam !== 'off',
   fxEnabled: fxParam === null ? undefined : fxParam !== 'off',
+  triggersEnabled: triggersParam === null ? undefined : triggersParam !== 'off',
 });
 game.start();
 
@@ -96,6 +100,18 @@ declare global {
       lastLandingIntensity: () => number;
       fxResets: () => number;
       burstActive: () => boolean;
+      // M6C1 visual-trigger observability (presentation only).
+      visualSectionId: () => string;
+      visualSectionProgress: () => number;
+      visualTriggersEnabled: () => boolean;
+      setVisualTriggersEnabled: (enabled: boolean) => void;
+      visualExposure: () => number;
+      visualVfxIntensity: () => number;
+      visualBackground: () => number;
+      visualFogColor: () => number;
+      visualRouteAccent: () => number;
+      visualPlayerColor: () => number;
+      visualHazardColor: () => number;
       debugFreezeFrame: (frozen: boolean) => void;
       debugReplayBurst: () => void;
       toggleDebug: () => void;
@@ -183,6 +199,20 @@ window.__gd3d = {
   lastLandingIntensity: () => game['rendererHost'].lastLandingIntensity,
   fxResets: () => game['rendererHost'].fxResets,
   burstActive: () => game['rendererHost'].deathBurstActive,
+  // M6C1 probes: trigger state + resolved presentation (cold path).
+  visualSectionId: () => game['rendererHost'].visualSectionId,
+  visualSectionProgress: () => game['rendererHost'].visualSectionProgress,
+  visualTriggersEnabled: () => game['rendererHost'].visualTriggersEnabled,
+  setVisualTriggersEnabled: (enabled: boolean): void => {
+    game['rendererHost'].setVisualTriggersEnabled(enabled);
+  },
+  visualExposure: () => game['rendererHost'].visualExposure,
+  visualVfxIntensity: () => game['rendererHost'].visualVfxIntensity,
+  visualBackground: () => game['rendererHost'].visualBackground,
+  visualFogColor: () => game['rendererHost'].visualFogColor,
+  visualRouteAccent: () => game['rendererHost'].visualRouteAccent,
+  visualPlayerColor: () => game['rendererHost'].visualPlayerColor,
+  visualHazardColor: () => game['rendererHost'].visualHazardColor,
   // Debug-only freeze for burst photography (see RendererHost.debugFreezeFrame).
   debugFreezeFrame: (frozen: boolean): void => {
     game['rendererHost'].debugFreezeFrame = frozen;

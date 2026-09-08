@@ -4,6 +4,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import type { ProductionTheme } from '../visuals/productionTheme';
+import { BLOOM_CONTRACT } from '../visuals/productionTheme';
 
 /**
  * PostPipeline (M6A) — controlled bloom foundation.
@@ -24,6 +25,8 @@ export class PostPipeline {
   private bloomPass: UnrealBloomPass | null = null;
   private enabled: boolean;
   private disposed = false;
+  /** Staged timeline bloom (applied live, or on the next build when off). */
+  private pendingBloom: { strength: number; radius: number; threshold: number } | null = null;
 
   constructor(
     private readonly renderer: THREE.WebGLRenderer,
@@ -45,9 +48,9 @@ export class PostPipeline {
     this.composer.addPass(new RenderPass(this.scene, this.camera));
     this.bloomPass = new UnrealBloomPass(
       new THREE.Vector2(size.x, size.y),
-      this.theme.bloomStrength,
-      this.theme.bloomRadius,
-      this.theme.bloomThreshold,
+      this.pendingBloom?.strength ?? this.theme.bloomStrength,
+      this.pendingBloom?.radius ?? this.theme.bloomRadius,
+      this.pendingBloom?.threshold ?? this.theme.bloomThreshold,
     );
     this.composer.addPass(this.bloomPass);
     this.composer.addPass(new OutputPass());
@@ -77,6 +80,36 @@ export class PostPipeline {
     this.enabled = enabled;
     if (enabled && this.composer === null) {
       this.build();
+    }
+  }
+
+  /**
+   * M6C1 timeline hook: retune the EXISTING bloom pass parameters in
+   * place (never rebuilds the composer, never recreates passes). Values
+   * are re-clamped through BLOOM_CONTRACT — a section can never widen
+   * the radius, push the strength, or wash the threshold. When the
+   * composer path is currently disabled the values are staged and applied
+   * on the next build, so post on/off never loses timeline intent.
+   */
+  public setBloomParams(strength: number, radius: number, threshold: number): void {
+    const s = Math.min(BLOOM_CONTRACT.maxStrength, Math.max(0, strength));
+    const r = Math.min(BLOOM_CONTRACT.maxRadius, Math.max(0, radius));
+    const t = Math.min(1, Math.max(BLOOM_CONTRACT.minThreshold, threshold));
+    this.pendingBloom = { strength: s, radius: r, threshold: t };
+    if (this.bloomPass !== null) {
+      this.bloomPass.strength = s;
+      this.bloomPass.radius = r;
+      this.bloomPass.threshold = t;
+    }
+  }
+
+  /** Restore the exact theme bloom treatment (triggers-off === base). */
+  public resetBloomToTheme(): void {
+    this.pendingBloom = null;
+    if (this.bloomPass !== null) {
+      this.bloomPass.strength = this.theme.bloomStrength;
+      this.bloomPass.radius = this.theme.bloomRadius;
+      this.bloomPass.threshold = this.theme.bloomThreshold;
     }
   }
 

@@ -227,6 +227,28 @@ export class MaterialLibrary {
     return this.ringPool;
   }
 
+  /**
+   * M6C1 timeline hook: retint the EXISTING shared route materials in
+   * place (body color, surface color + self-emissive, edge color +
+   * emissive). Zero allocation, zero new materials, fully reversible via
+   * `resetRouteToTheme`. Player / hazard / portal / interaction materials
+   * are NEVER touched here (semantic identities stay stable by structure).
+   * `routeUnder` (ceiling run panel) is deliberately NOT modulated: its
+   * luminance is calibrated to the M3.3 free-face parity, not themed.
+   */
+  public applyRouteState(routeBody: number, routeSurface: number, routeAccent: number): void {
+    this.routeBody.color.setHex(routeBody);
+    this.routeTop.color.setHex(routeSurface);
+    this.routeTop.emissive.setHex(routeSurface);
+    this.routeEdge.color.setHex(routeAccent);
+    this.routeEdge.emissive.setHex(routeAccent);
+  }
+
+  /** Restore the exact theme route treatment (triggers-off === base). */
+  public resetRouteToTheme(): void {
+    this.applyRouteState(this.theme.routeBody, this.theme.routeTop, this.theme.routeEdge);
+  }
+
   /** Live material count (QA/resource-guard observability). */
   public get materialCount(): number {
     return this.materials.length;
