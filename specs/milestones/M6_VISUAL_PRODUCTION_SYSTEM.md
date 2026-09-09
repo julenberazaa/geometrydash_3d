@@ -28,6 +28,15 @@ M6A + M6B + M6C1 presentation at the user's explicit direction for this
 session; all prior human gates are STILL OPEN and no foundation was
 re-canonicalized by M6C2).
 
+M6 HUMAN FEEDBACK (2026-09-08, recorded conservatively): the human played
+the current M6 presentation, said it is "quite good", and explicitly
+requested proceeding to M7. Recorded as: M6 PRESENTATION DIRECTION HUMAN
+APPROVED TO PROCEED TO M7. No stronger claim is made; no individual
+M6A/B/C parameter is permanently locked. M6D final real-GPU performance
+closeout is intentionally deferred — M7 creates the representative
+production-level workload M6D should profile. M6 is therefore NOT marked
+fully closed.
+
 Automated: 238/238 tests green (`npm run verify`: typecheck + lint + tests +
 build) — 226 pre-M6C2 + 12 event-punch/contact regression tests. Browser QA:
 M6C2 section 15/15 green AND M6C1 25/25 + M6A/M6B green (regressions),

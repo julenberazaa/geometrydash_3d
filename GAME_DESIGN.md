@@ -244,6 +244,26 @@ Ship mode, moving hazards/obstacles, final VFX polish, music/BPM sync,
 public editor, backend, persistence. See `ROADMAP.md`. (Pads, orbs, speed
 portals and the trigger infrastructure shipped in M4 — §6.1.)
 
+## 7.1 Vertical slice product contract — CURRENT (M7)
+
+Deliberate M7 content/product decisions (no temporary coordinates here):
+
+- Target successful run 45–60 s (sweet spot ~50–55 s), measured in
+  deterministic simulation time (speed portals make finishZ/speed math
+  insufficient).
+- Three-act dramatic arc: establish/flow → transform/build (gravity
+  transition + ceiling passage) → climax/release (speed escalation +
+  readable finish approach, no unfair surprise before the finish).
+- Difficulty ramps; 3–5 signature moments per level (if everything is
+  special, nothing is).
+- Fair visual telegraphing: the player should usually understand WHY they
+  died; no trial-and-error blindness, no hidden must-fast-fall checks.
+- Recovery-window principle: short obvious-route windows separate major set
+  pieces (difficulty never sits at maximum for the whole run; windows also
+  let visual changes read).
+- Required-assistance gaps/pads/orbs must be visually obvious; ambiguous
+  secretly-assisted gaps are forbidden.
+
 ## 8. Reference art
 
 `normal.png` / `cohete.png` / `arriba.png` are visual MOOD references only

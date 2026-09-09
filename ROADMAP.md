@@ -295,9 +295,27 @@ M6C2 sections in `M6_VISUAL_PRODUCTION_SYSTEM.md`. HUMAN
 REACTIVE/CONTACT GATE = NOT PERFORMED (final artistic timeline also
 still remaining).
 
-## M7 — 45–60 s Cube vertical slice
+## M7 — 45–60 s Cube vertical slice: IN PROGRESS (engineering complete, HUMAN FUN GATE OPEN)
 
-One memorable, completable, fun level on the production stack.
+First production Cube vertical slice (`vertical-slice-01`, "VERTICAL SLICE
+01", `?level=vertical-slice-01`): authored three-act ~51.6 s level on the
+frozen M1–M6 stack (zero engine changes) — Act I flow, Act II ceiling world
+with required ceiling/floor pads, jump orb gravity-orb return and inversion
+callback, Act III 1x weave + 2x sprint + 1x release; authored 5-section
+visual arc on the M6C1/C2 infrastructure. Deterministic real-input route
+finishes at tick 6190 (51.583 s) with 0 deaths and replays VERIFIED.
+256/256 automated tests (18 new M7), M7 browser QA 30/30 green with zero
+console/page errors, golden replay intact. Spec:
+`specs/milestones/M7_CUBE_VERTICAL_SLICE.md`. Automation proves POSSIBLE,
+never FUN — do NOT mark PASS until the human plays the complete slice.
+Ship remains BLOCKED.
+
+M6 human-feedback note (recorded 2026-09-08, conservative): the human
+played the M6 presentation, said it is "quite good", and explicitly chose
+to proceed to M7 — recorded as M6 PRESENTATION DIRECTION APPROVED TO
+PROCEED. No individual M6A/B/C parameter claimed locked; M6D real-GPU
+performance closeout intentionally deferred until representative M7 content
+exists (M7 is that workload). M6 is NOT fully closed.
 
 ## Ship mode — ONLY after the Cube vertical slice and control validation
 

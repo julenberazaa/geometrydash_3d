@@ -60,7 +60,13 @@ bloom/exposure/environment flash above the section look + continuous
 support-plane skid on Floor/Ceiling + bounded burst/streak amplification,
 zero gameplay change, 238/238 tests, M6C2 15/15 browser green, replay
 punch/contact-free) — HUMAN REACTIVE/CONTACT GATE NOT PERFORMED, all
-prior gates STILL OPEN, final artistic timeline still remaining.
+prior gates STILL OPEN, final artistic timeline still remaining. M7 Cube
+vertical slice engineering-complete (first production level
+`?level=vertical-slice-01`: authored three-act ~51.6 s slice on the frozen
+stack, deterministic real-input finish + verified replay, 256/256 tests,
+M7 browser QA 30/30 green) — HUMAN FUN GATE OPEN (automation proves
+possible, never fun; Ship remains blocked until the slice is genuinely
+fun). M6D real-GPU closeout intentionally pending (M7 is its workload).
 
 ## Setup
 
@@ -151,4 +157,11 @@ PERFORMED, all prior gates still provisional) plus M6C2 reactive visual
 authoring + ground contact FX engineering-complete (HUMAN
 REACTIVE/CONTACT GATE NOT PERFORMED, final artistic timeline still
 remaining; see
-`specs/milestones/M6_VISUAL_PRODUCTION_SYSTEM.md`).
+`specs/milestones/M6_VISUAL_PRODUCTION_SYSTEM.md`). M7 Cube vertical
+slice engineering-complete — first production level
+(`?level=vertical-slice-01`, authored three-act ~51.6 s, deterministic
+real-input finish + verified replay, 256/256 tests, M7 browser QA 30/30
+green) — HUMAN FUN GATE OPEN — plus truthful M6 status: human played the
+M6 presentation ("quite good") and chose to proceed to M7 (presentation
+direction approved to proceed; M6D real-GPU closeout intentionally pending
+with M7 as its workload). Spec: `specs/milestones/M7_CUBE_VERTICAL_SLICE.md`.
