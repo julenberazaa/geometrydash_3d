@@ -4141,10 +4141,12 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   // Fresh page (no replay/pause residue): stage onto the ceiling run, roll
   // into the window, then read the cue.
   await m71fresh(`${URL}?level=vertical-slice-01`);
-  // Screen-left lane: safe past the z 200 center spike (the headless route
-  // taps here too — center-lane staging would die on it).
-  await page.evaluate(() => window.__gd3d.debugTeleport(2.6, 5.0, 195));
-  const m71cueStaged = await m71roll((s) => s.mode === 'ceiling' && s.grounded && s.z > 198 && s.z < 208, 60000);
+  // Cross the portal first (a fresh page runs floor gravity — teleporting
+  // straight onto the ceiling slab would fall to void). Screen-left lane:
+  // safe past the z 200 center spike; the roll ends before the z 216 row.
+  await page.evaluate(() => window.__gd3d.debugTeleport(2.6, 1.5, 158));
+  await m71tapLane('ArrowLeft', 0);
+  const m71cueStaged = await m71roll((s) => s.mode === 'ceiling' && s.grounded && s.z > 198 && s.z < 208, 90000);
   const m71cueMid = await m71probe();
   log('m71 rhythm cue resolves deterministically',
     m71cueStaged !== null && m71cueMid.cue === 'm71-cue-gravity-hit',
