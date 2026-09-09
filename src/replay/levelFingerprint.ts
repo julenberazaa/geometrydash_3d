@@ -79,7 +79,8 @@ const writeSolid = (h: DeterministicHasher, s: LevelSolid): void => {
 };
 
 const writeHazard = (h: DeterministicHasher, hz: LevelHazard): void => {
-  // `visual` is a renderer hint — excluded deliberately.
+  // `visual` and `mount` are renderer hints — excluded deliberately (the
+  // spike orientation fix and any restyling keep old replays compatible).
   h.writeInt32(hz.kind === 'hazard' ? 0 : 1);
   writeVec3(h, hz.center);
   writeVec3(h, hz.halfExtents);

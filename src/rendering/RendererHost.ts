@@ -35,6 +35,11 @@ import {
   updatePunch,
   type EventPunchState,
 } from '../visuals/eventPunch';
+import {
+  cueIdAtZ,
+  prepareRhythmCues,
+  type PreparedRhythmCues,
+} from '../visuals/rhythmCues';
 
 /**
  * RendererHost — THE ONLY module allowed to own WebGLRenderer and apply
@@ -79,6 +84,8 @@ export class RendererHost {
   private readonly vfx: VfxSystem;
   /** M6C1 visual timeline: prepared position-driven sequence (possibly empty). */
   private readonly timelineSections: PreparedVisualSequence;
+  /** M7.1 beat-ready cues: prepared position-driven markers (possibly empty). */
+  private readonly rhythmCues: PreparedRhythmCues;
   /** Current resolved visual state (caller-owned scratch, reused per frame). */
   private readonly visualState: VisualState;
   private triggersEnabled: boolean;
@@ -163,6 +170,10 @@ export class RendererHost {
     // M6C1 timeline: prepared once per level (cold path); the state
     // scratch starts at the exact base so probes read baseline pre-frame.
     this.timelineSections = prepareVisualSequence(simulation.level.def.visualSequence);
+    // M7.1 rhythm cues ride with the level file (same precedent as the
+    // visual sequence): prepared once, resolved per frame from z, never
+    // stored, never fed to the sim.
+    this.rhythmCues = prepareRhythmCues(simulation.level.def);
     this.visualState = makeVisualState();
     resetVisualState(this.theme, this.visualState);
     this.triggersEnabled = options.triggersEnabled ?? true;
@@ -506,6 +517,10 @@ export class RendererHost {
       s.fogFar,
       Math.min(2, Math.max(0, s.environmentIntensity + energy * 0.6)),
     );
+    // Ray burst: important gravity/pad/speed moments visibly energize the
+    // background beams in the event family tint, decaying with the punch.
+    const bed = Math.min(0.45, Math.max(0, (s.environmentIntensity - 1) * 0.7));
+    this.environmentView.setEnergyRays(Math.min(1, bed + energy * 0.6), tint);
     this.punchApplied = true;
   }
 
@@ -519,6 +534,10 @@ export class RendererHost {
       s.fogFar,
       s.environmentIntensity,
     );
+    // Section ray bed: livelier sections carry visible beams in their own
+    // accent color; calm sections fade them out (clamped — never dominant).
+    const bed = Math.min(0.45, Math.max(0, (s.environmentIntensity - 1) * 0.7));
+    this.environmentView.setEnergyRays(bed, s.routeAccent);
     this.post.setBloomParams(s.bloomStrength, s.bloomRadius, s.bloomThreshold);
     this.renderer.toneMappingExposure = s.exposure;
     this.vfx.setIntensity(s.vfxIntensity, s.streakIntensity);
@@ -539,6 +558,11 @@ export class RendererHost {
     return this.vfx.contactSamples;
   }
 
+  /** Live energy-ray opacity 0..0.28 (QA observability; 0 at rest/off). */
+  public get energyRayOpacity(): number {
+    return this.environmentView.liveRayOpacity();
+  }
+
   /** Live applied background (timeline base + M6C2 punch flash, QA). */
   public get visualLiveBackground(): number {
     return this.environmentView.liveBackgroundHex();
@@ -552,6 +576,16 @@ export class RendererHost {
   /** Active timeline section id (`base` with triggers off / no sequence). */
   public get visualSectionId(): string {
     return this.visualState.sectionId;
+  }
+
+  /**
+   * Active beat-ready cue id at the current interpolated forward position
+   * (`null` before the first cue). Presentation observability only: the id
+   * derives from z through the prepared level data — no clocks, no sim
+   * state, nothing stored in replays.
+   */
+  public get rhythmCueId(): string | null {
+    return cueIdAtZ(this.rhythmCues, this.interpPos.z);
   }
 
   /** 0..1 progress within the active section (QA interpolation bounds). */

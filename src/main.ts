@@ -112,6 +112,9 @@ declare global {
       visualRouteAccent: () => number;
       visualPlayerColor: () => number;
       visualHazardColor: () => number;
+      // M7.1 beat-ready cue observability (presentation only).
+      rhythmCue: () => string | null;
+      energyRays: () => number;
       // M6C2 reactive-visual observability (presentation only).
       eventPunchEnergy: () => number;
       eventPunchColor: () => number;
@@ -219,6 +222,10 @@ window.__gd3d = {
   visualRouteAccent: () => game['rendererHost'].visualRouteAccent,
   visualPlayerColor: () => game['rendererHost'].visualPlayerColor,
   visualHazardColor: () => game['rendererHost'].visualHazardColor,
+  // M7.1 beat-ready cue id at the current forward position (cold path).
+  rhythmCue: () => game['rendererHost'].rhythmCueId,
+  // M7.1 background energy-ray opacity (cold path).
+  energyRays: () => game['rendererHost'].energyRayOpacity,
   // M6C2 probes: punch envelope + dominant tint + contact skid (cold path).
   eventPunchEnergy: () => game['rendererHost'].eventPunchEnergy,
   eventPunchColor: () => game['rendererHost'].eventPunchColor,

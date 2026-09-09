@@ -182,14 +182,30 @@ export class LevelView {
       }
     }
 
+    // Hazard spikes orient relative to their declared support surface (M7.1
+    // general rule — no level-id branches, no coordinate heuristics): the
+    // base attaches to the support and the tip points AWAY from it (floor:
+    // tip +Y; ceiling: tip −Y). Gameplay colliders are untouched — only the
+    // presentation mesh flips and re-seats. Omitted `mount` = 'floor', so
+    // every pre-M7.1 level renders byte-identically.
     for (const hazard of level.def.hazards) {
       const mesh = new THREE.Mesh(spike, hazardMat);
-      mesh.scale.set(hazard.halfExtents.x * 2.2, hazard.halfExtents.y * 3.4, hazard.halfExtents.z * 2.2);
+      const ceilingMount = hazard.mount === 'ceiling';
+      const visualHeight = hazard.halfExtents.y * 3.4;
+      mesh.scale.set(hazard.halfExtents.x * 2.2, visualHeight, hazard.halfExtents.z * 2.2);
+      // Floor: base at the collider bottom (tip up). Ceiling: base at the
+      // collider top, flush with the run surface above (tip down). The cone
+      // geometry carries its tip at +height/2, so the ceiling mount flips it
+      // with rotation.x = PI (applied before the diamond yaw — tip −Y either
+      // way for the symmetric cross-section).
       mesh.position.set(
         hazard.center.x,
-        hazard.center.y - hazard.halfExtents.y + (hazard.halfExtents.y * 3.4) / 2,
+        ceilingMount
+          ? hazard.center.y + hazard.halfExtents.y - visualHeight / 2
+          : hazard.center.y - hazard.halfExtents.y + visualHeight / 2,
         hazard.center.z,
       );
+      mesh.rotation.x = ceilingMount ? Math.PI : 0;
       mesh.rotation.y = Math.PI / 4;
       this.group.add(mesh);
     }

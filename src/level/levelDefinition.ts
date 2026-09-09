@@ -1,5 +1,6 @@
 import type { ColliderKind } from '../collision/collider';
 import type { GravityMode } from '../player/playerState';
+import type { RhythmCue } from '../visuals/rhythmCues';
 import type { Vec3 } from '../core/math';
 
 /**
@@ -171,6 +172,17 @@ export interface LevelHazard {
   halfExtents: Vec3;
   /** Visual style hint consumed by rendering (e.g. spike vs block). */
   visual?: 'spike' | 'block';
+  /**
+   * Presentation-only support surface for the hazard visual (M7.1):
+   * 'floor' (default) renders the spike base-down with the tip pointing
+   * +Y away from the surface below; 'ceiling' renders it base-up (attached
+   * to the surface above) with the tip pointing −Y away from that surface.
+   * Renderer-only like `visual`: `computeLevelFingerprint()` never reads
+   * it and gameplay colliders are unchanged, so annotating old replays'
+   * levels keeps them compatible. Omitted = 'floor' (existing content
+   * renders byte-identically).
+   */
+  mount?: 'floor' | 'ceiling';
 }
 
 export interface LevelDefinition {
@@ -245,4 +257,11 @@ export interface LevelDefinition {
    * Absent = the M6A+M6B baseline for the whole level.
    */
   visualSequence?: VisualSequenceDefinition;
+  /**
+   * Optional beat-ready rhythm cues (M7.1): semantic music-mapping markers
+   * bound to authored forward positions. Presentation-only: never read by
+   * simulation, collision, replay, or the level fingerprint; no audio ships.
+   * Absent = no cues.
+   */
+  rhythmCues?: RhythmCue[];
 }

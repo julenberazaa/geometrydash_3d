@@ -27,6 +27,13 @@ export class EnvironmentView {
   private readonly starBaseOpacity: number;
   private readonly pillarBase: THREE.Color;
   private readonly windowBase: THREE.Color;
+  // M7.1 background energy rays: a FIXED set of additive beams (bounded —
+  // 12 meshes sharing one geometry + one material, zero per-frame
+  // allocation, no gameplay collision). Driven by the existing visual state
+  // (section energy) + the event-punch envelope (ray bursts on gravity / pad
+  // / speed moments); silenced by the same reset path as everything else.
+  private readonly rayMat: THREE.MeshBasicMaterial;
+  private static readonly RAY_COUNT = 12;
 
   constructor(levelLengthZ: number, theme: ProductionTheme) {
     this.theme = theme;
@@ -70,6 +77,33 @@ export class EnvironmentView {
     this.pillarBase = pillarMat.color.clone();
     this.windowBase = windowMat.color.clone();
     this.disposables.push(pillarGeo, pillarMat, windowMat);
+    // Energy rays share the pillar box geometry (no new geometry) and one
+    // fixed additive material (no per-ray materials). Deterministic layout
+    // from a fixed seed — background dressing only, far outside the corridor
+    // (|x| 14..44) so they can never read as route or hazard.
+    const rayMat = new THREE.MeshBasicMaterial({
+      color: 0x4fd2ff,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      fog: false,
+    });
+    this.rayMat = rayMat;
+    this.disposables.push(rayMat);
+    const randR = mulberry32(4242);
+    for (let i = 0; i < EnvironmentView.RAY_COUNT; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      const ray = new THREE.Mesh(pillarGeo, rayMat);
+      const h = 24 + randR() * 30;
+      ray.scale.set(0.35 + randR() * 0.5, h, 0.35 + randR() * 0.5);
+      ray.position.set(
+        side * (14 + randR() * 30),
+        6 + randR() * 16,
+        -30 + randR() * (levelLengthZ + 90),
+      );
+      this.scene.add(ray);
+    }
     const randP = mulberry32(7777);
     for (let i = 0; i < 26; i++) {
       const side = i % 2 === 0 ? -1 : 1;
@@ -124,6 +158,25 @@ export class EnvironmentView {
   public resetToTheme(): void {
     const t = this.theme;
     this.applyVisualState(t.background, t.fogColor, t.fogNear, t.fogFar, 1);
+    this.setEnergyRays(0, t.fogColor);
+  }
+
+  /**
+   * M7.1 ray drive (renderer-only, cold per-frame writes): `level` 0..1
+   * sets the shared beam opacity (0 = invisible, peak ≈ 0.28 — beams stay
+   * subordinate to player/hazard/route by construction); `color` retints
+   * the shared material (section accent at rest, punch family tint during
+   * events). Absolute writes, no accumulation.
+   */
+  public setEnergyRays(level: number, color: number): void {
+    const k = level < 0 ? 0 : level > 1 ? 1 : level;
+    this.rayMat.opacity = 0.28 * k;
+    this.rayMat.color.setHex(color);
+  }
+
+  /** Live ray opacity (cold QA path only). */
+  public liveRayOpacity(): number {
+    return this.rayMat.opacity;
   }
 
   /**
