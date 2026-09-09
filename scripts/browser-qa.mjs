@@ -3517,36 +3517,60 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   })();
   log('m71 opening bridge is genuinely narrow (off-lane placement falls)', m71narrowDeath, `sawDeath=${m71narrowDeath}`);
 
-  // Portal flip + blue punch in ONE pre-armed loop starting at the portal
-  // approach: the crossing step flips gravity AND fires the punch together,
-  // so the first post-crossing sample proves both (a flip roll followed by
-  // a separate punch poll races the <2 s envelope under headless load).
+  // Portal flip + blue punch via PERSISTENT page-side flags (not transient
+  // CDP polls): a multi-minute CDP stall can outlast the signature window
+  // and the flip roll while the sim lives on underneath — flags recorded at
+  // event time in-page survive any stall and read back whenever CDP
+  // unblocks. The crossing step flips gravity AND fires the punch together.
+  const m71armPortalWatcher = async () => {
+    await page.evaluate(() => {
+      window.__m71portalSig = null;
+      window.__m71flipInfo = null;
+      window.__m71flipPeak = null;
+      if (window.__m71flipWatch) clearInterval(window.__m71flipWatch);
+      window.__m71flipWatch = setInterval(() => {
+        const g = window.__gd3d;
+        const z = g.playerPosition().z;
+        if (window.__m71portalSig === null && g.status() === 'running' && z >= 163) {
+          window.__m71portalSig = { z };
+        }
+        if (g.portalTransitionCount() >= 1 && window.__m71flipInfo === null) {
+          window.__m71flipInfo = { z, mode: g.gravityMode(), section: g.visualSectionId() };
+        }
+        if (g.portalTransitionCount() >= 1 && window.__m71flipPeak === null) {
+          window.__m71flipPeak = { energy: g.eventPunchEnergy(), color: g.eventPunchColor() };
+        }
+        if (z > 200 || g.status() !== 'running') {
+          clearInterval(window.__m71flipWatch);
+          window.__m71flipWatch = null;
+        }
+      }, 5);
+    });
+  };
+  const m71waitFlag = async (name, timeoutMs) => {
+    const t0 = Date.now();
+    for (;;) {
+      const flag = await page.evaluate((n) => window[n], name);
+      if (flag !== null && flag !== undefined) return flag;
+      if (Date.now() - t0 > timeoutMs) return null;
+      await page.waitForTimeout(200);
+    }
+  };
   await m71restage(2.6, 1.5, 158);
   await m71tapLane('ArrowLeft', 0);
   await page.waitForTimeout(200);
-  // In-page peak watcher: samples the punch envelope within 5 ms of the
-  // flip (CDP polling can lag the <2 s envelope by seconds under load).
-  await page.evaluate(() => {
-    window.__m71flipPeak = null;
-    if (window.__m71flipWatch) clearInterval(window.__m71flipWatch);
-    window.__m71flipWatch = setInterval(() => {
-      const g = window.__gd3d;
-      if (g.portalTransitionCount() >= 1 && window.__m71flipPeak === null) {
-        window.__m71flipPeak = { energy: g.eventPunchEnergy(), color: g.eventPunchColor() };
-      }
-      if (g.playerPosition().z > 200 || g.status() !== 'running') {
-        clearInterval(window.__m71flipWatch);
-        window.__m71flipWatch = null;
-      }
-    }, 5);
-  });
-  const m71sig = await m71roll((s) => s.z > 163 && s.z < 168, 60000);
+  await m71armPortalWatcher();
+  const m71sig = await m71waitFlag('__m71portalSig', 150000);
   if (m71sig) { await m71snap('m71-03-lateral-landing'); }
   log('m71 first signature moment renders', m71sig !== null, m71sig ? `z=${m71sig.z.toFixed(1)}` : 'never framed');
-  // Flip identity via the sim (no energy race); punch peak via the watcher.
-  const m71flip = await m71roll((s) => s.mode === 'ceiling' && s.flips >= 1, 90000);
+  // Flip identity via the page-side flag (event-time record, stall-proof).
+  const m71flipFlag = await m71waitFlag('__m71flipInfo', 150000);
+  const m71flipLive = await m71probe();
+  const m71flip = m71flipFlag !== null
+    ? { mode: m71flipFlag.mode, flips: 1, z: m71flipFlag.z, section: m71flipFlag.section }
+    : null;
   log('m71 gravity transition fires', m71flip !== null,
-    m71flip ? `mode=${m71flip.mode} flips=${m71flip.flips} z=${m71flip.z.toFixed(1)}` : 'no flip');
+    m71flip ? `mode=${m71flip.mode} z=${m71flip.z.toFixed(1)} live=${m71flipLive.mode}` : 'no flip');
   // Punch firing is proven by the peak energy sampled within 5 ms of the
   // flip (the tint mapping pad/orb-warm, gravity-blue, speed-tier is pinned
   // by unit tests + the M6C2 live proof; color is logged informationally).
@@ -3569,11 +3593,36 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   // documented wash; numbers above are the transition proof).
   if (m71flip) { await m71snap('m71-04-gravity-hit'); }
   // Ceiling readability via direct staging (the live run reaches the gap
-  // at z=230 with no jump input, so a transit roll races gap death under
-  // load): place mid-slab on the safe lane and probe the settled run.
+  // at z=234 with no jump input, so a transit roll races gap death under
+  // load): place early on the safe lane with verified intent and probe the
+  // settled run before the z 216 row ends the window.
+  // Ceiling staging is mode-aware: the flip may be attempts old (the player
+  // can die past it while CDP stalls), so a floor-mode live state re-crosses
+  // the portal before teleporting onto the ceiling slab.
   if (m71flip) {
-    await page.evaluate(() => window.__gd3d.debugTeleport(2.6, 5.0, 210));
-    await page.waitForTimeout(500);
+    // Mode-aware staging loop: ceiling + safe z → teleport onto the slab;
+    // ceiling + deep z → roll with no teleport (don't waste the run);
+    // floor (died past the flip while CDP stalled) → re-cross the portal.
+    for (let m71cross = 0; m71cross < 4; m71cross++) {
+      const m71stage = await page.evaluate(() => ({
+        mode: window.__gd3d.gravityMode(),
+        z: window.__gd3d.playerPosition().z,
+      }));
+      if (m71stage.mode === 'ceiling' && m71stage.z < 208) {
+        await page.evaluate(() => window.__gd3d.debugTeleport(2.6, 5.0, 200));
+        await m71tapLane('ArrowLeft', 0);
+        await page.waitForTimeout(800);
+        break;
+      }
+      if (m71stage.mode === 'ceiling') {
+        await m71tapLane('ArrowLeft', 0);
+        break;
+      }
+      await m71restage(2.6, 1.5, 158);
+      await m71tapLane('ArrowLeft', 0);
+      await m71armPortalWatcher();
+      await m71waitFlag('__m71flipInfo', 120000);
+    }
   }
 
   // Ceiling section readability (stable run, in-viewport, contact skid).
