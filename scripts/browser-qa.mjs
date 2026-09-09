@@ -3346,18 +3346,19 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     `mats=${m6c2ResEnd.mats} geos=${m6c2ResEnd.geos} passes=${m6c2ResEnd.passes} children=${m6c2ResEnd.children}`);
 }
 
-// --- 24b. M7: Cube vertical slice (production level 01) ---
-// First real gameplay/content milestone: the authored ~52 s level must
-// resolve, read, flip, fire every mechanic, finish via REAL inputs, replay
-// VERIFIED, and hold resources flat. Teleport-assisted section passes use
-// debugTeleport (established M3/M4 pattern); the finish proof drives real
-// DOM KeyboardEvents through the real InputSystem (M5 pattern).
+// --- 24b. M7.1: Cube precision vertical slice (production level 01 rework) ---
+// Precision/difficulty/spectacle rework: narrow islands, airborne transfers,
+// ceiling-spike orientation, six visual scenes, beat-ready cues, energy rays.
+// The slice must resolve, read, flip, fire every mechanic, finish via REAL
+// inputs, replay VERIFIED, and hold resources flat. Teleport-assisted section
+// passes use debugTeleport (established M3/M4 pattern); the finish proof
+// drives real DOM KeyboardEvents through the real InputSystem (M5 pattern).
 {
   const PLAYER_HEX_M7 = 0x0e4a56;
   const HAZARD_HEX_M7 = 0xff9d00;
   const GRAVITY_BLUE = 0x4fc3ff;
   const PAD_YELLOW = 0xffd23f;
-  const m7probe = () => page.evaluate(() => ({
+  const m71probe = () => page.evaluate(() => ({
     id: window.__gd3d.levelId(),
     name: window.__gd3d.levelDisplayName(),
     status: window.__gd3d.status(),
@@ -3377,20 +3378,22 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     geos: window.__gd3d.geometryCount(),
     passes: window.__gd3d.postPassCount(),
     children: window.__gd3d.sceneChildren(),
+    cue: window.__gd3d.rhythmCue(),
+    rays: window.__gd3d.energyRays(),
     z: window.__gd3d.playerPosition().z,
     y: window.__gd3d.playerPosition().y,
     grounded: window.__gd3d.grounded(),
   }));
-  const m7roll = async (pred, timeoutMs = 30000, pollMs = 40) => {
+  const m71roll = async (pred, timeoutMs = 30000, pollMs = 40) => {
     const t0 = Date.now();
     for (;;) {
-      const s = await m7probe();
+      const s = await m71probe();
       if (s.status === 'running' && pred(s)) return s;
       if (Date.now() - t0 > timeoutMs) return null;
       await page.waitForTimeout(pollMs);
     }
   };
-  const m7fresh = async (url) => {
+  const m71fresh = async (url) => {
     await page.goto(url, { waitUntil: 'networkidle' });
     await page.waitForTimeout(2000);
     // Verified R-loop: a swallowed R under headless load leaves a dying
@@ -3403,12 +3406,12 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
       if (p.z < 10) break;
     }
   };
-  const m7pause = async () => { await page.keyboard.press('KeyP'); await page.waitForTimeout(400); };
+  const m71pause = async () => { await page.keyboard.press('KeyP'); await page.waitForTimeout(400); };
   // Bulletproof liveness: verify MOTION over a long window (short windows
   // false-positive under frame starvation and pause a LIVE sim; swallowed
   // presses leave it paused). Loops P-until-advancing. Non-running states
   // return immediately (pause state is irrelevant while dead/finished).
-  const m7ensureLive = async (rounds = 4) => {
+  const m71ensureLive = async (rounds = 4) => {
     for (let i = 0; i < rounds; i++) {
       const st = await page.evaluate(() => window.__gd3d.status());
       if (st !== 'running') return st;
@@ -3421,18 +3424,18 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     }
     return page.evaluate(() => window.__gd3d.status());
   };
-  const m7resume = async () => {
+  const m71resume = async () => {
     await page.keyboard.press('KeyP');
     await page.waitForTimeout(200);
-    await m7ensureLive(4);
+    await m71ensureLive(4);
   };
   // Pause → capture → bulletproof resume, one call per evidence shot.
-  const m7snap = async (name) => {
-    await m7pause();
+  const m71snap = async (name) => {
+    await m71pause();
     await capture(name);
-    await m7ensureLive(4);
+    await m71ensureLive(4);
   };
-  const m7restage = async (x, y, z) => {
+  const m71restage = async (x, y, z) => {
     // Deterministic teleport staging: verified R-loop first (a swallowed R
     // or a mid-run teleport onto a dying sim cascades every downstream
     // check), then bulletproof liveness, then place. Works from any state.
@@ -3442,7 +3445,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
       const p = await pos();
       if (p.z < 10) break;
     }
-    await m7ensureLive(4);
+    await m71ensureLive(4);
     await page.evaluate((p) => window.__gd3d.debugTeleport(p.x, p.y, p.z), { x, y, z });
     await page.waitForTimeout(300);
   };
@@ -3450,7 +3453,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   // and intent only applies on the next sim tick, so poll intent until it
   // reads back (checks first — never taps past the target onto a virtual
   // lane). Returns whether intent settled.
-  const m7tapLane = async (code, want) => {
+  const m71tapLane = async (code, want) => {
     for (let i = 0; i < 8; i++) {
       const lane = await page.evaluate(() => window.__gd3d.laneIndex());
       if (lane === want) return true;
@@ -3459,111 +3462,166 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     }
     return (await page.evaluate(() => window.__gd3d.laneIndex())) === want;
   };
-  const m7pollPunch = async (pred, timeoutMs = 10000) => {
+  const m71pollPunch = async (pred, timeoutMs = 10000) => {
     const t0 = Date.now();
-    let s = await m7probe();
+    let s = await m71probe();
     for (;;) {
       if (pred(s)) return s;
       if (Date.now() - t0 > timeoutMs) return s;
       await page.waitForTimeout(40);
-      s = await m7probe();
+      s = await m71probe();
     }
   };
 
-  await m7fresh(`${URL}?level=vertical-slice-01`);
-  const m7boot = await m7probe();
-  log('m7 level route resolves correctly', m7boot.id === 'vertical-slice-01', `id=${m7boot.id}`);
-  const m7hud = await page.evaluate(() => document.querySelector('.hud-name')?.textContent ?? '');
-  log('m7 correct display name', m7boot.name === 'VERTICAL SLICE 01' && m7hud === 'VERTICAL SLICE 01',
-    `probe=${m7boot.name} hud=${m7hud}`);
-  log('m7 start state correct',
-    m7boot.status === 'running' && m7boot.lane === 1 && m7boot.mode === 'floor' && m7boot.speed === 1,
-    `status=${m7boot.status} lane=${m7boot.lane} mode=${m7boot.mode} speed=${m7boot.speed}`);
-  log('m7 production visual sequence active', m7boot.section === 'vs-opening', `section=${m7boot.section}`);
-  log('m7 player/hazard readability intact',
-    m7boot.player === PLAYER_HEX_M7 && m7boot.hazard === HAZARD_HEX_M7,
-    `player=0x${m7boot.player?.toString(16)} hazard=0x${m7boot.hazard?.toString(16)}`);
+  await m71fresh(`${URL}?level=vertical-slice-01`);
+  const m71boot = await m71probe();
+  log('m71 level route resolves correctly', m71boot.id === 'vertical-slice-01', `id=${m71boot.id}`);
+  const m71hud = await page.evaluate(() => document.querySelector('.hud-name')?.textContent ?? '');
+  log('m71 correct display name', m71boot.name === 'VERTICAL SLICE 01' && m71hud === 'VERTICAL SLICE 01',
+    `probe=${m71boot.name} hud=${m71hud}`);
+  log('m71 start state correct',
+    m71boot.status === 'running' && m71boot.lane === 1 && m71boot.mode === 'floor' && m71boot.speed === 1,
+    `status=${m71boot.status} lane=${m71boot.lane} mode=${m71boot.mode} speed=${m71boot.speed}`);
+  log('m71 production visual sequence active', m71boot.section === 'vs-opening', `section=${m71boot.section}`);
+  log('m71 player/hazard readability intact',
+    m71boot.player === PLAYER_HEX_M7 && m71boot.hazard === HAZARD_HEX_M7,
+    `player=0x${m71boot.player?.toString(16)} hazard=0x${m71boot.hazard?.toString(16)}`);
 
   // Act I route renders (opening + weave).
-  await m7snap('m7-01-opening');
-  const m7act1 = await m7roll((s) => s.z > 26 && s.z < 34, 60000);
-  if (m7act1) { await m7snap('m7-02-act1-flow'); }
-  log('m7 Act I route renders', m7act1 !== null, m7act1 ? `z=${m7act1.z.toFixed(1)}` : 'never framed');
+  await m71snap('m71-01-narrow-opening');
+  const m71act1 = await m71roll((s) => s.z > 26 && s.z < 34, 60000);
+  if (m71act1) { await m71snap('m71-02-island-jump'); }
+  log('m71 Act I route renders', m71act1 !== null, m71act1 ? `z=${m71act1.z.toFixed(1)}` : 'never framed');
+  log('m71 beat cue resolves at start', m71boot.cue === 'm71-cue-intro', `cue=${m71boot.cue}`);
+  // Precision topology proof: the opening bridge is single-lane — placing
+  // the Cube beside it (over the void) must fall, while the old full-width
+  // road would have carried it. Proves full-width is no longer dominant.
+  await m71restage(2.6, 0.6, 24);
+  const m71narrowDeath = await (async () => {
+    const t0 = Date.now();
+    for (;;) {
+      const s = await m71probe();
+      if (s.status === 'dead') return true;
+      if (Date.now() - t0 > 30000) return false;
+      await page.waitForTimeout(40);
+    }
+  })();
+  log('m71 opening bridge is genuinely narrow (off-lane placement falls)', m71narrowDeath, `sawDeath=${m71narrowDeath}`);
 
   // Portal flip + blue punch in ONE pre-armed loop starting at the portal
   // approach: the crossing step flips gravity AND fires the punch together,
   // so the first post-crossing sample proves both (a flip roll followed by
   // a separate punch poll races the <2 s envelope under headless load).
-  await m7restage(2.6, 1.5, 158);
-  await m7tapLane('ArrowLeft', 0);
+  await m71restage(2.6, 1.5, 158);
+  await m71tapLane('ArrowLeft', 0);
   await page.waitForTimeout(200);
   // In-page peak watcher: samples the punch envelope within 5 ms of the
   // flip (CDP polling can lag the <2 s envelope by seconds under load).
   await page.evaluate(() => {
-    window.__m7flipPeak = null;
-    if (window.__m7flipWatch) clearInterval(window.__m7flipWatch);
-    window.__m7flipWatch = setInterval(() => {
+    window.__m71flipPeak = null;
+    if (window.__m71flipWatch) clearInterval(window.__m71flipWatch);
+    window.__m71flipWatch = setInterval(() => {
       const g = window.__gd3d;
-      if (g.portalTransitionCount() >= 1 && window.__m7flipPeak === null) {
-        window.__m7flipPeak = { energy: g.eventPunchEnergy(), color: g.eventPunchColor() };
+      if (g.portalTransitionCount() >= 1 && window.__m71flipPeak === null) {
+        window.__m71flipPeak = { energy: g.eventPunchEnergy(), color: g.eventPunchColor() };
       }
       if (g.playerPosition().z > 200 || g.status() !== 'running') {
-        clearInterval(window.__m7flipWatch);
-        window.__m7flipWatch = null;
+        clearInterval(window.__m71flipWatch);
+        window.__m71flipWatch = null;
       }
     }, 5);
   });
-  const m7sig = await m7roll((s) => s.z > 163 && s.z < 168, 60000);
-  if (m7sig) { await m7snap('m7-03-first-signature'); }
-  log('m7 first signature moment renders', m7sig !== null, m7sig ? `z=${m7sig.z.toFixed(1)}` : 'never framed');
+  const m71sig = await m71roll((s) => s.z > 163 && s.z < 168, 60000);
+  if (m71sig) { await m71snap('m71-03-lateral-landing'); }
+  log('m71 first signature moment renders', m71sig !== null, m71sig ? `z=${m71sig.z.toFixed(1)}` : 'never framed');
   // Flip identity via the sim (no energy race); punch peak via the watcher.
-  const m7flip = await m7roll((s) => s.mode === 'ceiling' && s.flips >= 1, 90000);
-  log('m7 gravity transition fires', m7flip !== null,
-    m7flip ? `mode=${m7flip.mode} flips=${m7flip.flips} z=${m7flip.z.toFixed(1)}` : 'no flip');
+  const m71flip = await m71roll((s) => s.mode === 'ceiling' && s.flips >= 1, 90000);
+  log('m71 gravity transition fires', m71flip !== null,
+    m71flip ? `mode=${m71flip.mode} flips=${m71flip.flips} z=${m71flip.z.toFixed(1)}` : 'no flip');
   // Punch firing is proven by the peak energy sampled within 5 ms of the
   // flip (the tint mapping pad/orb-warm, gravity-blue, speed-tier is pinned
   // by unit tests + the M6C2 live proof; color is logged informationally).
-  const m7GravityPunch = await (async () => {
+  const m71GravityPunch = await (async () => {
     const t0 = Date.now();
     for (;;) {
-      const peak = await page.evaluate(() => window.__m7flipPeak);
+      const peak = await page.evaluate(() => window.__m71flipPeak);
       if (peak !== null) return peak;
       if (Date.now() - t0 > 90000) return { energy: 0, color: 0 };
       await page.waitForTimeout(200);
     }
   })();
-  log('m7 M6C2 gravity punch fires', m7GravityPunch.energy > 0.25,
-    `energy=${m7GravityPunch.energy.toFixed(2)} color=0x${m7GravityPunch.color?.toString(16)}`);
+  log('m71 M6C2 gravity punch fires', m71GravityPunch.energy > 0.25,
+    `energy=${m71GravityPunch.energy.toFixed(2)} color=0x${m71GravityPunch.color?.toString(16)}`);
+  log('m71 gravity punch carries the blue family tint', m71GravityPunch.color === GRAVITY_BLUE,
+    `color=0x${m71GravityPunch.color?.toString(16)}`);
+  log('m71 gravity scene clearly changes at the flip', m71flip !== null && m71flip.section === 'vs-gravity',
+    m71flip ? `section=${m71flip.section}` : 'no flip');
   // Transition photo at the crossing (portal-pane wash context — the M6C2-
   // documented wash; numbers above are the transition proof).
-  if (m7flip) { await m7snap('m7-04-gravity-transition'); }
+  if (m71flip) { await m71snap('m71-04-gravity-hit'); }
   // Ceiling readability via direct staging (the live run reaches the gap
   // at z=230 with no jump input, so a transit roll races gap death under
   // load): place mid-slab on the safe lane and probe the settled run.
-  if (m7flip) {
+  if (m71flip) {
     await page.evaluate(() => window.__gd3d.debugTeleport(2.6, 5.0, 210));
     await page.waitForTimeout(500);
   }
 
   // Ceiling section readability (stable run, in-viewport, contact skid).
-  const m7ceil = await m7roll((s) => s.mode === 'ceiling' && s.grounded && Math.abs(s.y - 5.45) < 0.15 && s.z > 205, 60000);
-  const m7ceilScreen = m7ceil ? await page.evaluate(() => {
+  const m71ceil = await m71roll((s) => s.mode === 'ceiling' && s.grounded && Math.abs(s.y - 5.45) < 0.15 && s.z > 205, 60000);
+  const m71ceilScreen = m71ceil ? await page.evaluate(() => {
     const p = window.__gd3d.playerPosition();
     return window.__gd3d.screenPoint(p.x, p.y, p.z);
   }) : null;
-  log('m7 Ceiling section is readable',
-    m7ceil !== null && m7ceilScreen !== null && !m7ceilScreen.behind &&
-    Math.abs(m7ceilScreen.ndcX) < 1 && Math.abs(m7ceilScreen.ndcY) < 1,
-    m7ceil ? `z=${m7ceil.z.toFixed(1)} ndc=(${m7ceilScreen?.ndcX?.toFixed(2)},${m7ceilScreen?.ndcY?.toFixed(2)}) contact=${m7ceil.contact}` : 'no ceiling run');
-  if (m7ceil) { await m7snap('m7-05-ceiling'); }
+  log('m71 Ceiling section is readable',
+    m71ceil !== null && m71ceilScreen !== null && !m71ceilScreen.behind &&
+    Math.abs(m71ceilScreen.ndcX) < 1 && Math.abs(m71ceilScreen.ndcY) < 1,
+    m71ceil ? `z=${m71ceil.z.toFixed(1)} ndc=(${m71ceilScreen?.ndcX?.toFixed(2)},${m71ceilScreen?.ndcY?.toFixed(2)}) contact=${m71ceil.contact}` : 'no ceiling run');
+  if (m71ceil) { await m71snap('m71-05-ceiling-narrow'); }
+  // Ceiling-spike orientation proof: the lethal tip hangs BELOW the collider
+  // (toward the corridor), the base sits flush with the slab. On screen the
+  // tip must project below the base (larger py, y-down pixels).
+  if (m71ceil) {
+    await page.evaluate(() => window.__gd3d.debugTeleport(0, 5.0, 190));
+    await page.waitForTimeout(500);
+    await m71pause();
+    const m71spikeView = await page.evaluate(() => ({
+      tip: window.__gd3d.screenPoint(0, 5.15, 200),
+      base: window.__gd3d.screenPoint(0, 6.0, 200),
+    }));
+    await capture('m71-06-ceiling-spike-correct');
+    await m71ensureLive(4);
+    const m71tipBelow = m71spikeView.tip.py > m71spikeView.base.py;
+    const m71bothFramed = !m71spikeView.tip.behind && !m71spikeView.base.behind;
+    log('m71 ceiling spike points DOWN (tip below base on screen)', m71tipBelow && m71bothFramed,
+      `tipPy=${m71spikeView.tip.py.toFixed(1)} basePy=${m71spikeView.base.py.toFixed(1)}`);
+  } else {
+    log('m71 ceiling spike points DOWN (tip below base on screen)', false, 'no ceiling run');
+  }
+  // Narrow-ceiling proof: the C4 bridge is single-lane — placing the Cube
+  // beside it (over the corridor void) must fall upward, while a full-width
+  // slab would have carried it.
+  await m71restage(0, 5.0, 282);
+  await page.evaluate(() => window.__gd3d.debugTeleport(2.6, 5.0, 282));
+  const m71ceilNarrowDeath = await (async () => {
+    const t0 = Date.now();
+    for (;;) {
+      const s = await m71probe();
+      if (s.status === 'dead') return true;
+      if (Date.now() - t0 > 30000) return false;
+      await page.waitForTimeout(40);
+    }
+  })();
+  log('m71 ceiling bridge is genuinely narrow (off-lane placement falls)', m71ceilNarrowDeath,
+    `sawDeath=${m71ceilNarrowDeath}`);
 
   // Jump orb fires naturally: install the mini-driver BEFORE the pad roll
   // (it covers the post-pad flight, so no sim transit is ever unattended).
-  await m7fresh(`${URL}?level=vertical-slice-01`);
+  await m71fresh(`${URL}?level=vertical-slice-01`);
   await page.evaluate(() => window.__gd3d.debugTeleport(0, 1.5, 300));
   await page.evaluate(() => {
-    if (window.__m7orb) clearInterval(window.__m7orb);
-    window.__m7orbFired = false;
+    if (window.__m71orb) clearInterval(window.__m71orb);
+    window.__m71orbFired = false;
     const down = (code) => window.dispatchEvent(new KeyboardEvent('keydown', { code }));
     const up = (code) => window.dispatchEvent(new KeyboardEvent('keyup', { code }));
     // Release-on-next-poll: page-thread stalls delay wall-clock timers AND the
@@ -3575,7 +3633,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     const pendingUp = [];
     const tap = (code) => { down(code); pendingUp.push(code); };
     let lastZ = -100;
-    window.__m7orb = setInterval(() => {
+    window.__m71orb = setInterval(() => {
       while (pendingUp.length > 0) up(pendingUp.pop());
       const g = window.__gd3d;
       const z = g.playerPosition().z;
@@ -3588,48 +3646,48 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
       }
       lastZ = z;
       if (g.isInteractionUsed('vs-orb-jump')) {
-        window.__m7orbFired = true;
-        clearInterval(window.__m7orb);
-        window.__m7orb = null;
+        window.__m71orbFired = true;
+        clearInterval(window.__m71orb);
+        window.__m71orb = null;
         return;
       }
       // Flagless zone taps: the first grounded tap jumps, later ones are
       // airborne-harmless — no one-shot can be skipped by coarse sampling.
       if (z >= 347 && z <= 350.3 && g.grounded()) tap('Space');
       else if (z >= 352.4 && z <= 354.8) tap('Space');
-      if (z > 362) { clearInterval(window.__m7orb); window.__m7orb = null; }
+      if (z > 362) { clearInterval(window.__m71orb); window.__m71orb = null; }
     }, 5);
   });
   // Pad firing + punch in ONE pre-armed loop starting at the teleport
   // (same reasoning as the orb/speed punches under headless load).
-  const m7padShot = await (async () => {
+  const m71padShot = await (async () => {
     const t0 = Date.now();
     let sawUsed = null;
     for (;;) {
       const used = await page.evaluate(() => window.__gd3d.isInteractionUsed('vs-pad-floor'));
-      const s = await m7probe();
+      const s = await m71probe();
       if (used && sawUsed === null) sawUsed = s;
       if (used && s.energy > 0.15 && s.punchColor === PAD_YELLOW) return { shot: s, sawUsed };
       if (Date.now() - t0 > 90000) return { shot: s, sawUsed };
       await page.waitForTimeout(40);
     }
   })();
-  const m7pad = m7padShot.sawUsed;
-  log('m7 pad fires naturally', m7pad !== null, m7pad ? `z=${m7pad.z.toFixed(1)} pads=${m7pad.counts.pads}` : 'pad never fired');
-  const m7padPunch = m7padShot.shot;
-  log('m7 pad punch fires',
-    m7padPunch.energy > 0.15 && m7padPunch.punchColor === PAD_YELLOW,
-    `energy=${m7padPunch.energy.toFixed(2)} color=0x${m7padPunch.punchColor?.toString(16)}`);
+  const m71pad = m71padShot.sawUsed;
+  log('m71 pad fires naturally', m71pad !== null, m71pad ? `z=${m71pad.z.toFixed(1)} pads=${m71pad.counts.pads}` : 'pad never fired');
+  const m71padPunch = m71padShot.shot;
+  log('m71 pad punch fires',
+    m71padPunch.energy > 0.15 && m71padPunch.punchColor === PAD_YELLOW,
+    `energy=${m71padPunch.energy.toFixed(2)} color=0x${m71padPunch.punchColor?.toString(16)}`);
 
   // Jump orb fires naturally: plan-style one-shot takeoff (proven by the
   // full-run driver) + repeated discrete window presses until it fires.
   // Orb firing + punch in ONE pre-armed loop (starts ~2 sim-s before the
   // window): the jump-orb envelope is the snappiest (tau 0.25 sim-s), so
   // polling only after the fire can miss the peak under headless load.
-  const m7orb = await (async () => {
+  const m71orb = await (async () => {
     const t0 = Date.now();
     for (;;) {
-      const s = await m7probe();
+      const s = await m71probe();
       const used = await page.evaluate(() => window.__gd3d.isInteractionUsed('vs-orb-jump'));
       if (used && s.energy > 0.1 && s.punchColor === PAD_YELLOW) return s;
       if (used && Date.now() - t0 > 30000) return s; // fired but peak missed
@@ -3637,21 +3695,40 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
       await page.waitForTimeout(40);
     }
   })();
-  log('m7 jump orb fires naturally', m7orb !== null, m7orb ? `z=${m7orb.z.toFixed(1)} orbs=${m7orb.counts.orbs}` : 'orb never fired');
-  log('m7 jump orb punch fires',
-    m7orb !== null && m7orb.energy > 0.1 && m7orb.punchColor === PAD_YELLOW,
-    m7orb ? `energy=${m7orb.energy.toFixed(2)} color=0x${m7orb.punchColor?.toString(16)}` : 'no peak sample');
-  if (m7orb) { await m7snap('m7-06-pad-orb'); }
+  log('m71 jump orb fires naturally', m71orb !== null, m71orb ? `z=${m71orb.z.toFixed(1)} orbs=${m71orb.counts.orbs}` : 'orb never fired');
+  log('m71 jump orb punch fires',
+    m71orb !== null && m71orb.energy > 0.1 && m71orb.punchColor === PAD_YELLOW,
+    m71orb ? `energy=${m71orb.energy.toFixed(2)} color=0x${m71orb.punchColor?.toString(16)}` : 'no peak sample');
+  if (m71orb) { await m71snap('m71-07-pad-orb-tech'); }
+  // Tech-section color proof: the magenta scene resolves past z 300 with a
+  // clearly shifted background vs the opening.
+  await m71restage(0, 1.5, 330);
+  const m71tech = await m71roll((s) => s.section === 'vs-tech' && s.z > 325, 60000);
+  if (m71tech) { await m71snap('m71-08-color-scene-change'); }
+  log('m71 tech scene resolves with shifted palette', m71tech !== null,
+    m71tech ? `section=${m71tech.section} z=${m71tech.z.toFixed(1)}` : 'never framed');
+  // Floor-spike orientation proof (pair to the ceiling check): tip ABOVE base.
+  await m71restage(0, 1.5, 12);
+  await m71pause();
+  const m71floorSpike = await page.evaluate(() => ({
+    tip: window.__gd3d.screenPoint(0, 0.85, 22),
+    base: window.__gd3d.screenPoint(0, 0.0, 22),
+  }));
+  await capture('m71-spike-floor');
+  await m71ensureLive(4);
+  log('m71 floor spike points UP (tip above base on screen)',
+    m71floorSpike.tip.py < m71floorSpike.base.py && !m71floorSpike.tip.behind && !m71floorSpike.base.behind,
+    `tipPy=${m71floorSpike.tip.py.toFixed(1)} basePy=${m71floorSpike.base.py.toFixed(1)}`);
 
   // Gravity orb fires naturally: ONE driver covers lane + gap jump + setup
   // + presses. Runs on a ?post=off page (~30 fps headless): no beauty
   // screenshots live here, and the sim-identical fallback removes
   // CDP-timing fragility from the chained windows (M6B precedent).
-  await m7fresh(`${URL}?level=vertical-slice-01&post=off`);
+  await m71fresh(`${URL}?level=vertical-slice-01&post=off`);
   await page.evaluate(() => window.__gd3d.debugTeleport(0, 1.5, 158));
   await page.evaluate(() => {
-    if (window.__m7gorb) clearInterval(window.__m7gorb);
-    window.__m7gorbFired = false;
+    if (window.__m71gorb) clearInterval(window.__m71gorb);
+    window.__m71gorbFired = false;
     const down = (code) => window.dispatchEvent(new KeyboardEvent('keydown', { code }));
     const up = (code) => window.dispatchEvent(new KeyboardEvent('keyup', { code }));
     // Release-on-next-poll: page-thread stalls delay wall-clock timers AND the
@@ -3663,14 +3740,16 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     const pendingUp = [];
     const tap = (code) => { down(code); pendingUp.push(code); };
     let laned = false;
-    let padLaned = false;
+    let centered = false;
+    let padLane1 = false;
+    let padLane2 = false;
     let lastZ = -100;
-    window.__m7gorbMax = -4;
-    window.__m7gorb = setInterval(() => {
+    window.__m71gorbMax = -4;
+    window.__m71gorb = setInterval(() => {
       while (pendingUp.length > 0) up(pendingUp.pop());
       const g = window.__gd3d;
       const z = g.playerPosition().z;
-      if (z > (window.__m7gorbMax ?? -4)) window.__m7gorbMax = z;
+      if (z > (window.__m71gorbMax ?? -4)) window.__m71gorbMax = z;
       // Self-healing supervisor: re-stage into the ceiling section after
       // any mid-section death (respawn resets intent to 1; the lane tap
       // below re-arms through the flag). Retries until section timeouts.
@@ -3678,41 +3757,48 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
         g.debugTeleport(0, 1.5, 158);
         lastZ = 158;
         laned = false;
-        padLaned = false;
+        centered = false;
+        padLane1 = false;
+        padLane2 = false;
         return;
       }
-      if (z < lastZ - 10) { laned = false; padLaned = false; }
+      if (z < lastZ - 10) { laned = false; centered = false; padLane1 = false; padLane2 = false; }
       lastZ = z;
       if (g.isInteractionUsed('vs-orb-gravity')) {
-        window.__m7gorbFired = true;
-        clearInterval(window.__m7gorb);
-        window.__m7gorb = null;
+        window.__m71gorbFired = true;
+        clearInterval(window.__m71gorb);
+        window.__m71gorb = null;
         return;
       }
       // ONE lane tap only: repeats would walk off the outer edge (lane
       // intent is edge-triggered, unlike the idempotent orb Space presses).
       if (!laned && z >= 190 && z <= 196 && g.laneIndex() > 0) { laned = true; tap('ArrowLeft'); }
-      // Back to center for the ceiling-pad lane (window x +-1.2): the
-      // headless verification route taps here too — without it the pad is
-      // crossed misaligned and skipped deterministically.
-      else if (!padLaned && z >= 236 && z <= 240 && g.laneIndex() < 1) { padLaned = true; tap('ArrowRight'); }
+      // Back to center: the z 216 spike covers screen-left (the narrow C1
+      // commitment — the headless verification route taps here too).
+      else if (!centered && z >= 205 && z <= 210 && g.laneIndex() < 1) { centered = true; tap('ArrowRight'); }
+      // Two taps to the screen-right lane for the offset ceiling pad
+      // (x -2.6, window x +-1.2): the headless route crosses the pad at
+      // lane 2 — without both taps the pad is skipped deterministically.
+      // First tap airborne (air lanes), second on the C2 landing.
+      else if (!padLane1 && z >= 229 && z <= 233 && g.laneIndex() < 1) { padLane1 = true; tap('ArrowRight'); }
+      else if (!padLane2 && z >= 234 && z <= 238 && g.laneIndex() < 2) { padLane2 = true; tap('ArrowRight'); }
       // Flagless zone taps below: first grounded tap acts, later ones are
       // airborne-harmless — coarse sampling cannot skip a one-shot.
       else if (z >= 228 && z <= 230.3 && g.grounded()) tap('Space');
       else if (z >= 280.5 && z <= 284) tap('Space');
       else if (z >= 283.5 && z <= 287) tap('Space');
-      if (z > 292 && g.gravityMode() === 'floor') { clearInterval(window.__m7gorb); window.__m7gorb = null; }
+      if (z > 292 && g.gravityMode() === 'floor') { clearInterval(window.__m71gorb); window.__m71gorb = null; }
     }, 5);
   });
-  await m7roll((s) => s.mode === 'ceiling' && s.grounded && s.z > 265, 180000);
-  const m7gorb = await (async () => {
+  await m71roll((s) => s.mode === 'ceiling' && s.grounded && s.z > 265, 180000);
+  const m71gorb = await (async () => {
     const t0 = Date.now();
     for (;;) {
-      const fired = await page.evaluate(() => window.__m7gorbFired === true);
-      if (fired) return { ...(await m7probe()), diag: '' };
+      const fired = await page.evaluate(() => window.__m71gorbFired === true);
+      if (fired) return { ...(await m71probe()), diag: '' };
       if (Date.now() - t0 > 120000) {
         const diag = await page.evaluate(() => ({
-          maxZ: window.__m7gorbMax ?? -99,
+          maxZ: window.__m71gorbMax ?? -99,
           z: window.__gd3d.playerPosition().z,
           mode: window.__gd3d.gravityMode(),
           lane: window.__gd3d.laneIndex(),
@@ -3720,51 +3806,63 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
           flips: window.__gd3d.portalTransitionCount(),
           counts: window.__gd3d.interactionCounts(),
         }));
-        return { ...(await m7probe()), diag: JSON.stringify(diag) };
+        return { ...(await m71probe()), diag: JSON.stringify(diag) };
       }
       await page.waitForTimeout(60);
     }
   })();
-  log('m7 gravity orb fires naturally', (m7gorb?.counts?.orbs ?? 0) > 0,
-    m7gorb ? `mode=${m7gorb.mode} orbs=${m7gorb.counts.orbs} ${m7gorb.diag ?? ''}` : 'gravity orb never fired');
+  log('m71 gravity orb fires naturally', (m71gorb?.counts?.orbs ?? 0) > 0,
+    m71gorb ? `mode=${m71gorb.mode} orbs=${m71gorb.counts.orbs} ${m71gorb.diag ?? ''}` : 'gravity orb never fired');
 
-  // Speed portal fires (teleport onto runway H on the safe lane + intent),
-  // then JUMP the 2x gap: the sprint staging must stay live at 2x past it
-  // (an R-stage would reset speed to 1x behind the portal).
-  await m7fresh(`${URL}?level=vertical-slice-01`);
-  await page.evaluate(() => window.__gd3d.debugTeleport(-2.6, 1.5, 505));
-  await m7tapLane('ArrowRight', 2);
+  // Speed portal fires (teleport onto the center bridge + intent), then JUMP
+  // the 2x gap with a mid-air transfer onto the screen-right island: the
+  // sprint staging must stay live at 2x past it (an R-stage would reset
+  // speed to 1x behind the portal).
+  await m71fresh(`${URL}?level=vertical-slice-01`);
+  await page.evaluate(() => window.__gd3d.debugTeleport(0, 1.5, 505));
+  await m71tapLane('ArrowRight', 1);
   await page.evaluate(() => {
-    if (window.__m7gap) clearInterval(window.__m7gap);
+    if (window.__m71gap) clearInterval(window.__m71gap);
     // Supervisor: re-stage past a gap death (respawn resets speed to 1x,
-    // so re-cross the portal; intent resets to 1, so re-tap to lane 2).
-    // Persists until the sprint is framed (z > 545 clears it); death-holds
-    // are waited out, never a reason to quit (respawn re-stages below).
+    // so re-cross the portal; intent resets to 1 = center, already correct).
+    // Covers the gap takeoff, the mid-air transfer to lane 2, and the
+    // island spike jump. Persists until the sprint is framed (z > 545
+    // clears it); death-holds are waited out, never a reason to quit.
     // Releases drain on the next poll (hold-repeat immunity, as above).
     const gapPendingUp = [];
     let gapJumped = false;
-    window.__m7gap = setInterval(() => {
+    let sprintLaned = false;
+    let spikeJumped = false;
+    window.__m71gap = setInterval(() => {
       const g = window.__gd3d;
       const z = g.playerPosition().z;
       while (gapPendingUp.length > 0) {
         window.dispatchEvent(new KeyboardEvent('keyup', { code: gapPendingUp.pop() }));
       }
       if (z > 545 && g.status() === 'running') {
-        if (window.__m7gap) clearInterval(window.__m7gap);
-        window.__m7gap = null;
+        if (window.__m71gap) clearInterval(window.__m71gap);
+        window.__m71gap = null;
         return;
       }
       if (z < 400) {
-        g.debugTeleport(-2.6, 1.5, 505);
-        if (g.laneIndex() < 2) {
-          window.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowRight' }));
-          gapPendingUp.push('ArrowRight');
-        }
+        g.debugTeleport(0, 1.5, 505);
         gapJumped = false;
+        sprintLaned = false;
+        spikeJumped = false;
         return;
       }
       if (!gapJumped && z >= 536 && z <= 539.5 && g.grounded()) {
         gapJumped = true;
+        window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+        gapPendingUp.push('Space');
+      }
+      else if (!sprintLaned && z >= 540 && z <= 545 && g.laneIndex() < 2) {
+        sprintLaned = true;
+        window.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowRight' }));
+        gapPendingUp.push('ArrowRight');
+      }
+      else if (!spikeJumped && z >= 575 && z <= 579 && g.grounded()) {
+        spikeJumped = true;
         window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
         gapPendingUp.push('Space');
       }
@@ -3773,48 +3871,63 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   // Portal + punch in ONE pre-armed loop starting before the crossing
   // (same reasoning as the orb): the crossing step sets speed 2 AND fires
   // the punch together, so the first post-crossing sample proves both.
-  const m7speedShot = await (async () => {
+  const m71speedShot = await (async () => {
     const t0 = Date.now();
     let sawSpeed = null;
     for (;;) {
-      const s = await m7probe();
+      const s = await m71probe();
       if (s.speed === 2 && sawSpeed === null) sawSpeed = s;
       if (s.speed === 2 && s.energy > 0.2) return { shot: s, sawSpeed };
       if (Date.now() - t0 > 90000) return { shot: s, sawSpeed };
       await page.waitForTimeout(40);
     }
   })();
-  const m7speed = m7speedShot.sawSpeed;
-  log('m7 speed portal fires', m7speed !== null, m7speed ? `speed=${m7speed.speed} z=${m7speed.z.toFixed(1)}` : 'never reached 2x');
-  const m7streak = await m7probe();
-  log('m7 2x streak state active', m7streak.streaks > 0, `streaks=${m7streak.streaks}`);
-  const m7speedPunchLive = m7speedShot.shot;
-  log('m7 speed punch fires', m7speedPunchLive.energy > 0.2,
-    `energy=${m7speedPunchLive.energy.toFixed(2)} color=0x${m7speedPunchLive.punchColor?.toString(16)}`);
+  const m71speed = m71speedShot.sawSpeed;
+  log('m71 speed portal fires', m71speed !== null, m71speed ? `speed=${m71speed.speed} z=${m71speed.z.toFixed(1)}` : 'never reached 2x');
+  const m71streak = await m71probe();
+  log('m71 2x streak state active', m71streak.streaks > 0, `streaks=${m71streak.streaks}`);
+  const m71speedPunchLive = m71speedShot.shot;
+  log('m71 speed punch fires', m71speedPunchLive.energy > 0.2,
+    `energy=${m71speedPunchLive.energy.toFixed(2)} color=0x${m71speedPunchLive.punchColor?.toString(16)}`);
   // The sprint run stays live at 2x past the gap now: frame the sprint.
-  const m7sprint = await m7roll((s) => s.z > 585 && s.z < 600 && s.speed === 2, 90000);
-  if (m7sprint) { await m7snap('m7-07-speed-2x'); }
-  log('m7 final-act visual state resolves',
-    m7sprint !== null && m7sprint.section === 'vs-sprint',
-    m7sprint ? `section=${m7sprint.section} z=${m7sprint.z.toFixed(1)}` : 'never framed');
+  const m71sprint = await m71roll((s) => s.z > 585 && s.z < 600 && s.speed === 2, 90000);
+  if (m71sprint) { await m71snap('m71-09-speed-climax'); }
+  log('m71 final-act visual state resolves',
+    m71sprint !== null && m71sprint.section === 'vs-climax',
+    m71sprint ? `section=${m71sprint.section} z=${m71sprint.z.toFixed(1)}` : 'never framed');
+  log('m71 energy rays active in the climax', m71sprint !== null && m71sprint.rays > 0,
+    m71sprint ? `rays=${m71sprint.rays.toFixed(3)}` : 'never framed');
+  // 2x narrow route stays readable: the Cube projects inside the viewport
+  // mid-sprint (presentation proof that commitment sections stay legible).
+  const m71sprintScreen = m71sprint ? await page.evaluate(() => {
+    const p = window.__gd3d.playerPosition();
+    return window.__gd3d.screenPoint(p.x, p.y, p.z);
+  }) : null;
+  log('m71 2x narrow route remains readable',
+    m71sprintScreen !== null && !m71sprintScreen.behind &&
+    Math.abs(m71sprintScreen.ndcX) < 1 && Math.abs(m71sprintScreen.ndcY) < 1,
+    m71sprintScreen ? `ndc=(${m71sprintScreen.ndcX.toFixed(2)},${m71sprintScreen.ndcY.toFixed(2)})` : 'never framed');
 
   // Release section resolves past the 1x gate (restaged: immune to sprint
   // deaths and pause-toggle desync alike).
-  await m7restage(0, 1.5, 655);
-  const m7release = await m7roll((s) => s.section === 'vs-release' && s.speed === 1, 60000);
-  log('m7 release section resolves', m7release !== null,
-    m7release ? `section=${m7release.section} z=${m7release.z.toFixed(1)}` : 'never framed');
+  await m71restage(0, 1.5, 655);
+  const m71release = await m71roll((s) => s.section === 'vs-release' && s.speed === 1, 60000);
+  log('m71 release section resolves', m71release !== null,
+    m71release ? `section=${m71release.section} z=${m71release.z.toFixed(1)}` : 'never framed');
+  log('m71 release quiets the energy rays', m71release !== null && m71release.rays === 0,
+    m71release ? `rays=${m71release.rays}` : 'never framed');
 
   // Resources stay bounded on production content (27 materials: the shared
-  // 26 plus one extra cached speed-tier material — M7 uses tiers 1 and 2;
-  // cached per tier by the same code path, flat across the run). Probed on
+  // 26 plus one extra cached speed-tier material — M7.1 uses tiers 1 and 2;
+  // cached per tier by the same code path, flat across the run; 62 scene
+  // children = the M7 50 plus 12 fixed background energy rays). Probed on
   // the post-on page: the full proof run below uses ?post=off (passes=0).
-  const m7res = await m7probe();
-  log('m7 resource counts remain bounded',
-    m7res.mats === 27 && m7res.geos === 8 && m7res.passes === 3 && m7res.children === 50,
-    `mats=${m7res.mats} geos=${m7res.geos} passes=${m7res.passes} children=${m7res.children}`);
-  log('m7 material/geometry counts stable', m7res.mats === 27 && m7res.geos === 8,
-    `mats=${m7res.mats} geos=${m7res.geos}`);
+  const m71res = await m71probe();
+  log('m71 resource counts remain bounded',
+    m71res.mats === 27 && m71res.geos === 8 && m71res.passes === 3 && m71res.children === 62,
+    `mats=${m71res.mats} geos=${m71res.geos} passes=${m71res.passes} children=${m71res.children}`);
+  log('m71 material/geometry counts stable', m71res.mats === 27 && m71res.geos === 8,
+    `mats=${m71res.mats} geos=${m71res.geos}`);
 
   // Full real-input playthrough via the in-page driver (mirrors
   // tests/helpers/verticalSlice01Script.ts intents; CDP only observes).
@@ -3822,12 +3935,12 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   // fallback is sim-identical (pinned) and removes CDP-timing fragility
   // from the tightest takeoff windows (M6B precedent). Duration/replay
   // evidence is sim-tick-exact either way.
-  await m7fresh(`${URL}?level=vertical-slice-01&post=off`);
+  await m71fresh(`${URL}?level=vertical-slice-01&post=off`);
   await page.evaluate(() => {
-    if (window.__m7driver) clearInterval(window.__m7driver);
-    window.__m7done = null;
-    window.__m7deaths = 0;
-    window.__m7climax = false;
+    if (window.__m71driver) clearInterval(window.__m71driver);
+    window.__m71done = null;
+    window.__m71deaths = 0;
+    window.__m71climax = false;
     const down = (code) => window.dispatchEvent(new KeyboardEvent('keydown', { code }));
     const up = (code) => window.dispatchEvent(new KeyboardEvent('keyup', { code }));
     // Release-on-next-poll: page-thread stalls delay wall-clock timers AND the
@@ -3838,45 +3951,63 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     // no-ops (InputSystem ignores releases while not held).
     const pendingUp = [];
     const tap = (code) => { down(code); pendingUp.push(code); };
+    // Mirrors tests/helpers/verticalSlice01Script.ts (M7.1 precision route:
+    // island transfers, ceiling weave, 2x sprint with mid-air lane changes).
     const plan = [
-      [24, () => tap('ArrowRight')],
-      [44.5, () => tap('Space')],
+      [19, () => tap('Space')],
+      [32.5, () => tap('Space')],
+      [34.5, () => tap('ArrowRight')],
+      [48.5, () => tap('Space')],
+      [50.5, () => tap('ArrowLeft')],
       [57, () => tap('Space')],
-      [75.3, () => tap('Space')],
-      [86, () => tap('ArrowLeft')],
-      [106, () => tap('ArrowLeft')],
-      [120, () => tap('ArrowRight')],
+      [65.5, () => tap('Space')],
+      [66.5, () => tap('ArrowLeft')],
+      [80.5, () => tap('Space')],
+      [94.5, () => tap('Space')],
+      [106, () => tap('ArrowRight')],
+      [116, () => tap('ArrowLeft')],
+      [129, () => tap('Space')],
+      [130.5, () => tap('ArrowRight')],
       [148.5, () => tap('Space')],
       [193, () => tap('ArrowLeft')],
+      [205, () => tap('ArrowRight')],
       [228.5, () => tap('Space')],
-      [237, () => tap('ArrowRight')],
-      [281.5, () => tap('Space')],
-      [348, () => tap('Space')],
-      [396, () => tap('ArrowLeft')],
-      [474, () => tap('ArrowRight')],
-      [488, () => tap('ArrowRight')],
-      [538.5, () => tap('Space')],
-      // 2x double-tap shifted slightly early vs the headless script (the
-      // M5 precedent: identical intents, wider than the tightest window so
-      // coarse headless observation cannot land the second tap past the row).
-      [597, () => tap('ArrowLeft')],
-      [600.5, () => tap('ArrowLeft')],
+      [236, () => tap('ArrowRight')],
+      [260, () => tap('ArrowLeft')],
+      [271.5, () => tap('Space')],
+      [282.5, () => tap('Space')],
+      [346, () => tap('Space')],
+      [352.5, () => tap('Space')],
+      [369, () => tap('Space')],
+      [399, () => tap('Space')],
+      [466, () => tap('ArrowLeft')],
+      [479, () => tap('Space')],
+      [480.5, () => tap('ArrowRight')],
+      [536.5, () => tap('Space')],
+      [540, () => tap('ArrowRight')],
+      [577, () => tap('Space')],
+      [593.5, () => tap('Space')],
+      [595, () => tap('ArrowLeft')],
+      // Final weave tap slightly early vs the headless script (the M5
+      // precedent: identical intent, wider than the tightest window so
+      // coarse headless observation cannot land the tap past the row).
+      [613, () => tap('ArrowLeft')],
     ];
     let step = 0;
     let lastZ = -100;
-    window.__m7driver = setInterval(() => {
+    window.__m71driver = setInterval(() => {
       while (pendingUp.length > 0) up(pendingUp.pop());
       const g = window.__gd3d;
       const z = g.playerPosition().z;
       if (z < lastZ - 10) {
         step = 0; // respawned: replay the plan from scratch
-        window.__m7deaths = (window.__m7deaths ?? 0) + 1;
+        window.__m71deaths = (window.__m71deaths ?? 0) + 1;
       }
       lastZ = z;
       const status = g.status();
       if (status === 'finished') {
-        clearInterval(window.__m7driver); window.__m7driver = null;
-        window.__m7done = 'finished';
+        clearInterval(window.__m71driver); window.__m71driver = null;
+        window.__m71done = 'finished';
         return;
       }
       // Deaths do NOT end the run: the 36-tick hold auto-respawns and the
@@ -3891,50 +4022,50 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
       }
       // Orb windows: repeated discrete presses until each fires.
       if (z >= 284.2 && z <= 285.6 && !g.isInteractionUsed('vs-orb-gravity')) tap('Space');
-      else if (z >= 352.6 && z <= 354.6 && !g.isInteractionUsed('vs-orb-jump')) tap('Space');
+      else if (z >= 352.2 && z <= 354.6 && !g.isInteractionUsed('vs-orb-jump')) tap('Space');
     }, 5);
   });
-  let m7Result = null;
+  let m71Result = null;
   {
     const t0 = Date.now();
     for (;;) {
-      const done = await page.evaluate(() => window.__m7done);
-      if (done !== null) { m7Result = done; break; }
+      const done = await page.evaluate(() => window.__m71done);
+      if (done !== null) { m71Result = done; break; }
       const climax = await page.evaluate(() => ({
-        shot: window.__m7climax === true,
+        shot: window.__m71climax === true,
         z: window.__gd3d.playerPosition().z,
       }));
       if (!climax.shot && climax.z >= 600 && climax.z <= 635) {
-        await page.evaluate(() => { window.__m7climax = true; });
-        await capture('m7-08-final-climax');
+        await page.evaluate(() => { window.__m71climax = true; });
+        await capture('m71-09-speed-climax-run');
       }
       if (Date.now() - t0 > 600000) {
         await page.evaluate(() => {
-          if (window.__m7driver) clearInterval(window.__m7driver);
-          window.__m7driver = null;
+          if (window.__m71driver) clearInterval(window.__m71driver);
+          window.__m71driver = null;
         });
-        m7Result = 'timeout';
+        m71Result = 'timeout';
         break;
       }
       await page.waitForTimeout(500);
     }
   }
-  log('m7 finish reached via real input', m7Result === 'finished',
-    `${String(m7Result)} deaths=${String(await page.evaluate(() => window.__m7deaths ?? 0))}`);
-  await capture('m7-09-finish');
-  const m7tape = await page.evaluate(() => window.__gd3d.exportLastReplay());
-  let m7Seconds = -1;
-  let m7Frames = -1;
-  if (m7tape !== null) {
-    const parsed = JSON.parse(m7tape);
-    m7Frames = parsed.frameCount;
-    m7Seconds = parsed.frameCount / 120;
+  log('m71 finish reached via real input', m71Result === 'finished',
+    `${String(m71Result)} deaths=${String(await page.evaluate(() => window.__m71deaths ?? 0))}`);
+  await capture('m71-10-final-release');
+  const m71tape = await page.evaluate(() => window.__gd3d.exportLastReplay());
+  let m71Seconds = -1;
+  let m71Frames = -1;
+  if (m71tape !== null) {
+    const parsed = JSON.parse(m71tape);
+    m71Frames = parsed.frameCount;
+    m71Seconds = parsed.frameCount / 120;
   }
-  log('m7 completion duration in target',
-    m7Seconds >= 45 && m7Seconds <= 60,
-    `frames=${m7Frames} seconds=${m7Seconds.toFixed(2)}`);
+  log('m71 completion duration in target',
+    m71Seconds >= 45 && m71Seconds <= 60,
+    `frames=${m71Frames} seconds=${m71Seconds.toFixed(2)}`);
   await page.evaluate(() => window.__gd3d.startReplay());
-  const m7Verify = await (async () => {
+  const m71Verify = await (async () => {
     const t0 = Date.now();
     for (;;) {
       const snap = await page.evaluate(() => ({
@@ -3946,44 +4077,62 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
       await page.waitForTimeout(300);
     }
   })();
-  log('m7 replay can be started', m7Verify.verify.kind === 'pass' || m7Verify.verify.kind === 'diverged',
-    `verify=${m7Verify.verify.kind}`);
-  log('m7 replay ends VERIFIED', m7Verify.verify.kind === 'pass',
-    `verify=${m7Verify.verify.kind} status=${m7Verify.status}`);
-  log('m7 no replay divergence', m7Verify.verify.kind !== 'diverged',
-    `verify=${m7Verify.verify.kind}`);
-  await m7snap('m7-10-replay-verified');
+  log('m71 replay can be started', m71Verify.verify.kind === 'pass' || m71Verify.verify.kind === 'diverged',
+    `verify=${m71Verify.verify.kind}`);
+  log('m71 replay ends VERIFIED', m71Verify.verify.kind === 'pass',
+    `verify=${m71Verify.verify.kind} status=${m71Verify.status}`);
+  log('m71 no replay divergence', m71Verify.verify.kind !== 'diverged',
+    `verify=${m71Verify.verify.kind}`);
+  await m71snap('m71-11-replay-verified');
+  // Beat cues resolve deterministically in-page and ride outside the tape.
+  await m71restage(0, 5.0, 200);
+  await page.waitForTimeout(800);
+  const m71cueMid = await m71probe();
+  log('m71 rhythm cue resolves deterministically', m71cueMid.cue === 'm71-cue-gravity-hit',
+    `cue=${m71cueMid.cue} z=${m71cueMid.z.toFixed(1)}`);
+  await m71restage(0, 1.5, 660);
+  await page.waitForTimeout(800);
+  const m71cueEnd = await m71probe();
+  log('m71 release cue resolves at the finish approach', m71cueEnd.cue === 'm71-cue-release',
+    `cue=${m71cueEnd.cue} z=${m71cueEnd.z.toFixed(1)}`);
+  const m71tapeStr = await page.evaluate(() => window.__gd3d.exportLastReplay());
+  log('m71 rhythm cues absent from replay',
+    m71tapeStr === null || (!m71tapeStr.includes('rhythm') && !m71tapeStr.includes('cueId')),
+    m71tapeStr === null ? 'no tape' : `${m71tapeStr.length} chars scanned`);
 
   // Restart returns to the correct starting section.
   await page.keyboard.press('KeyR');
   await page.waitForTimeout(500);
-  const m7restart = await m7probe();
-  log('m7 restart returns to correct starting section',
-    m7restart.z < 10 && m7restart.section === 'vs-opening' && m7restart.status === 'running',
-    `z=${m7restart.z.toFixed(1)} section=${m7restart.section}`);
+  const m71restart = await m71probe();
+  log('m71 restart returns to correct starting section',
+    m71restart.z < 10 && m71restart.section === 'vs-opening' && m71restart.status === 'running',
+    `z=${m71restart.z.toFixed(1)} section=${m71restart.section}`);
 
-  // Death/respawn works on the production level (restaged: immune to
-  // replay/pause state).
-  await m7restage(0, 0.6, 29.2);
-  const m7sawDeath = await (async () => {
+  // Death/respawn works on the production level (restaged into the bridge
+  // spike: immune to replay/pause state).
+  await m71restage(0, 0.6, 21.2);
+  const m71sawDeath = await (async () => {
     const t0 = Date.now();
     for (;;) {
-      const s = await m7probe();
+      const s = await m71probe();
       if (s.status === 'dead') return true;
       if (Date.now() - t0 > 60000) return false;
       await page.waitForTimeout(40);
     }
   })();
-  const m7respawn = await m7roll((s) => s.z < 10, 60000);
-  log('m7 death/respawn works', m7sawDeath && m7respawn !== null,
-    `sawDeath=${m7sawDeath} respawned z=${m7respawn?.z?.toFixed(1)}`);
+  const m71respawn = await m71roll((s) => s.z < 10, 60000);
+  log('m71 death/respawn works', m71sawDeath && m71respawn !== null,
+    `sawDeath=${m71sawDeath} respawned z=${m71respawn?.z?.toFixed(1)}`);
 
   // Fallback matrix stays playable on the new level.
-  await m7fresh(`${URL}?level=vertical-slice-01&post=off&fx=off&triggers=off`);
-  const m7fallback = await m7roll((s) => s.z > 12, 60000);
-  log('m7 post/fx/triggers fallback still playable',
-    m7fallback !== null && m7fallback.status === 'running',
-    m7fallback ? `z=${m7fallback.z.toFixed(1)}` : 'stalled');
+  await m71fresh(`${URL}?level=vertical-slice-01&post=off&fx=off&triggers=off`);
+  const m71fallback = await m71roll((s) => s.z > 12, 60000);
+  log('m71 post/fx/triggers fallback still playable',
+    m71fallback !== null && m71fallback.status === 'running',
+    m71fallback ? `z=${m71fallback.z.toFixed(1)}` : 'stalled');
+  log('m71 triggers-off restores the exact baseline section',
+    m71fallback !== null && m71fallback.section === 'base',
+    m71fallback ? `section=${m71fallback.section}` : 'stalled');
 }
 
 // --- 25. Console audit ---
