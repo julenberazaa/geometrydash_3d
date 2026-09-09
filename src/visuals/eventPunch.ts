@@ -49,6 +49,9 @@ const PUNCH_TUNING: Record<EventPunchKind, { peak: number; decay: number; color:
 /** Fixed dominance order for ties (gravity wins — the rarest event). */
 const DOMINANCE: readonly EventPunchKind[] = ['gravity', 'speed', 'pad', 'jumpOrb'];
 
+/** Frozen per-kind iteration order (hot-loop: no key-array allocation). */
+const PUNCH_KINDS = ['pad', 'jumpOrb', 'gravity', 'speed'] as const;
+
 /** Fresh punch state (cold paths + tests only; the host reuses one). */
 export const makeEventPunchState = (): EventPunchState => ({
   pad: { energy: 0, color: PUNCH_TUNING.pad.color },
@@ -79,21 +82,21 @@ export const triggerPunch = (
 export const updatePunch = (state: EventPunchState, dtSeconds: number): void => {
   const dt = Math.max(0, dtSeconds);
   if (dt === 0) return;
-  (Object.keys(PUNCH_TUNING) as EventPunchKind[]).forEach((kind) => {
+  for (const kind of PUNCH_KINDS) {
     const slot = state[kind];
-    if (slot.energy <= 0) return;
+    if (slot.energy <= 0) continue;
     slot.energy *= Math.exp(-PUNCH_TUNING[kind].decay * dt);
     if (slot.energy < 0.003) slot.energy = 0; // snap: exact rest, no shimmer
-  });
+  }
 };
 
 /** Combined punch energy 0..1 (max over kinds — composable, never stacked). */
 export const combinedPunchEnergy = (state: EventPunchState): number => {
   let peak = 0;
-  (Object.keys(PUNCH_TUNING) as EventPunchKind[]).forEach((kind) => {
+  for (const kind of PUNCH_KINDS) {
     const e = state[kind].energy;
     if (e > peak) peak = e;
-  });
+  }
   return Math.min(1, peak);
 };
 /** Color of the dominant (highest-energy) slot — the environment flash tint. */
@@ -112,7 +115,7 @@ export const dominantPunchColor = (state: EventPunchState): number => {
 
 /** Zero every slot (triggers-off edge, dispose paths — exact rest). */
 export const clearPunch = (state: EventPunchState): void => {
-  (Object.keys(PUNCH_TUNING) as EventPunchKind[]).forEach((kind) => {
+  for (const kind of PUNCH_KINDS) {
     state[kind].energy = 0;
-  });
+  }
 }
