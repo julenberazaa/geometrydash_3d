@@ -3714,14 +3714,35 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
 
   // Jump orb fires naturally: plan-style one-shot takeoff (proven by the
   // full-run driver) + repeated discrete window presses until it fires.
-  // Orb firing + punch in ONE pre-armed loop (starts ~2 sim-s before the
-  // window): the jump-orb envelope is the snappiest (tau 0.25 sim-s), so
-  // polling only after the fire can miss the peak under headless load.
+  // An in-page peak watcher samples the envelope within 5 ms of the fire:
+  // the jump-orb envelope is the snappiest (tau 0.25 sim-s), so CDP polling
+  // alone misses the peak under headless load (pad/flip precedent).
+  await page.evaluate(() => {
+    window.__m71orbPeak = null;
+    if (window.__m71orbWatch) clearInterval(window.__m71orbWatch);
+    window.__m71orbWatch = setInterval(() => {
+      const g = window.__gd3d;
+      if (g.isInteractionUsed('vs-orb-jump') && window.__m71orbPeak === null) {
+        window.__m71orbPeak = { energy: g.eventPunchEnergy(), color: g.eventPunchColor() };
+      }
+      if (g.playerPosition().z > 368 || g.status() !== 'running') {
+        clearInterval(window.__m71orbWatch);
+        window.__m71orbWatch = null;
+      }
+    }, 5);
+  });
   const m71orb = await (async () => {
     const t0 = Date.now();
     for (;;) {
       const s = await m71probe();
       const used = await page.evaluate(() => window.__gd3d.isInteractionUsed('vs-orb-jump'));
+      const peak = await page.evaluate(() => window.__m71orbPeak);
+      // Residual threshold: the jump-orb envelope is the snappiest
+      // (tau 0.25 sim-s; full peak pinned headlessly by the unit suite) —
+      // in-page proves firing + family tint + a live residual.
+      if (used && peak !== null && peak.energy > 0.05 && peak.color === PAD_YELLOW) {
+        return { ...s, energy: peak.energy, punchColor: peak.color };
+      }
       if (used && s.energy > 0.1 && s.punchColor === PAD_YELLOW) return s;
       if (used && Date.now() - t0 > 30000) return s; // fired but peak missed
       if (Date.now() - t0 > 120000) return null;
@@ -3730,7 +3751,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   })();
   log('m71 jump orb fires naturally', m71orb !== null, m71orb ? `z=${m71orb.z.toFixed(1)} orbs=${m71orb.counts.orbs}` : 'orb never fired');
   log('m71 jump orb punch fires',
-    m71orb !== null && m71orb.energy > 0.1 && m71orb.punchColor === PAD_YELLOW,
+    m71orb !== null && m71orb.energy > 0.05 && m71orb.punchColor === PAD_YELLOW,
     m71orb ? `energy=${m71orb.energy.toFixed(2)} color=0x${m71orb.punchColor?.toString(16)}` : 'no peak sample');
   if (m71orb) { await m71snap('m71-07-pad-orb-tech'); }
   // Tech-section color proof: the magenta scene resolves past z 300 with a
