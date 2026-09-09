@@ -30,7 +30,7 @@ import type { LevelDefinition } from '../../level/levelDefinition';
  *   the 244..252 gap (plain max ~251.5 — REQUIRED).
  * - Floor pad impulse 23: ~13.1 u forward; pad z=311 lands ~322.8 past the
  *   313..321 gap (plain max ~320.6 — REQUIRED).
- * - Jump orb impulse 15: press z~352.5 lands ~361 past the 348..358 gap
+ * - Jump orb impulse 15: press z~352.5 lands ~361 past the 350..358 gap
  *   (no-press flight lands ~353.5 — REQUIRED).
  * - Gravity orb z=285: jump at ~282.5 (down off the ceiling), press at
  *   ~284.5 inside the y 2.5..4.3 window, floor landing on F1.
@@ -133,8 +133,9 @@ export const VERTICAL_SLICE_01: LevelDefinition = {
     { center: { x: 0, y: 7, z: 282 }, halfExtents: { x: 1.3, y: 1, z: 6 } },
     // Floor two-lane C+R: top y=0, z 280..313 (orb-flip landing ~289).
     { center: { x: -1.3, y: -0.5, z: 296.5 }, halfExtents: { x: 2.6, y: 0.5, z: 16.5 } },
-    // Floor center island: top y=0, z 321..348 (pad gap 313..321).
-    { center: { x: 0, y: -0.5, z: 334.5 }, halfExtents: { x: 1.3, y: 0.5, z: 13.5 } },
+    // Floor center island: top y=0, z 321..350 (pad gap 313..321; the orb
+    // takeoff gets a full 5 u grounded window, z 345..350).
+    { center: { x: 0, y: -0.5, z: 335.5 }, halfExtents: { x: 1.3, y: 0.5, z: 14.5 } },
     // Floor center bridge: top y=0, z 358..402 (orb gap 348..358; portal
     // approach; shares z 388..402 with the callback slab as a corridor).
     { center: { x: 0, y: -0.5, z: 380 }, halfExtents: { x: 1.3, y: 0.5, z: 22 } },

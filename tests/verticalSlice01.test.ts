@@ -357,8 +357,8 @@ describe('vertical slice 01 jump / gap margins', () => {
 
   it('makes the orb gap require the orb and the 2x gaps require 2x', () => {
     const range1x = jumpRange(12);
-    expect(358 - 348).toBeGreaterThan(range1x); // orb gap: no-press flight dies
-    expect(358 - 348).toBeLessThanOrEqual(12); // orb-assisted flight covers it
+    expect(358 - 350).toBeGreaterThan(range1x); // orb gap: no-press flight dies
+    expect(358 - 350).toBeLessThanOrEqual(12); // orb-assisted flight covers it
     for (const [start, end] of [[538, 549], [596, 606]] as const) {
       expect(end - start).toBeGreaterThan(range1x); // 1x-proof...
       expect(end - start).toBeLessThanOrEqual(jumpRange(24) - 4); // ...2x margin

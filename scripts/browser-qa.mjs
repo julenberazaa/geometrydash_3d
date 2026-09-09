@@ -3491,12 +3491,13 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
 
   // Act I route renders (opening + weave).
   await m71snap('m71-01-narrow-opening');
-  // Framing roll with one bulletproof retry (a swallowed pause-toggle under
-  // headless load can freeze the first window; the resume re-arms it).
-  let m71act1 = await m71roll((s) => s.z > 26 && s.z < 34, 60000);
+  // Framing roll on the opening approach (before the z 22 bridge spike — an
+  // input-free run dies there by design) with one bulletproof retry (a
+  // swallowed pause-toggle under headless load can freeze the first window).
+  let m71act1 = await m71roll((s) => s.z > 10 && s.z < 16, 60000);
   if (m71act1 === null) {
     await m71resume();
-    m71act1 = await m71roll((s) => s.z > 26 && s.z < 34, 60000);
+    m71act1 = await m71roll((s) => s.z > 10 && s.z < 16, 60000);
   }
   if (m71act1) { await m71snap('m71-02-island-jump'); }
   log('m71 Act I route renders', m71act1 !== null, m71act1 ? `z=${m71act1.z.toFixed(1)}` : 'never framed');
@@ -3587,22 +3588,26 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     m71ceil ? `z=${m71ceil.z.toFixed(1)} ndc=(${m71ceilScreen?.ndcX?.toFixed(2)},${m71ceilScreen?.ndcY?.toFixed(2)}) contact=${m71ceil.contact}` : 'no ceiling run');
   if (m71ceil) { await m71snap('m71-05-ceiling-narrow'); }
   // Ceiling-spike orientation proof: the lethal tip hangs BELOW the collider
-  // (toward the corridor), the base sits flush with the slab. On screen the
-  // tip must project below the base (larger py, y-down pixels).
+  // (toward the corridor), the base sits flush with the slab. Staged FORWARD
+  // on the settled ceiling run (no backward teleport, no camera transit):
+  // the z 216 screen-left spike sits ~14 u ahead in the look direction.
+  // On screen the tip must project below the base (larger py, y-down
+  // pixels); both points must be genuinely inside the viewport.
   if (m71ceil) {
-    await page.evaluate(() => window.__gd3d.debugTeleport(0, 5.0, 190));
-    await page.waitForTimeout(500);
+    await page.evaluate(() => window.__gd3d.debugTeleport(2.6, 5.0, 202));
+    await page.waitForTimeout(1000);
     await m71pause();
     const m71spikeView = await page.evaluate(() => ({
-      tip: window.__gd3d.screenPoint(0, 5.15, 200),
-      base: window.__gd3d.screenPoint(0, 6.0, 200),
+      tip: window.__gd3d.screenPoint(2.6, 5.15, 216),
+      base: window.__gd3d.screenPoint(2.6, 6.0, 216),
     }));
     await capture('m71-06-ceiling-spike-correct');
     await m71ensureLive(4);
+    const m71framed = (p) => !p.behind && Math.abs(p.ndcX) <= 0.9 && Math.abs(p.ndcY) <= 0.9;
     const m71tipBelow = m71spikeView.tip.py > m71spikeView.base.py;
-    const m71bothFramed = !m71spikeView.tip.behind && !m71spikeView.base.behind;
+    const m71bothFramed = m71framed(m71spikeView.tip) && m71framed(m71spikeView.base);
     log('m71 ceiling spike points DOWN (tip below base on screen)', m71tipBelow && m71bothFramed,
-      `tipPy=${m71spikeView.tip.py.toFixed(1)} basePy=${m71spikeView.base.py.toFixed(1)}`);
+      `tipPy=${m71spikeView.tip.py.toFixed(1)} basePy=${m71spikeView.base.py.toFixed(1)} framed=${m71bothFramed}`);
   } else {
     log('m71 ceiling spike points DOWN (tip below base on screen)', false, 'no ceiling run');
   }
@@ -3661,13 +3666,29 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
       }
       // Flagless zone taps: the first grounded tap jumps, later ones are
       // airborne-harmless — no one-shot can be skipped by coarse sampling.
-      if (z >= 347 && z <= 350.3 && g.grounded()) tap('Space');
-      else if (z >= 352.4 && z <= 354.8) tap('Space');
+      // Takeoff across the full grounded window (F2 ends at 350).
+      if (z >= 345 && z <= 350 && g.grounded()) tap('Space');
+      else if (z >= 352.2 && z <= 354.8) tap('Space');
       if (z > 362) { clearInterval(window.__m71orb); window.__m71orb = null; }
     }, 5);
   });
-  // Pad firing + punch in ONE pre-armed loop starting at the teleport
-  // (same reasoning as the orb/speed punches under headless load).
+  // Pad firing + punch: an in-page peak watcher samples the envelope within
+  // 5 ms of the fire (CDP polling can lag the <1 s envelope by seconds under
+  // load — the same peak-watcher pattern as the gravity flip).
+  await page.evaluate(() => {
+    window.__m71padPeak = null;
+    if (window.__m71padWatch) clearInterval(window.__m71padWatch);
+    window.__m71padWatch = setInterval(() => {
+      const g = window.__gd3d;
+      if (g.isInteractionUsed('vs-pad-floor') && window.__m71padPeak === null) {
+        window.__m71padPeak = { energy: g.eventPunchEnergy(), color: g.eventPunchColor() };
+      }
+      if (g.playerPosition().z > 340 || g.status() !== 'running') {
+        clearInterval(window.__m71padWatch);
+        window.__m71padWatch = null;
+      }
+    }, 5);
+  });
   const m71padShot = await (async () => {
     const t0 = Date.now();
     let sawUsed = null;
@@ -3675,6 +3696,10 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
       const used = await page.evaluate(() => window.__gd3d.isInteractionUsed('vs-pad-floor'));
       const s = await m71probe();
       if (used && sawUsed === null) sawUsed = s;
+      const peak = await page.evaluate(() => window.__m71padPeak);
+      if (used && peak !== null && peak.energy > 0.15 && peak.color === PAD_YELLOW) {
+        return { shot: { ...s, energy: peak.energy, punchColor: peak.color }, sawUsed };
+      }
       if (used && s.energy > 0.15 && s.punchColor === PAD_YELLOW) return { shot: s, sawUsed };
       if (Date.now() - t0 > 90000) return { shot: s, sawUsed };
       await page.waitForTimeout(40);
@@ -3724,8 +3749,10 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   }));
   await capture('m71-spike-floor');
   await m71ensureLive(4);
+  const m71floorFramed = (p) => !p.behind && Math.abs(p.ndcX) <= 0.9 && Math.abs(p.ndcY) <= 0.9;
   log('m71 floor spike points UP (tip above base on screen)',
-    m71floorSpike.tip.py < m71floorSpike.base.py && !m71floorSpike.tip.behind && !m71floorSpike.base.behind,
+    m71floorSpike.tip.py < m71floorSpike.base.py &&
+    m71floorFramed(m71floorSpike.tip) && m71floorFramed(m71floorSpike.base),
     `tipPy=${m71floorSpike.tip.py.toFixed(1)} basePy=${m71floorSpike.base.py.toFixed(1)}`);
 
   // Gravity orb fires naturally: ONE driver covers lane + gap jump + setup
@@ -4114,8 +4141,10 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   // Fresh page (no replay/pause residue): stage onto the ceiling run, roll
   // into the window, then read the cue.
   await m71fresh(`${URL}?level=vertical-slice-01`);
-  await page.evaluate(() => window.__gd3d.debugTeleport(0, 5.0, 195));
-  const m71cueStaged = await m71roll((s) => s.mode === 'ceiling' && s.grounded && s.z > 198 && s.z < 210, 60000);
+  // Screen-left lane: safe past the z 200 center spike (the headless route
+  // taps here too — center-lane staging would die on it).
+  await page.evaluate(() => window.__gd3d.debugTeleport(2.6, 5.0, 195));
+  const m71cueStaged = await m71roll((s) => s.mode === 'ceiling' && s.grounded && s.z > 198 && s.z < 208, 60000);
   const m71cueMid = await m71probe();
   log('m71 rhythm cue resolves deterministically',
     m71cueStaged !== null && m71cueMid.cue === 'm71-cue-gravity-hit',
