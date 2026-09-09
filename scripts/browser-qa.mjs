@@ -3338,11 +3338,13 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   }
   log('m6c2 replay carries zero punch/contact state', m6c2TapeClean, m6c2TapeDetail);
 
-  // Resource stability: still 26/8/3, one scene group (50 children).
+  // Resource stability: still 26/8/3 library counts; scene children grew by
+  // exactly the 12 fixed M7.1 background energy rays (50 → 62, bounded by
+  // construction — one shared geometry + one shared material, no pools).
   const m6c2ResEnd = await punchProbe();
   log('m6c2 resources flat (26/8/3, no new draws or pools)',
     m6c2ResEnd.mats === 26 && m6c2ResEnd.geos === 8 && m6c2ResEnd.passes === 3 &&
-    m6c2ResEnd.children === 50,
+    m6c2ResEnd.children === 62,
     `mats=${m6c2ResEnd.mats} geos=${m6c2ResEnd.geos} passes=${m6c2ResEnd.passes} children=${m6c2ResEnd.children}`);
 }
 
@@ -3489,7 +3491,13 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
 
   // Act I route renders (opening + weave).
   await m71snap('m71-01-narrow-opening');
-  const m71act1 = await m71roll((s) => s.z > 26 && s.z < 34, 60000);
+  // Framing roll with one bulletproof retry (a swallowed pause-toggle under
+  // headless load can freeze the first window; the resume re-arms it).
+  let m71act1 = await m71roll((s) => s.z > 26 && s.z < 34, 60000);
+  if (m71act1 === null) {
+    await m71resume();
+    m71act1 = await m71roll((s) => s.z > 26 && s.z < 34, 60000);
+  }
   if (m71act1) { await m71snap('m71-02-island-jump'); }
   log('m71 Act I route renders', m71act1 !== null, m71act1 ? `z=${m71act1.z.toFixed(1)}` : 'never framed');
   log('m71 beat cue resolves at start', m71boot.cue === 'm71-cue-intro', `cue=${m71boot.cue}`);
@@ -3743,6 +3751,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     let centered = false;
     let padLane1 = false;
     let padLane2 = false;
+    let gorbCentered = false;
     let lastZ = -100;
     window.__m71gorbMax = -4;
     window.__m71gorb = setInterval(() => {
@@ -3760,9 +3769,10 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
         centered = false;
         padLane1 = false;
         padLane2 = false;
+        gorbCentered = false;
         return;
       }
-      if (z < lastZ - 10) { laned = false; centered = false; padLane1 = false; padLane2 = false; }
+      if (z < lastZ - 10) { laned = false; centered = false; padLane1 = false; padLane2 = false; gorbCentered = false; }
       lastZ = z;
       if (g.isInteractionUsed('vs-orb-gravity')) {
         window.__m71gorbFired = true;
@@ -3782,9 +3792,14 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
       // First tap airborne (air lanes), second on the C2 landing.
       else if (!padLane1 && z >= 229 && z <= 233 && g.laneIndex() < 1) { padLane1 = true; tap('ArrowRight'); }
       else if (!padLane2 && z >= 234 && z <= 238 && g.laneIndex() < 2) { padLane2 = true; tap('ArrowRight'); }
+      // Back to center on C3 for the narrow C4 bridge (the headless route
+      // taps here too — without it the C4 hop starts from the wrong lane).
+      else if (!gorbCentered && z >= 258 && z <= 266 && g.laneIndex() > 1) { gorbCentered = true; tap('ArrowLeft'); }
       // Flagless zone taps below: first grounded tap acts, later ones are
       // airborne-harmless — coarse sampling cannot skip a one-shot.
       else if (z >= 228 && z <= 230.3 && g.grounded()) tap('Space');
+      // Hop onto the narrow C4 bridge (gap 274..276).
+      else if (z >= 272.5 && z <= 274 && g.grounded()) tap('Space');
       else if (z >= 280.5 && z <= 284) tap('Space');
       else if (z >= 283.5 && z <= 287) tap('Space');
       if (z > 292 && g.gravityMode() === 'floor') { clearInterval(window.__m71gorb); window.__m71gorb = null; }
@@ -3823,15 +3838,19 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   await m71tapLane('ArrowRight', 1);
   await page.evaluate(() => {
     if (window.__m71gap) clearInterval(window.__m71gap);
-    // Supervisor: re-stage past a gap death (respawn resets speed to 1x,
-    // so re-cross the portal; intent resets to 1 = center, already correct).
+    // Supervisor: re-stage past any sprint death (respawn resets speed to
+    // 1x, so re-cross the portal; intent resets to 1 = center, correct).
     // Covers the gap takeoff, the mid-air transfer to lane 2, and the
-    // island spike jump. Persists until the sprint is framed (z > 545
-    // clears it); death-holds are waited out, never a reason to quit.
+    // island spike jump. Persists until the outer roll succeeds (cleared
+    // below) — it must NOT clear at 545: a swallowed transfer tap lands
+    // off the island and the attempt still needs its re-stage. Death-holds
+    // are waited out, never a reason to quit.
     // Releases drain on the next poll (hold-repeat immunity, as above).
     const gapPendingUp = [];
     let gapJumped = false;
     let sprintLaned = false;
+    let sprintTaps = 0;
+    let lastSprintTapZ = -100;
     let spikeJumped = false;
     window.__m71gap = setInterval(() => {
       const g = window.__gd3d;
@@ -3839,15 +3858,12 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
       while (gapPendingUp.length > 0) {
         window.dispatchEvent(new KeyboardEvent('keyup', { code: gapPendingUp.pop() }));
       }
-      if (z > 545 && g.status() === 'running') {
-        if (window.__m71gap) clearInterval(window.__m71gap);
-        window.__m71gap = null;
-        return;
-      }
       if (z < 400) {
         g.debugTeleport(0, 1.5, 505);
         gapJumped = false;
         sprintLaned = false;
+        sprintTaps = 0;
+        lastSprintTapZ = -100;
         spikeJumped = false;
         return;
       }
@@ -3856,10 +3872,16 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
         window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
         gapPendingUp.push('Space');
       }
-      else if (!sprintLaned && z >= 540 && z <= 545 && g.laneIndex() < 2) {
-        sprintLaned = true;
+      // Transfer with swallow tolerance: retry while the intent still reads
+      // below lane 2, spaced 2.5 u apart (a landed tap is visible by the
+      // next slot, so retries stop; spacing exceeds worst-case CDP latency
+      // so two taps can never both land and walk past lane 2).
+      else if (!sprintLaned && z >= 540 && z <= 548 && g.laneIndex() < 2 && sprintTaps < 3 && z - lastSprintTapZ > 2.5) {
+        sprintTaps += 1;
+        lastSprintTapZ = z;
         window.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowRight' }));
         gapPendingUp.push('ArrowRight');
+        if (g.laneIndex() === 2) sprintLaned = true;
       }
       else if (!spikeJumped && z >= 575 && z <= 579 && g.grounded()) {
         spikeJumped = true;
@@ -3891,6 +3913,10 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     `energy=${m71speedPunchLive.energy.toFixed(2)} color=0x${m71speedPunchLive.punchColor?.toString(16)}`);
   // The sprint run stays live at 2x past the gap now: frame the sprint.
   const m71sprint = await m71roll((s) => s.z > 585 && s.z < 600 && s.speed === 2, 90000);
+  await page.evaluate(() => {
+    if (window.__m71gap) clearInterval(window.__m71gap);
+    window.__m71gap = null;
+  });
   if (m71sprint) { await m71snap('m71-09-speed-climax'); }
   log('m71 final-act visual state resolves',
     m71sprint !== null && m71sprint.section === 'vs-climax',
@@ -4085,15 +4111,20 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     `verify=${m71Verify.verify.kind}`);
   await m71snap('m71-11-replay-verified');
   // Beat cues resolve deterministically in-page and ride outside the tape.
-  await m71restage(0, 5.0, 200);
-  await page.waitForTimeout(800);
+  // Fresh page (no replay/pause residue): stage onto the ceiling run, roll
+  // into the window, then read the cue.
+  await m71fresh(`${URL}?level=vertical-slice-01`);
+  await page.evaluate(() => window.__gd3d.debugTeleport(0, 5.0, 195));
+  const m71cueStaged = await m71roll((s) => s.mode === 'ceiling' && s.grounded && s.z > 198 && s.z < 210, 60000);
   const m71cueMid = await m71probe();
-  log('m71 rhythm cue resolves deterministically', m71cueMid.cue === 'm71-cue-gravity-hit',
+  log('m71 rhythm cue resolves deterministically',
+    m71cueStaged !== null && m71cueMid.cue === 'm71-cue-gravity-hit',
     `cue=${m71cueMid.cue} z=${m71cueMid.z.toFixed(1)}`);
   await m71restage(0, 1.5, 660);
-  await page.waitForTimeout(800);
+  const m71cueRolled = await m71roll((s) => s.z > 655 && s.z < 675, 60000);
   const m71cueEnd = await m71probe();
-  log('m71 release cue resolves at the finish approach', m71cueEnd.cue === 'm71-cue-release',
+  log('m71 release cue resolves at the finish approach',
+    m71cueRolled !== null && m71cueEnd.cue === 'm71-cue-release',
     `cue=${m71cueEnd.cue} z=${m71cueEnd.z.toFixed(1)}`);
   const m71tapeStr = await page.evaluate(() => window.__gd3d.exportLastReplay());
   log('m71 rhythm cues absent from replay',
