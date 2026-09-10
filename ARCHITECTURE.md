@@ -122,7 +122,11 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   `speedPortals` (id + crossing Z + multiplier tier), `jumpPads`
   (trigger volume + mount surface + explicit impulse), `jumpOrbs` /
   `gravityOrbs` (activation window AABBs, orbs add an impulse),
-  solids, hazards, theme). Engine code must not hardcode level coordinates,
+  solids, hazards (each with presentation-only `visual` + `mount`
+  floor/ceiling hints — never gameplay, never fingerprinted), theme,
+  `visualSequence?` (M6C1), `rhythmCues?` (M7.1 beat-ready markers —
+  position-bound semantic roles for future music mapping; no audio ships).
+  Engine code must not hardcode level coordinates,
   void heights, or gravity/interaction content.
 - `levelRuntime.ts`: `loadLevel` builds the `CollisionWorld` (pure, no THREE)
   and the Z-sorted portal lists; `computeProgress` derives [0,1] progress
@@ -337,6 +341,16 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   `VfxSystem.setIntensity`, owned exposure) — zero new scene content,
   zero new draws, every system restored exactly on the off-edge.
   `?triggers=off` (URL + runtime) composes with `?post=off`/`?fx=off`.
+- `EnvironmentView` (M7.1 addition): 12 fixed background energy beams
+  sharing one geometry + one additive material (bounded, renderer-only, no
+  collision), driven by section energy with punch-envelope bursts in the
+  event tint; silenced by the same reset path (triggers-off === silent).
+- `rhythmCues.ts` (`src/visuals/`, M7.1) — deterministic beat-ready cue
+  resolution (prepared z-sorted copy + `cueAtZ`/`cueIdAtZ`, pure positional
+  — no clocks). Level data owns the cues; `RendererHost` exposes the active
+  id as a probe; nothing cue-related reaches the sim, the fingerprint, or
+  replays. The visual timeline resolves independently (no competing trigger
+  system — sections and cues are authored to coincide).
 - `eventPunch.ts` (`src/visuals/`, M6C2) — the ONE renderer-side owner
   computing the EVENT PUNCH ENVELOPE (per-family 0..1 energy + dominant
   tint, THREE-free pure numbers like `visualTimeline.ts`). The RendererHost
@@ -401,7 +415,10 @@ fixed-tick PHYSICAL input tape plus verification evidence.
 - `DeathSfx` (`src/audio/`, M2): lazy guarded Web Audio death blip (0.18 s),
   created on first user gesture; silence-on-failure; gameplay never depends
   on it.
-- `LevelView` builds route/hazard/portal meshes from level data (library
+- `LevelView` builds route/hazard/portal meshes from level data (M7.1:
+  spike visuals orient relative to their declared `mount` surface — base
+  attached, tip AWAY from the support (floor +Y, ceiling −Y); colliders
+  untouched, no level-id branches, omitted mount = floor), (library
   unit-box/cone geometries, library route/hazard/portal materials — no owned
   materials/geometries; M1.1/M1.2 face applique — thin emissive trims in the
   shared edge material riding PROUD of solid faces:

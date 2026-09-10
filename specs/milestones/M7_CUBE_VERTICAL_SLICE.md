@@ -3,7 +3,31 @@
 ## STATUS
 
 M7:
-ENGINEERING COMPLETE / HUMAN FUN GATE OPEN
+REWORK IN PROGRESS / HUMAN FUN GATE REJECTED FOR THE M7 VERSION
+
+M7.1:
+ENGINEERING COMPLETE / HUMAN FUN RE-TEST GATE OPEN
+
+## M7 HUMAN FUN GATE RESULT (recorded, not re-argued)
+
+The human played the M7 vertical slice. Technical implementation worked;
+the level direction was REJECTED as final:
+
+1. Too simple; the track is much too wide; too many safe paths — horizontal
+   movement is not precise because the route spans the full three-lane
+   corridor. Wants islands / narrow platforms requiring intentional landings.
+2. Jump precision and horizontal positioning should matter more; difficulty
+   should increase significantly (difficult / precision-focused, not unfair).
+3. Visuals are good but too conservative: wants much stronger color changes
+   and environment transformations (background shifts, flashes, rays,
+   stronger reactive changes at gravity/pad/speed moments), eventually synced
+   with MUSIC (rhythm-platformer spirit — music NOT added in M7.1).
+4. Confirmed visual bug: ceiling spikes point the wrong way (the player dies
+   on what looks like the flat/base side).
+
+M7.1 answers: "Can the current Cube system alone produce a level that is
+precise, challenging, visually spectacular and memorable?" Until YES: no
+Ship, no Spider, no teleport, no ramps, no monsters, no music.
 
 Automated: 256/256 tests green (`npm run verify`: typecheck + lint + tests +
 build) — 238 pre-M7 + 18 vertical-slice. Browser QA: M7 section 30/30
@@ -277,3 +301,188 @@ playtest.
   redundant releases are no-ops when not held. Headless suites use exact
   snapshots and never see this.
 - Headless stills under-read additive juice (real-GPU gate question).
+
+---
+
+# M7.1 — PRECISION, DIFFICULTY & SPECTACLE REWORK (this section)
+
+## M7.1 STATUS
+
+M7.1: ENGINEERING COMPLETE / HUMAN FUN RE-TEST GATE OPEN.
+
+Automated: 285/285 tests green (`npm run verify`: typecheck + lint + tests +
+build) — 256 pre-M7.1 + 29 new (6 spike-orientation, 32 level incl. topology
+proofs, 6 rhythm-cue, 3 energy-ray; the level suite grew from 18 to 32).
+Browser QA: M7.1 section 45 checks green with zero console/page errors (plus
+the standing M6 regression sections); historical sections show only the
+documented CDP-timing/load flake set (no M7.1 causation — sim untouched, all
+determinism suites green). Golden replay verifies unchanged (unit + in-page).
+Screenshots: `qa/screenshots/m71-*` (11 + JSON sidecars + spike pair).
+
+Controller freeze honored: jump impulse 13.2, gravity 42, lane accel 110 /
+max 16 / brake 135, collider 1.1, fast-fall 55 — all pinned by test, zero
+tuning changes. Difficulty comes from geometry + timing + position, never
+from envelope abuse. No Ship / Spider / teleport / ramps / monsters / moving
+hazards / music (all explicitly deferred).
+
+## M7.1 ENTRY STATE
+
+Entry HEAD `d64469f`, clean tree, `main` synced with `origin/main`, one
+worktree. Baseline `npm run verify`: 19 files, 256/256 tests, build
+604.81 kB.
+
+## PRECISION DESIGN STRATEGY
+
+Same dramatic skeleton (portal/speed Z positions, mechanic flow) but rebuilt
+topology: full-width slabs survive only as THREE short recovery/release
+tools (start z −10..14, portal approach z 154..176, release z 648..684 —
+under 35% of route length); everything else is single-lane islands (2.6 u
+wide, 0.75 u margin per side), two-lane platforms (5.2 u, one deliberate
+choice), narrow bridges and staggered offsets. Six airborne single-lane
+transfers (Act I ×3 incl. the opening island chain, weave exit ×1, 2x sprint
+×2) require the existing airborne lateral control — one lane per jump, never
+chaotic multi-tap windows.
+
+## PLATFORM / ISLAND VOCABULARY (shipped)
+
+- Single-lane island (halfX 1.3): bridge z 14..34, islands z 38..50 (R),
+  54..66 (C), 70.5..82 (L), 321..348 (C), sprint island z 549..596 (R).
+- Elevated island (top 0.8): z 84..96 (step-up gap 82..84).
+- Two-lane platform (halfX 2.6): L+C z 100..130 / 445..480 / 606..648,
+  C+R ceiling z 174..230 / 234..244 / 252..274, floor z 280..313.
+- Narrow bridge (halfX 1.3 continuous): z 134.5..150, ceiling z 276..288,
+  floor z 358..402 / 412..445 / 484..518 / 518..538.
+- Split/stagger with void: island chain gaps 34..38 / 50..54 / 66..70.5;
+  sprint gaps 538..549 / 596..606 with lateral transfer.
+- Short recovery: the three full-width tools above (straight, no hazards).
+
+## TRACK WIDTH BEFORE VS AFTER
+
+M7: ~every slab halfExtents.x = 5.4 (10.8 u corridor, all lanes always
+supported). M7.1: 24 slabs, only 3 full-width; narrow (≤2.7) slabs ≥ 15 by
+count and >65% by length (full-width is ~13% of route length). The opening bridge is provably narrow in-browser
+(off-lane teleport placement falls to void where the old road survived).
+
+## DIFFICULTY CURVE
+
+Act I (z −10..170, ~13 s): medium — teaches the precision language (bridge
+jump, 3 transfers, elevated hop, weave with 2 lane answers). Act II
+(z 170..440, ~22 s): medium-hard/hard — narrow ceiling (dip-unders, weave,
+pad transfer), orb return, offset pads, callback dip-under. Act III
+(z 440..680, ~17 s): hard — 1x weave + transfer, 2x island sprint (gap +
+transfer, island spike jump, gap + transfer, weave answer), clean release.
+No fast-fall requirement authored (geometry carries the difficulty); no
+frame-perfect chains (thinnest input: the 2x mid-air taps, ~0.4 s windows).
+
+## SIGNATURE MOMENTS (5)
+
+1. First island chain over the void (z 34..82, three lateral transfers).
+2. Gravity flip into the navy ceiling world (z 170 + blue punch + rays).
+3. Ceiling pad launch from the offset lane onto the narrow C+R run (z 243).
+4. Gravity-orb return + offset floor pad + jump-orb combination (z 285/311).
+5. 2x island sprint across the fragmented magenta/cyan route (z 518..648).
+
+## FAIRNESS MARGINS (measured, documented for the human playtest)
+
+- Smallest longitudinal margin: floor-pad landing ~1.8 u past the gap edge
+  (~0.15 s / 18 ticks at 12 u/s); thinnest plain landing ~2.05 u.
+- Smallest lateral landing margin: 0.75 u per side on every single-lane
+  island (2.6 − 1.1 collider = 1.5 total; pinned ≥ 0.5 by test).
+- Smallest timing/input margin: 2x mid-air transfers (tap inside ~0.4 s
+  flight windows); 1x transfers have ≥ 0.5 s.
+- Standard gaps ≤ 5 u keep ≥ 2.5 u inside the frozen 7.55 u envelope; pad
+  gaps (8 u) and the orb gap (10 u) exceed plain range (REQUIRED, proven);
+  2x gaps (10..11 u) keep 4..5 u inside the 15.1 u envelope.
+- Thinnest human margin overall: the floor-pad landing (1.8 u longitudinal).
+  Deaths stay visually understandable (telegraphed spikes/gaps, no blinds).
+
+## CEILING SPIKE FIX
+
+General rendering rule in `LevelView` (no level-id branch, no coordinate
+heuristic): presentation-only `mount` metadata on `LevelHazard` (default
+floor) seats the base on the support surface and points the tip AWAY
+(floor +Y, ceiling −Y). Colliders byte-identical; `mount` excluded from the
+gameplay fingerprint (old replays compatible). Pinned by
+`tests/spikeOrientation.test.ts` (floor tip-up/base-bottom, ceiling
+tip-down/base-flush, unchanged hitboxes, default-unchanged old levels,
+fingerprint exclusion, no-branch source pin) + paired browser screenshots
+with screen-space tip/base projection proofs.
+
+## VISUAL SCENE ARC (authored)
+
+`vs-opening` (violet/cyan identity) → `vs-precision` (electric purple/blue,
+brighter edge) → `vs-gravity` (deep navy, strong fog shift, env 1.4) →
+`vs-tech` (magenta energy) → `vs-climax` (cyan/magenta, bloom 0.6
+in-contract, exposure 1.25, streaks 1.6, env 1.4) → `vs-release` (calm teal,
+quiet juice). Each recognizable from one screenshot. Gravity/pad/speed hits
+punch blue/yellow/tier + ray bursts; 12 fixed background beams carry section
+energy (peak opacity 0.28 — subordinate by construction). Player cyan and
+hazard orange structurally stable.
+
+## BEAT-READY ARCHITECTURE
+
+`src/visuals/rhythmCues.ts`: 20 position-bound semantic cues (intro, accent,
+build, sectionChange ×4, gravityHit ×3, padHit ×2, orbHit, speedHit, drop,
+climax, release, finish) coinciding with section boundaries and mechanic
+hits. Deterministic (same z → same cue), no clocks, sim/fingerprint/replay
+excluded, visual timeline resolves independently (no competing triggers).
+Future songs map cue.z → sim time → beat/bar/drop once BPM/offset/structure
+is known. NO audio ships in M7.1.
+
+## SCRIPTED REAL-INPUT COMPLETION
+
+`tests/helpers/verticalSlice01Script.ts`: 35 z-triggered actions (lane taps
++ jump presses only — no fast-fall). Finishes naturally: tick 6190 =
+51.583 s (same clock as M7 — the portal/speed skeleton is unchanged and
+forward motion is constant-speed), portals 4, pads 2, orbs 2, 2x observed +
+released, 0 deaths, attempts 1. Route-minus-one-transfer dies (transfer
+REQUIRED); lane-lazy route dies in the island chain (constrained solutions);
+route-minus-orb-press dies void in the orb gap (orb REQUIRED).
+
+## REPLAY VERIFICATION
+
+Record → replay of the M7.1 route verifies (`pass`, finish); tape scan
+proves zero visual/punch/cue keys; ReplayV1 versions unchanged (1/1); the
+M5 golden fixture verifies untouched.
+
+## QA (see sections above + `qa/screenshots/m71-*`)
+
+M7.1 browser section: 45/45 green (route, narrowness proofs floor + ceiling,
+island chain, transfers, flip + blue punch + scene change, ceiling
+readability + spike-DOWN projection proof, floor spike-UP proof, pad +
+punch, orbs + punches, tech scene, 2x + streaks + punch + climax scene +
+rays + readability, release + ray quiet, real-input finish deaths=2 with
+6190 frames, duration, replay VERIFIED, cues resolve + absent from tape,
+restart, death/respawn, fallback matrix + triggers-off baseline, resources
+27/8/3 + 62 children, zero console/page errors). Full suite 239/250: the
+11 fails are all pre-existing checks on frozen systems showing CDP-timing/
+measurement flakes under a contended SwiftShader box (wall-rate, m2
+burst/respawn/chain, edge-teeter input timing, m3.1 eye sampling, m4
+2x-rate, m5 playthrough cascade) — varying run to run, sim and determinism
+suites untouched and green, zero M7.1 causation.
+
+## PERFORMANCE OBSERVATIONS (headless Chromium 1280×720, SwiftShader)
+
+Start (measured in-page, same start-line condition as the M7 294-call
+baseline): 302 draw calls / 5404 triangles (only +8 calls — fewer hazards
+than M7 offset most island meshes; the 12 ray beams are trivial boxes),
+children 62 (50 + 12 rays), materials 27 (shared 26 + 1 cached speed tier)
+/ geometries 8 / composer passes 3, build 606.97 kB (+2.16 kB: level data +
+cues + rays). Flat across transitions/death/restart/replay. Real-GPU
+closeout stays M6D.
+
+## HUMAN FUN RE-TEST GATE (OPEN)
+
+Play: `http://localhost:5173/?level=vertical-slice-01`. No agent may mark
+PASS without the human playtest. Hardest three sections to evaluate: (1) the
+Act I island chain (z 34..82 transfers), (2) the ceiling weave + pad lane
+(z 193..243), (3) the 2x island sprint (z 536..626 transfers + spike jump).
+
+## KNOWN LIMITATIONS
+
+- Thinnest margin is the floor-pad landing (1.8 u) — human must confirm fair.
+- Headless-load QA artifact (unchanged): stalled keyup → hold-to-repeat
+  artifact jump; drivers immune by construction (release-on-next-poll).
+- Headless stills under-read additive juice/rays (real-GPU gate question).
+- M6D real-GPU closeout still pending (M7.1 is its workload).
+- No fast-fall showcase (deliberate — geometry carries M7.1 difficulty).

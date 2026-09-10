@@ -295,7 +295,37 @@ M6C2 sections in `M6_VISUAL_PRODUCTION_SYSTEM.md`. HUMAN
 REACTIVE/CONTACT GATE = NOT PERFORMED (final artistic timeline also
 still remaining).
 
-## M7 — 45–60 s Cube vertical slice: IN PROGRESS (engineering complete, HUMAN FUN GATE OPEN)
+## M7 — 45–60 s Cube vertical slice: REWORK IN PROGRESS (M7 HUMAN FUN GATE REJECTED THE M7 LEVEL)
+
+M7 HUMAN FUN GATE: REWORK REQUIRED — the human played the slice and
+rejected the direction (too simple, track far too wide, too many safe
+paths, visuals too conservative) plus confirmed a ceiling-spike orientation
+bug. The M7 engineering record below stands as built; the M7 LEVEL is not
+final. See M7.1.
+
+## M7.1 — Precision, difficulty & spectacle rework: ENGINEERING COMPLETE / HUMAN FUN RE-TEST GATE OPEN
+
+Rebuilds the vertical slice on the frozen Cube controller (zero tuning
+changes): single-lane islands / two-lane platforms / narrow bridges /
+staggered offsets with real airborne transfers (full-width slabs survive
+only as 3 short recovery/release tools); difficulty up to
+DIFFICULT/PRECISION-FOCUSED but fair (measured margins, thinnest 1.8 u
+pad landing); ceiling spikes fixed by a general surface-relative rendering
+rule (tip away from support); six distinct visual scenes + punch-amplified
+events + 12 bounded background energy rays; 20 beat-ready rhythm cues for
+future music mapping (NO audio ships). Deterministic real-input route
+finishes tick 6190 (51.583 s), 0 deaths, replay VERIFIED. 285/285 automated
+tests, M7.1 browser QA 45/45 green with zero console/page errors, golden
+replay intact. Spec: `specs/milestones/M7_CUBE_VERTICAL_SLICE.md` (M7.1
+section). Ship remains BLOCKED until the human confirms the Cube level is
+genuinely fun.
+
+Future direction after a successful M7.1 (conceptual, not started): M6D
+real-GPU performance closeout (M7.1 is its workload) → music/rhythm
+synchronization architecture → Ship mode → advanced/teleport portals →
+Spider mode → inclined/ramp surfaces → dynamic/moving hazards → animated
+entities/monsters/set pieces → harder production levels → editor/community
+later. Exact milestone numbering provisional.
 
 First production Cube vertical slice (`vertical-slice-01`, "VERTICAL SLICE
 01", `?level=vertical-slice-01`): authored three-act ~51.6 s level on the

@@ -61,12 +61,16 @@ support-plane skid on Floor/Ceiling + bounded burst/streak amplification,
 zero gameplay change, 238/238 tests, M6C2 15/15 browser green, replay
 punch/contact-free) — HUMAN REACTIVE/CONTACT GATE NOT PERFORMED, all
 prior gates STILL OPEN, final artistic timeline still remaining. M7 Cube
-vertical slice engineering-complete (first production level
-`?level=vertical-slice-01`: authored three-act ~51.6 s slice on the frozen
-stack, deterministic real-input finish + verified replay, 256/256 tests,
-M7 browser QA 30/30 green) — HUMAN FUN GATE OPEN (automation proves
-possible, never fun; Ship remains blocked until the slice is genuinely
-fun). M6D real-GPU closeout intentionally pending (M7 is its workload).
+vertical slice engineering-complete, then HUMAN FUN GATE: REWORK REQUIRED
+(human rejected the M7 level direction — too simple/wide, visuals too
+conservative — plus a confirmed ceiling-spike bug). M7.1
+precision/difficulty/spectacle rework engineering-complete on the frozen
+controller (narrow islands + airborne transfers, six visual scenes, fixed
+ceiling spikes, 20 beat-ready cues, no audio yet): deterministic real-input
+finish tick 6190 (51.583 s) + verified replay, 285/285 tests, M7.1 browser
+QA 45/45 green — HUMAN FUN RE-TEST GATE OPEN (automation proves possible,
+never fun; Ship remains blocked until the slice is genuinely fun). M6D
+real-GPU closeout intentionally pending (M7.1 is its workload).
 
 ## Setup
 
@@ -158,10 +162,12 @@ authoring + ground contact FX engineering-complete (HUMAN
 REACTIVE/CONTACT GATE NOT PERFORMED, final artistic timeline still
 remaining; see
 `specs/milestones/M6_VISUAL_PRODUCTION_SYSTEM.md`). M7 Cube vertical
-slice engineering-complete — first production level
-(`?level=vertical-slice-01`, authored three-act ~51.6 s, deterministic
-real-input finish + verified replay, 256/256 tests, M7 browser QA 30/30
-green) — HUMAN FUN GATE OPEN — plus truthful M6 status: human played the
+slice engineering-complete, then HUMAN FUN GATE: REWORK REQUIRED — M7.1
+precision/difficulty/spectacle rework engineering-complete
+(`?level=vertical-slice-01`, narrow islands + airborne transfers, six visual
+scenes, fixed ceiling spikes, 20 beat-ready cues, deterministic real-input
+finish tick 6190 / 51.583 s + verified replay, 285/285 tests, M7.1 browser
+QA 45/45 green) — HUMAN FUN RE-TEST GATE OPEN — plus truthful M6 status: human played the
 M6 presentation ("quite good") and chose to proceed to M7 (presentation
 direction approved to proceed; M6D real-GPU closeout intentionally pending
 with M7 as its workload). Spec: `specs/milestones/M7_CUBE_VERTICAL_SLICE.md`.

@@ -244,9 +244,9 @@ Ship mode, moving hazards/obstacles, final VFX polish, music/BPM sync,
 public editor, backend, persistence. See `ROADMAP.md`. (Pads, orbs, speed
 portals and the trigger infrastructure shipped in M4 — §6.1.)
 
-## 7.1 Vertical slice product contract — CURRENT (M7)
+## 7.1 Vertical slice product contract — CURRENT (M7.1)
 
-Deliberate M7 content/product decisions (no temporary coordinates here):
+Deliberate M7/M7.1 content/product decisions (no temporary coordinates here):
 
 - Target successful run 45–60 s (sweet spot ~50–55 s), measured in
   deterministic simulation time (speed portals make finishZ/speed math
@@ -263,6 +263,23 @@ Deliberate M7 content/product decisions (no temporary coordinates here):
   let visual changes read).
 - Required-assistance gaps/pads/orbs must be visually obvious; ambiguous
   secretly-assisted gaps are forbidden.
+- M7.1 precision rules (human playtest demanded harder, narrower Cube
+  content — M7 full-width direction REJECTED):
+  - Production levels may use partial-width support geometry; all 3 lanes
+    do NOT need simultaneous floor support.
+  - Intentional landing precision is part of Cube difficulty; airborne lane
+    correction is a deliberate advanced skill.
+  - Hard levels constrain valid routes while staying visually telegraphed;
+    full-width roads are recovery tools, not the default topology.
+  - Single-lane islands keep fair lateral margin (Cube footprint + human
+    margin — precision, never pixel-perfect).
+- Production levels carry several clearly distinct visual scenes (section
+  identity readable from one screenshot); major gameplay events visibly
+  affect the environment (gravity flips weightiest).
+- Future music synchronization is a product requirement: levels carry
+  deterministic presentation-only rhythm cues (position-bound semantic
+  markers) that NEVER affect gameplay, fingerprints, or replays — audio
+  itself is a later milestone.
 
 ## 8. Reference art
 
