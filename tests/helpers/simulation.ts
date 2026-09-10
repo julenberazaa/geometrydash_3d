@@ -40,6 +40,12 @@ export const holdFastFall: PhysicalInputSnapshot = {
   down: edge(true, true),
 };
 
+/** ArrowDown kept held (fast-fall continuation after the press edge). */
+export const holdFastFallHeld: PhysicalInputSnapshot = {
+  ...idleInput,
+  down: { held: true, pressedThisStep: false, releasedThisStep: false },
+};
+
 /** Single left-lane press edge. */
 export const tapLaneLeft: PhysicalInputSnapshot = {
   ...idleInput,
