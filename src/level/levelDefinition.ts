@@ -84,6 +84,51 @@ export interface JumpOrbDef extends InteractionOrbDef {
  *  shared orb window shape; a distinct alias keeps level data self-describing. */
 export type GravityOrbDef = InteractionOrbDef;
 
+/**
+ * Teleport portal (M7.2): a deterministic paired spatial discontinuity.
+ * Crossing the entry plane in the forward direction instantly relocates the
+ * Cube to the authored `exit` — same gravity mode, same speed multiplier,
+ * lateral velocity preserved for flow, vertical velocity zeroed for a clean
+ * re-entry, lane intent set to `exitLaneIndex`, grounded/support cleared.
+ * Exactly once per attempt (respawn re-arms); a lethal step always wins over
+ * the teleport (lethal checks precede it); the skipped world-space interval
+ * is NEVER interpreted as traversed (no crossed-interval portal firing).
+ */
+export interface TeleportPortalDef {
+  /** Stable identifier (debug/QA). */
+  id: string;
+  /** World Z of the entry crossing plane. */
+  entryZ: number;
+  /** Authored destination (hitbox center after the jump). */
+  exit: Vec3;
+  /** Lane intent after the jump (explicit authored handoff). */
+  exitLaneIndex: number;
+  /**
+   * Presentation-only visual variant (renderer-only like hazard `visual`:
+   * `computeLevelFingerprint()` never reads it, so restyling a gate keeps
+   * old replays compatible). Omitted = default violet gate.
+   */
+  style?: 'gate' | 'maw';
+}
+
+/**
+ * Presentation-only decorative setpiece (M7.2, e.g. a monster-like guardian
+ * silhouette around a teleport gate). NEVER gameplay: no collision, no AI,
+ * no movement, no trigger. Renderer-only: excluded from the gameplay
+ * fingerprint and from replays. If it looks landable it must BE landable —
+ * setpieces live outside the route corridor (see GAME_DESIGN.md).
+ */
+export interface VisualSetpieceDef {
+  /** Stable identifier (debug/QA). */
+  id: string;
+  /** The only M7.2 setpiece kind: a dark guardian silhouette with eyes. */
+  kind: 'guardian';
+  /** World-space center of the silhouette volume. */
+  center: Vec3;
+  /** Silhouette half extents (eyes derive from these — no extra fields). */
+  halfExtents: Vec3;
+}
+
 /** Visual theme values consumed by the rendering layer only. */
 export interface LevelTheme {
   background: number;
@@ -247,6 +292,17 @@ export interface LevelDefinition {
    * M3 portal transition semantics. Optional.
    */
   gravityOrbs?: GravityOrbDef[];
+  /**
+   * Teleport portals (M7.2), processed in ascending entryZ order.
+   * Optional; levels without teleports behave exactly as before.
+   */
+  teleportPortals?: TeleportPortalDef[];
+  /**
+   * Presentation-only decorative setpieces (M7.2). Renderer-only: never
+   * read by simulation, collision, replay, or the level fingerprint.
+   * Absent = no setpieces.
+   */
+  visualSetpieces?: VisualSetpieceDef[];
   solids: LevelSolid[];
   hazards: LevelHazard[];
   theme: LevelTheme;

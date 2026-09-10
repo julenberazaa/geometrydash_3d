@@ -53,6 +53,10 @@ export interface FxConfig {
   gravitySpeed: number;
   gravityLife: number;
   gravityColor: number;
+  /** M7.2 teleport exit-expansion burst (violet spatial energy). */
+  teleportCount: number;
+  teleportLife: number;
+  teleportColor: number;
   speedCount: number;
   speedLife: number;
   padCount: number;
@@ -209,6 +213,9 @@ export const PRODUCTION_THEME: ProductionTheme = {
     gravitySpeed: 7,
     gravityLife: 0.6,
     gravityColor: 0x4fc3ff,
+    teleportCount: 30,
+    teleportLife: 0.6,
+    teleportColor: 0xc77dff,
     speedCount: 24,
     speedLife: 0.55,
     padCount: 20,
@@ -288,5 +295,6 @@ export const validateProductionTheme = (
   fx.speedLife = clamp(fx.speedLife, 0.1, 1.2);
   fx.padLife = clamp(fx.padLife, 0.1, 1.2);
   fx.orbLife = clamp(fx.orbLife, 0.1, 1.2);
+  fx.teleportLife = clamp(fx.teleportLife, 0.1, 1.2);
   return merged;
 };

@@ -12,6 +12,7 @@
  *   - gravityMode (authoritative), speedMultiplier (authoritative)
  *   - elapsedSimTime, deathHoldTicksLeft (integer-tick timing authority)
  *   - usedInteractions: one-shot lifecycle bits per pad/orb id (level order)
+ *   - usedTeleports: one-shot lifecycle bits per teleport id (level order)
  *
  * EXCLUDED (with reason):
  *   - attempts: session counter, never read by gameplay
@@ -76,6 +77,9 @@ export const computeStateFingerprint = (sim: GameSimulation): string => {
   for (const pad of sim.level.jumpPads) h.writeBoolean(sim.isInteractionUsed(pad.id));
   for (const orb of sim.level.jumpOrbs) h.writeBoolean(sim.isInteractionUsed(orb.id));
   for (const orb of sim.level.gravityOrbs) h.writeBoolean(sim.isInteractionUsed(orb.id));
+  // M7.2 one-shot teleport lifecycle bits, in level order. Levels without
+  // teleports write zero bytes here — pre-M7.2 state hashes are unchanged.
+  for (const t of sim.level.teleportPortals) h.writeBoolean(sim.isTeleportUsed(t.id));
 
   return h.digest();
 };

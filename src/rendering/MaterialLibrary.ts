@@ -42,6 +42,9 @@ export class MaterialLibrary {
   public readonly padJump: THREE.MeshStandardMaterial;
   public readonly orbJump: THREE.MeshStandardMaterial;
   public readonly orbGravity: THREE.MeshStandardMaterial;
+  /** M7.2 teleport gate: violet spatial-energy frame + pale pane. */
+  public readonly teleportFrame: THREE.MeshStandardMaterial;
+  public readonly teleportPane: THREE.MeshBasicMaterial;
   public readonly interactionDim: THREE.MeshBasicMaterial;
   public readonly finishGate: THREE.MeshBasicMaterial;
 
@@ -174,6 +177,26 @@ export class MaterialLibrary {
     this.padJump = accent(theme.padJump);
     this.orbJump = accent(theme.orbJump);
     this.orbGravity = accent(theme.orbGravity);
+    // M7.2 teleport language: violet frame (below white-clip, crisp under
+    // bloom) + faint pale pane. Distinct from cyan/warm gravity portals,
+    // tier-colored speed gates and yellow/blue orbs by construction.
+    this.teleportFrame = track(
+      new THREE.MeshStandardMaterial({
+        color: 0xc77dff,
+        roughness: 0.4,
+        metalness: 0,
+        emissive: 0xc77dff,
+        emissiveIntensity: 1.2,
+      }),
+    );
+    this.teleportPane = track(
+      new THREE.MeshBasicMaterial({
+        color: 0xe8d8ff,
+        transparent: true,
+        opacity: 0.14,
+        side: THREE.DoubleSide,
+      }),
+    );
     this.interactionDim = track(new THREE.MeshBasicMaterial({ color: theme.interactionDim }));
     this.finishGate = track(
       new THREE.MeshBasicMaterial({

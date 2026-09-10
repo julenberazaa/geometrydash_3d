@@ -211,6 +211,8 @@ export class LevelView {
     }
 
     this.buildGravityPortals(level);
+    this.buildTeleportPortals(level);
+    this.buildSetpieces(level);
   }
 
   /**
@@ -260,6 +262,91 @@ export class LevelView {
       pane.scale.set(lateralHalf * 2, height, 0.02);
       pane.position.set(0, centerY, portal.z);
       this.group.add(pane);
+    }
+  }
+
+  /**
+   * M7.2 teleport visuals: a paired violet gate at the entry plane and at
+   * the exit position — same language both ends (one mechanic, one look),
+   * visually distinct from cyan/warm gravity portals, tier-colored speed
+   * gates and yellow/blue orbs. Purely presentational: activation lives in
+   * the simulation (entry-plane crossing), never here. Shared unit-box
+   * geometry + the two shared teleport materials; zero per-frame work.
+   *
+   * The exit gate is deliberately smaller (a doorway, not a wall): it marks
+   * the re-entry point without reading as a new obstacle.
+   */
+  private buildTeleportPortals(level: LoadedLevel): void {
+    if (level.teleportPortals.length === 0) return;
+    const frameMat = this.library.teleportFrame;
+    const paneMat = this.library.teleportPane;
+    const unitBox = this.library.unitBox;
+    const lanes = level.laneCenters;
+    const lateralHalf = Math.max(Math.abs(lanes[0] ?? 0), Math.abs(lanes[lanes.length - 1] ?? 0)) + 1.6;
+
+    const buildGate = (x: number, y: number, z: number, halfW: number, halfH: number): void => {
+      for (const sx of [-1, 1]) {
+        const post = new THREE.Mesh(unitBox, frameMat);
+        post.scale.set(0.16, halfH * 2, 0.16);
+        post.position.set(x + sx * halfW, y, z);
+        this.group.add(post);
+      }
+      for (const sy of [-1, 1]) {
+        const bar = new THREE.Mesh(unitBox, frameMat);
+        bar.scale.set(halfW * 2, 0.16, 0.16);
+        bar.position.set(x, y + sy * halfH, z);
+        this.group.add(bar);
+      }
+      const pane = new THREE.Mesh(unitBox, paneMat);
+      pane.scale.set(halfW * 2, halfH * 2, 0.02);
+      pane.position.set(x, y, z);
+      this.group.add(pane);
+    };
+
+    for (const portal of level.teleportPortals) {
+      // Entry: full-route gateway centered on the corridor (floor band).
+      buildGate(0, 2.6, portal.entryZ, lateralHalf, 3.2);
+      // Exit: compact doorway at the authored destination.
+      buildGate(portal.exit.x, portal.exit.y, portal.exit.z, 1.7, 1.7);
+    }
+  }
+
+  /**
+   * M7.2 presentation setpieces (monster-like, NO gameplay): static dark
+   * silhouettes with glowing eyes, built from level data with shared
+   * library meshes/materials only (dark route body + warm hazard eyes +
+   * shared sphere/box geometries — zero new materials, zero new
+   * geometries). No collision, no AI, no movement, no trigger: the
+   * simulation never reads them. Setpieces live outside the route
+   * corridor so they can never read as landable geometry.
+   */
+  private buildSetpieces(level: LoadedLevel): void {
+    const setpieces = level.def.visualSetpieces ?? [];
+    if (setpieces.length === 0) return;
+    const unitBox = this.library.unitBox;
+    const sphere = this.library.orbSphere;
+    for (const piece of setpieces) {
+      // Only 'guardian' exists in M7.2 (the kind field reserves the
+      // vocabulary for future setpieces without changing the renderer).
+      const body = new THREE.Mesh(unitBox, this.library.routeBody);
+      body.scale.set(piece.halfExtents.x * 2, piece.halfExtents.y * 2, piece.halfExtents.z * 2);
+      body.position.set(piece.center.x, piece.center.y, piece.center.z);
+      this.group.add(body);
+      // Two glowing eyes on the corridor-facing side, derived from the
+      // silhouette extents (no extra data fields): symmetrically offset,
+      // riding proud of the front face so they read at distance.
+      const eyeR = Math.min(piece.halfExtents.x, piece.halfExtents.y) * 0.22;
+      const frontZ = piece.center.z - piece.halfExtents.z - 0.2;
+      for (const sx of [-1, 1]) {
+        const eye = new THREE.Mesh(sphere, this.library.hazard);
+        eye.scale.setScalar(Math.max(0.4, eyeR / 0.42));
+        eye.position.set(
+          piece.center.x + sx * piece.halfExtents.x * 0.35,
+          piece.center.y + piece.halfExtents.y * 0.3,
+          frontZ,
+        );
+        this.group.add(eye);
+      }
     }
   }
 

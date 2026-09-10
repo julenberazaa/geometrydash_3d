@@ -96,7 +96,9 @@ declare global {
       activeParticles: () => number;
       trailSamples: () => number;
       activeStreaks: () => number;
-      fxCounters: () => { jump: number; landing: number; gravity: number; speed: number; pad: number; jumpOrb: number; gravityOrb: number };
+      fxCounters: () => { jump: number; landing: number; gravity: number; speed: number; pad: number; jumpOrb: number; gravityOrb: number; teleport: number };
+      teleportEventCount: () => number;
+      lastTeleportId: () => string | null;
       lastLandingIntensity: () => number;
       fxResets: () => number;
       burstActive: () => boolean;
@@ -205,6 +207,9 @@ window.__gd3d = {
   trailSamples: () => game['rendererHost'].trailSamples,
   activeStreaks: () => game['rendererHost'].activeStreaks,
   fxCounters: () => ({ ...game['rendererHost'].fxCounters }),
+  // M7.2 teleport observability (presentation only).
+  teleportEventCount: () => game['simulation'].teleportEventCount,
+  lastTeleportId: () => game['simulation'].lastTeleportId,
   lastLandingIntensity: () => game['rendererHost'].lastLandingIntensity,
   fxResets: () => game['rendererHost'].fxResets,
   burstActive: () => game['rendererHost'].deathBurstActive,

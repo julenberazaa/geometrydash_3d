@@ -65,6 +65,9 @@ export interface VfxSimView {
     readonly y: number;
     readonly z: number;
   };
+  /** M7.2 teleport edge + exit anchor (exit-expansion burst). */
+  readonly teleportEventCount: number;
+  readonly lastTeleport: Readonly<{ x: number; y: number; z: number }>;
 }
 
 /** Compile-time proof that the real sim satisfies the view (no drift). */
@@ -81,6 +84,7 @@ export interface FxCounters {
   pad: number;
   jumpOrb: number;
   gravityOrb: number;
+  teleport: number;
 }
 
 /** Teleport/clear distance — mirrors the RendererHost camera-snap edge. */
@@ -145,6 +149,7 @@ export class VfxSystem {
   private lastPortalCount = 0;
   private lastSpeedCount = 0;
   private lastEventCount = 0;
+  private lastTeleportCount = 0;
   private readonly lastRenderPos = { x: 0, y: 0, z: 0 };
   private hasRenderPos = false;
   private readonly lastAirVel = { x: 0, y: 0, z: 0 };
@@ -152,7 +157,7 @@ export class VfxSystem {
 
   // --- QA observability ---
   private readonly counters: FxCounters = {
-    jump: 0, landing: 0, gravity: 0, speed: 0, pad: 0, jumpOrb: 0, gravityOrb: 0,
+    jump: 0, landing: 0, gravity: 0, speed: 0, pad: 0, jumpOrb: 0, gravityOrb: 0, teleport: 0,
   };
   /** Monotonic clear counter: +1 per clearAll (attempt/death/teleport/fx-off
    *  reset). Browser QA pairs it with the attempts edge to prove the live
@@ -305,9 +310,19 @@ export class VfxSystem {
         Math.abs(renderPos.y - this.lastRenderPos.y) +
         Math.abs(renderPos.z - this.lastRenderPos.z) >
         TELEPORT_CLEAR_DISTANCE;
+    // M7.2 teleport exit-expansion: the discontinuity clear above would
+    // otherwise consume the teleport edge before it can emit. Fire the exit
+    // burst AFTER the wipe (no trail line across the gap) at the sim's
+    // destination anchor.
+    const teleportFired = sim.teleportEventCount !== this.lastTeleportCount;
     if (newAttempt || died || teleported) {
       this.clearAll();
       this.syncEdges(sim, renderPos);
+      // (fx-off returns through the early sync branch above, so reaching
+      // here implies enabled — no redundant flag check.)
+      if (teleportFired && sim.status === 'running') {
+        this.fireTeleportBurst(sim);
+      }
       this.lastGrounded = sim.player.grounded;
       // Death still integrates one frame so in-flight sparks finish instead
       // of popping — but the trail is already gone (cleared above) and
@@ -356,6 +371,15 @@ export class VfxSystem {
     this.pendingJump = false;
   }
 
+  /** M7.2 exit-expansion burst at the destination anchor (violet energy). */
+  private fireTeleportBurst(sim: VfxSimView): void {
+    const fx = this.theme.fx;
+    const anchor = { x: sim.lastTeleport.x, y: sim.lastTeleport.y, z: sim.lastTeleport.z };
+    this.spawnBurst(anchor, fx.teleportCount, fx.teleportColor, 7, fx.teleportLife, 0, 0, 1, 1.6, 0.6);
+    this.streakSpike = Math.max(this.streakSpike, 0.5);
+    this.counters.teleport += 1;
+  }
+
   private syncEdges(sim: VfxSimView, renderPos: Readonly<{ x: number; y: number; z: number }>): void {
     this.lastAttempts = sim.attempts;
     this.lastDeathId = sim.deathId;
@@ -363,6 +387,7 @@ export class VfxSystem {
     this.lastPortalCount = sim.portalTransitionCount;
     this.lastSpeedCount = sim.speedPortalCount;
     this.lastEventCount = sim.interactionEventCount;
+    this.lastTeleportCount = sim.teleportEventCount;
     this.lastRenderPos.x = renderPos.x;
     this.lastRenderPos.y = renderPos.y;
     this.lastRenderPos.z = renderPos.z;
@@ -428,6 +453,13 @@ export class VfxSystem {
       );
       this.streakSpike = 1;
       this.counters.speed += 1;
+    }
+
+    // Teleport exit-expansion for short hops that never trip the
+    // discontinuity clear above (long jumps are handled at the clear edge
+    // so the burst fires after the wipe, never before it).
+    if (sim.teleportEventCount !== this.lastTeleportCount) {
+      this.fireTeleportBurst(sim);
     }
 
     // Pad/orb activations from the sim's interaction edge. Same-frame

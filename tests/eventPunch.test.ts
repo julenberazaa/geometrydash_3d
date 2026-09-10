@@ -85,6 +85,19 @@ describe('eventPunch envelope', () => {
     updatePunch(punch, -1); // defensive: negative dt never charges
     expect(combinedPunchEnergy(punch)).toBe(peak);
   });
+
+  it('teleport punches violet at full peak and wins color ties', () => {
+    const punch = makeEventPunchState();
+    triggerPunch(punch, 'teleport');
+    expect(combinedPunchEnergy(punch)).toBe(1);
+    expect(dominantPunchColor(punch)).toBe(0xc77dff);
+    // A simultaneous gravity tie still resolves to the teleport tint.
+    triggerPunch(punch, 'gravity');
+    expect(dominantPunchColor(punch)).toBe(0xc77dff);
+    // Decays back to rest like every other family.
+    updatePunch(punch, 10);
+    expect(combinedPunchEnergy(punch)).toBe(0);
+  });
 });
 
 describe('VfxSystem surface-contact emission', () => {
@@ -155,7 +168,7 @@ describe('VfxSystem surface-contact emission', () => {
     runFrames(vfx, sim, 120);
     expect(vfx.contactSamples).toBeGreaterThan(0); // skid present...
     expect(vfx.countersSnapshot).toEqual({
-      jump: 0, landing: 0, gravity: 0, speed: 0, pad: 0, jumpOrb: 0, gravityOrb: 0,
+      jump: 0, landing: 0, gravity: 0, speed: 0, pad: 0, jumpOrb: 0, gravityOrb: 0, teleport: 0,
     });
     vfx.dispose();
   });
@@ -167,7 +180,7 @@ describe('M6C2 emission budget', () => {
     // One of everything in the same frame (impossible in practice — the
     // sim serializes events — but the bound must hold regardless).
     const worst = fx.jumpCount + fx.landingMax + fx.gravityCount +
-      fx.speedCount + fx.padCount + fx.orbCount;
+      fx.speedCount + fx.padCount + fx.orbCount + fx.teleportCount;
     expect(worst).toBeLessThanOrEqual(fx.burstMax);
   });
 

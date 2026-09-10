@@ -8,10 +8,13 @@
  *   start, startLaneIndex, laneCenters, baseForwardSpeed,
  *   startSpeedMultiplier, finishZ, deathY, deathYMax, startGravityMode,
  *   gravityPortals, speedPortals, jumpPads, jumpOrbs, gravityOrbs,
+ *   teleportPortals (M7.2, only when present — absent writes zero bytes),
  *   solids, hazards, id.
  *
  * Explicitly EXCLUDED (not gameplay-relevant):
- *   displayName (UX label) and hazard `visual` hints + theme (renderer-only).
+ *   displayName (UX label), hazard `visual` + `mount` hints, teleport
+ *   `style`, visualSetpieces, theme, visualSequence, rhythmCues
+ *   (all renderer-only).
  * Changing renderer-only data therefore keeps old replays compatible.
  */
 
@@ -25,6 +28,7 @@ import type {
   LevelHazard,
   LevelSolid,
   SpeedPortalDef,
+  TeleportPortalDef,
 } from '../level/levelDefinition';
 interface Vec3Like {
   readonly x: number;
@@ -71,6 +75,16 @@ const writeOrb = (h: DeterministicHasher, o: GravityOrbDef): void => {
 const writeJumpOrb = (h: DeterministicHasher, o: JumpOrbDef): void => {
   writeOrb(h, o);
   h.writeFloat64(o.impulse);
+};
+
+const writeTeleport = (h: DeterministicHasher, t: TeleportPortalDef): void => {
+  // Gameplay discontinuity: id + entry plane + exit + lane handoff.
+  // Presentation-only `style` is deliberately excluded (restyling a gate
+  // keeps old replays compatible — same pattern as hazard visual/mount).
+  h.writeString(t.id);
+  h.writeFloat64(t.entryZ);
+  writeVec3(h, t.exit);
+  h.writeInt32(t.exitLaneIndex);
 };
 
 const writeSolid = (h: DeterministicHasher, s: LevelSolid): void => {
@@ -128,6 +142,18 @@ export const computeLevelFingerprint = (def: LevelDefinition): string => {
   const gravityOrbs = def.gravityOrbs ?? [];
   h.writeInt32(gravityOrbs.length);
   for (const o of gravityOrbs) writeOrb(h, o);
+  // M7.2 teleport portals: gameplay discontinuity. Conditionally extended
+  // (bytes are written ONLY when teleports exist, behind a domain
+  // separator): levels without teleports hash byte-identically to before,
+  // so every pre-M7.2 replay stays compatible (golden fixture pinned).
+  const teleports = def.teleportPortals ?? [];
+  if (teleports.length > 0) {
+    h.writeString('teleports:v1');
+    h.writeInt32(teleports.length);
+    for (const t of teleports) writeTeleport(h, t);
+  }
+  // visualSetpieces: presentation-only, never fingerprinted (like theme /
+  // visualSequence / rhythmCues / hazard visual+mount / teleport style).
 
   h.writeInt32(def.solids.length);
   for (const s of def.solids) writeSolid(h, s);

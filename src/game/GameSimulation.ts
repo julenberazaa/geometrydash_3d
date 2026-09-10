@@ -21,7 +21,7 @@ import {
 } from '../collision/collider';
 import { loadLevel, computeProgress } from '../level/levelRuntime';
 import type { LoadedLevel } from '../level/levelRuntime';
-import type { LevelDefinition } from '../level/levelDefinition';
+import type { LevelDefinition, TeleportPortalDef } from '../level/levelDefinition';
 
 /**
  * Headless gameplay orchestration: the ENTIRE game simulates here.
@@ -40,12 +40,16 @@ import type { LevelDefinition } from '../level/levelDefinition';
  *      mutate a dead step; a killing step can never also mutate
  *      gravityMode / portalTransitionCount / lastPortalId — they stay
  *      pre-step, per the M3.3 closeout contract)
- *   6. passive interactions: jump pads (swept contact, one-shot per attempt)
- *   7. active interactions: jump orbs then gravity orbs (press edge inside
+ *   6. teleport portals (M7.2, entry-plane crossing, one-shot per attempt):
+ *      a spatial discontinuity — the skipped interval is never traversed,
+ *      so no interval portal fires; prevPosition is re-anchored at the
+ *      exit so the remaining steps below only see destination overlap.
+ *   7. passive interactions: jump pads (swept contact, one-shot per attempt)
+ *   8. active interactions: jump orbs then gravity orbs (press edge inside
  *      the swept activation window, one-shot per attempt)
- *   8. speed portal crossings (ascending Z) -> speed multiplier mutation
- *   9. gravity portal crossings (ascending Z) -> gravity transition
- *  10. finish detection
+ *   9. speed portal crossings (ascending Z) -> speed multiplier mutation
+ *  10. gravity portal crossings (ascending Z) -> gravity transition
+ *  11. finish detection
  * Death at any earlier point wins the step.
  */
 export type SimulationStatus = 'running' | 'dead' | 'finished';
@@ -132,6 +136,20 @@ export class GameSimulation {
   public speedPortalCount = 0;
   /** Id of the most recent interaction activation THIS attempt (debug/QA). */
   public lastInteractionId: string | null = null;
+  /**
+   * One-shot teleport lifecycle state (M7.2): portal ids already consumed
+   * this attempt. Pre-allocated once; cleared (never reallocated) by
+   * respawn().
+   */
+  private readonly usedTeleports = new Set<string>();
+  /** Monotonic count of teleport activations this session (VFX/punch edge). */
+  public teleportEventCount = 0;
+  /** Id of the most recent teleport activation THIS attempt (debug/QA). */
+  public lastTeleportId: string | null = null;
+  /** Exit anchor of the most recent teleport (VFX anchor, world space). */
+  public readonly lastTeleport: Vec3 = vec3();
+  /** True once a teleport has fired at least once this session. */
+  public hasTeleportEvent = false;
   /** Stable record of the most recent interaction activation (VFX anchor). */
   public readonly lastInteraction: InteractionEvent = { kind: 'pad', id: '', x: 0, y: 0, z: 0 };
   /** True once the most recent interaction record has been written at least once. */
@@ -231,6 +249,11 @@ export class GameSimulation {
   /** Whether an interaction id has already activated this attempt. */
   public isInteractionUsed(id: string): boolean {
     return this.usedInteractions.has(id);
+  }
+
+  /** Whether a teleport portal id has already fired this attempt. */
+  public isTeleportUsed(id: string): boolean {
+    return this.usedTeleports.has(id);
   }
 
   /** Progress [0..1] from real forward distance. */
@@ -362,7 +385,11 @@ export class GameSimulation {
       return;
     }
 
-    // 5. Passive interactions: jump pads (swept contact, one-shot/attempt).
+    // 5b. Teleport portals (M7.2): entry-plane crossing AFTER the lethal
+    //    checks (death wins the step) and BEFORE pads/orbs/portals, so the
+    //    destination overlap is what the remaining steps evaluate.
+    this.processTeleportPortals();
+    // 6. Passive interactions: jump pads (swept contact, one-shot/attempt).
     this.processJumpPads();
     // 6. Active interactions: jump orbs then gravity orbs (press edge inside
     //    the swept activation window, one-shot/attempt).
@@ -396,9 +423,11 @@ export class GameSimulation {
     this.gravityModeValue = this.level.startGravityMode;
     this.speedMultiplierValue = this.level.startSpeedMultiplier;
     this.usedInteractions.clear();
+    this.usedTeleports.clear();
     this.lastPortalId = null;
     this.lastSpeedPortalId = null;
     this.lastInteractionId = null;
+    this.lastTeleportId = null;
     copyVec3(this.prevPosition, this.player.position);
     this.deathHoldTicksLeft = 0;
     this.deathCause = null;
@@ -503,6 +532,51 @@ export class GameSimulation {
         this.registerInteraction('speedPortal', portal.id, 0, 0, portal.z);
       }
     }
+  }
+
+  /**
+   * Teleport portal processing (M7.2): deterministic forward entry-crossing
+   * on the swept step path (`prevZ < entryZ <= currentZ`), furthest crossed
+   * unused entry wins. ONE-SHOT per attempt (respawn re-arms); a lethal step
+   * never reaches this (update already returned). Semantics (pinned):
+   * - DISCONTINUITY: world position jumps to the authored exit; the skipped
+   *   interval is never interpreted as traversed — no gravity/speed portal
+   *   inside it fires (only portals crossed by real motion fire).
+   * - `prevPosition` is re-anchored at the exit, so the pad/orb/portal
+   *   steps below evaluate a zero-length destination path: only volumes
+   *   overlapping the exit itself can fire the same step.
+   * - Gravity mode and speed multiplier are UNCHANGED; lateral/forward
+   *   velocity is preserved (flow), vertical velocity is zeroed (clean
+   *   re-entry), lane intent is set to the authored `exitLaneIndex`, and
+   *   grounded/support is cleared (the next probe resolves it).
+   * - Crossing an already-used entry is a no-op (forward motion never
+   *   revisits a plane within an attempt anyway).
+   */
+  private processTeleportPortals(): void {
+    if (this.level.teleportPortals.length === 0) return;
+    const prevZ = this.prevPosition.z;
+    const currentZ = this.player.position.z;
+    let fired: TeleportPortalDef | null = null;
+    for (const portal of this.level.teleportPortals) {
+      if (this.usedTeleports.has(portal.id)) continue;
+      if (prevZ < portal.entryZ && currentZ >= portal.entryZ) fired = portal;
+    }
+    if (fired === null) return;
+    this.usedTeleports.add(fired.id);
+    this.player.position.x = fired.exit.x;
+    this.player.position.y = fired.exit.y;
+    this.player.position.z = fired.exit.z;
+    copyVec3(this.prevPosition, this.player.position);
+    this.player.velocity.y = 0;
+    this.player.targetLaneIndex = fired.exitLaneIndex;
+    this.player.grounded = false;
+    this.player.supportColliderId = null;
+    this.lastTeleportId = fired.id;
+    this.lastTeleport.x = fired.exit.x;
+    this.lastTeleport.y = fired.exit.y;
+    this.lastTeleport.z = fired.exit.z;
+    this.hasTeleportEvent = true;
+    this.teleportEventCount += 1;
   }
 
   /**

@@ -98,6 +98,7 @@ export class RendererHost {
   private lastPunchPortal = 0;
   private lastPunchSpeed = 0;
   private lastPunchEvents = 0;
+  private lastPunchTeleport = 0;
   /** Whether a punch overlay is currently applied (rest-restore edge). */
   private punchApplied = false;
   private readonly levelView: LevelView;
@@ -181,6 +182,7 @@ export class RendererHost {
     this.lastPunchPortal = simulation.portalTransitionCount;
     this.lastPunchSpeed = simulation.speedPortalCount;
     this.lastPunchEvents = simulation.interactionEventCount;
+    this.lastPunchTeleport = simulation.teleportEventCount;
 
     this.levelView = new LevelView(simulation.level, this.library);
     this.scene.add(this.levelView.group);
@@ -415,7 +417,7 @@ export class RendererHost {
   }
 
   /** Cumulative M6B emission counters (QA observability). */
-  public get fxCounters(): { jump: number; landing: number; gravity: number; speed: number; pad: number; jumpOrb: number; gravityOrb: number } {
+  public get fxCounters(): { jump: number; landing: number; gravity: number; speed: number; pad: number; jumpOrb: number; gravityOrb: number; teleport: number } {
     return this.vfx.countersSnapshot;
   }
 
@@ -471,6 +473,9 @@ export class RendererHost {
         const tierColor = this.theme.speedTierColors[String(sim.speedMultiplier)] ?? 0xffffff;
         triggerPunch(this.punch, 'speed', tierColor);
       }
+      if (sim.teleportEventCount !== this.lastPunchTeleport) {
+        triggerPunch(this.punch, 'teleport');
+      }
       const events = sim.interactionEventCount - this.lastPunchEvents;
       if (events > 0) {
         const kind = sim.lastInteraction.kind;
@@ -483,6 +488,7 @@ export class RendererHost {
     this.lastPunchPortal = sim.portalTransitionCount;
     this.lastPunchSpeed = sim.speedPortalCount;
     this.lastPunchEvents = sim.interactionEventCount;
+    this.lastPunchTeleport = sim.teleportEventCount;
     updatePunch(this.punch, renderDtSeconds);
   }
 

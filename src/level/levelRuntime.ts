@@ -6,6 +6,7 @@ import type {
   JumpPadDef,
   LevelDefinition,
   SpeedPortalDef,
+  TeleportPortalDef,
 } from './levelDefinition';
 import type { GravityMode } from '../player/playerState';
 import { CollisionWorld } from '../collision/CollisionWorld';
@@ -33,6 +34,8 @@ export interface LoadedLevel {
   jumpOrbs: readonly JumpOrbDef[];
   /** Gravity orbs in level definition order (active press interactions). */
   gravityOrbs: readonly GravityOrbDef[];
+  /** Teleport portals sorted by ascending entryZ (discontinuity order). */
+  teleportPortals: readonly TeleportPortalDef[];
 }
 
 /** Build runtime collision data from a declarative level. Pure: no THREE, no DOM. */
@@ -61,6 +64,7 @@ export const loadLevel = (def: LevelDefinition): LoadedLevel => {
 
   const gravityPortals = [...(def.gravityPortals ?? [])].sort((a, b) => a.z - b.z);
   const speedPortals = [...(def.speedPortals ?? [])].sort((a, b) => a.z - b.z);
+  const teleportPortals = [...(def.teleportPortals ?? [])].sort((a, b) => a.entryZ - b.entryZ);
 
   return {
     def,
@@ -75,6 +79,7 @@ export const loadLevel = (def: LevelDefinition): LoadedLevel => {
     jumpPads: def.jumpPads ?? [],
     jumpOrbs: def.jumpOrbs ?? [],
     gravityOrbs: def.gravityOrbs ?? [],
+    teleportPortals: teleportPortals,
   };
 };
 

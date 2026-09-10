@@ -27,6 +27,8 @@ export interface MutableSimView {
   speedPortalCount: number;
   interactionEventCount: number;
   lastInteraction: { kind: InteractionKind; x: number; y: number; z: number };
+  teleportEventCount: number;
+  lastTeleport: MutableVec;
 }
 
 export const floorFrame = (): MutableSimView['gameplayFrame'] => ({
@@ -54,6 +56,8 @@ export const makeSimView = (): MutableSimView => ({
   speedPortalCount: 0,
   interactionEventCount: 0,
   lastInteraction: { kind: 'pad', x: 0, y: 0, z: 0 },
+  teleportEventCount: 0,
+  lastTeleport: { x: 0, y: 0, z: 0 },
 });
 
 export const DT = 1 / 60;
