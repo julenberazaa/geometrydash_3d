@@ -68,8 +68,8 @@ precision/difficulty/spectacle rework engineering-complete on the frozen
 controller (narrow islands + airborne transfers, six visual scenes, fixed
 ceiling spikes, 20 beat-ready cues, no audio yet): deterministic real-input
 finish tick 6190 (51.583 s) + verified replay, 285/285 tests, M7.1 browser
-QA 45/45 green — HUMAN FUN RE-TEST GATE OPEN (automation proves possible,
-never fun; Ship remains blocked until the slice is genuinely fun). M6D
+QA 45/45 green — M7.1 HUMAN FUN RE-TEST: APPROVED (2026-09-10;
+`vertical-slice-01` preserved as the Cube reference level). M6D
 real-GPU closeout intentionally pending (M7.1 is its workload).
 
 ## Setup
@@ -167,7 +167,7 @@ precision/difficulty/spectacle rework engineering-complete
 (`?level=vertical-slice-01`, narrow islands + airborne transfers, six visual
 scenes, fixed ceiling spikes, 20 beat-ready cues, deterministic real-input
 finish tick 6190 / 51.583 s + verified replay, 285/285 tests, M7.1 browser
-QA 45/45 green) — HUMAN FUN RE-TEST GATE OPEN — plus truthful M6 status: human played the
+QA 45/45 green) — M7.1 HUMAN FUN RE-TEST: APPROVED (2026-09-10) — plus truthful M6 status: human played the
 M6 presentation ("quite good") and chose to proceed to M7 (presentation
 direction approved to proceed; M6D real-GPU closeout intentionally pending
 with M7 as its workload). Spec: `specs/milestones/M7_CUBE_VERTICAL_SLICE.md`.

@@ -308,7 +308,10 @@ playtest.
 
 ## M7.1 STATUS
 
-M7.1: ENGINEERING COMPLETE / HUMAN FUN RE-TEST GATE OPEN.
+M7.1: HUMAN FUN RE-TEST APPROVED (2026-09-10 — the human played the
+slice and said "esta muy bien, apruebo"). `vertical-slice-01` is the
+approved Cube reference level and is preserved unchanged. The approved
+Cube controller remains frozen.
 
 Automated: 285/285 tests green (`npm run verify`: typecheck + lint + tests +
 build) — 256 pre-M7.1 + 29 new (6 spike-orientation, 32 level incl. topology

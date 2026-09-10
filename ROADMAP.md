@@ -303,7 +303,7 @@ paths, visuals too conservative) plus confirmed a ceiling-spike orientation
 bug. The M7 engineering record below stands as built; the M7 LEVEL is not
 final. See M7.1.
 
-## M7.1 — Precision, difficulty & spectacle rework: ENGINEERING COMPLETE / HUMAN FUN RE-TEST GATE OPEN
+## M7.1 — Precision, difficulty & spectacle rework: HUMAN FUN RE-TEST APPROVED
 
 Rebuilds the vertical slice on the frozen Cube controller (zero tuning
 changes): single-lane islands / two-lane platforms / narrow bridges /
@@ -317,8 +317,11 @@ future music mapping (NO audio ships). Deterministic real-input route
 finishes tick 6190 (51.583 s), 0 deaths, replay VERIFIED. 285/285 automated
 tests, M7.1 browser QA 45/45 green with zero console/page errors, golden
 replay intact. Spec: `specs/milestones/M7_CUBE_VERTICAL_SLICE.md` (M7.1
-section). Ship remains BLOCKED until the human confirms the Cube level is
-genuinely fun.
+section). M7.1 HUMAN FUN RE-TEST: APPROVED (2026-09-10 — the human played
+the slice and said "esta muy bien, apruebo"). `vertical-slice-01` is the
+approved Cube reference level and must be preserved. The approved Cube
+controller remains frozen. Ship remains blocked until further milestones
+land (see M7.2).
 
 Future direction after a successful M7.1 (conceptual, not started): M6D
 real-GPU performance closeout (M7.1 is its workload) → music/rhythm
