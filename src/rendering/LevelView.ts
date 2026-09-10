@@ -304,8 +304,22 @@ export class LevelView {
     };
 
     for (const portal of level.teleportPortals) {
-      // Entry: full-route gateway centered on the corridor (floor band).
-      buildGate(0, 2.6, portal.entryZ, lateralHalf, 3.2);
+      if (portal.style === 'maw') {
+        // Maw entry: a large vertical ring (the guardian's mouth) centered
+        // on the corridor, reusing the shared halo geometry + teleport
+        // frame material — no new resources. The pane fills the mouth.
+        const ring = new THREE.Mesh(this.library.orbHalo, frameMat);
+        ring.scale.setScalar(4.8); // halo radius 0.62 -> ~3 u mouth
+        ring.position.set(0, 2.6, portal.entryZ);
+        this.group.add(ring);
+        const mouth = new THREE.Mesh(unitBox, paneMat);
+        mouth.scale.set(4.6, 4.6, 0.02);
+        mouth.position.set(0, 2.6, portal.entryZ);
+        this.group.add(mouth);
+      } else {
+        // Entry: full-route gateway centered on the corridor (floor band).
+        buildGate(0, 2.6, portal.entryZ, lateralHalf, 3.2);
+      }
       // Exit: compact doorway at the authored destination.
       buildGate(portal.exit.x, portal.exit.y, portal.exit.z, 1.7, 1.7);
     }
