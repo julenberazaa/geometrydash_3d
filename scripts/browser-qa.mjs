@@ -3522,25 +3522,39 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   // and the flip roll while the sim lives on underneath — flags recorded at
   // event time in-page survive any stall and read back whenever CDP
   // unblocks. The crossing step flips gravity AND fires the punch together.
+  // Watchers re-arm on death backtrack and clear on forward progress ONLY
+  // (never on !running — a death-hold must not suicide them while their
+  // drivers retry). Monotonic counters are baselined at arm time so a
+  // respawn can never record a stale zero-energy peak.
   const m71armPortalWatcher = async () => {
     await page.evaluate(() => {
+      const g0 = window.__gd3d;
+      window.__m71flipBase = g0.portalTransitionCount();
       window.__m71portalSig = null;
       window.__m71flipInfo = null;
       window.__m71flipPeak = null;
+      window.__m71flipLastZ = -100;
       if (window.__m71flipWatch) clearInterval(window.__m71flipWatch);
       window.__m71flipWatch = setInterval(() => {
         const g = window.__gd3d;
         const z = g.playerPosition().z;
+        if (z < window.__m71flipLastZ - 10) {
+          window.__m71flipBase = g.portalTransitionCount();
+          window.__m71portalSig = null;
+          window.__m71flipInfo = null;
+          window.__m71flipPeak = null;
+        }
+        window.__m71flipLastZ = z;
         if (window.__m71portalSig === null && g.status() === 'running' && z >= 163) {
           window.__m71portalSig = { z };
         }
-        if (g.portalTransitionCount() >= 1 && window.__m71flipInfo === null) {
+        if (g.portalTransitionCount() > window.__m71flipBase && window.__m71flipInfo === null) {
           window.__m71flipInfo = { z, mode: g.gravityMode(), section: g.visualSectionId() };
         }
-        if (g.portalTransitionCount() >= 1 && window.__m71flipPeak === null) {
+        if (g.portalTransitionCount() > window.__m71flipBase && window.__m71flipPeak === null) {
           window.__m71flipPeak = { energy: g.eventPunchEnergy(), color: g.eventPunchColor() };
         }
-        if (z > 200 || g.status() !== 'running') {
+        if (z > 200) {
           clearInterval(window.__m71flipWatch);
           window.__m71flipWatch = null;
         }
@@ -3663,14 +3677,27 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   // Narrow-ceiling proof: the C4 bridge is single-lane — placing the Cube
   // beside it (over the corridor void) must fall upward, while a full-width
   // slab would have carried it.
-  await m71restage(0, 5.0, 282);
-  await page.evaluate(() => window.__gd3d.debugTeleport(2.6, 5.0, 282));
+  // Staging is verified (a swallowed teleport under load must not silently
+  // pass as survival): the probe must read back near the slab, else retry.
+  let m71narrowStaged = false;
+  for (let m71stageTry = 0; m71stageTry < 2 && !m71narrowStaged; m71stageTry++) {
+    await m71restage(0, 5.0, 282);
+    await page.evaluate(() => window.__gd3d.debugTeleport(2.6, 5.0, 282));
+    const tStage = Date.now();
+    for (;;) {
+      const s = await m71probe();
+      if (s.status === 'running' && s.z > 275 && s.z < 290) { m71narrowStaged = true; break; }
+      if (s.status === 'dead' || Date.now() - tStage > 15000) break;
+      await page.waitForTimeout(100);
+    }
+  }
   const m71ceilNarrowDeath = await (async () => {
+    if (!m71narrowStaged) return false;
     const t0 = Date.now();
     for (;;) {
       const s = await m71probe();
       if (s.status === 'dead') return true;
-      if (Date.now() - t0 > 30000) return false;
+      if (Date.now() - t0 > 45000) return false;
       await page.waitForTimeout(40);
     }
   })();
@@ -3726,13 +3753,17 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   // load — the same peak-watcher pattern as the gravity flip).
   await page.evaluate(() => {
     window.__m71padPeak = null;
+    window.__m71padLastZ = -100;
     if (window.__m71padWatch) clearInterval(window.__m71padWatch);
     window.__m71padWatch = setInterval(() => {
       const g = window.__gd3d;
+      const z = g.playerPosition().z;
+      if (z < window.__m71padLastZ - 10) window.__m71padPeak = null; // respawned: re-arm
+      window.__m71padLastZ = z;
       if (g.isInteractionUsed('vs-pad-floor') && window.__m71padPeak === null) {
         window.__m71padPeak = { energy: g.eventPunchEnergy(), color: g.eventPunchColor() };
       }
-      if (g.playerPosition().z > 340 || g.status() !== 'running') {
+      if (z > 340) {
         clearInterval(window.__m71padWatch);
         window.__m71padWatch = null;
       }
@@ -3768,13 +3799,17 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   // alone misses the peak under headless load (pad/flip precedent).
   await page.evaluate(() => {
     window.__m71orbPeak = null;
+    window.__m71orbLastZ = -100;
     if (window.__m71orbWatch) clearInterval(window.__m71orbWatch);
     window.__m71orbWatch = setInterval(() => {
       const g = window.__gd3d;
+      const z = g.playerPosition().z;
+      if (z < window.__m71orbLastZ - 10) window.__m71orbPeak = null; // respawned: re-arm
+      window.__m71orbLastZ = z;
       if (g.isInteractionUsed('vs-orb-jump') && window.__m71orbPeak === null) {
         window.__m71orbPeak = { energy: g.eventPunchEnergy(), color: g.eventPunchColor() };
       }
-      if (g.playerPosition().z > 368 || g.status() !== 'running') {
+      if (g.playerPosition().z > 368) {
         clearInterval(window.__m71orbWatch);
         window.__m71orbWatch = null;
       }
