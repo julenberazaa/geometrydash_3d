@@ -69,7 +69,11 @@ controller (narrow islands + airborne transfers, six visual scenes, fixed
 ceiling spikes, 20 beat-ready cues, no audio yet): deterministic real-input
 finish tick 6190 (51.583 s) + verified replay, 285/285 tests, M7.1 browser
 QA 45/45 green — M7.1 HUMAN FUN RE-TEST: APPROVED (2026-09-10;
-`vertical-slice-01` preserved as the Cube reference level). M6D
+`vertical-slice-01` preserved as the Cube reference level). M7.2 advanced
+Cube expansion engineering-complete (`?level=advanced-cube-01`: harder
+62.125 s Cube level with LOW/MID/HIGH bands, one teleport portal pair,
+guardian setpiece, eight visual scenes, verified replay, 349/349 tests) —
+HUMAN ADVANCED-CUBE GATE OPEN. M6D
 real-GPU closeout intentionally pending (M7.1 is its workload).
 
 ## Setup

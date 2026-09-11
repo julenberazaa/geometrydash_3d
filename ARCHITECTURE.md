@@ -122,6 +122,10 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   `speedPortals` (id + crossing Z + multiplier tier), `jumpPads`
   (trigger volume + mount surface + explicit impulse), `jumpOrbs` /
   `gravityOrbs` (activation window AABBs, orbs add an impulse),
+  `teleportPortals?` (M7.2: id + entry Z + exit + exit lane; `style` is
+  presentation-only, never fingerprinted), `visualSetpieces?` (M7.2:
+  presentation-only decorative kind/center/extents — never gameplay, never
+  fingerprinted),
   solids, hazards (each with presentation-only `visual` + `mount`
   floor/ceiling hints — never gameplay, never fingerprinted), theme,
   `visualSequence?` (M6C1), `rhythmCues?` (M7.1 beat-ready markers —
@@ -132,7 +136,8 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   and the Z-sorted portal lists; `computeProgress` derives [0,1] progress
   from real forward distance. `LoadedLevel` also exposes the indexed
   interaction lists (`jumpPads`, `jumpOrbs`, `gravityOrbs`, Z-sorted
-  `speedPortals`) that `GameSimulation` processes.
+  `speedPortals`, entryZ-sorted `teleportPortals`) that `GameSimulation`
+  processes.
 - `testLevel01.ts`: controller test track (gaps ≤ 6.5 u, steps ≤ 1.7 u per
   jump limits; forced lane-change wall; spike weave; void gaps; finish gate)
   plus the appended M3 gravity section (z 176..278: Floor → portal up →
@@ -146,6 +151,13 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   logged reason (never silent substitution). `main.ts` selects content via
   `?level=<id>`. Adding a level = one data file + one registry entry + zero
   engine changes.
+- `advancedCube01.ts` (M7.2, `advanced-cube-01`): the HARD second
+  production Cube level — LOW/MID/HIGH floor bands + ceiling world,
+  fragmented islands, fast-fall gate, one paired teleport portal
+  (`ac-teleport-maw`, entry 514 → exit 634), one presentation-only
+  guardian setpiece, 8-section visual arc, 27 rhythm cues; scripted
+  real-input playthrough finishes at tick 7455 (62.125 s)
+  (`tests/helpers/advancedCube01Script.ts`).
 - `validationLevel02.ts` (M5, `validation-02`): the second-level
   architecture proof — different start lane (0), slower base speed
   (11 u/s), spike weave over all three safe lanes, plain gap, portal UP,
@@ -213,6 +225,18 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   (`padActivationCount`, `orbActivationCount`, `speedPortalCount`),
   `isInteractionUsed(id)`, `lastSpeedPortalId`/`lastInteractionId` (reset per
   attempt).
+  **Teleport portals (M7.2):** deterministic forward entry-crossing
+  (`prevZ < entryZ ≤ currentZ`, furthest unused entry wins), processed
+  AFTER the lethal checks (death wins the step) and BEFORE pads/orbs/
+  portals/finish. A spatial discontinuity: world position jumps to the
+  authored `exit`, `prevPosition` re-anchors there (the skipped interval is
+  never traversed — no interval portal fires), gravity mode and speed
+  multiplier unchanged, lateral/forward velocity preserved, vertical
+  velocity zeroed, lane intent set to `exitLaneIndex`, grounded/support
+  cleared. Lifecycle: one-shot per teleport id per attempt
+  (`usedTeleports` set, cleared by `respawn()`). Observability: monotonic
+  `teleportEventCount` + exit anchor `lastTeleport` (VFX/punch edge),
+  `isTeleportUsed(id)`, `lastTeleportId` (reset per attempt).
 - `Game`: composition root only (input → sim → renderer → UI). No gameplay
   logic. Owns pause, FPS EMA, debug toggles. M5 replay wiring (still no
   gameplay logic): owns the `ReplayCoordinator` and drives the per-tick
@@ -238,15 +262,18 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   `.toFixed()`, never timestamps.
 - `levelFingerprint.ts`: canonical gameplay-content hash (id, start, lanes,
   speeds, finish/void bounds, start gravity, all portals/pads/orbs,
-  solids, hazards; definition order is authoritative). Renderer-only
-  `displayName`/`theme`/hazard-`visual` excluded, so restyling keeps old
-  replays compatible.
+  teleport gameplay (M7.2, conditionally extended — zero bytes when absent,
+  so pre-M7.2 fingerprints are byte-identical), solids, hazards; definition
+  order is authoritative). Renderer-only `displayName`/`theme`/hazard-
+  `visual`+`mount`/teleport-`style`/setpieces/`visualSequence`/`rhythmCues`
+  excluded, so restyling keeps old replays compatible.
 - `stateFingerprint.ts`: per-tick authoritative-state hash (status,
   deathCause, player position/velocity, grounded, lane intent/count,
   support id, gravity mode, speed multiplier, elapsed time, death-hold
-  ticks, used-interaction bits in level order). Session/debug-only records
-  excluded with documented reason (attempts, prevPosition, portal/debug ids,
-  counters, death anchors, derived progress).
+  ticks, used-interaction bits + used-teleport bits in level order).
+  Session/debug-only records excluded with documented reason (attempts,
+  prevPosition, portal/debug ids, counters, death anchors incl. the
+  teleport anchor, derived progress).
 - `replayFormat.ts`: versioned `ReplayV1` container (`schemaVersion` 1,
   `rulesetVersion` 1 — a deliberate compatibility constant, never
   auto-derived — `simulationHz`, `levelId`, `levelFingerprint`,
@@ -359,12 +386,17 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   re-clamped in-contract, exposure nudge clamped 0.5..2, environment flash
   toward the family tint, all absolute writes, exact rest-restore).
   Trigger-owned: `?triggers=off` holds it at rest. Nothing punch-related
-  in replays (energy derives from replayed trajectory).
+  in replays (energy derives from replayed trajectory). M7.2 adds the
+  `teleport` family (violet, peak 1.0, wins color ties — the rarest
+  signature event); the RendererHost feeds it from the sim's
+  `teleportEventCount` edge.
 - `VfxSystem` (`src/rendering/`, M6B) — the ONE presentation owner for
   motion language + gameplay juice (Cube trail, jump/landing bursts,
   gravity-transition pulses, speed streaks + tier pulses, pad/orb bursts,
   M6C2 surface-contact skid sharing the trail buffer + gravity/pad streak
-  kicks + amplified event counts within the same bounded pools).
+  kicks + amplified event counts within the same bounded pools + M7.2
+  teleport exit-expansion bursts (violet, at the `lastTeleport` anchor,
+  fired AFTER the discontinuity trail wipe) + teleport streak kick).
   Owned by `RendererHost` (one scene group: trail Points + burst Points +
   one streak InstancedMesh = 3 draw calls; `?fx=off` hides it). Observes
   pre-existing sim seams only (bridged `onJump`, grounded edge,
@@ -393,7 +425,11 @@ fixed-tick PHYSICAL input tape plus verification evidence.
 - `LevelView` builds the M3 gravity portal visuals from level data (shared
   unit box geometry, ONE shared material per direction — cyan up / warm down;
   translucent pane + neon frame, zero per-frame work). Portal triggering is
-  simulation-only; the visuals are pure presentation.
+  simulation-only; the visuals are pure presentation. M7.2 adds paired
+  teleport gates (violet frame + pale pane; `maw`-style entries render as a
+  mouth ring from the shared halo geometry) and presentation-only guardian
+  setpieces (dark body + warm eyes, shared meshes/materials only) — same
+  ownership, same zero-per-frame-work contract; the sim never reads them.
 - `InteractionView` (M4, owned by `RendererHost`): builds pad/orb/speed-portal
   visuals from level data (library box/sphere/halo/chevron geometries,
   library emissive accent materials, per-tier cached speed materials) plus the
@@ -601,6 +637,8 @@ fixed-tick PHYSICAL input tape plus verification evidence.
 | 36-tick death hold; respawn fully resets (incl. gravity mode) | `death` tick + reset tests + `gravity` tests |
 | Gravity portals: exactly once per attempt, no teleport, support cleared, death wins the step | `gravity` portal/precedence tests + browser QA |
 | Lethal checks precede ALL portal + interaction mutations (M3.3 invariant, extended in M4) | `interactions` ordering tests + `gravity` precedence tests |
+| Teleport portals: exactly once per attempt, lethal wins the step, skipped interval never fires, exit velocity/lane/support semantics pinned, gameplay fingerprinted (style excluded), ReplayV1 unchanged | `teleport` tests + `advancedCube01` teleport integration tests + browser QA m72 section |
+| Presentation setpieces: no collision/AI/movement/trigger, fingerprint-excluded, never landable-looking | `advancedCube01` setpiece structure + fingerprint-exclusion tests + browser QA m72 setpiece checks |
 | M4 interactions: swept-window detection (no skip at speed), press-edge orbs (no buffer, held-inert), one-shot per attempt, respawn re-arms | `interactions` tests + browser QA m4 section |
 | Replay records physical fixed-tick input only; playback feeds the real sim; sim stays replay-agnostic | `replay` lifecycle/determinism tests + `Game` protocol review (no sim import of replay code) |
 | Same level + same initial state + same input tape reproduces the run tick-for-tick; first divergence stops and reports | `replay` determinism/divergence tests + golden fixture (load-and-verify + negative proof) |

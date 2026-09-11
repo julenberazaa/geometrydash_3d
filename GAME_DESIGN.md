@@ -281,6 +281,39 @@ Deliberate M7/M7.1 content/product decisions (no temporary coordinates here):
   markers) that NEVER affect gameplay, fingerprints, or replays — audio
   itself is a later milestone.
 
+## 7.2 Advanced Cube product contract — CURRENT (M7.2)
+
+Deliberate M7.2 content/product decisions (no temporary coordinates here):
+
+- Advanced production Cube levels run HARDER and longer than the slice
+  (target 60–75 s, preferred 62–70 s of authored content — never padded
+  with empty straightaways) while keeping the fairness/readability
+  contract (§7.1): deaths must teach, hazards stay telegraphed, margins
+  stay measured (flagged for the human gate when thinnest).
+- Approved production levels may use multiple vertical floor heights
+  (LOW/MID/HIGH bands + ceiling) as real gameplay: height changes ride on
+  the frozen jump envelope (a band reachable only from another band is a
+  design lever, never a trap).
+- Narrow/fragmented support is part of advanced Cube design; full-width
+  slabs are recovery tools, not the default topology. Advanced levels may
+  intentionally constrain to one route (lane-lazy and transfer-lazy
+  variants demonstrably die).
+- Fast-fall may gate an advanced route when explicitly telegraphed
+  (visible gate + drop cue + measured window, never frame-perfect).
+- Teleport portals are deterministic spatial transitions: a forward entry
+  crossing relocates the Cube to an authored exit exactly once per
+  attempt; a lethal step always wins over the teleport; the skipped
+  world-space interval is never interpreted as traversed (no
+  skipped-interval portal firing); exit velocity/lane/support semantics
+  are explicit and pinned (flow preserved, vertical zeroed, lane handed
+  off, support cleared).
+- Decorative setpieces (e.g. monster-like guardians) are presentation
+  ONLY — no AI, no movement, no collision, no trigger — and must never
+  read as safely landable geometry (they live outside the route corridor
+  or read unambiguously as backdrop).
+- Rhythm cues remain presentation-only position metadata (teleport-in/out
+  included); audio itself is still a later milestone.
+
 ## 8. Reference art
 
 `normal.png` / `cohete.png` / `arriba.png` are visual MOOD references only

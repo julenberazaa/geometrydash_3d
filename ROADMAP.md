@@ -323,12 +323,33 @@ approved Cube reference level and must be preserved. The approved Cube
 controller remains frozen. Ship remains blocked until further milestones
 land (see M7.2).
 
-Future direction after a successful M7.1 (conceptual, not started): M6D
-real-GPU performance closeout (M7.1 is its workload) → music/rhythm
-synchronization architecture → Ship mode → advanced/teleport portals →
-Spider mode → inclined/ramp surfaces → dynamic/moving hazards → animated
-entities/monsters/set pieces → harder production levels → editor/community
-later. Exact milestone numbering provisional.
+## M7.2 — Advanced Cube content expansion: ENGINEERING COMPLETE / HUMAN ADVANCED-CUBE GATE OPEN
+
+Second production Cube level (`advanced-cube-01`, "ADVANCED CUBE 01",
+`?level=advanced-cube-01`) on the frozen controller: HARD (clearly above
+M7.1), longer (7455 ticks = 62.125 s deterministic), more vertical
+(LOW/MID/HIGH floor bands + ~8 s ceiling world), more fragmented
+(single-lane islands, offset transfers, fast-fall lintel gate), denser
+(21 meaningful hazards at 2.2/100 u), plus ONE new mechanic — paired
+teleport portals (entry 514 → exit 634 through a guardian-mouth setpiece;
+deterministic, exactly-once, lethal-wins, skipped-interval-clean, pinned
+exit semantics, ReplayV1 unchanged) — and monster-like presentation
+setpieces with no gameplay (no AI/movement/collision). Eight visual
+scenes + 27 beat-ready cues (still no audio). Deterministic real-input
+route finishes with 0 deaths and replays VERIFIED; `vertical-slice-01`
+preserved (M7.1 anchor tick 6190 re-pinned in-suite). 349/349 automated
+tests, M7.2 browser QA green with zero console/page errors, golden replay
+intact. Spec: `specs/milestones/M7_2_ADVANCED_CUBE_EXPANSION.md`.
+Automation proves POSSIBLE, never FUN — do NOT mark PASS until the human
+plays the advanced level.
+
+Future direction (conceptual, not started): M6D real-GPU performance
+closeout (M7.2 is its workload) → music/rhythm synchronization
+architecture → Ship mode → teleport expansions / Spider mode /
+inclined/ramp surfaces / dynamic/moving hazards / animated
+entities/monsters → harder production levels → editor/community later.
+Basic teleport portals shipped in M7.2. Exact milestone numbering
+provisional.
 
 First production Cube vertical slice (`vertical-slice-01`, "VERTICAL SLICE
 01", `?level=vertical-slice-01`): authored three-act ~51.6 s level on the

@@ -31,6 +31,17 @@ const gitSha = (() => {
   }
 })();
 
+/**
+ * Load-immunity: after any navigation, wait until the game module has
+ * executed (window.__gd3d exists) before probing. Under headless load
+ * networkidle + a fixed sleep is not enough — module eval can lag by
+ * seconds. Zero threshold weakening: pure readiness, no behavior change.
+ * (Defined before first use: the boot navigation below already needs it.)
+ */
+const waitReady = async () => {
+  await page.waitForFunction(() => window.__gd3d !== undefined, null, { timeout: 60000 });
+};
+
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 
@@ -42,6 +53,7 @@ page.on('console', (msg) => {
 page.on('pageerror', (err) => pageErrors.push(String(err)));
 
 await page.goto(URL, { waitUntil: 'networkidle' });
+await waitReady();
 await page.waitForTimeout(2000);
 
 /** Read live sim position. */
@@ -1654,6 +1666,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   // and reloads for the same reason). M5 asserts app-level behavior, not
   // cross-section continuity.
   await page.goto(URL, { waitUntil: 'networkidle' });
+  await waitReady();
   await page.waitForTimeout(2000);
   const hasReplay = () => page.evaluate(() => window.__gd3d.hasReplay());
   // Poll verification AND end state in ONE evaluate: after a death-tape
@@ -1767,6 +1780,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
 
   // M5c: Validation Level 02 via the real level route.
   await page.goto(`${URL}?level=validation-02`, { waitUntil: 'networkidle' });
+  await waitReady();
   await page.waitForTimeout(2000);
   const m5L2 = await page.evaluate(() => ({
     id: window.__gd3d.levelId(),
@@ -1917,6 +1931,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     `ok=${m5Cross.ok} reason=${m5Cross.reason ?? '-'}`);
   // Unknown level ids fall back explicitly to the default.
   await page.goto(`${URL}?level=does-not-exist`, { waitUntil: 'networkidle' });
+  await waitReady();
   await page.waitForTimeout(2000);
   const m5Fallback = await page.evaluate(() => window.__gd3d.levelId());
   log('m5 unknown level id falls back to the default level', m5Fallback === 'controller-test-01',
@@ -1988,6 +2003,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
 
   // Fresh page for the M6A section.
   await page.goto(URL, { waitUntil: 'networkidle' });
+  await waitReady();
   await page.waitForTimeout(2000);
 
   // Theme + post active with a restrained bloom contract.
@@ -2086,6 +2102,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
 
   // Level 02 reuses the same production system.
   await page.goto(`${URL}?level=validation-02`, { waitUntil: 'networkidle' });
+  await waitReady();
   await page.waitForTimeout(2500);
   const m6aL2 = await page.evaluate(() => ({
     id: window.__gd3d.levelId(),
@@ -2105,6 +2122,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   // Replay under M6 visuals: natural death -> F4 -> VERIFIED (no teleports,
   // no tight windows — the center lane dies on the z=116 spike by itself).
   await page.goto(URL, { waitUntil: 'networkidle' });
+  await waitReady();
   await page.waitForTimeout(2000);
   const m6aDeath = await waitDead();
   log('m6a live death finalizes a replay tape', m6aDeath !== null,
@@ -2158,6 +2176,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
 
   // Fallback path: ?post=off stays playable (same scene, direct render).
   await page.goto(`${URL}?post=off`, { waitUntil: 'networkidle' });
+  await waitReady();
   await page.waitForTimeout(2000);
   const m6aFallback = await page.evaluate(() => ({
     post: window.__gd3d.postEnabled(),
@@ -2225,6 +2244,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
 
   // Fresh page, default flags (post on, fx on).
   await page.goto(URL, { waitUntil: 'networkidle' });
+  await waitReady();
   await page.waitForTimeout(2000);
 
   // FX enabled by default; the trail accumulates behind the running cube.
@@ -2256,6 +2276,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
 
   // ?fx=off page: gameplay advances, juice stays at zero.
   await page.goto(`${URL}?fx=off`, { waitUntil: 'networkidle' });
+  await waitReady();
   await page.waitForTimeout(2000);
   const m6bOffFlag = await fx();
   const m6bOffZ0 = (await pos()).z;
@@ -2269,6 +2290,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
 
   // Back to the default page for the lifecycle checks.
   await page.goto(URL, { waitUntil: 'networkidle' });
+  await waitReady();
   await page.waitForTimeout(2000);
 
   // Trail clears on manual restart: R restarts the sim (attempts edge) and
@@ -2464,6 +2486,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   // reliably spans rendered frames). Emission is post-independent — the
   // same update path fires the burst with the composer on or off.
   await page.goto(`${URL}?post=off`, { waitUntil: 'networkidle' });
+  await waitReady();
   await page.waitForTimeout(2000);
   let m6bOrbOk = false;
   for (let attempt = 1; attempt <= 4 && !m6bOrbOk; attempt++) {
@@ -2516,6 +2539,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   // coordinates: teleport 366, approach 368-371, cross 373).
   // Back on the default page (post on) after the post-off orb detour.
   await page.goto(URL, { waitUntil: 'networkidle' });
+  await waitReady();
   await page.waitForTimeout(2000);
   const m6bSpeedBase = (await fx()).counters.speed;
   await startGravityRun(366);
@@ -2573,6 +2597,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
 
   // Level 02 runs the same juice on the shared code path.
   await page.goto(`${URL}?level=validation-02`, { waitUntil: 'networkidle' });
+  await waitReady();
   await page.waitForTimeout(2500);
   const m6bL2 = await pollFx((s) => s.trail > 5, 15000);
   const m6bL2Id = await page.evaluate(() => window.__gd3d.levelId());
@@ -2585,6 +2610,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
 
   // Replay recreates juice from the replayed sim, then still VERIFIES.
   await page.goto(URL, { waitUntil: 'networkidle' });
+  await waitReady();
   await page.waitForTimeout(2000);
   await page.keyboard.press('KeyR');
   await page.waitForTimeout(400);
@@ -2655,6 +2681,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
 
   // Post x FX matrix: every combination stays playable.
   await page.goto(`${URL}?post=off&fx=on`, { waitUntil: 'networkidle' });
+  await waitReady();
   await page.waitForTimeout(2000);
   const m6bNoPost = await page.evaluate(() => ({
     post: window.__gd3d.postEnabled(),
@@ -2665,6 +2692,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     m6bNoPost.post === false && m6bNoPost.trail > 0 && m6bNoPost.z > 5,
     `post=${m6bNoPost.post} trail=${m6bNoPost.trail} z=${m6bNoPost.z.toFixed(1)}`);
   await page.goto(`${URL}?post=off&fx=off`, { waitUntil: 'networkidle' });
+  await waitReady();
   await page.waitForTimeout(2000);
   const m6bMinimal = await page.evaluate(() => ({
     post: window.__gd3d.postEnabled(),
@@ -2681,6 +2709,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
 
   // Resize survival with juice live.
   await page.goto(URL, { waitUntil: 'networkidle' });
+  await waitReady();
   await page.waitForTimeout(2000);
   await page.setViewportSize({ width: 960, height: 540 });
   await page.waitForTimeout(800);
@@ -2756,6 +2785,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
 
   // Fresh page, default flags (post on, fx on, triggers on).
   await page.goto(URL, { waitUntil: 'networkidle' });
+  await waitReady();
   await page.waitForTimeout(2000);
   const m6c1Base = await pollTl((s) => s.section === 'runway', 15000);
   log('m6c1 triggers enabled by default, opening section resolves',
@@ -2901,6 +2931,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   // itself (M6A-proven, no teleports — a teleported death cannot replay
   // because teleports are not inputs). Fresh page for a clean tape.
   await page.goto(URL, { waitUntil: 'networkidle' });
+  await waitReady();
   await page.waitForTimeout(2000);
   await page.keyboard.press('KeyR');
   let m6c1NaturalDeath = null;
@@ -2942,13 +2973,14 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
 
   // Resource stability across the whole Level 01 pass.
   const m6c1ResEnd = await tl();
-  log('m6c1 resources flat across every transition (26/8/3)',
-    m6c1ResEnd.mats === 26 && m6c1ResEnd.geos === 8 && m6c1ResEnd.passes === 3 &&
+  log('m6c1 resources flat across every transition (28/8/3)',
+    m6c1ResEnd.mats === 28 && m6c1ResEnd.geos === 8 && m6c1ResEnd.passes === 3 &&
     m6c1ResEnd.children === m6c1Base.children,
     `mats=${m6c1ResEnd.mats} geos=${m6c1ResEnd.geos} passes=${m6c1ResEnd.passes} children=${m6c1Base.children}->${m6c1ResEnd.children}`);
 
   // ?triggers=off: the exact M6A+M6B baseline, then the evidence pair.
   await page.goto(`${URL}?triggers=off`, { waitUntil: 'networkidle' });
+  await waitReady();
   await page.waitForTimeout(2000);
   await startGravityRun(8);
   await rollUntilM3((s) => s.z > 8 && s.z < 14 && s.grounded, 15000);
@@ -2971,6 +3003,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
 
   // Level 02 uses the same infrastructure (teal identity retained).
   await page.goto(`${URL}?level=validation-02`, { waitUntil: 'networkidle' });
+  await waitReady();
   await page.waitForTimeout(2000);
   const m6c1L2Base = await pollTl((s) => s.section === 'v2-weave', 15000);
   log('m6c1 level02 opening section resolves with teal identity',
@@ -3004,6 +3037,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
 
   // Fallback matrix: post-off + triggers, fx-off + triggers, all-off.
   await page.goto(`${URL}?post=off`, { waitUntil: 'networkidle' });
+  await waitReady();
   await page.waitForTimeout(2000);
   await startGravityRun(148);
   const m6c1NoPost = await pollTl((s) => s.section === 'gravity-descent', 20000);
@@ -3012,6 +3046,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     m6c1NoPost.section === 'gravity-descent' && m6c1NoPostBloom === null,
     `section=${m6c1NoPost.section} bloom=${m6c1NoPostBloom}`);
   await page.goto(`${URL}?fx=off`, { waitUntil: 'networkidle' });
+  await waitReady();
   await page.waitForTimeout(2000);
   await startGravityRun(290);
   const m6c1NoFx = await pollTl((s) => s.section === 'interaction-run' && s.accent === 0xc44dff, 20000);
@@ -3020,6 +3055,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     m6c1NoFx.section === 'interaction-run' && m6c1NoFxAdv > 290,
     `section=${m6c1NoFx.section} z=${m6c1NoFxAdv.toFixed(1)}`);
   await page.goto(`${URL}?post=off&fx=off&triggers=off`, { waitUntil: 'networkidle' });
+  await waitReady();
   await page.waitForTimeout(2000);
   const m6c1Min0 = await page.evaluate(() => ({
     section: window.__gd3d.visualSectionId(),
@@ -3034,6 +3070,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
 
   // Resize survival with a section live.
   await page.goto(URL, { waitUntil: 'networkidle' });
+  await waitReady();
   await page.waitForTimeout(2000);
   await startGravityRun(200);
   await page.setViewportSize({ width: 960, height: 540 });
@@ -3115,6 +3152,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
 
   // Fresh page, default flags (post on, fx on, triggers on).
   await page.goto(URL, { waitUntil: 'networkidle' });
+  await waitReady();
   await page.waitForTimeout(2000);
   const m6c2Probes = await punchProbe();
   log('m6c2 reactive probes live, envelope at rest on load',
@@ -3270,6 +3308,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
 
   // fx=off split: pad still simulates, particles + skid silent, game runs.
   await page.goto(`${URL}?fx=off`, { waitUntil: 'networkidle' });
+  await waitReady();
   await page.waitForTimeout(2000);
   await page.keyboard.press('KeyR');
   await page.waitForTimeout(350);
@@ -3285,6 +3324,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
 
   // Level 02 shares the contact language (teal identity untouched).
   await page.goto(`${URL}?level=validation-02`, { waitUntil: 'networkidle' });
+  await waitReady();
   await page.waitForTimeout(2000);
   await startGravityRun(8);
   const m6c2L2Run = await rollUntilM3((s) => s.z > 8 && s.z < 14 && s.grounded, 15000);
@@ -3298,6 +3338,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
 
   // Replay under the new visuals: natural death -> F4 -> VERIFIED.
   await page.goto(URL, { waitUntil: 'networkidle' });
+  await waitReady();
   await page.waitForTimeout(2000);
   await page.keyboard.press('KeyR');
   await page.waitForTimeout(300);
@@ -3338,12 +3379,13 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   }
   log('m6c2 replay carries zero punch/contact state', m6c2TapeClean, m6c2TapeDetail);
 
-  // Resource stability: still 26/8/3 library counts; scene children grew by
-  // exactly the 12 fixed M7.1 background energy rays (50 → 62, bounded by
-  // construction — one shared geometry + one shared material, no pools).
+  // Resource stability: 28/8/3 library counts (26 shared + 2 shared M7.2
+  // teleport materials); scene children grew by exactly the 12 fixed M7.1
+  // background energy rays (50 → 62, bounded by construction — one shared
+  // geometry + one shared material, no pools).
   const m6c2ResEnd = await punchProbe();
-  log('m6c2 resources flat (26/8/3, no new draws or pools)',
-    m6c2ResEnd.mats === 26 && m6c2ResEnd.geos === 8 && m6c2ResEnd.passes === 3 &&
+  log('m6c2 resources flat (28/8/3, no new draws or pools)',
+    m6c2ResEnd.mats === 28 && m6c2ResEnd.geos === 8 && m6c2ResEnd.passes === 3 &&
     m6c2ResEnd.children === 62,
     `mats=${m6c2ResEnd.mats} geos=${m6c2ResEnd.geos} passes=${m6c2ResEnd.passes} children=${m6c2ResEnd.children}`);
 }
@@ -3397,6 +3439,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   };
   const m71fresh = async (url) => {
     await page.goto(url, { waitUntil: 'networkidle' });
+    await waitReady();
     await page.waitForTimeout(2000);
     // Verified R-loop: a swallowed R under headless load leaves a dying
     // sim behind and every later teleport/check cascades. Retry until the
@@ -4075,16 +4118,17 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   log('m71 release quiets the energy rays', m71release !== null && m71release.rays === 0,
     m71release ? `rays=${m71release.rays}` : 'never framed');
 
-  // Resources stay bounded on production content (27 materials: the shared
-  // 26 plus one extra cached speed-tier material — M7.1 uses tiers 1 and 2;
-  // cached per tier by the same code path, flat across the run; 62 scene
-  // children = the M7 50 plus 12 fixed background energy rays). Probed on
-  // the post-on page: the full proof run below uses ?post=off (passes=0).
+  // Resources stay bounded on production content (29 materials: the shared
+  // 26 plus two shared M7.2 teleport materials plus one extra cached
+  // speed-tier material — M7.1 uses tiers 1 and 2; cached per tier by the
+  // same code path, flat across the run; 62 scene children = the M7 50 plus
+  // 12 fixed background energy rays). Probed on the post-on page: the full
+  // proof run below uses ?post=off (passes=0).
   const m71res = await m71probe();
   log('m71 resource counts remain bounded',
-    m71res.mats === 27 && m71res.geos === 8 && m71res.passes === 3 && m71res.children === 62,
+    m71res.mats === 29 && m71res.geos === 8 && m71res.passes === 3 && m71res.children === 62,
     `mats=${m71res.mats} geos=${m71res.geos} passes=${m71res.passes} children=${m71res.children}`);
-  log('m71 material/geometry counts stable', m71res.mats === 27 && m71res.geos === 8,
+  log('m71 material/geometry counts stable', m71res.mats === 29 && m71res.geos === 8,
     `mats=${m71res.mats} geos=${m71res.geos}`);
 
   // Full real-input playthrough via the in-page driver (mirrors
@@ -4300,6 +4344,711 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   log('m71 triggers-off restores the exact baseline section',
     m71fallback !== null && m71fallback.section === 'base',
     m71fallback ? `section=${m71fallback.section}` : 'stalled');
+}
+
+// --- 24c. M7.2: advanced Cube production level + teleport debut ---
+// Harder/vertical/fragmented second Cube level (LOW/MID/HIGH bands +
+// ceiling world), one paired teleport portal through a guardian setpiece,
+// eight visual scenes, one fast-fall gate. Staged passes use debugTeleport
+// (M3/M4 pattern); the finish proof drives real DOM KeyboardEvents through
+// the real InputSystem (M5/M7.1 pattern) incl. a real fast-fall hold.
+{
+  const PLAYER_HEX = 0x0e4a56;
+  const HAZARD_HEX = 0xff9d00;
+  const TELEPORT_VIOLET = 0xc77dff;
+  const m72probe = () => page.evaluate(() => ({
+    id: window.__gd3d.levelId(),
+    name: window.__gd3d.levelDisplayName(),
+    status: window.__gd3d.status(),
+    lane: window.__gd3d.laneIndex(),
+    mode: window.__gd3d.gravityMode(),
+    speed: window.__gd3d.speedMultiplier(),
+    section: window.__gd3d.visualSectionId(),
+    player: window.__gd3d.visualPlayerColor(),
+    hazard: window.__gd3d.visualHazardColor(),
+    energy: window.__gd3d.eventPunchEnergy(),
+    punchColor: window.__gd3d.eventPunchColor(),
+    contact: window.__gd3d.contactSamples(),
+    streaks: window.__gd3d.activeStreaks(),
+    counts: window.__gd3d.interactionCounts(),
+    flips: window.__gd3d.portalTransitionCount(),
+    tp: window.__gd3d.teleportEventCount(),
+    tpId: window.__gd3d.lastTeleportId(),
+    fx: window.__gd3d.fxCounters(),
+    liveBg: window.__gd3d.visualLiveBackground(),
+    liveFog: window.__gd3d.visualLiveFog(),
+    mats: window.__gd3d.materialCount(),
+    geos: window.__gd3d.geometryCount(),
+    passes: window.__gd3d.postPassCount(),
+    children: window.__gd3d.sceneChildren(),
+    cue: window.__gd3d.rhythmCue(),
+    rays: window.__gd3d.energyRays(),
+    z: window.__gd3d.playerPosition().z,
+    y: window.__gd3d.playerPosition().y,
+    x: window.__gd3d.playerPosition().x,
+    grounded: window.__gd3d.grounded(),
+  }));
+  const m72roll = async (pred, timeoutMs = 60000, pollMs = 40) => {
+    const t0 = Date.now();
+    for (;;) {
+      const s = await m72probe();
+      if (s.status === 'running' && pred(s)) return s;
+      if (Date.now() - t0 > timeoutMs) return null;
+      await page.waitForTimeout(pollMs);
+    }
+  };
+  const m72fresh = async (url) => {
+    await page.goto(url, { waitUntil: 'networkidle' });
+    await waitReady();
+    await page.waitForTimeout(2000);
+    for (let i = 0; i < 8; i++) {
+      await page.keyboard.press('KeyR');
+      await page.waitForTimeout(600);
+      const p = await pos();
+      if (p.z < 10) break;
+    }
+  };
+  // Verified pause: a swallowed KeyP under headless load leaves the sim
+  // running and every later frozen-frame observation reads drift (or
+  // respawns). Poll z twice per press and retry until frozen (max 4).
+  // Never pauses a dead/finished sim (that would freeze the death hold).
+  const m72pause = async () => {
+    for (let i = 0; i < 4; i++) {
+      const st = await page.evaluate(() => window.__gd3d.status());
+      if (st !== 'running') return;
+      await page.keyboard.press('KeyP');
+      await page.waitForTimeout(400);
+      const z1 = (await pos()).z;
+      await page.waitForTimeout(400);
+      const z2 = (await pos()).z;
+      if (Math.abs(z2 - z1) < 0.001) return;
+    }
+  };
+  const m72ensureLive = async (rounds = 4) => {
+    for (let i = 0; i < rounds; i++) {
+      const st = await page.evaluate(() => window.__gd3d.status());
+      if (st !== 'running') return st;
+      const z1 = (await pos()).z;
+      await page.waitForTimeout(2500);
+      const z2 = (await pos()).z;
+      if (Math.abs(z2 - z1) > 0.01) return 'running';
+      await page.keyboard.press('KeyP');
+      await page.waitForTimeout(500);
+    }
+    return page.evaluate(() => window.__gd3d.status());
+  };
+  const m72snap = async (name) => {
+    await m72pause();
+    await capture(name);
+    await m72ensureLive(4);
+  };
+  // keepTimers: page-side timer keys the caller just installed and needs
+  // alive across the staging (the FF gate installs its loop BEFORE staging
+  // so CDP latency cannot let the cube outrun the jump point).
+  const m72restage = async (x, y, z, keepTimers = []) => {
+    // Clear stale page-side timers first (a timed-out check's interval must
+    // never leak inputs into the next staged pass).
+    await page.evaluate((keep) => {
+      for (const key of ['__m72ffTimer', '__m72peakTimer', '__m72gpeakTimer', '__m72survive', '__m72weave', '__m72driver']) {
+        if (keep.includes(key)) continue;
+        if (window[key]) clearInterval(window[key]);
+        window[key] = null;
+      }
+      if (!keep.includes('__m72ffTimer')) window.__m72ff = null;
+      window.__m72tplatch = null;
+    }, keepTimers);
+    for (let i = 0; i < 8; i++) {
+      await page.keyboard.press('KeyR');
+      await page.waitForTimeout(600);
+      const p = await pos();
+      if (p.z < 10) break;
+    }
+    await m72ensureLive(4);
+    await page.evaluate((p) => window.__gd3d.debugTeleport(p.x, p.y, p.z), { x, y, z });
+    await page.waitForTimeout(300);
+    // Verify the stage stuck (debugTeleport is a no-op unless running — a
+    // dead/patched sim would otherwise cascade every downstream check).
+    const staged = await m72probe();
+    if (staged.status !== 'running' || Math.abs(staged.z - z) > 3) {
+      await page.keyboard.press('KeyR');
+      await page.waitForTimeout(800);
+      await m72ensureLive(4);
+      await page.evaluate((p) => window.__gd3d.debugTeleport(p.x, p.y, p.z), { x, y, z });
+      await page.waitForTimeout(300);
+    }
+  };
+  const m72tapLane = async (code, want) => {
+    for (let i = 0; i < 8; i++) {
+      const lane = await page.evaluate(() => window.__gd3d.laneIndex());
+      if (lane === want) return true;
+      await page.keyboard.press(code);
+      await page.waitForTimeout(500);
+    }
+    return (await page.evaluate(() => window.__gd3d.laneIndex())) === want;
+  };
+
+  await m72fresh(`${URL}?level=advanced-cube-01`);
+  const m72boot = await m72probe();
+  log('m72 level route resolves correctly', m72boot.id === 'advanced-cube-01', `id=${m72boot.id}`);
+  const m72hud = await page.evaluate(() => document.querySelector('.hud-name')?.textContent ?? '');
+  log('m72 correct display name', m72boot.name === 'ADVANCED CUBE 01' && m72hud === 'ADVANCED CUBE 01',
+    `probe=${m72boot.name} hud=${m72hud}`);
+  log('m72 start state correct',
+    m72boot.status === 'running' && m72boot.lane === 1 && m72boot.mode === 'floor' && m72boot.speed === 1,
+    `status=${m72boot.status} lane=${m72boot.lane} mode=${m72boot.mode} speed=${m72boot.speed}`);
+  log('m72 opening scene active', m72boot.section === 'ac-ember', `section=${m72boot.section}`);
+  log('m72 player/hazard readability intact',
+    m72boot.player === PLAYER_HEX && m72boot.hazard === HAZARD_HEX,
+    `player=0x${m72boot.player?.toString(16)} hazard=0x${m72boot.hazard?.toString(16)}`);
+  await m72snap('m72-01-opening');
+
+  // Height ascent: HIGH island (top 2.4 -> run height 2.95).
+  await m72restage(0, 2.95, 86);
+  const m72high = await m72probe();
+  log('m72 high band island renders distinctly',
+    Math.abs(m72high.y - 2.95) < 0.3 && m72high.grounded,
+    `y=${m72high.y.toFixed(2)} grounded=${m72high.grounded}`);
+  await m72snap('m72-02-height-ascent');
+
+  // Narrow islands: center bridge collider matches the visual.
+  await m72restage(0, 0.55, 24);
+  const m72narrow = await m72probe();
+  log('m72 narrow landing collider matches visual',
+    m72narrow.grounded && Math.abs(m72narrow.x) < 0.3,
+    `x=${m72narrow.x.toFixed(2)} grounded=${m72narrow.grounded}`);
+  await m72snap('m72-03-narrow-islands');
+
+  // Hazard garden readability (MID two-lane, spike density visible).
+  await m72restage(-1.3, 1.75, 188);
+  const m72garden = await m72probe();
+  log('m72 hazard garden readable',
+    m72garden.section === 'ac-garden' && m72garden.grounded && m72garden.status === 'running',
+    `section=${m72garden.section} y=${m72garden.y.toFixed(2)}`);
+  await m72snap('m72-04-hazard-garden');
+
+  // Floor spikes point UP (tip projects above the base on screen).
+  await m72restage(0, 0.55, 14);
+  await m72pause();
+  const m72floorSpike = await page.evaluate(() => ({
+    tip: window.__gd3d.screenPoint(0, 0.85, 22),
+    base: window.__gd3d.screenPoint(0, 0.05, 22),
+  }));
+  await m72ensureLive(4);
+  log('m72 floor spikes point correctly',
+    !m72floorSpike.tip.behind && !m72floorSpike.base.behind && m72floorSpike.tip.py < m72floorSpike.base.py,
+    `tipPy=${m72floorSpike.tip.py.toFixed(1)} basePy=${m72floorSpike.base.py.toFixed(1)}`);
+
+  // Gravity transition with blue punch (peak watcher: the <2 s envelope
+  // decays before a post-roll probe can read it under CDP latency).
+  // The ceiling weave driver installs BEFORE the flip so every later
+  // photograph/wait is protected from the z 344 spike row.
+  await page.evaluate(() => {
+    const down = (code) => window.dispatchEvent(new KeyboardEvent('keydown', { code }));
+    const up = (code) => window.dispatchEvent(new KeyboardEvent('keyup', { code }));
+    const pend = [];
+    const tap = (code) => { down(code); pend.push(code); };
+    let rRight = false;
+    let rLeft = false;
+    let rHop = false;
+    window.__m72weave = setInterval(() => {
+      while (pend.length > 0) up(pend.pop());
+      const g = window.__gd3d;
+      if (g.status() !== 'running') { rRight = rLeft = rHop = false; return; }
+      const z = g.playerPosition().z;
+      if (z < 10) { rRight = rLeft = rHop = false; return; }
+      if (g.gravityMode() !== 'ceiling') return;
+      if (!rRight && z >= 335.5) { tap('ArrowRight'); rRight = true; }
+      if (rRight && !rLeft && z >= 351.5) { tap('ArrowLeft'); rLeft = true; }
+      if (rLeft && !rHop && z >= 373.5) { tap('Space'); rHop = true; }
+    }, 5);
+  });
+  // The weave driver above must survive this staging (installed pre-flip
+  // precisely so every later photograph/wait is spike-protected).
+  await m72restage(0, 0.55, 310, ['__m72weave']);
+  await page.evaluate(() => {
+    window.__m72gpeak = 0;
+    window.__m72gpeakColor = 0;
+    if (window.__m72gpeakTimer) clearInterval(window.__m72gpeakTimer);
+    window.__m72gpeakTimer = setInterval(() => {
+      const e = window.__gd3d.eventPunchEnergy();
+      if (e > (window.__m72gpeak ?? 0)) {
+        window.__m72gpeak = e;
+        window.__m72gpeakColor = window.__gd3d.eventPunchColor();
+      }
+    }, 5);
+  });
+  const m72flip = await m72roll((s) => s.mode === 'ceiling' && s.z > 326, 90000);
+  const m72flipProbe = await m72probe();
+  const m72gpeak = await page.evaluate(() => {
+    if (window.__m72gpeakTimer) clearInterval(window.__m72gpeakTimer);
+    window.__m72gpeakTimer = null;
+    return { peak: window.__m72gpeak ?? 0, color: window.__m72gpeakColor ?? 0 };
+  });
+  log('m72 gravity portal fires',
+    m72flip !== null && m72flipProbe.flips >= 1,
+    m72flip ? `z=${m72flip.z.toFixed(1)} flips=${m72flipProbe.flips}` : 'stalled');
+  log('m72 gravity punch fires',
+    m72gpeak.peak > 0.3 && m72gpeak.color === 0x4fc3ff,
+    `peak=${Number(m72gpeak.peak).toFixed(2)} color=0x${Number(m72gpeak.color).toString(16)}`);
+  // Let the <2 s punch envelope decay before photographing (render-dt
+  // based, so wall time suffices) — otherwise the still frame is a solid
+  // flash wash. The cube advances ~5 u in the meantime (still pre-spike).
+  await page.waitForTimeout(1500);
+  await m72snap('m72-05-gravity-transition');
+
+  // Ceiling transit: wide-open window (the grounded 330..355 window is
+  // only ~1.2 s wide before the z 344 spike row ends a bare ride).
+  const m72transit = await m72roll((s) => s.mode === 'ceiling' && s.z > 328, 90000);
+  log('m72 ceiling transit reached', m72transit !== null,
+    m72transit ? `z=${m72transit.z.toFixed(1)}` : 'stalled');
+  // (Ceiling weave driver already installed pre-flip — see above.)
+  // Project the ceiling spike from a settled pose (already in ceiling
+  // mode from the flip — no portal re-cross needed).
+  await page.evaluate(() => window.__gd3d.debugTeleport(0, 5.45, 330));
+  await page.waitForTimeout(400);
+  await m72pause();
+  const m72ceilSpike = await page.evaluate(() => ({
+    tip: window.__gd3d.screenPoint(0, 5.15, 344),
+    base: window.__gd3d.screenPoint(0, 5.95, 344),
+  }));
+  await m72ensureLive(4);
+  log('m72 ceiling spikes point correctly',
+    !m72ceilSpike.tip.behind && !m72ceilSpike.base.behind && m72ceilSpike.tip.py > m72ceilSpike.base.py,
+    `tipPy=${m72ceilSpike.tip.py.toFixed(1)} basePy=${m72ceilSpike.base.py.toFixed(1)}`);
+  // Readable grounded ceiling run with live contact skid (the weave
+  // driver above keeps the ride alive to the drift window).
+  const m72ceil = await m72roll((s) => s.mode === 'ceiling' && s.grounded && s.z > 355 && s.z < 370, 120000);
+  log('m72 ceiling islands readable',
+    m72ceil !== null && Math.abs(m72ceil.y - 5.45) < 0.3,
+    m72ceil ? `y=${m72ceil.y.toFixed(2)} z=${m72ceil.z.toFixed(1)}` : 'stalled');
+  const m72ceilProbe = await m72probe();
+  log('m72 ceiling contact skid live', m72ceilProbe.contact > 0, `contact=${m72ceilProbe.contact}`);
+  await m72snap('m72-06-ceiling-world');
+  await page.evaluate(() => {
+    if (window.__m72weave) clearInterval(window.__m72weave);
+    window.__m72weave = null;
+  });
+
+  // Ceiling pad activates: cross the portal first (a fresh page runs floor
+  // gravity — staging straight onto the ceiling slab would fall to void),
+  // then stage onto the pad bridge in ceiling mode and roll through it.
+  await m72restage(0, 0.55, 310);
+  const m72ceilStage = await m72roll((s) => s.mode === 'ceiling' && s.grounded && s.z > 330, 90000);
+  log('m72 ceiling staging reaches the run surface', m72ceilStage !== null,
+    m72ceilStage ? `z=${m72ceilStage.z.toFixed(1)}` : 'stalled');
+  await page.evaluate(() => window.__gd3d.debugTeleport(0, 5.45, 384));
+  await page.waitForTimeout(300);
+  const m72pad = await m72roll((s) => s.counts.pads >= 1, 60000);
+  log('m72 ceiling pad activates', m72pad !== null && m72pad.counts.pads >= 1,
+    m72pad ? `pads=${m72pad.counts.pads} z=${m72pad.z.toFixed(1)}` : 'stalled');
+
+  // Fast-fall gate: staged on HIGH, a page-side loop drives a real jump +
+  // a sim-measured fast-fall hold (wall-clock sleeps drift under headless
+  // load; z-triggered in-page edges do not) onto the short LOW island.
+  // Respawn-rearming: a mistimed attempt retries from the top like the
+  // full-run driver instead of poisoning the check. The loop installs
+  // BEFORE staging (CDP round-trips let an unstaged cube outrun a later
+  // install past the jump point).
+  await page.evaluate(() => {
+    window.__m72ff = null;
+    const down = (code) => window.dispatchEvent(new KeyboardEvent('keydown', { code }));
+    const up = (code) => window.dispatchEvent(new KeyboardEvent('keyup', { code }));
+    let pend = [];
+    let jumped = false;
+    let ffDown = false;
+    window.__m72ffTimer = setInterval(() => {
+      while (pend.length > 0) up(pend.pop());
+      const g = window.__gd3d;
+      if (g.status() !== 'running') { jumped = false; ffDown = false; return; }
+      const z = g.playerPosition().z;
+      if (z < 10) { jumped = false; ffDown = false; pend = []; return; } // respawned: re-arm
+      if (!jumped && z >= 238.5 && z < 241) { down('Space'); pend.push('Space'); jumped = true; }
+      if (jumped && !ffDown && z >= 244) { down('ArrowDown'); ffDown = true; }
+      if (ffDown) {
+        const s = g.grounded() && z >= 247 && z <= 253;
+        if (s || z > 254) {
+          up('ArrowDown');
+          ffDown = false;
+          if (s) {
+            clearInterval(window.__m72ffTimer);
+            window.__m72ffTimer = null;
+            window.__m72ff = 'landed';
+          }
+        }
+      }
+    }, 5);
+  });
+  // Staged PAST the z 235 island spike (staging at 236 sits inside its
+  // kill box and dies on the first step — found by direct repro).
+  await m72restage(0, 2.95, 239, ['__m72ffTimer']);
+  const m72ff = await (async () => {
+    const t0 = Date.now();
+    for (;;) {
+      const done = await page.evaluate(() => window.__m72ff);
+      if (done !== null) return done;
+      if (Date.now() - t0 > 120000) return null;
+      await page.waitForTimeout(100);
+    }
+  })();
+  const m72ffProbe = await m72probe();
+  log('m72 fast-fall challenge works', m72ff === 'landed',
+    `result=${String(m72ff)} z=${m72ffProbe.z.toFixed(1)} y=${m72ffProbe.y.toFixed(2)}`);
+  await m72snap('m72-07-fast-fall');
+
+  // Guardian setpiece reads + stays non-collidable (staged past the z 505
+  // spike, before the gate — a no-input roll would otherwise die on it).
+  // Freeze FIRST: an unstaged cube drifts 508→514 (teleport!) inside a few
+  // CDP round-trips, which previously pushed every snapshot post-gate.
+  await m72restage(0, 0.55, 508);
+  await m72pause();
+  const m72eye = await page.evaluate(() => window.__gd3d.screenPoint(2.45, 6.35, 520.3));
+  const m72guardianZ = (await m72probe()).z;
+  log('m72 guardian setpiece reads correctly',
+    !m72eye.behind && Math.abs(m72eye.ndcX) < 1 && Math.abs(m72eye.ndcY) < 1 && m72guardianZ < 514,
+    `ndc=(${m72eye.ndcX.toFixed(2)},${m72eye.ndcY.toFixed(2)}) z=${m72guardianZ.toFixed(1)}`);
+  await capture('m72-08-guardian-setpiece');
+  const m72preBg = (await m72probe()).liveBg;
+  await capture('m72-09-teleport-entry');
+  await m72ensureLive(4);
+
+  // Teleport triggers: the exit moment is LATCHED in-page (5 ms watcher
+  // records pose/mode/cue/section/palette at the first tp>=1 tick). A CDP
+  // roll cannot catch the same-attempt state — the post-exit drop kills
+  // the cube ~2 s after the exit, inside one slow headless poll, and the
+  // per-attempt tpId is gone after respawn. The latch is immune to all of
+  // that; the peak watcher rides the same interval.
+  // Staged teleport pass, up to 2 rounds: each round re-stages, re-arms
+  // the latch against NEW teleports only (tp > tpBefore — a session-old
+  // teleport must never satisfy a fresh round), and rolls for the latch.
+  // A round's latch is accepted only inside the exit window (500..700).
+  const m72tp = await (async () => {
+    for (let round = 0; round < 2; round++) {
+      if (round > 0) await m72restage(0, 0.55, 508);
+      await page.evaluate(() => {
+        window.__m72peak = 0;
+        window.__m72peakColor = 0;
+        window.__m72tplatch = null;
+        if (window.__m72peakTimer) clearInterval(window.__m72peakTimer);
+        const g0 = window.__gd3d;
+        window.__m72tpBefore = g0.teleportEventCount();
+        window.__m72peakTimer = setInterval(() => {
+          const g = window.__gd3d;
+          const e = g.eventPunchEnergy();
+          if (e > (window.__m72peak ?? 0)) {
+            window.__m72peak = e;
+            window.__m72peakColor = g.eventPunchColor();
+          }
+          if (g.teleportEventCount() > window.__m72tpBefore && window.__m72tplatch === null) {
+            const p = g.playerPosition();
+            window.__m72tplatch = {
+              z: p.z, y: p.y, x: p.x,
+              mode: g.gravityMode(), speed: g.speedMultiplier(),
+              tpId: g.lastTeleportId(), cue: g.rhythmCue(),
+              section: g.visualSectionId(), bg: g.visualLiveBackground(),
+            };
+          }
+        }, 5);
+      });
+      const t0 = Date.now();
+      for (;;) {
+        const latch = await page.evaluate(() => window.__m72tplatch);
+        if (latch !== null && latch.z > 500 && latch.z < 700) return latch;
+        if (latch !== null) {
+          // Implausible latch (stale/poisoned): clear and keep rolling —
+          // a genuine exit will re-latch only if a NEW teleport fires;
+          // otherwise the round times out into the retry below.
+          await page.evaluate(() => { window.__m72tplatch = null; window.__m72tpBefore = window.__gd3d.teleportEventCount(); });
+        }
+        if (Date.now() - t0 > 45000) break;
+        await page.waitForTimeout(100);
+      }
+    }
+    return null;
+  })();
+  const m72tpProbe = await m72probe();
+  const m72peak = await page.evaluate(() => {
+    if (window.__m72peakTimer) clearInterval(window.__m72peakTimer);
+    window.__m72peakTimer = null;
+    return { peak: window.__m72peak ?? 0, color: window.__m72peakColor ?? 0 };
+  });
+  log('m72 teleport triggers',
+    m72tp !== null && m72tp.tpId === 'ac-teleport-maw',
+    m72tp ? `z=${m72tp.z.toFixed(1)} id=${m72tp.tpId}` : 'stalled');
+  log('m72 teleport destination correct',
+    m72tp !== null && Math.abs(m72tp.z - 634) < 3 && Math.abs(m72tp.y - 1.75) < 0.4 && m72tp.mode === 'floor',
+    m72tp ? `z=${m72tp.z.toFixed(1)} y=${m72tp.y.toFixed(2)} mode=${m72tp.mode}` : 'stalled');
+  log('m72 skipped portals do not fire',
+    m72tp !== null && m72tp.mode === 'floor' && m72tp.speed === 1,
+    m72tp ? `mode=${m72tp.mode} speed=${m72tp.speed}` : 'stalled');
+  log('m72 teleport exit VFX fires',
+    (m72tpProbe.fx.teleport ?? 0) >= 1,
+    `teleportBursts=${m72tpProbe.fx.teleport ?? 0}`);
+  log('m72 teleport event punch fires',
+    m72peak.peak > 0.3 && m72peak.color === TELEPORT_VIOLET,
+    `peak=${Number(m72peak.peak).toFixed(2)} color=0x${Number(m72peak.color).toString(16)}`);
+  // Exit photography: re-stage just before the exit (the latch already
+  // proved the live transition; the cube may have died past it since).
+  await m72restage(0, 1.75, 628);
+  const m72exitFramed = await m72roll((s) => s.z > 631 && s.z < 640, 60000);
+  log('m72 teleport exit framed', m72exitFramed !== null,
+    m72exitFramed ? `z=${m72exitFramed.z.toFixed(1)}` : 'stalled');
+  // Exit photography freezes immediately (see the shared-freeze note at
+  // m72-11 below).
+  await m72pause();
+  await capture('m72-10-teleport-exit');
+
+  // Post-teleport palette differs clearly + cue handoff (all latched at
+  // the live exit moment).
+  log('m72 post-teleport palette differs clearly',
+    m72tp !== null && m72tp.bg !== m72preBg,
+    m72tp ? `before=0x${m72preBg.toString(16)} after=0x${m72tp.bg.toString(16)}` : 'stalled');
+  log('m72 teleport rhythm cue handoff',
+    m72tp !== null && (m72tp.cue === 'ac-cue-teleport-out' || m72tp.cue === 'ac-cue-furnace'),
+    m72tp ? `cue=${m72tp.cue}` : 'stalled');
+  log('m72 post-teleport world section',
+    m72tp !== null && m72tp.section === 'ac-furnace',
+    m72tp ? `section=${m72tp.section}` : 'stalled');
+  // New-world photography shares the exit freeze (zero drift — a resumed
+  // cube would run 631→656 (drop death) inside the snapshot gap).
+  await capture('m72-11-new-color-world');
+  await m72ensureLive(4);
+
+  // Speed portal fires with streaks + tier punch (staged past the z 700
+  // spike — a no-input roll would otherwise die on it).
+  await m72restage(0, 0.55, 703);
+  const m72speed = await m72roll((s) => s.speed === 2 && s.z > 708, 60000);
+  const m72speedProbe = await m72probe();
+  log('m72 speed portal fires', m72speed !== null && m72speedProbe.speed === 2,
+    m72speed ? `z=${m72speed.z.toFixed(1)}` : 'stalled');
+  log('m72 2x climax visible',
+    m72speedProbe.streaks > 0 && m72speedProbe.section === 'ac-storm',
+    `streaks=${m72speedProbe.streaks} section=${m72speedProbe.section}`);
+  // Minimal-gap rounds: R, teleport, freeze with NO intermediate probes —
+  // every verify probe inside the shared restage lets the uncommanded cube
+  // run 745→762 (spike death) inside slow CDP gaps, which is exactly the
+  // deterministic z=757.1 residue seen before. Up to 3 rounds.
+  const m72island = await (async () => {
+    for (let round = 0; round < 3; round++) {
+      await page.keyboard.press('KeyR');
+      await page.waitForTimeout(300);
+      await page.evaluate(() => window.__gd3d.debugTeleport(-2.6, 0.55, 745));
+      await page.keyboard.press('KeyP');
+      await page.waitForTimeout(400);
+      const z1 = (await pos()).z;
+      await page.waitForTimeout(400);
+      const s = await m72probe();
+      if (s.status === 'running' && Math.abs(s.z - z1) < 0.001 && s.grounded && s.z > 743 && s.z < 760) return s;
+      await m72ensureLive(4);
+    }
+    return m72probe();
+  })();
+  log('m72 fragmented 2x route completable surface',
+    m72island.grounded && m72island.status === 'running' && m72island.z > 743 && m72island.z < 760,
+    `z=${m72island.z.toFixed(1)} grounded=${m72island.grounded}`);
+  await capture('m72-12-speed-climax');
+  await m72ensureLive(4);
+
+  // Full real-input finish via the in-page driver (mirrors
+  // tests/helpers/advancedCube01Script.ts, plus orb press windows and a
+  // real fast-fall hold). Deaths re-arm the plan from respawn like M7.1.
+  await m72fresh(`${URL}?level=advanced-cube-01&post=off`);
+  await page.evaluate(() => {
+    if (window.__m72driver) clearInterval(window.__m72driver);
+    window.__m72done = null;
+    window.__m72deaths = 0;
+    const down = (code) => window.dispatchEvent(new KeyboardEvent('keydown', { code }));
+    const up = (code) => window.dispatchEvent(new KeyboardEvent('keyup', { code }));
+    const pendingUp = [];
+    const tap = (code) => { down(code); pendingUp.push(code); };
+    // Early-biased vs the headless script (M7.1 precedent): wall-timer
+    // jitter under headless load can only land taps LATE, so tight spike
+    // jumps and weave taps lead by ~0.5-1 u. Early is safe (arcs still
+    // clear; lateral arrivals settle before the rows).
+    const plan = [
+      [18.5, () => tap('Space')],
+      [28, () => tap('Space')],
+      [30, () => tap('ArrowRight')],
+      [44, () => tap('Space')],
+      [46, () => tap('ArrowLeft')],
+      [60, () => tap('Space')],
+      [62, () => tap('ArrowLeft')],
+      [76, () => tap('Space')],
+      [78, () => tap('ArrowRight')],
+      [105.5, () => tap('ArrowLeft')],
+      [115.5, () => tap('ArrowRight')],
+      [126, () => tap('Space')],
+      [146, () => tap('Space')],
+      [174, () => tap('Space')],
+      [197, () => tap('ArrowRight')],
+      [208, () => tap('Space')],
+      [224, () => tap('Space')],
+      [226, () => tap('ArrowLeft')],
+      [232.2, () => tap('Space')],
+      [243, () => tap('Space')],
+      [251, () => tap('Space')],
+      [262.7, () => tap('Space')],
+      [275, () => tap('Space')],
+      [287.2, () => tap('Space')],
+      [299, () => tap('Space')],
+      [337.5, () => tap('ArrowRight')],
+      [353.5, () => tap('ArrowLeft')],
+      [374, () => tap('Space')],
+      [417, () => tap('Space')],
+      [465, () => tap('Space')],
+      [478.2, () => tap('Space')],
+      [489, () => tap('Space')],
+      [502.2, () => tap('Space')],
+      [653.5, () => tap('Space')],
+      [673.5, () => tap('Space')],
+      [697.2, () => tap('Space')],
+      [727.5, () => tap('Space')],
+      [729.5, () => tap('ArrowRight')],
+      [758.2, () => tap('Space')],
+      [780.5, () => tap('Space')],
+      [782.5, () => tap('ArrowLeft')],
+      [823, () => tap('Space')],
+      [824.5, () => tap('ArrowLeft')],
+      [863, () => tap('ArrowRight')],
+      [877, () => tap('ArrowLeft')],
+      [893, () => tap('ArrowRight')],
+      [913, () => tap('Space')],
+      [924.2, () => tap('Space')],
+      [932.8, () => tap('Space')],
+    ];
+    let step = 0;
+    let lastZ = -100;
+    // Fast-fall hold is sim-measured (z-triggered), never wall-timed:
+    // engage past the FF takeoff, release on the island landing.
+    let ffHeld = false;
+    window.__m72driver = setInterval(() => {
+      while (pendingUp.length > 0) up(pendingUp.pop());
+      const g = window.__gd3d;
+      const z = g.playerPosition().z;
+      if (z < lastZ - 10) {
+        step = 0;
+        window.__m72deaths = (window.__m72deaths ?? 0) + 1;
+      }
+      lastZ = z;
+      if (g.status() === 'finished') {
+        if (ffHeld) { up('ArrowDown'); ffHeld = false; }
+        clearInterval(window.__m72driver); window.__m72driver = null;
+        window.__m72done = 'finished';
+        return;
+      }
+      if (g.status() !== 'running') { if (ffHeld) { up('ArrowDown'); ffHeld = false; } return; }
+      if (!ffHeld && z >= 243.8 && z < 250) { down('ArrowDown'); ffHeld = true; }
+      if (ffHeld && (g.grounded() || z > 254)) { up('ArrowDown'); ffHeld = false; }
+      if (step < plan.length && z >= plan[step][0]) {
+        const action = plan[step][1];
+        step += 1;
+        action();
+        return;
+      }
+      if (z >= 419 && z <= 420.8 && !g.isInteractionUsed('ac-orb-gravity')) tap('Space');
+      else if (z >= 677.1 && z <= 678.9 && !g.isInteractionUsed('ac-orb-jump')) tap('Space');
+    }, 5);
+  });
+  let m72Result = null;
+  {
+    const t0 = Date.now();
+    for (;;) {
+      const done = await page.evaluate(() => window.__m72done);
+      if (done !== null) { m72Result = done; break; }
+      if (Date.now() - t0 > 900000) {
+        await page.evaluate(() => {
+          if (window.__m72driver) clearInterval(window.__m72driver);
+          window.__m72driver = null;
+        });
+        m72Result = 'timeout';
+        break;
+      }
+      await page.waitForTimeout(500);
+    }
+  }
+  const m72deaths = await page.evaluate(() => window.__m72deaths ?? 0);
+  log('m72 finish reached with real inputs', m72Result === 'finished',
+    `${String(m72Result)} deaths=${m72deaths}`);
+  await capture('m72-13-finish');
+  const m72tape = await page.evaluate(() => window.__gd3d.exportLastReplay());
+  let m72Seconds = -1;
+  let m72Frames = -1;
+  if (m72tape !== null) {
+    const parsed = JSON.parse(m72tape);
+    m72Frames = parsed.frameCount;
+    m72Seconds = parsed.frameCount / 120;
+  }
+  log('m72 runtime inside 60-75 s',
+    m72Seconds >= 60 && m72Seconds <= 75,
+    `frames=${m72Frames} seconds=${m72Seconds.toFixed(2)}`);
+  await page.evaluate(() => window.__gd3d.startReplay());
+  const m72Verify = await (async () => {
+    const t0 = Date.now();
+    for (;;) {
+      const snap = await page.evaluate(() => ({
+        verify: window.__gd3d.replayVerification(),
+        status: window.__gd3d.status(),
+      }));
+      if (snap.verify.kind === 'pass' || snap.verify.kind === 'diverged') return snap;
+      if (Date.now() - t0 > 900000) return snap;
+      await page.waitForTimeout(300);
+    }
+  })();
+  log('m72 replay starts', m72Verify.verify.kind === 'pass' || m72Verify.verify.kind === 'diverged',
+    `verify=${m72Verify.verify.kind}`);
+  log('m72 replay VERIFIED', m72Verify.verify.kind === 'pass',
+    `verify=${m72Verify.verify.kind} status=${m72Verify.status}`);
+  await m72snap('m72-14-replay-verified');
+
+  // Restart + death/respawn hygiene on the new level.
+  await page.keyboard.press('KeyR');
+  await page.waitForTimeout(500);
+  const m72restart = await m72probe();
+  log('m72 restart clean',
+    m72restart.z < 10 && m72restart.section === 'ac-ember' && m72restart.tpId === null,
+    `z=${m72restart.z.toFixed(1)} section=${m72restart.section} tpId=${m72restart.tpId}`);
+  await m72restage(0, 0.6, 21.2);
+  const m72sawDeath = await (async () => {
+    const t0 = Date.now();
+    for (;;) {
+      const s = await m72probe();
+      if (s.status === 'dead') return true;
+      if (Date.now() - t0 > 60000) return false;
+      await page.waitForTimeout(40);
+    }
+  })();
+  const m72respawn = await m72roll((s) => s.z < 10, 60000);
+  log('m72 death/respawn clean', m72sawDeath && m72respawn !== null,
+    `sawDeath=${m72sawDeath} respawned z=${m72respawn?.z?.toFixed(1)}`);
+
+  // Fallback matrix stays playable on the new level.
+  await m72fresh(`${URL}?level=advanced-cube-01&post=off&fx=off&triggers=off`);
+  const m72fallback = await m72roll((s) => s.z > 12, 60000);
+  log('m72 triggers-off playable',
+    m72fallback !== null && m72fallback.status === 'running',
+    m72fallback ? `z=${m72fallback.z.toFixed(1)}` : 'stalled');
+  log('m72 triggers-off restores the exact baseline section',
+    m72fallback !== null && m72fallback.section === 'base',
+    m72fallback ? `section=${m72fallback.section}` : 'stalled');
+
+  // Resource counts stable across the heavier level.
+  await m72fresh(`${URL}?level=advanced-cube-01`);
+  const m72res0 = await m72probe();
+  await page.keyboard.press('KeyR');
+  await page.waitForTimeout(800);
+  const m72res1 = await m72probe();
+  log('m72 no material growth', m72res1.mats === m72res0.mats,
+    `mats=${m72res0.mats}->${m72res1.mats}`);
+  log('m72 no geometry growth', m72res1.geos === m72res0.geos,
+    `geos=${m72res0.geos}->${m72res1.geos}`);
+  log('m72 no unbounded scene growth', m72res1.children === m72res0.children,
+    `children=${m72res0.children}->${m72res1.children}`);
+
+  // M7.1 regression: the approved slice still loads and advances.
+  await m72fresh(`${URL}?level=vertical-slice-01`);
+  const m72vs = await m72roll((s) => s.z > 12, 60000);
+  log('m72 vertical-slice-01 still playable',
+    m72vs !== null && m72vs.status === 'running',
+    m72vs ? `z=${m72vs.z.toFixed(1)}` : 'stalled');
 }
 
 // --- 25. Console audit ---
