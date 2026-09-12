@@ -9,6 +9,7 @@ import type { LevelDefinition } from '../src/level/levelDefinition';
 import { computeLevelFingerprint } from '../src/replay/levelFingerprint';
 import {
   BLOOM_CONTRACT,
+  GLOBAL_HAZARD_COLOR,
   PRODUCTION_THEME,
   resolveProductionTheme,
   validateProductionTheme,
@@ -61,6 +62,11 @@ describe('visual theme is replay-compatible (fingerprint-stable)', () => {
     expect(t1.playerBody).toBe(t2.playerBody);
     expect(t1.playerFace).toBe(t2.playerFace);
     expect(t1.hazard).not.toBe(t1.routeEdge); // hazards never share the route language
+    // M6D hazard-semantic contract: ONE global warm hazard identity — no
+    // per-level theme may recolor it (route/environment identity may vary).
+    expect(t1.hazard).toBe(GLOBAL_HAZARD_COLOR);
+    expect(t2.hazard).toBe(GLOBAL_HAZARD_COLOR);
+    expect(t2.hazard).toBe(PRODUCTION_THEME.hazard);
     // Semantic accents are wired from the shared theme (not per-level hues).
     expect(t2.padJump).toBe(PRODUCTION_THEME.padJump);
     expect(t2.orbJump).toBe(PRODUCTION_THEME.orbJump);

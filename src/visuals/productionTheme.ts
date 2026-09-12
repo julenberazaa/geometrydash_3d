@@ -253,9 +253,20 @@ export const resolveProductionTheme = (def: { theme?: LevelTheme }): ProductionT
     routeBody: legacy.platform,
     routeTop: legacy.platformTop,
     routeEdge: legacy.edge,
-    hazard: legacy.hazard,
+    // M6D hazard-semantic contract: hazards keep ONE global warm identity
+    // (PRODUCTION_THEME.hazard) on every level. Per-level route/environment
+    // identity flows through the overlay above; `LevelTheme.hazard` is
+    // deliberately NOT read so no theme can replace the warm hazard
+    // language (readability rule — see GAME_DESIGN.md §9). The field stays
+    // on the type for data compatibility but is renderer-inert.
   };
 };
+
+/**
+ * M6D hazard-semantic pin: the single global warm hazard color every level
+ * renders. Exported for the contract test (all levels resolve to this).
+ */
+export const GLOBAL_HAZARD_COLOR = PRODUCTION_THEME.hazard;
 
 const clamp = (v: number, lo: number, hi: number): number =>
   Math.min(hi, Math.max(lo, v));
