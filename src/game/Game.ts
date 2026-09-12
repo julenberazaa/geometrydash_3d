@@ -200,7 +200,6 @@ export class Game {
   private debugCollidersOn = false;
   private debugPlayerBoxOn = false;
 
-  /** Render-side frame work; gameplay state is only READ here. */
   /** M6D rolling frame-delivery statistics (cold QA path; zeros when off). */
   public perfSnapshot(): PerfSnapshot {
     return this.perf.snapshot();
@@ -216,6 +215,7 @@ export class Game {
     return this.perfEnabled;
   }
 
+  /** Render-side frame work; gameplay state is only READ here. */
   private frameRender(alpha: number, renderDtSeconds: number): void {
     // FPS EMA.
     const nowMs = performance.now();

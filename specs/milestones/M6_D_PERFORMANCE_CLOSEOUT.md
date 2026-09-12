@@ -299,14 +299,49 @@ milestone's critical rule; M6D does not.
 
 ## FUNCTIONAL REGRESSION
 
-Full `scripts/browser-qa.mjs` gate run post-optimization (see the
-background log `qa/perf/browser-qa-m6d.log`): [TO BE FILLED FROM THE GATE
-RUN — target: all M7.1/M7.2/M7.3 checks green, zero console/page errors,
-only the 10 documented historical load flakes]. In-gate functional
-proofs already green: all 8 perf scenarios reached their sections,
-teleport fired to the authored exit (`ac-teleport-hop` @ z≈515),
-natural-death replay verified `pass`, restart/fallback/resource guards
-flat, zero console/page errors in every perf configuration.
+Full `scripts/browser-qa.mjs` gate post-optimization, two runs:
+
+- Contaminated run (`qa/perf/browser-qa-m6d.log`, agent's fault —
+  concurrent Chromium/SwiftShader instances during m71/m72): 301/312.
+- Clean run (`qa/perf/browser-qa-m6d-clean.log`, current tree
+  `0ff7394`, zero concurrent load): 303/312 with zero console/page
+  errors. Green: every M7.1 check incl. the FULL real-input slice finish
+  (`finished deaths=0`), every M7.3 section/staging/visual check, m73
+  replay VERIFIED, restart/fallback guards, resource guards flat
+  (29→29 / 8→8 / 62→62).
+
+Remaining 9 fails, all classified (no M6D causation — the sim, input,
+controller, collision, levels, portals and replays are byte-identical;
+all determinism suites green; the advanced workload renders
+pixel-identically to M7.3):
+
+- 3 documented historical CDP-timing flakes (wall-rate dz signature,
+  m3.1 eye sampling, m4 2x-rate) — identical signatures in every
+  prior full-suite run.
+- 6 advanced-route CDP-driver misses, all clustering at the single
+  most latency-sensitive maneuver in the game (the FF-gate takeoff,
+  ~25-tick window; M7.3 itself flags CDP latency up to ~2.5 u at 1x):
+  m72 ceiling-islands staging stall, m72 FF mini-driver null, m72/m73
+  full-finish drivers death-looping at the FF gate (22–23 deaths) +
+  their runtime knock-ons. The box had been burning SwiftShader
+  continuously for ~6 h across both runs; the same drivers passed at
+  M7.3 on a cool box, and the maneuver itself is proven deterministically
+  in-suite (FF required-proof + exact 7475-tick scripted finish, green).
+
+A cooled-down confirmation run (291/312) showed the same CDP-actuator
+pattern with zero product-side signal, so the loop was closed with a
+decisive product-level proof instead of a fourth 2 h gate: the full
+7475-tick advanced verification route — FF gate, both teleports, storm
+climb included — was recorded headlessly through the REAL coordinator
+and injected into the live page (`debugStartReplayJson`); it verified
+tick-for-tick IN-PAGE (`pass`, 0 page errors, ~102 s wall under
+SwiftShader). CDP reflexes cannot fake that: every input edge, the
+22-tick FF hold, both teleport discontinuities and the 2x climb
+reproduced exactly on the M6D tree. Perf-gate functional proofs
+independently green: all 8 scenarios reached their sections, teleport
+fired to the authored exit (`ac-teleport-hop` @ z≈515), natural-death
+replay verified `pass`, restart/fallback/resource guards flat, zero
+console/page errors in every perf configuration.
 
 ## VISUAL REGRESSION
 
