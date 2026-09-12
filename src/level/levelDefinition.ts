@@ -99,6 +99,16 @@ export interface TeleportPortalDef {
   id: string;
   /** World Z of the entry crossing plane. */
   entryZ: number;
+  /**
+   * OPTIONAL bounded entry volume (M8A). When present, the teleport fires
+   * only when the swept step path overlaps this box — flying past the
+   * visual ring without passing through it can NOT trigger it. When
+   * absent, the legacy forward entry-plane crossing applies (pre-M8A
+   * content stays compatible). New content must use the bounded volume.
+   */
+  entryCenter?: Vec3;
+  /** Half extents of the bounded entry volume (required with entryCenter). */
+  entryHalfExtents?: Vec3;
   /** Authored destination (hitbox center after the jump). */
   exit: Vec3;
   /** Lane intent after the jump (explicit authored handoff). */

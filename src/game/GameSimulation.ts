@@ -567,7 +567,14 @@ export class GameSimulation {
     let fired: TeleportPortalDef | null = null;
     for (const portal of this.level.teleportPortals) {
       if (this.usedTeleports.has(portal.id)) continue;
-      if (prevZ < portal.entryZ && currentZ >= portal.entryZ) fired = portal;
+      // M8A bounded entry volumes: the swept path must overlap the entry
+      // box (flying past a small ring cannot trigger it). Legacy portals
+      // without a volume keep the forward entry-plane crossing.
+      if (portal.entryCenter !== undefined && portal.entryHalfExtents !== undefined) {
+        if (this.sweptWindowOverlap(portal.entryCenter, portal.entryHalfExtents)) fired = portal;
+      } else if (prevZ < portal.entryZ && currentZ >= portal.entryZ) {
+        fired = portal;
+      }
     }
     if (fired === null) return;
     this.usedTeleports.add(fired.id);

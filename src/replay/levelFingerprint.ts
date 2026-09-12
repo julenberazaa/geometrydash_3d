@@ -20,6 +20,7 @@
  */
 
 import { DeterministicHasher } from './hash';
+import type { GravityMode } from '../player/playerState';
 import type {
   GravityOrbDef,
   GravityPortalDef,
@@ -44,8 +45,10 @@ const writeVec3 = (h: DeterministicHasher, v: Vec3Like): void => {
   h.writeFloat64(v.z);
 };
 
-const writeGravityMode = (h: DeterministicHasher, mode: 'floor' | 'ceiling' | undefined): void => {
-  h.writeInt32(mode === 'ceiling' ? 1 : 0);
+const writeGravityMode = (h: DeterministicHasher, mode: GravityMode | undefined): void => {
+  // M8B four-way codes: floor 0 / ceiling 1 (unchanged) + leftWall 2 /
+  // rightWall 3 (appended) — pre-M8B levels hash byte-identically.
+  h.writeInt32(mode === 'ceiling' ? 1 : mode === 'leftWall' ? 2 : mode === 'rightWall' ? 3 : 0);
 };
 
 const writePortal = (h: DeterministicHasher, p: GravityPortalDef): void => {
@@ -83,8 +86,17 @@ const writeTeleport = (h: DeterministicHasher, t: TeleportPortalDef): void => {
   // Gameplay discontinuity: id + entry plane + exit + lane handoff.
   // Presentation-only `style` is deliberately excluded (restyling a gate
   // keeps old replays compatible — same pattern as hazard visual/mount).
+  // M8A bounded entry volumes are gameplay (they change the trigger), so
+  // they ARE fingerprinted — conditionally, so volume-less teleports hash
+  // exactly as before.
   h.writeString(t.id);
   h.writeFloat64(t.entryZ);
+  const hasVolume = t.entryCenter !== undefined && t.entryHalfExtents !== undefined;
+  h.writeBoolean(hasVolume);
+  if (hasVolume) {
+    writeVec3(h, t.entryCenter ?? { x: 0, y: 0, z: 0 });
+    writeVec3(h, t.entryHalfExtents ?? { x: 0, y: 0, z: 0 });
+  }
   writeVec3(h, t.exit);
   h.writeInt32(t.exitLaneIndex);
 };

@@ -1,4 +1,5 @@
 import { Game } from './game/Game';
+import type { GravityMode } from './player/playerState';
 import { resolveLevel } from './content/levelRegistry';
 import { parseReplay } from './replay/replayFormat';
 
@@ -58,7 +59,7 @@ declare global {
       grounded: () => boolean;
       laneIndex: () => number;
       playerPosition: () => { x: number; y: number; z: number };
-      gravityMode: () => 'floor' | 'ceiling';
+      gravityMode: () => GravityMode;
       lastPortalId: () => string | null;
       portalTransitionCount: () => number;
       speedMultiplier: () => number;

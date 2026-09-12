@@ -3,12 +3,17 @@ import { vec3 } from '../core/math';
 
 /**
  * Which side of the world the player is currently attached to / pulled toward.
- * M3 ships Floor and Ceiling only; wall modes are future work and MUST NOT be
- * assumed by any code path yet. The authoritative value lives on
- * `GameSimulation` (see ARCHITECTURE.md); this mirror on the player state is
- * read-only presentation of that authority.
+ *
+ * Four support surfaces (M8B): `floor` (support below, gravity −Y),
+ * `ceiling` (support above, gravity +Y), `leftWall` (support on the
+ * screen-left wall at world +X, gravity +X) and `rightWall` (support on
+ * the screen-right wall at world −X, gravity −X). Walls are named by
+ * SUPPORT SURFACE as seen from the +Z chase camera (screen-left is world
+ * +X per the M1.1 lane convention). The authoritative value lives on
+ * `GameSimulation` (see ARCHITECTURE.md); this mirror on the player state
+ * is read-only presentation of that authority.
  */
-export type GravityMode = 'floor' | 'ceiling';
+export type GravityMode = 'floor' | 'ceiling' | 'leftWall' | 'rightWall';
 
 /**
  * Pure simulation state of the player. THREE.js never touches this.

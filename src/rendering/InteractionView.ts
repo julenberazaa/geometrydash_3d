@@ -78,7 +78,7 @@ export class InteractionView {
 
     this.buildPads(level, unitBox, padMat);
     this.buildOrbs(level, sphere, halo, orbJumpMat, orbGravityMat);
-    this.buildSpeedPortals(level, unitBox, chevron);
+    this.buildSpeedPortals(level, chevron);
     this.buildRingPool(halo);
   }
 
@@ -147,41 +147,36 @@ export class InteractionView {
     build(level.gravityOrbs, gravityMat);
   }
 
-  /** Speed portals: a tier-colored gateway + one forward chevron per tier
-   *  step — tier reads from color AND chevron count, never tiny text.
-   *  Tier materials are cached in the library (rare, created once).
-   *  M7.3: pulled tighter to the corridor (was 3.2/1.4) — portals mark the
-   *  route line instead of towering over it. */
-  private buildSpeedPortals(
-    level: LoadedLevel,
-    unitBox: THREE.BoxGeometry,
-    chevron: THREE.ConeGeometry,
-  ): void {
+  /**
+   * Speed portals (M8A): compact tier-colored RING gates on the route
+   * line — one circular mouth (halo + energy disc, shared geometries) +
+   * one forward chevron per tier step stacked inside. Tier reads from
+   * color AND chevron count, never tiny text; the post-and-bar gateway
+   * language is retired with the gravity panes. Tier materials are cached
+   * in the library (rare, created once).
+   */
+  private buildSpeedPortals(level: LoadedLevel, chevron: THREE.ConeGeometry): void {
+    const halo = this.library.orbHalo;
     for (const portal of level.speedPortals) {
       // Shared per-tier library material (not per-portal).
       const mat = this.speedTierMaterial(portal.multiplier);
-
-      const lateralHalf = 2.9;
-      const ringHalf = 1.2;
-      for (const sx of [-1, 1]) {
-        const post = new THREE.Mesh(unitBox, mat);
-        post.scale.set(0.12, ringHalf * 2, 0.12);
-        post.position.set(sx * lateralHalf, 1.4, portal.z);
-        this.group.add(post);
-      }
-      for (const sy of [1.4 - ringHalf, 1.4 + ringHalf]) {
-        const bar = new THREE.Mesh(unitBox, mat);
-        bar.scale.set(lateralHalf * 2, 0.12, 0.12);
-        bar.position.set(0, sy, portal.z);
-        this.group.add(bar);
-      }
-      // Chevron count = rounded tier (min 1), stacked inside the gateway,
+      const radius = 1.6;
+      const ring = new THREE.Mesh(halo, mat);
+      ring.scale.setScalar(radius / 0.62);
+      ring.position.set(0, 1.7, portal.z);
+      this.group.add(ring);
+      const rim = new THREE.Mesh(halo, this.dimMaterial);
+      rim.scale.setScalar((radius * 0.72) / 0.62);
+      rim.position.set(0, 1.7, portal.z);
+      this.group.add(rim);
+      // Chevron count = rounded tier (min 1), stacked inside the ring,
       // each pointing +Z (the direction of travel).
       const chevrons = Math.max(1, Math.round(portal.multiplier));
       for (let i = 0; i < chevrons; i++) {
         const c = new THREE.Mesh(chevron, mat);
         c.rotation.x = Math.PI / 2; // cone axis -> +Z
-        c.position.set(0, 0.55 + i * 0.85, portal.z);
+        c.scale.setScalar(0.8);
+        c.position.set(0, 1.15 + i * 0.7, portal.z);
         this.group.add(c);
       }
     }

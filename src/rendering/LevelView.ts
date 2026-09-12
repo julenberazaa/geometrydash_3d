@@ -289,55 +289,72 @@ export class LevelView {
   }
 
   /**
-   * M3 gravity portal visuals: a vertical neon gateway spanning the route at
-   * each portal's crossing Z. Purely presentational — triggering lives in the
-   * simulation (forward-crossing plane), never here. Shared unit-box geometry
-   * and ONE shared material per direction (up = cyan, down = warm); zero
-   * per-frame work.
+   * M8A gravity portal visuals: COMPACT professional ring gates on the
+   * route line — one circular mouth per portal (outer halo + inner rim +
+   * energy disc + a direction chevron pointing along the pull of the
+   * TARGET gravity). The wall-sized pane gateway language is retired:
+   * portals read as holes to fly through, never architecture. Ring center
+   * sits on the approach surface (low for floor approaches, high for
+   * ceiling approaches); wall-gravity targets offset toward their wall
+   * (see M8B). Purely presentational — triggering lives in the
+   * simulation, never here. Shared halo/box/chevron geometries + the two
+   * direction materials; zero per-frame work.
    */
   private buildGravityPortals(level: LoadedLevel): void {
     if (level.gravityPortals.length === 0) return;
-    const frameMatUp = this.library.portalUp;
-    const frameMatDown = this.library.portalDown;
-    const paneMatUp = this.library.portalPaneUp;
-    const paneMatDown = this.library.portalPaneDown;
-    const unitBox = this.library.unitBox;
-
-    // Span the route: lateral extent from the lane layout, vertical extent
-    // from the floor up past the ceiling band. Presentation values only.
-    // M7.3: pulled tighter to the corridor (was +1.6) so portals read as
-    // thresholds to fly THROUGH, not walls around the route.
-    const lanes = level.laneCenters;
-    const lateralHalf = Math.max(Math.abs(lanes[0] ?? 0), Math.abs(lanes[lanes.length - 1] ?? 0)) + 1.2;
-    const portalBottom = -0.4;
-    const portalTop = 8;
-    const height = portalTop - portalBottom;
-    const centerY = portalBottom + height / 2;
-
     for (const portal of level.gravityPortals) {
-      const up = portal.target === 'ceiling';
-      const frameMat = up ? frameMatUp : frameMatDown;
-      const paneMat = up ? paneMatUp : paneMatDown;
-      // Two side posts + top/bottom bars in a plane facing the camera...
-      const postGeomScale = { x: 0.14, y: height, z: 0.14 };
-      for (const sx of [-1, 1]) {
-        const post = new THREE.Mesh(unitBox, frameMat);
-        post.scale.set(postGeomScale.x, postGeomScale.y, postGeomScale.z);
-        post.position.set(sx * lateralHalf, centerY, portal.z);
-        this.group.add(post);
+      const toCeiling = portal.target === 'ceiling';
+      const toFloor = portal.target === 'floor';
+      const frameMat = toCeiling ? this.library.portalUp : this.library.portalDown;
+      const paneMat = toCeiling ? this.library.portalPaneUp : this.library.portalPaneDown;
+      // Approach-side center: floor approaches fly low, ceiling approaches
+      // fly high, wall approaches hug their wall (lateral offset).
+      const cy = toCeiling ? 1.7 : toFloor ? 4.9 : 2.6;
+      const cx = portal.target === 'leftWall' ? 3.4 : portal.target === 'rightWall' ? -3.4 : 0;
+      this.buildPortalRing(cx, cy, portal.z, 1.7, frameMat, paneMat);
+      // Direction glyph: chevron along the target gravity pull (up = away
+      // from floor, down = away from ceiling, sideways for walls).
+      const glyph = new THREE.Mesh(this.library.chevron, frameMat);
+      glyph.scale.setScalar(0.9);
+      glyph.position.set(cx, cy, portal.z);
+      if (portal.target === 'leftWall') {
+        glyph.rotation.z = -Math.PI / 2;
+      } else if (portal.target === 'rightWall') {
+        glyph.rotation.z = Math.PI / 2;
+      } else {
+        glyph.rotation.x = toCeiling ? Math.PI : 0;
       }
-      for (const sy of [portalBottom, portalTop]) {
-        const bar = new THREE.Mesh(unitBox, frameMat);
-        bar.scale.set(lateralHalf * 2, 0.14, 0.14);
-        bar.position.set(0, sy, portal.z);
-        this.group.add(bar);
-      }
-      // ...plus a faint translucent pane so the gateway reads as a threshold.
-      const pane = new THREE.Mesh(unitBox, paneMat);
-      pane.scale.set(lateralHalf * 2, height, 0.02);
-      pane.position.set(0, centerY, portal.z);
-      this.group.add(pane);
+      this.group.add(glyph);
     }
+  }
+
+  /**
+   * Shared compact ring-gate builder (M8A portal family): outer halo +
+   * bright inner rim + faint energy disc, all facing the camera. One
+   * readable threshold per portal type — gravity, speed (via
+   * InteractionView), teleport and mode portals share this language with
+   * per-family colors and glyphs.
+   */
+  private buildPortalRing(
+    x: number,
+    y: number,
+    z: number,
+    radius: number,
+    frameMat: THREE.Material,
+    paneMat: THREE.Material,
+  ): void {
+    const ring = new THREE.Mesh(this.library.orbHalo, frameMat);
+    ring.scale.setScalar(radius / 0.62);
+    ring.position.set(x, y, z);
+    this.group.add(ring);
+    const rim = new THREE.Mesh(this.library.orbHalo, paneMat);
+    rim.scale.setScalar((radius * 0.72) / 0.62);
+    rim.position.set(x, y, z);
+    this.group.add(rim);
+    const disc = new THREE.Mesh(this.library.unitBox, paneMat);
+    disc.scale.set(radius * 1.5, radius * 1.5, 0.02);
+    disc.position.set(x, y, z);
+    this.group.add(disc);
   }
 
   /**
@@ -358,24 +375,6 @@ export class LevelView {
     if (level.teleportPortals.length === 0) return;
     const frameMat = this.library.teleportFrame;
     const paneMat = this.library.teleportPane;
-    const unitBox = this.library.unitBox;
-
-    // One round gate: outer halo ring + bright inner rim + faint pane disc.
-    // `radius` is world units; the halo tube (0.045) scales with it.
-    const buildRingGate = (x: number, y: number, z: number, radius: number): void => {
-      const ring = new THREE.Mesh(this.library.orbHalo, frameMat);
-      ring.scale.setScalar(radius / 0.62);
-      ring.position.set(x, y, z);
-      this.group.add(ring);
-      const rim = new THREE.Mesh(this.library.orbHalo, paneMat);
-      rim.scale.setScalar((radius * 0.72) / 0.62);
-      rim.position.set(x, y, z);
-      this.group.add(rim);
-      const pane = new THREE.Mesh(unitBox, paneMat);
-      pane.scale.set(radius * 1.5, radius * 1.5, 0.02);
-      pane.position.set(x, y, z);
-      this.group.add(pane);
-    };
 
     for (const portal of level.teleportPortals) {
       if (portal.style === 'maw') {
@@ -383,7 +382,7 @@ export class LevelView {
         // guardian's bite. Smaller than M7.2 (radius 2.2 vs ~3) with a
         // hazard-orange tooth crown (shared chevron geometry) so the
         // entry reads as a creature mouth, not architecture.
-        buildRingGate(0, 2.4, portal.entryZ, 2.2);
+        this.buildPortalRing(0, 2.4, portal.entryZ, 2.2, frameMat, paneMat);
         for (let i = 0; i < 8; i++) {
           const tooth = new THREE.Mesh(this.library.chevron, this.library.hazard);
           const a = (i / 8) * Math.PI * 2;
@@ -395,11 +394,11 @@ export class LevelView {
         }
       } else {
         // Short-hop entry: compact ring on the route line.
-        buildRingGate(0, 1.6, portal.entryZ, 1.8);
+        this.buildPortalRing(0, 1.6, portal.entryZ, 1.8, frameMat, paneMat);
       }
       // Exit: a smaller doorway ring at the authored destination.
       const exitR = portal.style === 'maw' ? 1.5 : 1.3;
-      buildRingGate(portal.exit.x, portal.exit.y + 0.4, portal.exit.z, exitR);
+      this.buildPortalRing(portal.exit.x, portal.exit.y + 0.4, portal.exit.z, exitR, frameMat, paneMat);
     }
   }
 
