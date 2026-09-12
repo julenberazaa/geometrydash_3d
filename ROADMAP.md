@@ -371,7 +371,7 @@ PROCEED. No individual M6A/B/C parameter claimed locked; M6D real-GPU
 performance closeout intentionally deferred until representative M7 content
 exists (M7 is that workload). M6 is NOT fully closed.
 
-## M7.3 — Advanced Cube polish & spectacle pass: ENGINEERING COMPLETE / BROWSER QA GREEN / HUMAN RE-TEST GATE OPEN
+## M7.3 — Advanced Cube polish & spectacle pass: ENGINEERING COMPLETE / BROWSER QA GREEN / HUMAN RE-TEST APPROVED TO PROCEED
 
 Focused M7.2-feedback rework of `advanced-cube-01` on the frozen
 controller (zero tuning changes, no level-id engine branches, ReplayV1
@@ -389,8 +389,13 @@ with zero console/page errors — ALL M7.1/M7.2/M7.3 checks green incl. two
 full real-input finishes at the exact 7475 anchor with in-page REPLAY
 VERIFIED (10 remaining fails: the documented pre-existing load-flake set,
 zero M7.3 causation). Spec:
-`specs/milestones/M7_3_ADVANCED_CUBE_POLISH.md`. HUMAN ADVANCED-CUBE
-RE-TEST GATE = OPEN. Next: M6D real-GPU closeout → music/rhythm → Ship.
+`specs/milestones/M7_3_ADVANCED_CUBE_POLISH.md`. M7.3 HUMAN
+ADVANCED-CUBE RE-TEST: APPROVED TO PROCEED (2026-09-12 — the human played
+the advanced level and said "esta bastante bien. vamos a seguir hacia
+delante"). Recorded conservatively: the advanced Cube direction is
+accepted and development may proceed — not "perfect", not permanently
+locked art, no redesign permission. Next: M6D real-GPU closeout →
+music/rhythm → Ship.
 
 ## Ship mode — ONLY after the Cube vertical slice and control validation
 

@@ -3,7 +3,7 @@
 ## STATUS
 
 M7.3: ENGINEERING COMPLETE / BROWSER QA GREEN (modulo documented
-load-flakes) / HUMAN RE-TEST GATE OPEN.
+load-flakes) / HUMAN RE-TEST APPROVED TO PROCEED (2026-09-12).
 
 Automated: 360/360 tests green (`npm run verify`: typecheck + lint + tests +
 build) — 349 M7.2 + 11 new (3 death-burst, 2 maze-wall, 2 lava/beast,
@@ -152,7 +152,16 @@ chains + lava ≈ +150 meshes on this level). Build 618.84 → 622.95 kB
 (+4.11 kB: level data + renderer deltas + tests). Real-GPU closeout
 remains M6D.
 
-## HUMAN GATE (OPEN)
+## HUMAN GATE (APPROVED TO PROCEED — 2026-09-12)
+
+M7.3 HUMAN ADVANCED-CUBE RE-TEST: APPROVED TO PROCEED. The human played
+`advanced-cube-01` and said "esta bastante bien. vamos a seguir hacia
+delante". Recorded conservatively: the advanced Cube direction is
+accepted and development may proceed. NOT claimed: "perfect", final art
+permanently locked, or future tuning forbidden. No redesign permission —
+M6D remains a performance/resource/stability closeout.
+
+Original human-gate playtest brief (kept for record — the gate above is now approved):
 
 Play: `http://localhost:5173/?level=advanced-cube-01`. Hardest sections:
 (1) FF gate (z 243..257), (2) Phase-1 offset pair (z 92..134), (3) Phase-2
