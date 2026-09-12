@@ -302,9 +302,9 @@ export class RendererHost {
       if (Math.abs(this.fovKick) < 0.05) this.fovKick = 0;
       if (Math.abs(this.heightKick) < 0.005) this.heightKick = 0;
     }
-    this.camera.fov = CAMERA_TUNING.fov + this.fovKick;
-    this.camera.updateProjectionMatrix();
-
+    // M6D: no updateProjectionMatrix here — render() applies the fov kick
+    // and updates the projection once per presented frame (this method ran
+    // it redundantly every frame, doubling a matrix recompute).
     this.chaseCamera.update(p, 0, renderDtSeconds, this.focusSide());
   }
 
@@ -704,6 +704,36 @@ export class RendererHost {
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
     this.post.resize(width, height);
+  }
+
+  /**
+   * M6D real-GPU identity probe (cold QA path only): actual WebGL renderer
+   * via WEBGL_debug_renderer_info. The perf verdict MUST identify this —
+   * SwiftShader/llvmpipe/Basic Render Driver verdicts are software, never
+   * a REAL-GPU PASS.
+   */
+  public gpuIdentity(): {
+    version: string;
+    vendor: string;
+    renderer: string;
+    devicePixelRatio: number;
+    renderPixelRatio: number;
+  } {
+    const gl = this.renderer.getContext();
+    const ext = gl.getExtension('WEBGL_debug_renderer_info');
+    const unmasked = (p: number): string => {
+      try {
+        if (ext) return String(gl.getParameter(p));
+      } catch { /* masked contexts stay labeled */ }
+      return 'masked';
+    };
+    return {
+      version: this.renderer.capabilities.isWebGL2 ? 'WebGL2' : 'WebGL1',
+      vendor: ext ? unmasked(ext.UNMASKED_VENDOR_WEBGL) : String(gl.getParameter(gl.VENDOR)),
+      renderer: ext ? unmasked(ext.UNMASKED_RENDERER_WEBGL) : String(gl.getParameter(gl.RENDERER)),
+      devicePixelRatio: window.devicePixelRatio,
+      renderPixelRatio: this.renderer.getPixelRatio(),
+    };
   }
 
   public dispose(): void {

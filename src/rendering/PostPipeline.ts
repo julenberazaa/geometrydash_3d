@@ -95,7 +95,18 @@ export class PostPipeline {
     const s = Math.min(BLOOM_CONTRACT.maxStrength, Math.max(0, strength));
     const r = Math.min(BLOOM_CONTRACT.maxRadius, Math.max(0, radius));
     const t = Math.min(1, Math.max(BLOOM_CONTRACT.minThreshold, threshold));
-    this.pendingBloom = { strength: s, radius: r, threshold: t };
+    // M6D: hot path (called every rendered frame) — reuse the staged
+    // object instead of allocating a literal per frame. Skip the write
+    // entirely when nothing changed (steady-state sections sit still).
+    const staged = this.pendingBloom;
+    if (staged !== null && staged.strength === s && staged.radius === r && staged.threshold === t) return;
+    if (staged !== null) {
+      staged.strength = s;
+      staged.radius = r;
+      staged.threshold = t;
+    } else {
+      this.pendingBloom = { strength: s, radius: r, threshold: t };
+    }
     if (this.bloomPass !== null) {
       this.bloomPass.strength = s;
       this.bloomPass.radius = r;

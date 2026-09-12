@@ -202,27 +202,22 @@ export class InteractionView {
     this.clock += renderDt;
 
     // Gentle idle bob while unused (presentation only; used orbs rest dim).
+    // M6D: single traversal — orbs (baseY !== null) bob, pads swap material
+    // only. Previously two loops walked the same list every frame.
     const bob = Math.sin(this.clock * 2.2) * 0.05;
     for (const entry of this.dimmables) {
-      if (entry.baseY === null) continue;
-      const core = entry.meshes[0];
-      if (core === undefined) continue;
       const used = this.simulation.isInteractionUsed(entry.id);
-      const y = used ? entry.baseY : entry.baseY + bob;
-      core.position.y = y;
-      const haloMesh = entry.meshes[1];
-      if (haloMesh !== undefined) haloMesh.position.y = y;
       const target = used ? this.dimMaterial : entry.liveMaterial;
-      for (const mesh of entry.meshes) {
-        if (mesh.material !== target) mesh.material = target;
+      if (entry.baseY !== null) {
+        const core = entry.meshes[0];
+        // Preserve the historical edge: a coreless orb entry skips the
+        // whole update (bob + swap), exactly as the pre-merge first loop.
+        if (core === undefined) continue;
+        const y = used ? entry.baseY : entry.baseY + bob;
+        core.position.y = y;
+        const haloMesh = entry.meshes[1];
+        if (haloMesh !== undefined) haloMesh.position.y = y;
       }
-    }
-    // Pads: used-state material swap only (no bob).
-    for (const entry of this.dimmables) {
-      if (entry.baseY !== null) continue;
-      const target = this.simulation.isInteractionUsed(entry.id)
-        ? this.dimMaterial
-        : entry.liveMaterial;
       for (const mesh of entry.meshes) {
         if (mesh.material !== target) mesh.material = target;
       }
