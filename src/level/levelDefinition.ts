@@ -113,16 +113,24 @@ export interface TeleportPortalDef {
 
 /**
  * Presentation-only decorative setpiece (M7.2, e.g. a monster-like guardian
- * silhouette around a teleport gate). NEVER gameplay: no collision, no AI,
- * no movement, no trigger. Renderer-only: excluded from the gameplay
- * fingerprint and from replays. If it looks landable it must BE landable —
- * setpieces live outside the route corridor (see GAME_DESIGN.md).
+ * silhouette around a teleport gate; M7.3 adds lava). NEVER gameplay: no
+ * collision, no AI, no movement, no trigger. Renderer-only: excluded from
+ * the gameplay fingerprint and from replays. If it looks landable it must
+ * BE landable — setpieces live outside the route corridor (see
+ * GAME_DESIGN.md) or below it (lava reads as void dressing).
  */
 export interface VisualSetpieceDef {
   /** Stable identifier (debug/QA). */
   id: string;
-  /** The only M7.2 setpiece kind: a dark guardian silhouette with eyes. */
-  kind: 'guardian';
+  /**
+   * Setpiece vocabulary (presentation-only):
+   * - `guardian`: dark creature silhouette with warm eyes (M7.2), now with
+   *   a jaw, teeth and trailing chain links (M7.3 chain-chomp read).
+   * - `lava`: glowing hazard-orange basin/river surface marking void
+   *   danger (M7.3). Lives below the route; falling in still dies through
+   *   the normal void bound — no gameplay, pure environmental menace.
+   */
+  kind: 'guardian' | 'lava';
   /** World-space center of the silhouette volume. */
   center: Vec3;
   /** Silhouette half extents (eyes derive from these — no extra fields). */

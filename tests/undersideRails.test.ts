@@ -74,11 +74,14 @@ describe('underside rail parity (M3.2)', () => {
       expect(rails.length, `slab at z=${slab.center.z}`).toBe(4);
       // Two rails must run LONGITUDINALLY (along Z) — the converging forward
       // cue visible beside the Cube's silhouette. Two run across (along X).
+      // M7.3 corner closure: strips overhang 0.05 per end to tuck under the
+      // corner posts (lengths +0.1 vs the slab face), so match the closed
+      // frame, not the old near-touching segments.
       const longitudinal = rails.filter(
-        (m) => Math.abs(m.scale.z - slab.halfExtents.z * 2) < 1e-6,
+        (m) => Math.abs(m.scale.z - (slab.halfExtents.z * 2 + 0.1)) < 1e-6,
       );
       const across = rails.filter(
-        (m) => Math.abs(m.scale.x - slab.halfExtents.x * 2) < 1e-6,
+        (m) => Math.abs(m.scale.x - (slab.halfExtents.x * 2 + 0.1)) < 1e-6,
       );
       expect(longitudinal.length, `slab at z=${slab.center.z}`).toBe(2);
       expect(across.length, `slab at z=${slab.center.z}`).toBe(2);
@@ -86,7 +89,7 @@ describe('underside rail parity (M3.2)', () => {
       // exactly where the floor track carries its own rails.
       for (const rail of longitudinal) {
         expect(Math.abs(rail.position.x - slab.center.x)).toBeCloseTo(
-          slab.halfExtents.x - 0.06,
+          slab.halfExtents.x - 0.01,
           5,
         );
       }

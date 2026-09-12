@@ -371,6 +371,27 @@ PROCEED. No individual M6A/B/C parameter claimed locked; M6D real-GPU
 performance closeout intentionally deferred until representative M7 content
 exists (M7 is that workload). M6 is NOT fully closed.
 
+## M7.3 — Advanced Cube polish & spectacle pass: ENGINEERING COMPLETE / BROWSER QA GREEN / HUMAN RE-TEST GATE OPEN
+
+Focused M7.2-feedback rework of `advanced-cube-01` on the frozen
+controller (zero tuning changes, no level-id engine branches, ReplayV1
+unchanged): offset island pairs with mid-air transfers, a full-width maze
+jump-wall + 3 lane walls, tall spikes + denser groups + triple ceiling
+spikes, two overhead air-gate arches, a second short-hop teleport (mid-air
+ring 489 → exit 513, co-visible pair) beside the maw jump (524 → 634),
+smaller rounder ring gates, closed block corners + rear sills, glowing
+mini-islands, 6 lava basins + chained guardian/beast setpieces
+(presentation-only), stronger death burst (24 fragments / 0.5 s) and
+teleport FX. Scripted real-input route finishes tick 7475 (62.292 s),
+0 deaths, replay VERIFIED (unit). 360/360 automated tests (11 new),
+`npm run verify` green, golden replay intact. Browser QA: 302/312 green
+with zero console/page errors — ALL M7.1/M7.2/M7.3 checks green incl. two
+full real-input finishes at the exact 7475 anchor with in-page REPLAY
+VERIFIED (10 remaining fails: the documented pre-existing load-flake set,
+zero M7.3 causation). Spec:
+`specs/milestones/M7_3_ADVANCED_CUBE_POLISH.md`. HUMAN ADVANCED-CUBE
+RE-TEST GATE = OPEN. Next: M6D real-GPU closeout → music/rhythm → Ship.
+
 ## Ship mode — ONLY after the Cube vertical slice and control validation
 
 Enclosed tunnels, multi-surface hazards, speed feel. Never before Cube is fun.

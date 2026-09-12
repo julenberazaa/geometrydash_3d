@@ -42,9 +42,18 @@ const baseWorldY = (mesh: THREE.Mesh, def: LevelHazard): number => {
   return mesh.position.y + (flipped ? baseLocal : -baseLocal);
 };
 
-const meshForHazard = (view: LevelView, def: LevelHazard): THREE.Mesh => {
+const meshForHazard = (
+  view: LevelView,
+  def: LevelHazard,
+  spikeCone: THREE.BufferGeometry,
+): THREE.Mesh => {
+  // M7.3: match the shared spike-cone geometry exactly — edge strips,
+  // sills, glow frames and wall faces now also sit near hazards, so
+  // position alone no longer isolates the spike mesh (intent unchanged:
+  // this helper returns THE spike presentation for the hazard).
   const found = spikeMeshes(view.group).find(
     (m) =>
+      m.geometry === spikeCone &&
       Math.abs(m.position.x - def.center.x) < 0.05 &&
       Math.abs(m.position.z - def.center.z) < 0.05,
   );
@@ -54,9 +63,10 @@ const meshForHazard = (view: LevelView, def: LevelHazard): THREE.Mesh => {
 
 describe('ceiling spike orientation (M7.1)', () => {
   it('points floor spikes away from the floor (tip +Y, base at the collider bottom)', () => {
-    const view = new LevelView(loadLevel(TEST_LEVEL), makeTestLibrary());
+    const library = makeTestLibrary();
+    const view = new LevelView(loadLevel(TEST_LEVEL), library);
     for (const hz of TEST_LEVEL.hazards) {
-      const mesh = meshForHazard(view, hz);
+      const mesh = meshForHazard(view, hz, library.spikeCone);
       expect(mesh.rotation.x).toBe(0);
       expect(tipWorldY(mesh, hz)).toBeGreaterThan(hz.center.y);
       // Base sits exactly at the collider bottom (support surface below).
@@ -65,11 +75,12 @@ describe('ceiling spike orientation (M7.1)', () => {
   });
 
   it('points ceiling spikes away from the ceiling (tip −Y, base flush with the run surface)', () => {
-    const view = new LevelView(loadLevel(VERTICAL_SLICE_01), makeTestLibrary());
+    const library = makeTestLibrary();
+    const view = new LevelView(loadLevel(VERTICAL_SLICE_01), library);
     const ceiling = VERTICAL_SLICE_01.hazards.filter((h) => h.mount === 'ceiling');
     expect(ceiling.length).toBeGreaterThanOrEqual(1);
     for (const hz of ceiling) {
-      const mesh = meshForHazard(view, hz);
+      const mesh = meshForHazard(view, hz, library.spikeCone);
       expect(mesh.rotation.x).toBeCloseTo(Math.PI, 6);
       // Tip hangs BELOW the collider center (lethal side faces the corridor).
       expect(tipWorldY(mesh, hz)).toBeLessThan(hz.center.y);

@@ -4,17 +4,21 @@ import type { Vec3 } from '../core/math';
 /**
  * DeathBurstView: short procedural death effect, rendering-only.
  *
- * - Fixed pool of 14 fragments (shared geometry, 2 shared materials).
+ * - Fixed pool of 24 fragments (shared geometry, 2 shared materials).
  * - Deterministic radial burst from a fixed direction table (no RNG).
- * - 0.35 s lifetime, shrink-out; hidden when expired.
+ * - 0.5 s lifetime, shrink-out; hidden when expired.
+ * - M7.3: bigger and stronger — more fragments, larger chunks, faster
+ *   spray — so advanced-level deaths land with real weight. Still bounded
+ *   (one pool, shared resources) and still subordinate to the readability
+ *   hierarchy (cyan/white player colors, never hazard-orange).
  * - Zero allocation after construction; scene child count never grows.
  * - Never touches gameplay state: the renderer triggers it by observing
  *   GameSimulation.deathId and plays it at the frozen death position.
  */
 
-export const DEATH_BURST_LIFETIME = 0.35;
-const FRAGMENT_COUNT = 14;
-const FRAGMENT_SIZE = 0.16;
+export const DEATH_BURST_LIFETIME = 0.5;
+const FRAGMENT_COUNT = 24;
+const FRAGMENT_SIZE = 0.2;
 const BURST_GRAVITY = 12;
 
 export class DeathBurstView {
@@ -38,11 +42,12 @@ export class DeathBurstView {
 
     // Deterministic burst directions: golden-angle spiral over the sphere,
     // biased upward so the burst reads as an explosion, not a collapse.
+    // M7.3: faster spray (6 base + wider variance) for a harder hit.
     for (let i = 0; i < FRAGMENT_COUNT; i++) {
       const t = (i + 0.5) / FRAGMENT_COUNT;
       const phi = Math.acos(1 - 2 * t);
       const theta = i * 2.399963; // golden angle
-      const speed = 4 + (i % 4) * 1.1;
+      const speed = 6 + (i % 5) * 1.4;
       const dir = new THREE.Vector3(
         Math.sin(phi) * Math.cos(theta),
         Math.abs(Math.cos(phi)) * 0.9 + 0.35,

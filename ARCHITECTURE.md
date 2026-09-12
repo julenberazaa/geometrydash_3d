@@ -123,9 +123,9 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   (trigger volume + mount surface + explicit impulse), `jumpOrbs` /
   `gravityOrbs` (activation window AABBs, orbs add an impulse),
   `teleportPortals?` (M7.2: id + entry Z + exit + exit lane; `style` is
-  presentation-only, never fingerprinted), `visualSetpieces?` (M7.2:
-  presentation-only decorative kind/center/extents — never gameplay, never
-  fingerprinted),
+  presentation-only, never fingerprinted), `visualSetpieces?` (M7.2
+  guardian + M7.3 lava: presentation-only decorative kind/center/extents —
+  never gameplay, never fingerprinted),
   solids, hazards (each with presentation-only `visual` + `mount`
   floor/ceiling hints — never gameplay, never fingerprinted), theme,
   `visualSequence?` (M6C1), `rhythmCues?` (M7.1 beat-ready markers —
@@ -151,13 +151,15 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   logged reason (never silent substitution). `main.ts` selects content via
   `?level=<id>`. Adding a level = one data file + one registry entry + zero
   engine changes.
-- `advancedCube01.ts` (M7.2, `advanced-cube-01`): the HARD second
-  production Cube level — LOW/MID/HIGH floor bands + ceiling world,
-  fragmented islands, fast-fall gate, one paired teleport portal
-  (`ac-teleport-maw`, entry 514 → exit 634), one presentation-only
-  guardian setpiece, 8-section visual arc, 27 rhythm cues; scripted
-  real-input playthrough finishes at tick 7455 (62.125 s)
-  (`tests/helpers/advancedCube01Script.ts`).
+- `advancedCube01.ts` (M7.2, `advanced-cube-01`, reworked in M7.3): the HARD
+  second production Cube level — LOW/MID/HIGH floor bands + ceiling world,
+  offset island pairs with mid-air transfers, a full-width maze jump-wall +
+  lane walls (`killFront`), tall spikes, fast-fall lintel gate, two paired
+  teleport portals (a mid-air lava-hop `ac-teleport-hop` 489 → 513 whose
+  rings share one readable frame + the maw jump `ac-teleport-maw` 524 →
+  634), presentation-only guardian/beast + lava setpieces, 9-section visual
+  arc, 31 rhythm cues; scripted real-input playthrough finishes at tick
+  7475 (62.292 s) (`tests/helpers/advancedCube01Script.ts`).
 - `validationLevel02.ts` (M5, `validation-02`): the second-level
   architecture proof — different start lane (0), slower base speed
   (11 u/s), spike weave over all three safe lanes, plain gap, portal UP,
@@ -396,7 +398,8 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   M6C2 surface-contact skid sharing the trail buffer + gravity/pad streak
   kicks + amplified event counts within the same bounded pools + M7.2
   teleport exit-expansion bursts (violet, at the `lastTeleport` anchor,
-  fired AFTER the discontinuity trail wipe) + teleport streak kick).
+  fired AFTER the discontinuity trail wipe; M7.3 theme count 44 / life
+  0.75) + teleport streak kick).
   Owned by `RendererHost` (one scene group: trail Points + burst Points +
   one streak InstancedMesh = 3 draw calls; `?fx=off` hides it). Observes
   pre-existing sim seams only (bridged `onJump`, grounded edge,
@@ -440,21 +443,33 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   orbs idle-bob (render-side only). Original palette language: yellow family
   = jump impulse (pads + jump orbs), blue = gravity orb, one color +
   chevron count per speed tier.
-- `DeathBurstView` (M2, owned by `RendererHost`): 14 pooled fragments, shared
-  geometry + 2 shared materials, deterministic radial burst, 0.35 s lifetime,
+- `DeathBurstView` (M2, owned by `RendererHost`; M7.3: 24 pooled fragments,
+  0.5 s lifetime, faster spray — bigger/stronger, still one bounded pool):
+  shared geometry + 2 shared materials, deterministic radial burst,
   shrink-out; zero allocation post-construction; triggered by `deathId` edge.
   Death kick (FOV +3.5, +0.25 u lift, ~0.12 s decay, no roll/shake) + camera
   snap-to-start on respawn/teleport also live in `RendererHost`.
   Debug-only `debugFreezeFrame` (skip visual updates, keep presenting) +
   `debugReplayBurst` (re-fire at recorded death pos) exist SOLELY for
-  photographing the 0.35 s effect under headless screenshot latency.
+  photographing the 0.5 s effect under headless screenshot latency.
 - `DeathSfx` (`src/audio/`, M2): lazy guarded Web Audio death blip (0.18 s),
   created on first user gesture; silence-on-failure; gameplay never depends
   on it.
 - `LevelView` builds route/hazard/portal meshes from level data (M7.1:
   spike visuals orient relative to their declared `mount` surface — base
   attached, tip AWAY from the support (floor +Y, ceiling −Y); colliders
-  untouched, no level-id branches, omitted mount = floor), (library
+  untouched, no level-id branches, omitted mount = floor), (M7.3:
+  `killFront`/block hazards render as exact-size hazard-orange blocks with
+  a glowing front frame (kind-based presentation branch, never level-id);
+  top/bottom edge strips overhang 0.05 per end to close corners under the
+  outboard posts + every tall slab gains a rear sill (both gap faces read
+  framed); narrow exposed islands (halfX ≤ 1.4, bottom exposed) carry a
+  full bottom-edge under-glow frame; teleport gates are compact RING gates
+  (shared halo: outer ring + inner rim + pane; maw entries add a shared-
+  chevron tooth crown) instead of wall-sized rectangles; `lava` setpieces
+  render as glow slab + dark crust below the route; `guardian` setpieces
+  gain jaw + teeth + trailing chain links — all shared library
+  geometries/materials, zero new resources), (library
   unit-box/cone geometries, library route/hazard/portal materials — no owned
   materials/geometries; M1.1/M1.2 face applique — thin emissive trims in the
   shared edge material riding PROUD of solid faces:
@@ -612,6 +627,16 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   records a level-02 tape; level-02 replay verifies end-to-end (finish);
   the level-01 tape on level 02 is explicitly rejected; unknown level ids
   fall back to default.
+- `tests/deathBurst.test.ts` (M7.3, 3 tests): 24-fragment pool pin,
+  play-then-clear lifecycle, bounded across repeated deaths.
+- `scripts/browser-qa.mjs`: M7.2 section migrated to the M7.3 rework
+  (overlap-safe staging 521/484, race-free baseline→stage→poll teleport
+  snapshots, holds-based full-route drivers) + M7.3 section (`m73-*`,
+  19 logged checks, all green: offset islands, wall frontImpact,
+  tall-spike hazard, live burst-in-hold, ceiling tip-down projection,
+  hop-pair co-visibility + snapshot + VFX/punch, maw ring, beast
+  in-frame, air-gate + storm photos, full real-input finish + runtime
+  band + REPLAY VERIFIED, restart/fallback/resource guards).
 - Gate: `npm run verify` = typecheck + lint + tests + build. Full:
   `npm run verify:full` adds browser QA (needs `npm run dev` + browsers).
 

@@ -112,17 +112,17 @@ export class LevelView {
         if (bottomY >= UNDER_RAIL_MIN_BOTTOM_Y) {
           for (const side of [-1, 1]) {
             const strip = new THREE.Mesh(box, edgeMat);
-            strip.scale.set(solidWidth, 0.055, 0.09);
+            strip.scale.set(solidWidth + 0.1, 0.055, 0.1);
             strip.position.set(
               solid.center.x,
               bottomY - 0.01,
-              solid.center.z + side * (solid.halfExtents.z - 0.06),
+              solid.center.z + side * (solid.halfExtents.z - 0.01),
             );
             this.group.add(strip);
             const stripSide = new THREE.Mesh(box, edgeMat);
-            stripSide.scale.set(0.09, 0.055, solid.halfExtents.z * 2);
+            stripSide.scale.set(0.1, 0.055, solid.halfExtents.z * 2 + 0.1);
             stripSide.position.set(
-              solid.center.x + side * (solid.halfExtents.x - 0.06),
+              solid.center.x + side * (solid.halfExtents.x - 0.01),
               bottomY - 0.01,
               solid.center.z,
             );
@@ -148,9 +148,18 @@ export class LevelView {
         // existing top strip + corner posts. Gap landing faces read as
         // framed portals instead of dark holes.
         const sill = new THREE.Mesh(box, edgeMat);
-        sill.scale.set(solidWidth, 0.055, 0.09);
+        sill.scale.set(solidWidth + 0.1, 0.055, 0.1);
         sill.position.set(solid.center.x, bottomY + 0.03, frontZ);
         this.group.add(sill);
+        // M7.3: rear-face bottom strip — the mirror of the front sill.
+        // Drop/takeoff faces on the far side previously ended in an open
+        // dark edge once the camera passed them; both gap faces now read
+        // as closed glowing frames from either side.
+        const backZ = solid.center.z + solid.halfExtents.z; // faces away
+        const backSill = new THREE.Mesh(box, edgeMat);
+        backSill.scale.set(solidWidth + 0.1, 0.055, 0.1);
+        backSill.position.set(solid.center.x, bottomY + 0.03, backZ);
+        this.group.add(backSill);
         // Front-face center seam on wide solids: breaks up the dark face
         // center where the player actually looks when crossing gaps.
         if (solidWidth >= FACE_SEAM_MIN_WIDTH) {
@@ -162,23 +171,58 @@ export class LevelView {
       }
 
       // Neon edge strips along the two long top edges (X direction edges).
+      // M7.3 corner closure: strips run the FULL slab width and sit almost
+      // flush with the outboard corner posts (ends tuck under the posts),
+      // so the top frame reads as one continuous closed rectangle instead
+      // of four near-touching segments.
       for (const side of [-1, 1]) {
         const strip = new THREE.Mesh(box, edgeMat);
-        strip.scale.set(solid.halfExtents.x * 2, 0.055, 0.09);
+        strip.scale.set(solid.halfExtents.x * 2 + 0.1, 0.055, 0.1);
         strip.position.set(
           solid.center.x,
           solid.center.y + solid.halfExtents.y + 0.01,
-          solid.center.z + side * (solid.halfExtents.z - 0.06),
+          solid.center.z + side * (solid.halfExtents.z - 0.01),
         );
         this.group.add(strip);
         const stripSide = new THREE.Mesh(box, edgeMat);
-        stripSide.scale.set(0.09, 0.055, solid.halfExtents.z * 2);
+        stripSide.scale.set(0.1, 0.055, solid.halfExtents.z * 2 + 0.1);
         stripSide.position.set(
-          solid.center.x + side * (solid.halfExtents.x - 0.06),
+          solid.center.x + side * (solid.halfExtents.x - 0.01),
           solid.center.y + solid.halfExtents.y + 0.01,
           solid.center.z,
         );
         this.group.add(stripSide);
+      }
+
+      // M7.3 mini-island under-glow: narrow (single-lane-class) slabs carry
+      // a full bottom-edge frame mirroring the top frame, so small aerial
+      // platforms glow as floating volumes instead of dark chips. Shared
+      // edge material, zero new resources; wide recovery slabs stay quiet.
+      // Exposure-gated like the underside rails: bottoms resting in
+      // (-0.5, 0.5) sit ON other geometry (a glow frame there would embed
+      // invisibly inside the host solid — M1.2 lesson), so only floating
+      // (<= -0.5) or clearly elevated (>= 0.5) narrow bottoms glow.
+      const islandBottomY = solid.center.y - solid.halfExtents.y;
+      const bottomExposed = islandBottomY >= 0.5 || islandBottomY <= -0.5;
+      if (solidHeight >= FACE_TRIM_MIN_HEIGHT && solid.halfExtents.x <= 1.4 && bottomExposed) {
+        for (const side of [-1, 1]) {
+          const glow = new THREE.Mesh(box, edgeMat);
+          glow.scale.set(solid.halfExtents.x * 2 + 0.1, 0.055, 0.1);
+          glow.position.set(
+            solid.center.x,
+            islandBottomY - 0.01,
+            solid.center.z + side * (solid.halfExtents.z - 0.01),
+          );
+          this.group.add(glow);
+          const glowSide = new THREE.Mesh(box, edgeMat);
+          glowSide.scale.set(0.1, 0.055, solid.halfExtents.z * 2 + 0.1);
+          glowSide.position.set(
+            solid.center.x + side * (solid.halfExtents.x - 0.01),
+            islandBottomY - 0.01,
+            solid.center.z,
+          );
+          this.group.add(glowSide);
+        }
       }
     }
 
@@ -189,6 +233,34 @@ export class LevelView {
     // presentation mesh flips and re-seats. Omitted `mount` = 'floor', so
     // every pre-M7.1 level renders byte-identically.
     for (const hazard of level.def.hazards) {
+      // M7.3 frontal-kill walls (kind `killFront` / visual `block`): solid
+      // hazard-orange blocks at EXACTLY the collider size with a neon edge
+      // frame, so maze walls read as lethal fronts immediately. Frontal
+      // kill semantics live in the simulation (contact normal + approach);
+      // this branch only chooses the presentation mesh — kind-based, never
+      // level-id-based.
+      if (hazard.kind === 'killFront' || hazard.visual === 'block') {
+        const wall = new THREE.Mesh(box, hazardMat);
+        wall.scale.set(
+          hazard.halfExtents.x * 2,
+          hazard.halfExtents.y * 2,
+          hazard.halfExtents.z * 2,
+        );
+        wall.position.set(hazard.center.x, hazard.center.y, hazard.center.z);
+        this.group.add(wall);
+        // Glowing front plate on the camera-facing face: the lethal front
+        // reads immediately (slightly larger than the wall, riding proud
+        // so no faces are ever coplanar).
+        const face = new THREE.Mesh(box, edgeMat);
+        face.scale.set(hazard.halfExtents.x * 2 + 0.06, hazard.halfExtents.y * 2 + 0.06, 0.06);
+        face.position.set(
+          hazard.center.x,
+          hazard.center.y,
+          hazard.center.z - hazard.halfExtents.z - 0.005,
+        );
+        this.group.add(face);
+        continue;
+      }
       const mesh = new THREE.Mesh(spike, hazardMat);
       const ceilingMount = hazard.mount === 'ceiling';
       const visualHeight = hazard.halfExtents.y * 3.4;
@@ -232,10 +304,12 @@ export class LevelView {
 
     // Span the route: lateral extent from the lane layout, vertical extent
     // from the floor up past the ceiling band. Presentation values only.
+    // M7.3: pulled tighter to the corridor (was +1.6) so portals read as
+    // thresholds to fly THROUGH, not walls around the route.
     const lanes = level.laneCenters;
-    const lateralHalf = Math.max(Math.abs(lanes[0] ?? 0), Math.abs(lanes[lanes.length - 1] ?? 0)) + 1.6;
-    const portalBottom = -0.6;
-    const portalTop = 9;
+    const lateralHalf = Math.max(Math.abs(lanes[0] ?? 0), Math.abs(lanes[lanes.length - 1] ?? 0)) + 1.2;
+    const portalBottom = -0.4;
+    const portalTop = 8;
     const height = portalTop - portalBottom;
     const centerY = portalBottom + height / 2;
 
@@ -266,73 +340,81 @@ export class LevelView {
   }
 
   /**
-   * M7.2 teleport visuals: a paired violet gate at the entry plane and at
-   * the exit position — same language both ends (one mechanic, one look),
-   * visually distinct from cyan/warm gravity portals, tier-colored speed
-   * gates and yellow/blue orbs. Purely presentational: activation lives in
-   * the simulation (entry-plane crossing), never here. Shared unit-box
-   * geometry + the two shared teleport materials; zero per-frame work.
+   * M7.3 teleport visuals: compact ROUND ring gates — one circular mouth
+   * at the entry plane, one smaller ring at the authored exit — sharing a
+   * single violet language (frame + pale pane), visually distinct from the
+   * rectangular cyan/warm gravity portals, tier-colored speed gates and
+   * yellow/blue orbs. Smaller and rounder than the M7.2 wall-sized gates:
+   * the ring reads as a hole to fly through, with a bright inner rim for
+   * line-of-travel clarity. Purely presentational: activation lives in the
+   * simulation (entry-plane crossing), never here. Shared halo/box
+   * geometries + the two shared teleport materials; zero per-frame work.
    *
-   * The exit gate is deliberately smaller (a doorway, not a wall): it marks
-   * the re-entry point without reading as a new obstacle.
+   * Short-hop pairs (exit close behind entry) render both rings in the
+   * same readable space — one connected moment, never a map cut.
    */
   private buildTeleportPortals(level: LoadedLevel): void {
     if (level.teleportPortals.length === 0) return;
     const frameMat = this.library.teleportFrame;
     const paneMat = this.library.teleportPane;
     const unitBox = this.library.unitBox;
-    const lanes = level.laneCenters;
-    const lateralHalf = Math.max(Math.abs(lanes[0] ?? 0), Math.abs(lanes[lanes.length - 1] ?? 0)) + 1.6;
 
-    const buildGate = (x: number, y: number, z: number, halfW: number, halfH: number): void => {
-      for (const sx of [-1, 1]) {
-        const post = new THREE.Mesh(unitBox, frameMat);
-        post.scale.set(0.16, halfH * 2, 0.16);
-        post.position.set(x + sx * halfW, y, z);
-        this.group.add(post);
-      }
-      for (const sy of [-1, 1]) {
-        const bar = new THREE.Mesh(unitBox, frameMat);
-        bar.scale.set(halfW * 2, 0.16, 0.16);
-        bar.position.set(x, y + sy * halfH, z);
-        this.group.add(bar);
-      }
+    // One round gate: outer halo ring + bright inner rim + faint pane disc.
+    // `radius` is world units; the halo tube (0.045) scales with it.
+    const buildRingGate = (x: number, y: number, z: number, radius: number): void => {
+      const ring = new THREE.Mesh(this.library.orbHalo, frameMat);
+      ring.scale.setScalar(radius / 0.62);
+      ring.position.set(x, y, z);
+      this.group.add(ring);
+      const rim = new THREE.Mesh(this.library.orbHalo, paneMat);
+      rim.scale.setScalar((radius * 0.72) / 0.62);
+      rim.position.set(x, y, z);
+      this.group.add(rim);
       const pane = new THREE.Mesh(unitBox, paneMat);
-      pane.scale.set(halfW * 2, halfH * 2, 0.02);
+      pane.scale.set(radius * 1.5, radius * 1.5, 0.02);
       pane.position.set(x, y, z);
       this.group.add(pane);
     };
 
     for (const portal of level.teleportPortals) {
       if (portal.style === 'maw') {
-        // Maw entry: a large vertical ring (the guardian's mouth) centered
-        // on the corridor, reusing the shared halo geometry + teleport
-        // frame material — no new resources. The pane fills the mouth.
-        const ring = new THREE.Mesh(this.library.orbHalo, frameMat);
-        ring.scale.setScalar(4.8); // halo radius 0.62 -> ~3 u mouth
-        ring.position.set(0, 2.6, portal.entryZ);
-        this.group.add(ring);
-        const mouth = new THREE.Mesh(unitBox, paneMat);
-        mouth.scale.set(4.6, 4.6, 0.02);
-        mouth.position.set(0, 2.6, portal.entryZ);
-        this.group.add(mouth);
+        // Maw entry: a toothed mouth ring centered on the corridor — the
+        // guardian's bite. Smaller than M7.2 (radius 2.2 vs ~3) with a
+        // hazard-orange tooth crown (shared chevron geometry) so the
+        // entry reads as a creature mouth, not architecture.
+        buildRingGate(0, 2.4, portal.entryZ, 2.2);
+        for (let i = 0; i < 8; i++) {
+          const tooth = new THREE.Mesh(this.library.chevron, this.library.hazard);
+          const a = (i / 8) * Math.PI * 2;
+          tooth.scale.setScalar(0.9);
+          tooth.position.set(Math.cos(a) * 2.2, 2.4 + Math.sin(a) * 2.2, portal.entryZ);
+          // Teeth point inward (cone tip toward the mouth center).
+          tooth.rotation.z = a + Math.PI / 2;
+          this.group.add(tooth);
+        }
       } else {
-        // Entry: full-route gateway centered on the corridor (floor band).
-        buildGate(0, 2.6, portal.entryZ, lateralHalf, 3.2);
+        // Short-hop entry: compact ring on the route line.
+        buildRingGate(0, 1.6, portal.entryZ, 1.8);
       }
-      // Exit: compact doorway at the authored destination.
-      buildGate(portal.exit.x, portal.exit.y, portal.exit.z, 1.7, 1.7);
+      // Exit: a smaller doorway ring at the authored destination.
+      const exitR = portal.style === 'maw' ? 1.5 : 1.3;
+      buildRingGate(portal.exit.x, portal.exit.y + 0.4, portal.exit.z, exitR);
     }
   }
 
   /**
-   * M7.2 presentation setpieces (monster-like, NO gameplay): static dark
-   * silhouettes with glowing eyes, built from level data with shared
-   * library meshes/materials only (dark route body + warm hazard eyes +
-   * shared sphere/box geometries — zero new materials, zero new
-   * geometries). No collision, no AI, no movement, no trigger: the
-   * simulation never reads them. Setpieces live outside the route
-   * corridor so they can never read as landable geometry.
+   * M7.2 presentation setpieces (monster-like, NO gameplay) + M7.3 lava:
+   * static silhouettes built from level data with shared library
+   * meshes/materials only — zero new materials, zero new geometries.
+   * No collision, no AI, no movement, no trigger: the simulation never
+   * reads them. Setpieces live outside the route corridor (or below it
+   * for lava) so they can never read as landable geometry.
+   *
+   * - `guardian`: dark creature body with glowing eyes (M7.2), now with a
+   *   M7.3 chain-chomp read — an open jaw with a tooth crown and heavy
+   *   chain links trailing off into the dark, all from shared geometries.
+   * - `lava` (M7.3): a glowing hazard-orange basin surface with a darker
+   *   crust frame — void-danger dressing under gaps and beside furnaces.
    */
   private buildSetpieces(level: LoadedLevel): void {
     const setpieces = level.def.visualSetpieces ?? [];
@@ -340,12 +422,48 @@ export class LevelView {
     const unitBox = this.library.unitBox;
     const sphere = this.library.orbSphere;
     for (const piece of setpieces) {
-      // Only 'guardian' exists in M7.2 (the kind field reserves the
-      // vocabulary for future setpieces without changing the renderer).
+      if (piece.kind === 'lava') {
+        // Molten surface: hazard-orange glow slab + a darker crust rim
+        // slightly larger beneath it (route body material, shared).
+        const crust = new THREE.Mesh(unitBox, this.library.routeBody);
+        crust.scale.set(piece.halfExtents.x * 2 + 0.6, 0.3, piece.halfExtents.z * 2 + 0.6);
+        crust.position.set(piece.center.x, piece.center.y - 0.2, piece.center.z);
+        this.group.add(crust);
+        const surface = new THREE.Mesh(unitBox, this.library.hazard);
+        surface.scale.set(piece.halfExtents.x * 2, 0.12, piece.halfExtents.z * 2);
+        surface.position.set(piece.center.x, piece.center.y, piece.center.z);
+        this.group.add(surface);
+        continue;
+      }
+      // Only 'guardian' otherwise (the kind field reserves the vocabulary
+      // for future setpieces without changing the renderer).
       const body = new THREE.Mesh(unitBox, this.library.routeBody);
       body.scale.set(piece.halfExtents.x * 2, piece.halfExtents.y * 2, piece.halfExtents.z * 2);
       body.position.set(piece.center.x, piece.center.y, piece.center.z);
       this.group.add(body);
+      // Open jaw: a second dark slab below the front, jutting toward the
+      // corridor so the mouth reads open around the teleport entry.
+      const jaw = new THREE.Mesh(unitBox, this.library.routeBody);
+      jaw.scale.set(piece.halfExtents.x * 1.2, piece.halfExtents.y * 0.28, piece.halfExtents.z * 1.1);
+      jaw.position.set(
+        piece.center.x,
+        piece.center.y - piece.halfExtents.y * 0.75,
+        piece.center.z - piece.halfExtents.z * 0.4,
+      );
+      this.group.add(jaw);
+      // Tooth crown along the jaw front (shared chevron geometry, warm
+      // hazard material — the bite read).
+      const teeth = 6;
+      for (let i = 0; i < teeth; i++) {
+        const tooth = new THREE.Mesh(this.library.chevron, this.library.hazard);
+        tooth.scale.setScalar(0.8);
+        tooth.position.set(
+          piece.center.x - piece.halfExtents.x * 0.5 + (i / (teeth - 1)) * piece.halfExtents.x,
+          piece.center.y - piece.halfExtents.y * 0.55,
+          piece.center.z - piece.halfExtents.z * 0.95,
+        );
+        this.group.add(tooth);
+      }
       // Two glowing eyes on the corridor-facing side, derived from the
       // silhouette extents (no extra data fields): symmetrically offset,
       // riding proud of the front face so they read at distance.
@@ -360,6 +478,21 @@ export class LevelView {
           frontZ,
         );
         this.group.add(eye);
+      }
+      // Chain: heavy dark links trailing from the body into the dark
+      // (shared halo geometry, route body material) — the chain-chomp
+      // anchor. Count derives from the silhouette size; capped small.
+      const links = Math.min(5, 2 + Math.floor(piece.halfExtents.x / 3));
+      for (let i = 0; i < links; i++) {
+        const link = new THREE.Mesh(this.library.orbHalo, this.library.routeBody);
+        link.scale.setScalar(2.2);
+        link.position.set(
+          piece.center.x + piece.halfExtents.x + 1.2 + i * 1.1,
+          piece.center.y + piece.halfExtents.y * 0.5 - i * 0.35,
+          piece.center.z + 0.5,
+        );
+        link.rotation.y = (i % 2 === 0) ? 0 : Math.PI / 2;
+        this.group.add(link);
       }
     }
   }

@@ -27,13 +27,13 @@ import { VerticalSlice01Driver } from './helpers/verticalSlice01Script';
 import { recordAttempt, playReplay } from './helpers/replay';
 
 /**
- * M7.2 advanced-Cube suite: production level 02 (harder, vertical,
- * fragmented, teleport debut) on the frozen controller. All driving uses
- * legal physical inputs — no debug placement, no state mutation.
+ * M7.3 advanced-Cube suite: production level 02 (harder, vertical,
+ * fragmented, teleport debut + polish) on the frozen controller. All driving
+ * uses legal physical inputs — no debug placement, no state mutation.
  *
- * Deterministic anchors (measured, pinned): finish tick 7455 = 62.125 s,
- * 0 deaths, 1 teleport, 2 gravity transitions, 2 pads, 2 orbs, 2x climbed
- * and released.
+ * Deterministic anchors (measured, pinned): finish tick 7475 = 62.292 s,
+ * 0 deaths, 2 teleports (lava hop 489 → 513 + maw 524 → 634), 2 gravity
+ * transitions, 2 pads, 2 orbs, 2x climbed and released.
  */
 
 /** Run the verification route headlessly; returns the terminal sim + ticks. */
@@ -90,7 +90,7 @@ describe('advanced cube 01 registry + identity', () => {
     expect(fp).not.toBe(computeLevelFingerprint(TEST_LEVEL));
     expect(fp).not.toBe(computeLevelFingerprint(VALIDATION_LEVEL_02));
     expect(fp).not.toBe(computeLevelFingerprint(VERTICAL_SLICE_01));
-    expect(ADVANCED_CUBE_01.finishZ).toBe(944);
+    expect(ADVANCED_CUBE_01.finishZ).toBe(960);
     expect(ADVANCED_CUBE_01.finishZ).toBeGreaterThan(VERTICAL_SLICE_01.finishZ);
   });
 
@@ -153,8 +153,8 @@ describe('advanced cube 01 deterministic completion (real inputs)', () => {
     // Preferred band 62-70 s (a substantial step past the ~51.6 s slice).
     expect(seconds).toBeGreaterThanOrEqual(62.0);
     expect(seconds).toBeLessThanOrEqual(70.0);
-    expect(ticks).toBe(7455);
-    expect(seconds).toBeCloseTo(7455 / 120, 6);
+    expect(ticks).toBe(7475);
+    expect(seconds).toBeCloseTo(7475 / 120, 6);
   });
 
   it('is deterministic across runs', () => {
@@ -184,9 +184,10 @@ describe('advanced cube 01 deterministic completion (real inputs)', () => {
     for (const id of ['ac-pad-ceiling', 'ac-pad-floor', 'ac-orb-jump', 'ac-orb-gravity']) {
       expect(sim.isInteractionUsed(id)).toBe(true);
     }
-    expect(sim.teleportEventCount).toBe(1);
+    expect(sim.teleportEventCount).toBe(2);
     expect(sim.lastTeleportId).toBe('ac-teleport-maw');
     expect(sim.isTeleportUsed('ac-teleport-maw')).toBe(true);
+    expect(sim.isTeleportUsed('ac-teleport-hop')).toBe(true);
     expect(sim.speedPortalCount).toBe(2); // 2x climb + 1x release
     expect(sim.lastSpeedPortalId).toBe('ac-speed-1x');
     expect(maxSpeed).toBe(2);
@@ -285,7 +286,10 @@ describe('advanced cube 01 vertical geometry (real height bands)', () => {
     expect(narrow.length).toBeGreaterThanOrEqual(15);
     // At least one critical landing is substantially narrower than the
     // full-width recovery slabs (recovery tools exist AND are the minority).
-    const full = ADVANCED_CUBE_01.solids.filter((s) => s.halfExtents.x > 2.7);
+    // Overhead air-gate bars/pylons (y >= 3.5) are not route surface: only
+    // slabs the cube can stand on count as full-width route.
+    const routeSlabs = ADVANCED_CUBE_01.solids.filter((s) => s.center.y < 3);
+    const full = routeSlabs.filter((s) => s.halfExtents.x > 2.7);
     expect(full.length).toBeGreaterThanOrEqual(1);
     expect(full.length).toBeLessThanOrEqual(4);
     const islands = ADVANCED_CUBE_01.solids.filter((s) => s.halfExtents.x <= 1.4);
@@ -304,7 +308,12 @@ describe('advanced cube 01 vertical geometry (real height bands)', () => {
 
 describe('advanced cube 01 hazard design (denser but fair)', () => {
   it('carries more meaningful hazards than M7.1, relatively and absolutely', () => {
-    expect(ADVANCED_CUBE_01.hazards.length).toBeGreaterThanOrEqual(16);
+    // M7.3: 29 hazards (25 spikes incl. 3 tall + triple ceiling, 4 maze
+    // walls) vs M7.1's 12 — density up without spam (every hazard shapes
+    // the route: weaves, island jumps, rows, walls).
+    expect(ADVANCED_CUBE_01.hazards.length).toBeGreaterThanOrEqual(24);
+    const walls = ADVANCED_CUBE_01.hazards.filter((h) => h.kind === 'killFront');
+    expect(walls.length).toBeGreaterThanOrEqual(4);
     const density = (level: LevelDefinition): number =>
       (level.hazards.length / (level.finishZ - level.start.z)) * 100;
     expect(density(ADVANCED_CUBE_01)).toBeGreaterThan(density(VERTICAL_SLICE_01));
@@ -320,11 +329,22 @@ describe('advanced cube 01 hazard design (denser but fair)', () => {
   });
 
   it('keeps spike gameplay boxes fair (smaller than the visual read)', () => {
+    // M7.3 tall spikes (halfY 0.35) stay far inside the frozen jump apex
+    // (2.07) — taller read, same fair jump.
     for (const hz of ADVANCED_CUBE_01.hazards) {
+      if (hz.kind === 'killFront') continue; // walls kill frontally, never by overlap
       expect(hz.halfExtents.x).toBeLessThanOrEqual(0.5);
-      expect(hz.halfExtents.y).toBeLessThanOrEqual(0.25);
+      expect(hz.halfExtents.y).toBeLessThanOrEqual(0.4);
       expect(hz.halfExtents.z).toBeLessThanOrEqual(0.5);
     }
+    const tall = ADVANCED_CUBE_01.hazards.filter(
+      (h) => h.kind === 'hazard' && h.halfExtents.y > 0.25,
+    );
+    expect(tall.length).toBeGreaterThanOrEqual(3);
+    // The verification route clears every tall spike (behavioral proof the
+    // taller read never becomes an unfair box).
+    const { sim } = runVerificationRoute();
+    expect(sim.status).toBe('finished');
   });
 
   it('makes both pad gaps uncrossable without the pad', () => {
@@ -397,29 +417,62 @@ describe('advanced cube 01 fast-fall gate', () => {
 });
 
 describe('advanced cube 01 teleport integration', () => {
-  /** Step manually until the teleport fires; returns the firing sim. */
-  const runToTeleport = (): GameSimulation => {
+  /** Step manually until the nth teleport fires; returns the firing sim. */
+  const runToTeleportN = (n: number): GameSimulation => {
     const sim = new GameSimulation(ADVANCED_CUBE_01);
     const driver = new AdvancedCube01Driver();
     for (let ticks = 0; ticks < 40000; ticks++) {
-      if (sim.teleportEventCount > 0 || sim.status !== 'running') break;
+      if (sim.teleportEventCount >= n || sim.status !== 'running') break;
       sim.update(driver.nextInput(sim.player.position.z));
     }
     return sim;
   };
 
-  it('teleports exactly once at the authored entry to the authored exit', () => {
-    const sim = runToTeleport();
+  it('hop teleport fires first: mid-air ring 489 to grounded exit 513', () => {
+    const sim = runToTeleportN(1);
     expect(sim.status).toBe('running');
     expect(sim.teleportEventCount).toBe(1);
+    expect(sim.lastTeleportId).toBe('ac-teleport-hop');
+    expect(sim.player.position.x).toBe(0);
+    expect(sim.player.position.y).toBe(0.7);
+    expect(sim.player.position.z).toBe(513);
+    expect(sim.player.velocity.y).toBe(0);
+    expect(sim.player.targetLaneIndex).toBe(1);
+    expect(sim.gravityMode).toBe('floor');
+    expect(sim.speedMultiplier).toBe(1);
+  });
+
+  it('maw teleport fires second at the authored entry to the authored exit', () => {
+    const sim = runToTeleportN(2);
+    expect(sim.status).toBe('running');
+    expect(sim.teleportEventCount).toBe(2);
     expect(sim.lastTeleportId).toBe('ac-teleport-maw');
     expect(sim.player.position.x).toBe(0);
     expect(sim.player.position.y).toBe(1.75);
     expect(sim.player.position.z).toBe(634);
   });
 
-  it('pins exit velocity/lane/support semantics on the production level', () => {
-    const sim = runToTeleport();
+  it('the verification route takes both portals exactly once each', () => {
+    const { sim } = runVerificationRoute();
+    expect(sim.status).toBe('finished');
+    expect(sim.teleportEventCount).toBe(2);
+    expect(sim.isTeleportUsed('ac-teleport-hop')).toBe(true);
+    expect(sim.isTeleportUsed('ac-teleport-maw')).toBe(true);
+  });
+
+  it('the hop entry and exit share one readable frame (no map cut)', () => {
+    const hop = (ADVANCED_CUBE_01.teleportPortals ?? []).find((t) => t.id === 'ac-teleport-hop');
+    expect(hop).toBeDefined();
+    if (hop === undefined) return;
+    // Both rings fit inside one camera frame: exit-entry distance stays
+    // far below the fog/readability range, so entry and exit are
+    // co-present in the visible world.
+    expect(hop.exit.z - hop.entryZ).toBeLessThanOrEqual(30);
+    expect(hop.exitLaneIndex).toBe(1);
+  });
+
+  it('pins maw exit velocity/lane/support semantics on the production level', () => {
+    const sim = runToTeleportN(2);
     expect(sim.player.velocity.y).toBe(0);
     expect(sim.currentForwardSpeed).toBe(12);
     expect(sim.player.targetLaneIndex).toBe(1);
@@ -429,24 +482,32 @@ describe('advanced cube 01 teleport integration', () => {
     expect(sim.speedMultiplier).toBe(1);
   });
 
-  it('skips nothing playable: no portals live inside the jumped interval', () => {
-    const inInterval = (z: number): boolean => z > 514 && z < 634;
-    for (const p of ADVANCED_CUBE_01.gravityPortals ?? []) expect(inInterval(p.z)).toBe(false);
-    for (const p of ADVANCED_CUBE_01.speedPortals ?? []) expect(inInterval(p.z)).toBe(false);
-    const sim = runToTeleport();
+  it('skips nothing playable: no portals live inside either jumped interval', () => {
+    const inHop = (z: number): boolean => z > 489 && z < 513;
+    const inMaw = (z: number): boolean => z > 524 && z < 634;
+    for (const p of ADVANCED_CUBE_01.gravityPortals ?? []) {
+      expect(inHop(p.z)).toBe(false);
+      expect(inMaw(p.z)).toBe(false);
+    }
+    for (const p of ADVANCED_CUBE_01.speedPortals ?? []) {
+      expect(inHop(p.z)).toBe(false);
+      expect(inMaw(p.z)).toBe(false);
+    }
+    const sim = runToTeleportN(2);
     expect(sim.gravityMode).toBe('floor');
     expect(sim.speedMultiplier).toBe(1);
   });
 
-  it('the entry approach is fair: no hazard crowds the gate', () => {
+  it('both entries are fair: no hazard crowds either gate', () => {
     for (const hz of ADVANCED_CUBE_01.hazards) {
-      expect(Math.abs(hz.center.z - 514) < 3, `hazard at z=${hz.center.z}`).toBe(false);
+      expect(Math.abs(hz.center.z - 489) < 3, `hazard at z=${hz.center.z}`).toBe(false);
+      expect(Math.abs(hz.center.z - 524) < 3, `hazard at z=${hz.center.z}`).toBe(false);
     }
   });
 
-  it('the exit is safe and deterministic across runs', () => {
-    const first = runToTeleport();
-    const second = runToTeleport();
+  it('the maw exit is safe and deterministic across runs', () => {
+    const first = runToTeleportN(2);
+    const second = runToTeleportN(2);
     expect(second.player.position.x).toBe(first.player.position.x);
     expect(second.player.position.y).toBe(first.player.position.y);
     expect(second.player.position.z).toBe(first.player.position.z);
@@ -481,13 +542,14 @@ describe('advanced cube 01 teleport integration', () => {
     expect(computeLevelFingerprint(stripped)).toBe(base);
   });
 
-  it('restart re-arms the teleport for a fresh attempt', () => {
+  it('restart re-arms both teleports for a fresh attempt', () => {
     const { sim } = runVerificationRoute();
     expect(sim.status).toBe('finished');
     const attempts = sim.attempts;
     sim.restart();
     expect(sim.attempts).toBe(attempts + 1);
     expect(sim.isTeleportUsed('ac-teleport-maw')).toBe(false);
+    expect(sim.isTeleportUsed('ac-teleport-hop')).toBe(false);
     expect(sim.lastTeleportId).toBeNull();
     expect(sim.player.position.z).toBe(ADVANCED_CUBE_01.start.z);
     expect(sim.gravityMode).toBe('floor');
@@ -497,7 +559,7 @@ describe('advanced cube 01 teleport integration', () => {
 });
 
 describe('advanced cube 01 teleport + setpiece presentation structure', () => {
-  it('builds paired teleport gates and the guardian from level data', () => {
+  it('builds paired teleport rings, guardians, lava and chains from level data', () => {
     const library = makeTestLibrary();
     const full = new LevelView(loadLevel(ADVANCED_CUBE_01), library);
     const fullCount = full.group.children.length;
@@ -508,9 +570,12 @@ describe('advanced cube 01 teleport + setpiece presentation structure', () => {
     };
     const bare = new LevelView(loadLevel(stripped), library);
     const bareCount = bare.group.children.length;
-    // Maw entry (ring + pane = 2) + exit doorway (4 frame + pane = 5) +
-    // guardian (body + 2 eyes = 3): exactly 10 presentation meshes.
-    expect(fullCount - bareCount).toBe(10);
+    // M7.3 presentation meshes: maw entry (ring + rim + pane + 8 teeth =
+    // 11) + hop entry (3) + two exit rings (3 + 3) + maw guardian (body +
+    // jaw + 6 teeth + 2 eyes + 4 chain links = 14) + storm beast (body +
+    // jaw + 6 teeth + 2 eyes + 3 links = 13) + 6 lava basins (crust +
+    // surface = 12): exactly 59.
+    expect(fullCount - bareCount).toBe(59);
     expect(fullCount).toBeGreaterThan(bareCount);
     full.dispose();
     bare.dispose();
@@ -526,6 +591,85 @@ describe('advanced cube 01 teleport + setpiece presentation structure', () => {
     expect(library.geometryCount).toBe(8);
     view.dispose();
     library.dispose();
+  });
+});
+
+describe('advanced cube 01 maze walls (M7.3 frontal-kill routing)', () => {
+  it('authors frontal-kill walls on the route (jump wall + lane walls)', () => {
+    const walls = ADVANCED_CUBE_01.hazards.filter((h) => h.kind === 'killFront');
+    expect(walls.length).toBeGreaterThanOrEqual(4);
+    // Lane walls stand ~2 u tall and span exactly one lane (commitment,
+    // never a full block); the garden jump-wall spans the full platform
+    // (unrideable — the route must clear it vertically).
+    for (const w of walls) {
+      if (w.halfExtents.x > 1.4) {
+        expect(w.halfExtents.y * 2).toBeGreaterThanOrEqual(0.9);
+      } else {
+        expect(w.halfExtents.y * 2).toBeGreaterThanOrEqual(1.9);
+        expect(w.halfExtents.x * 2).toBeLessThanOrEqual(2.7);
+      }
+    }
+    // Every wall sits on a real platform (its base near a run surface).
+    const tops = ADVANCED_CUBE_01.solids.map((s) => s.center.y + s.halfExtents.y);
+    for (const w of walls) {
+      const base = w.center.y - w.halfExtents.y;
+      expect(tops.some((t) => Math.abs(base - t) < 0.05)).toBe(true);
+    }
+  });
+
+  it('running the garden wall line dies frontally (the wall must be jumped)', () => {
+    // Verification route minus the wall jump: the cube runs straight into
+    // the full-width killFront face and dies frontImpact there.
+    const noJump = ADVANCED_CUBE_01_SCRIPT.filter((a) => a.atZ !== 191.5);
+    const sim = new GameSimulation(ADVANCED_CUBE_01);
+    const driver = new AdvancedCube01Driver(noJump);
+    for (let ticks = 0; ticks < 40000 && sim.attempts <= 1; ticks++) {
+      sim.update(driver.nextInput(sim.player.position.z));
+    }
+    expect(sim.attempts).toBeGreaterThan(1);
+    expect(sim.lastDeathCause).toBe('frontImpact');
+    expect(sim.deathPosition.z).toBeGreaterThanOrEqual(192);
+    expect(sim.deathPosition.z).toBeLessThanOrEqual(200);
+  });
+});
+
+describe('advanced cube 01 lava + beast setpieces (M7.3 spectacle)', () => {
+  it('dresses the voids with lava below the route (never gameplay)', () => {
+    const lavas = (ADVANCED_CUBE_01.visualSetpieces ?? []).filter((s) => s.kind === 'lava');
+    expect(lavas.length).toBeGreaterThanOrEqual(5);
+    // Lava always sits below the route (tops at y <= -2): pure dressing.
+    for (const lava of lavas) {
+      expect(lava.center.y + lava.halfExtents.y).toBeLessThanOrEqual(-2);
+    }
+    const { sim } = runVerificationRoute();
+    expect(sim.status).toBe('finished');
+  });
+
+  it('both guardians live outside the landable corridor', () => {
+    const beasts = (ADVANCED_CUBE_01.visualSetpieces ?? []).filter((s) => s.kind === 'guardian');
+    expect(beasts.length).toBe(2);
+    for (const beast of beasts) {
+      const innerEdge = Math.abs(beast.center.x) - beast.halfExtents.x;
+      const beyondRunway = beast.center.z - beast.halfExtents.z > 527;
+      // Outside the corridor horizontally OR past the traversed runway.
+      expect(innerEdge >= 4.5 || beyondRunway).toBe(true);
+    }
+  });
+});
+
+describe('advanced cube 01 air-gates (M7.3 blocks in the air)', () => {
+  it('the decorative arches clear every jump arc (never collide)', () => {
+    const bars = ADVANCED_CUBE_01.solids.filter(
+      (s) => s.center.y > 3.5 && Math.abs(s.center.x) < 0.1 && s.halfExtents.x > 3,
+    );
+    expect(bars.length).toBe(3); // FF lintel + two M7.3 air-gate bars
+    for (const bar of bars) {
+      // Bar bottoms clear the highest legal jump apex from below (HIGH top
+      // 2.4 + apex 2.07 + half-cube 0.55 = 5.02) with margin.
+      expect(bar.center.y - bar.halfExtents.y).toBeGreaterThan(5.4);
+    }
+    const { sim } = runVerificationRoute();
+    expect(sim.status).toBe('finished');
   });
 });
 
@@ -562,11 +706,13 @@ describe('advanced cube 01 visual + beat metadata contracts', () => {
     expect(cueIdAtZ(cues, -20)).toBeNull();
     expect(cueIdAtZ(cues, -10)).toBe('ac-cue-intro');
     expect(cueIdAtZ(cues, 322)).toBe('ac-cue-gravity-hit');
-    expect(cueIdAtZ(cues, 514)).toBe('ac-cue-teleport-in');
+    expect(cueIdAtZ(cues, 489)).toBe('ac-cue-hop-in');
+    expect(cueIdAtZ(cues, 513)).toBe('ac-cue-hop-out');
+    expect(cueIdAtZ(cues, 524)).toBe('ac-cue-teleport-in');
     expect(cueIdAtZ(cues, 634)).toBe('ac-cue-teleport-out');
     expect(cueIdAtZ(cues, 708)).toBe('ac-cue-speed');
     expect(cueIdAtZ(cues, 873)).toBe('ac-cue-release');
-    expect(cueIdAtZ(cues, 944)).toBe('ac-cue-finish');
+    expect(cueIdAtZ(cues, 960)).toBe('ac-cue-finish');
     expect(cueIdAtZ(cues, 678)).toBe(cueIdAtZ(prepareRhythmCues(ADVANCED_CUBE_01), 678));
   });
 
@@ -587,7 +733,7 @@ describe('advanced cube 01 replay + reset + golden compatibility', () => {
     expect(replay).not.toBeNull();
     expect(replay?.outcome.status).toBe('finished');
     expect(replay?.levelId).toBe('advanced-cube-01');
-    expect(replay?.frameCount).toBe(7455);
+    expect(replay?.frameCount).toBe(7475);
     // No presentation or teleport-definition state leaks into the tape.
     const serialized = JSON.stringify(replay);
     for (const key of ['visual', 'section', 'punch', 'rhythm', 'cue', 'bloom', 'fog', 'exposure', 'trigger', 'entryZ', 'setpiece']) {
@@ -626,5 +772,6 @@ describe('advanced cube 01 replay + reset + golden compatibility', () => {
     expect(sim.lastTeleportId).toBeNull();
     expect(sim.isInteractionUsed('ac-orb-jump')).toBe(false);
     expect(sim.isTeleportUsed('ac-teleport-maw')).toBe(false);
+    expect(sim.isTeleportUsed('ac-teleport-hop')).toBe(false);
   });
 });

@@ -149,7 +149,9 @@ export class InteractionView {
 
   /** Speed portals: a tier-colored gateway + one forward chevron per tier
    *  step — tier reads from color AND chevron count, never tiny text.
-   *  Tier materials are cached in the library (rare, created once). */
+   *  Tier materials are cached in the library (rare, created once).
+   *  M7.3: pulled tighter to the corridor (was 3.2/1.4) — portals mark the
+   *  route line instead of towering over it. */
   private buildSpeedPortals(
     level: LoadedLevel,
     unitBox: THREE.BoxGeometry,
@@ -159,8 +161,8 @@ export class InteractionView {
       // Shared per-tier library material (not per-portal).
       const mat = this.speedTierMaterial(portal.multiplier);
 
-      const lateralHalf = 3.2;
-      const ringHalf = 1.4;
+      const lateralHalf = 2.9;
+      const ringHalf = 1.2;
       for (const sx of [-1, 1]) {
         const post = new THREE.Mesh(unitBox, mat);
         post.scale.set(0.12, ringHalf * 2, 0.12);

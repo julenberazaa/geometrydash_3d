@@ -313,6 +313,16 @@ Deliberate M7.2 content/product decisions (no temporary coordinates here):
   or read unambiguously as backdrop).
 - Rhythm cues remain presentation-only position metadata (teleport-in/out
   included); audio itself is still a later milestone.
+- M7.3 spectacle/precision layer (CURRENT): short-hop teleport pairs may
+  skip small readable intervals whose entry and exit share one frame
+  (missing the ring is death — the hop is mandatory routing, not a
+  shortcut); maze walls (`killFront` blocks) force lane commitment or a
+  committed jump; tall spikes read bigger while staying inside the frozen
+  jump envelope; lava basins and creature setpieces are pure environmental
+  menace (never collision, never landable-looking); mini-islands glow as
+  floating volumes; death bursts hit harder. All Cube-only, all fair and
+  telegraphed — difficulty from geometry, timing, route commitment and
+  lane discipline, never hidden deaths.
 
 ## 8. Reference art
 

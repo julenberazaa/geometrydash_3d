@@ -1,13 +1,21 @@
 import type { LevelDefinition } from '../../level/levelDefinition';
 
 /**
- * Advanced Cube 01 (M7.2) — HARD production Cube level + teleport debut.
+ * Advanced Cube 01 (M7.2/M7.3) — HARD production Cube level + teleport debut.
+ *
+ * M7.3 polish/rework: harder and more vertical (offset island pairs with
+ * mid-air transfers, a third ceiling spike, maze-like killFront lane walls,
+ * tall spikes, denser groups, a second short-hop teleport whose entry and
+ * exit share one readable frame, lava void-dressing, a chained beast
+ * setpiece, smaller rounder portal rings, glowing mini-islands, closed
+ * block corners) — same frozen controller, same fairness contract.
  *
  * A genuinely new level (vertical-slice-01 is preserved untouched): more
  * vertical (LOW/MID/HIGH floor bands + a substantial ceiling world), more
  * fragmented (single-lane islands, narrow bridges, offset landings), denser
- * hazards, one fast-fall gate, and a single paired TELEPORT portal that
- * jumps the route through a guardian-setpiece void into a new palette.
+ * hazards, one fast-fall gate, and paired TELEPORT portals (a long maw jump
+ * through a guardian mouth + a short lava-lake hop) that the route must
+ * take — missing a ring is the void.
  *
  * Height bands (frozen tuning: collider 1.1, jump impulse 13.2 / gravity 42
  * → apex 2.07, airtime 0.629 s; base speed 12 → 1x range 7.55 u):
@@ -28,13 +36,14 @@ import type { LevelDefinition } from '../../level/levelDefinition';
  *   with a ~2-tick reaction window and die in the follow-up gap (proven).
  *
  * Z budget (forward speed is constant per tier, so time = distance/speed):
- *   PHASE 1  z  -10..176  precision ascent (LOW → MID → HIGH → drop)
- *   PHASE 2  z 176..325   hazard garden (MID/HIGH + fast-fall gate)
- *   PHASE 3  z 322..519   ceiling world + MID return + floor pad + orb road
- *   PHASE 4  z 510..712   teleport setpiece (entry 514 → exit 634) + orb
- *   PHASE 5  z 708..930   2x fragmented climax + 1x technical epilogue
- * Teleport skips 514..634 (120 u ≈ 10 s). Estimated run ≈ 64 s; the exact
- * deterministic duration is pinned by test (see tests/advancedCube01.test.ts).
+ *   PHASE 1  z  -10..176  precision ascent (LOW → MID → HIGH → offset drop)
+ *   PHASE 2  z 176..325   hazard garden (maze wall + MID/HIGH + fast-fall)
+ *   PHASE 3  z 322..527   ceiling world + MID return + floor pad + hop road
+ *   PHASE 4  z 511..712   lava hop (489 → 513) + maw setpiece (524 → 634)
+ *   PHASE 5  z 708..960   2x fragmented climax + 1x technical epilogue
+ * Teleport skips 489..513 (24 u lava lake) and 524..634 (110 u of void —
+ * no portals, pads, orbs or geometry inside). The exact deterministic
+ * duration is pinned by test (see tests/advancedCube01.test.ts).
  *
  * Screen-side convention (M1.1): laneCenters index 0/1/2 = screen-left /
  * center / screen-right (world x +2.6 / 0 / −2.6).
@@ -46,7 +55,7 @@ export const ADVANCED_CUBE_01: LevelDefinition = {
   startLaneIndex: 1,
   laneCenters: [2.6, 0, -2.6],
   baseForwardSpeed: 12,
-  finishZ: 944,
+  finishZ: 960,
   deathY: -14,
   deathYMax: 12,
   startGravityMode: 'floor',
@@ -91,18 +100,74 @@ export const ADVANCED_CUBE_01: LevelDefinition = {
   teleportPortals: [
     {
       id: 'ac-teleport-maw',
-      entryZ: 514,
+      entryZ: 524,
       exit: { x: 0, y: 1.75, z: 634 },
       exitLaneIndex: 1,
       style: 'maw',
+    },
+    // M7.3 short-hop pair: entry 489 (crossed MID-AIR off the 487 gap
+    // jump) → exit 513 (grounded center on the 511..527 runway), a 24 u hop
+    // over the lava lake. Both rings fit in one readable frame — one
+    // connected moment, never a map cut. Missing the ring = the void.
+    {
+      id: 'ac-teleport-hop',
+      entryZ: 489,
+      exit: { x: 0, y: 0.7, z: 513 },
+      exitLaneIndex: 1,
+      style: 'gate',
     },
   ],
   visualSetpieces: [
     {
       id: 'ac-guardian-maw',
       kind: 'guardian',
-      center: { x: 0, y: 5, z: 522 },
+      center: { x: 0, y: 5, z: 532 },
       halfExtents: { x: 7, y: 4.5, z: 1.5 },
+    },
+    // M7.3 chain-chomp beast watching the storm climb (off-corridor).
+    {
+      id: 'ac-beast-storm',
+      kind: 'guardian',
+      center: { x: 10, y: 4, z: 820 },
+      halfExtents: { x: 5, y: 3.5, z: 1.5 },
+    },
+    // M7.3 lava: void-danger dressing under key gaps and beside furnaces.
+    // Presentation-only (no collision); the void bound still kills.
+    {
+      id: 'ac-lava-chain',
+      kind: 'lava',
+      center: { x: 0, y: -5, z: 58 },
+      halfExtents: { x: 4, y: 1, z: 24 },
+    },
+    {
+      id: 'ac-lava-ff',
+      kind: 'lava',
+      center: { x: 0, y: -4, z: 250 },
+      halfExtents: { x: 3.5, y: 1, z: 8 },
+    },
+    {
+      id: 'ac-lava-lake',
+      kind: 'lava',
+      center: { x: 0, y: -5, z: 499 },
+      halfExtents: { x: 4, y: 1, z: 14 },
+    },
+    {
+      id: 'ac-lava-river',
+      kind: 'lava',
+      center: { x: 0, y: -8, z: 579 },
+      halfExtents: { x: 5, y: 1, z: 55 },
+    },
+    {
+      id: 'ac-lava-furnace',
+      kind: 'lava',
+      center: { x: 6.5, y: -3, z: 670 },
+      halfExtents: { x: 2.5, y: 1, z: 18 },
+    },
+    {
+      id: 'ac-lava-storm',
+      kind: 'lava',
+      center: { x: -7, y: -4, z: 810 },
+      halfExtents: { x: 3, y: 1, z: 25 },
     },
   ],
 
@@ -112,25 +177,34 @@ export const ADVANCED_CUBE_01: LevelDefinition = {
     { center: { x: 0, y: -0.5, z: 0 }, halfExtents: { x: 5.4, y: 0.5, z: 10 } },
     // Center bridge LOW: z 10..30 (spike z 22 jumped).
     { center: { x: 0, y: -0.5, z: 20 }, halfExtents: { x: 1.3, y: 0.5, z: 10 } },
-    // Right island LOW: z 34..46 (gap 30..34, transfer R mid-air).
-    { center: { x: -2.6, y: -0.5, z: 40 }, halfExtents: { x: 1.3, y: 0.5, z: 6 } },
-    // MID center island: top 1.2, z 50..62 (gap 46..50, transfer L + rise).
+    // Right island LOW: z 34..48 (gap 30..34, transfer R mid-air). Runs to
+    // 48 so the MID rise takeoff keeps a lag-proof grounded window.
+    { center: { x: -2.6, y: -0.5, z: 41 }, halfExtents: { x: 1.3, y: 0.5, z: 7 } },
+    // MID center island: top 1.2, z 50..62 (gap 48..50, transfer L + rise).
     { center: { x: 0, y: 0.7, z: 56 }, halfExtents: { x: 1.3, y: 0.5, z: 6 } },
-    // MID left island: top 1.2, z 66..78 (gap 62..66, transfer L).
-    { center: { x: 2.6, y: 0.7, z: 72 }, halfExtents: { x: 1.3, y: 0.5, z: 6 } },
-    // HIGH center island: top 2.4, z 82..94 (gap 78..82, transfer R + rise).
+    // MID left island: top 1.2, z 66..80 (gap 62..66, transfer L). Runs to
+    // 80 so the HIGH rise takeoff keeps a lag-proof grounded window.
+    { center: { x: 2.6, y: 0.7, z: 73 }, halfExtents: { x: 1.3, y: 0.5, z: 7 } },
+    // HIGH center island: top 2.4, z 82..94 (gap 80..82, transfer R + rise).
     { center: { x: 0, y: 1.9, z: 88 }, halfExtents: { x: 1.3, y: 0.5, z: 6 } },
-    // Drop to LOW two-lane L+C: z 98..128 (gap 94..98, intentional fall).
-    { center: { x: 1.3, y: -0.5, z: 113 }, halfExtents: { x: 2.6, y: 0.5, z: 15 } },
-    // Center bridge LOW: z 132..148 (gap 128..132, transfer R to center).
-    { center: { x: 0, y: -0.5, z: 140 }, halfExtents: { x: 1.3, y: 0.5, z: 8 } },
+    // M7.3: the LOW two-lane drop becomes an OFFSET island pair — drop onto
+    // the L island (transfer L mid-fall), jump its spike, transfer R
+    // mid-air onto the C island, jump its spike. Two horizontal commits
+    // where the two-lane needed none. Islands sized for CDP-robust
+    // verification (multi-tick ground spares before every re-jump).
+    { center: { x: 2.6, y: -0.5, z: 105 }, halfExtents: { x: 1.3, y: 0.5, z: 7 } },
+    { center: { x: 0, y: -0.5, z: 126 }, halfExtents: { x: 1.3, y: 0.5, z: 10 } },
+    // Center bridge LOW: z 138..148 (gap 136..138, straight hop).
+    { center: { x: 0, y: -0.5, z: 143 }, halfExtents: { x: 1.3, y: 0.5, z: 5 } },
     // Recovery runway LOW: z 152..176 (gap 148..152, full-width tool).
     { center: { x: 0, y: -0.5, z: 164 }, halfExtents: { x: 5.4, y: 0.5, z: 12 } },
 
     // --- PHASE 2: hazard garden (MID/HIGH + fast-fall gate) ---
-    // MID two-lane C+R: top 1.2, z 180..210 (gap 176..180 step-up).
-    { center: { x: -1.3, y: 0.7, z: 195 }, halfExtents: { x: 2.6, y: 0.5, z: 15 } },
-    // HIGH right island: top 2.4, z 214..226 (gap 210..214, rise, stay R).
+    // MID two-lane C+R: top 1.2, z 178..210 (gap 176..178 step-up; the 2u
+    // gap keeps the 1.2-rise takeoff window lag-proof).
+    { center: { x: -1.3, y: 0.7, z: 194 }, halfExtents: { x: 2.6, y: 0.5, z: 16 } },
+    // HIGH right island: top 2.4, z 212..226 (gap 210..212, rise, stay R;
+    // 2u gap for the same lag-proof rise window).
     { center: { x: -2.6, y: 1.9, z: 220 }, halfExtents: { x: 1.3, y: 0.5, z: 6 } },
     // HIGH center island: top 2.4, z 231..245 (gap 226..231, transfer L,
     // spike z 235 jumped: takeoff ~233, land ~240.5; FF takeoff ~243.5).
@@ -146,11 +220,25 @@ export const ADVANCED_CUBE_01: LevelDefinition = {
     { center: { x: 5.5, y: 4, z: 248 }, halfExtents: { x: 1, y: 2, z: 6 } },
     { center: { x: 0, y: 6.4, z: 248 }, halfExtents: { x: 6.5, y: 0.4, z: 6 } },
     // LOW two-lane C+R: z 257..277 (gap 253..257 jumped from the FF island).
-    { center: { x: -1.3, y: -0.5, z: 267 }, halfExtents: { x: 2.6, y: 0.5, z: 10 } },
-    // LOW center bridge: z 281..301 (gap 277..281, transfer center).
-    { center: { x: 0, y: -0.5, z: 291 }, halfExtents: { x: 1.3, y: 0.5, z: 10 } },
-    // LOW two-lane L+C: z 305..325 (gap 301..305; portal-up approach).
-    { center: { x: 1.3, y: -0.5, z: 315 }, halfExtents: { x: 2.6, y: 0.5, z: 10 } },
+    // M7.3: split into an OFFSET island pair (C 257..272, R 274..287).
+    // The C spike (264) is jumped from mid-island; the R spike (274.5)
+    // sits near the island START so the gap-transfer arc flies OVER it —
+    // one jump does double duty, then a final hop crosses to the bridge.
+    // The C island runs to 272 so the gap re-jump keeps a multi-tick
+    // ground spare even under CDP input jitter.
+    { center: { x: 0, y: -0.5, z: 264.5 }, halfExtents: { x: 1.3, y: 0.5, z: 7.5 } },
+    { center: { x: -2.6, y: -0.5, z: 280.5 }, halfExtents: { x: 1.3, y: 0.5, z: 6.5 } },
+    // LOW center bridge: z 290..303 (gap 287..290; spike 297.5; step-up
+    // gap 303..307 to the portal approach).
+    { center: { x: 0, y: -0.5, z: 296.5 }, halfExtents: { x: 1.3, y: 0.5, z: 6.5 } },
+    // LOW two-lane L+C: z 307..325 (portal-up approach).
+    { center: { x: 1.3, y: -0.5, z: 316 }, halfExtents: { x: 2.6, y: 0.5, z: 9 } },
+    // M7.3 air-gate A: decorative pylon arch over the portal approach
+    // (straight, no input). Side pylons + a high bar the route passes
+    // under — bottom y 6.0 clears the LOW jump apex 3.17 by a mile.
+    { center: { x: -5.5, y: 4, z: 160 }, halfExtents: { x: 1, y: 2, z: 2 } },
+    { center: { x: 5.5, y: 4, z: 160 }, halfExtents: { x: 1, y: 2, z: 2 } },
+    { center: { x: 0, y: 6.4, z: 160 }, halfExtents: { x: 6.5, y: 0.4, z: 2 } },
 
     // --- PHASE 3: ceiling world + MID return + floor pad + orb road ---
     // Ceiling two-lane C+R: underside 6, z 326..376 (rise landing ~329).
@@ -163,11 +251,11 @@ export const ADVANCED_CUBE_01: LevelDefinition = {
     { center: { x: 1.3, y: 0.7, z: 426.5 }, halfExtents: { x: 2.6, y: 0.5, z: 14.5 } },
     // Floor LOW center island: top 0, z 449..467 (pad gap 441..449).
     { center: { x: 0, y: -0.5, z: 458 }, halfExtents: { x: 1.3, y: 0.5, z: 9 } },
-    // Floor LOW center bridge: top 0, z 471..491 (gap 467..471, anticipation).
-    { center: { x: 0, y: -0.5, z: 481 }, halfExtents: { x: 1.3, y: 0.5, z: 10 } },
-    // Floor LOW two-lane L+C: top 0, z 495..519 (gap 491..495; teleport
-    // entry z 514 sits on this runway; guardian looms at z 520).
-    { center: { x: 1.3, y: -0.5, z: 507 }, halfExtents: { x: 2.6, y: 0.5, z: 12 } },
+    // Floor LOW center bridge: top 0, z 471..487 (gap 467..471).
+    { center: { x: 0, y: -0.5, z: 479 }, halfExtents: { x: 1.3, y: 0.5, z: 8 } },
+    // M7.3 short-hop runway: LOW two-lane L+C z 511..527 (hop exit 513
+    // lands grounded center; anticipation spike 518; maw entry 524).
+    { center: { x: 1.3, y: -0.5, z: 519 }, halfExtents: { x: 2.6, y: 0.5, z: 8 } },
 
     // --- PHASE 4: post-teleport MID world + jump orb (entry 514 → exit 634) ---
     // MID two-lane C+R: top 1.2, z 626..656 (exit z 634 lands grounded).
@@ -182,55 +270,75 @@ export const ADVANCED_CUBE_01: LevelDefinition = {
     { center: { x: 0, y: -0.5, z: 722 }, halfExtents: { x: 1.3, y: 0.5, z: 10 } },
     // 2x LOW right island: z 743..783 (gap 732..743 + transfer R).
     { center: { x: -2.6, y: -0.5, z: 763 }, halfExtents: { x: 1.3, y: 0.5, z: 20 } },
-    // 2x MID center island: top 1.2, z 793..825 (gap 783..793 + transfer L).
-    { center: { x: 0, y: 0.7, z: 809 }, halfExtents: { x: 1.3, y: 0.5, z: 16 } },
-    // 2x HIGH left island: top 2.4, z 831..855 (gap 825..831 + transfer L).
-    { center: { x: 2.6, y: 1.9, z: 843 }, halfExtents: { x: 1.3, y: 0.5, z: 12 } },
+    // 2x MID center island: top 1.2, z 790..825 (gap 783..790 + transfer L).
+    { center: { x: 0, y: 0.7, z: 807.5 }, halfExtents: { x: 1.3, y: 0.5, z: 17.5 } },
+    // 2x HIGH left island: top 2.4, z 828..855 (gap 825..828 + transfer L).
+    { center: { x: 2.6, y: 1.9, z: 841.5 }, halfExtents: { x: 1.3, y: 0.5, z: 13.5 } },
     // 2x drop to LOW two-lane L+C: z 859..889 (gap 855..859, fall).
     { center: { x: 1.3, y: -0.5, z: 874 }, halfExtents: { x: 2.6, y: 0.5, z: 15 } },
     // 1x epilogue two-lane L+C: z 889..915 (release portal at its start).
     { center: { x: 1.3, y: -0.5, z: 902 }, halfExtents: { x: 2.6, y: 0.5, z: 13 } },
+    // M7.3 air-gate B: the same pylon arch over the epilogue (straight).
+    { center: { x: -5.5, y: 4, z: 902 }, halfExtents: { x: 1, y: 2, z: 2 } },
+    { center: { x: 5.5, y: 4, z: 902 }, halfExtents: { x: 1, y: 2, z: 2 } },
+    { center: { x: 0, y: 6.4, z: 902 }, halfExtents: { x: 6.5, y: 0.4, z: 2 } },
     // 1x epilogue center island: z 919..935 (gap 915..919; final spike jump).
     { center: { x: 0, y: -0.5, z: 927 }, halfExtents: { x: 1.3, y: 0.5, z: 8 } },
-    // Release runway: z 939..959 (gap 935..939; finish at 944; no hazards).
-    { center: { x: 0, y: -0.5, z: 949 }, halfExtents: { x: 5.4, y: 0.5, z: 10 } },
+    // M7.3 release hop: runway z 939..951, gap 951..955, island 955..971
+    // (finish 960) — the calm release keeps moving with one last clean jump.
+    { center: { x: 0, y: -0.5, z: 945 }, halfExtents: { x: 5.4, y: 0.5, z: 6 } },
+    { center: { x: 0, y: -0.5, z: 963 }, halfExtents: { x: 1.3, y: 0.5, z: 8 } },
   ],
 
   hazards: [
-    // Phase 1: bridge spike (z 22) → weave on the L+C two-lane (spike C
-    // z 112 → commit L, spike L z 122 → commit C; R is off this platform).
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 22 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 112 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 122 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    // Phase 2: MID weave (safe C z 192, safe R z 202) → HIGH island spike
-    // (z 237 jump) → two-lane full-width row (z 266 jump) → bridge spike
-    // (z 290 jump).
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 1.45, z: 192 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Phase 1: TALL bridge spike (z 22, jumped) → offset-island spikes
+    // (L z 106, C z 124 — each jumped on its own island).
+    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.35, z: 22 }, halfExtents: { x: 0.5, y: 0.35, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 106 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 127 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Phase 2: MID maze WALL (killFront, FULL platform width z 194..196 →
+    // JUMP it; edge-riding is impossible) + MID weave (spike R z 190 →
+    // hold C, spike C z 202 → commit R) → HIGH
+    // island spike (z 235 jump) → offset-island spikes (C z 264, R z 274.5)
+    // → bridge spike (z 297.5 jump).
+    { kind: 'killFront', visual: 'block', center: { x: -1.3, y: 1.7, z: 195 }, halfExtents: { x: 2.6, y: 0.5, z: 1.0 } },
+    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 1.45, z: 190 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: 0, y: 1.45, z: 202 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 2.65, z: 235 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 266 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 266 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 290 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    // Phase 3 ceiling: dip/commit pair (center z 344, right z 360 — tips DOWN).
+    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 2.65, z: 236 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 264 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 274.5 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 297.5 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Phase 3 ceiling: dip/commit pair (center z 344, right z 360 — tips
+    // DOWN) + a third commit spike (center z 364, jumped).
     { kind: 'hazard', visual: 'spike', mount: 'ceiling', center: { x: 0, y: 5.75, z: 344 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', mount: 'ceiling', center: { x: -2.6, y: 5.75, z: 360 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    // Phase 3 floor: MID spike (z 428 covers L → commit center for the pad).
+    { kind: 'hazard', visual: 'spike', mount: 'ceiling', center: { x: 0, y: 5.75, z: 365 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Phase 3 floor: MID maze WALL (killFront, covers L z 431..433 → hold
+    // center for the pad) + MID spike (z 428 covers L → commit center).
     { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 1.45, z: 428 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    // Phase 3 floor bridge spike (z 481 jump) + anticipation spike (z 505).
+    { kind: 'killFront', visual: 'block', center: { x: 2.6, y: 2.2, z: 432 }, halfExtents: { x: 1.3, y: 1.0, z: 1.0 } },
+    // Phase 3 floor bridge spike (z 481 jump) + hop-runway spike (z 518).
     { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 481 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 505 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    // Phase 4: post-exit spike (z 646 covers R → commit center) + orb-road
-    // spike (z 700 jump on the 2x approach bridge).
+    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 518 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Phase 4: post-exit maze WALL (killFront, covers R z 639..641 → hold
+    // center) + commit pair (z 646 covers R, z 652 covers C → commit R,
+    // then drop-transfer back to center) + orb-road spike (z 700 jump).
+    { kind: 'killFront', visual: 'block', center: { x: -2.6, y: 2.2, z: 640 }, halfExtents: { x: 1.3, y: 1.0, z: 1.0 } },
     { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 1.45, z: 646 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 1.45, z: 654 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 700 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    // Phase 5 2x: island spike (z 762 jump) → drop weave (safe C z 870,
-    // safe L z 880) → epilogue weave (safe L z 899) + final island spike
-    // (z 921 jump).
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 762 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Phase 5 2x: TALL island spike pair (z 760 + tall z 764, jumped as one
+    // arc) → HIGH island spike (z 846 jump) → drop weave (safe C z 870,
+    // safe L z 880) → epilogue maze WALL (killFront, covers L z 907..909)
+    // + epilogue weave (safe L z 899) + TALL final island spike (z 927).
+    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 760 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.35, z: 764 }, halfExtents: { x: 0.5, y: 0.35, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 2.65, z: 846 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 874 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 886 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'killFront', visual: 'block', center: { x: 2.6, y: 1.0, z: 908 }, halfExtents: { x: 1.3, y: 1.0, z: 1.0 } },
     { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 899 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 927 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.35, z: 927 }, halfExtents: { x: 0.5, y: 0.35, z: 0.5 } },
   ],
 
   theme: {
@@ -356,7 +464,7 @@ export const ADVANCED_CUBE_01: LevelDefinition = {
       {
         id: 'ac-calm',
         startZ: 873,
-        endZ: 950,
+        endZ: 976,
         blendIn: 8,
         overrides: {
           background: 0x041412,
@@ -386,6 +494,7 @@ export const ADVANCED_CUBE_01: LevelDefinition = {
     { id: 'ac-cue-drop', z: 94, role: 'drop' },
     { id: 'ac-cue-garden', z: 180, role: 'sectionChange' },
     { id: 'ac-cue-garden-weave', z: 192, role: 'accent' },
+    { id: 'ac-cue-wall', z: 195, role: 'accent' },
     { id: 'ac-cue-fastfall', z: 243, role: 'drop' },
     { id: 'ac-cue-abyss', z: 322, role: 'sectionChange' },
     { id: 'ac-cue-gravity-hit', z: 322, role: 'gravityHit' },
@@ -393,16 +502,19 @@ export const ADVANCED_CUBE_01: LevelDefinition = {
     { id: 'ac-cue-gravity-orb', z: 420, role: 'gravityHit' },
     { id: 'ac-cue-return', z: 441, role: 'sectionChange' },
     { id: 'ac-cue-pad-floor', z: 437, role: 'padHit' },
+    { id: 'ac-cue-hop-in', z: 489, role: 'drop' },
     { id: 'ac-cue-maw', z: 500, role: 'sectionChange' },
-    { id: 'ac-cue-teleport-in', z: 514, role: 'drop' },
+    { id: 'ac-cue-hop-out', z: 513, role: 'accent' },
+    { id: 'ac-cue-teleport-in', z: 524, role: 'drop' },
     { id: 'ac-cue-teleport-out', z: 634, role: 'sectionChange' },
     { id: 'ac-cue-furnace', z: 626, role: 'sectionChange' },
     { id: 'ac-cue-orb-jump', z: 678, role: 'orbHit' },
     { id: 'ac-cue-storm', z: 708, role: 'sectionChange' },
     { id: 'ac-cue-speed', z: 708, role: 'speedHit' },
     { id: 'ac-cue-storm-peak', z: 831, role: 'climax' },
+    { id: 'ac-cue-beast', z: 820, role: 'build' },
     { id: 'ac-cue-release', z: 873, role: 'release' },
     { id: 'ac-cue-epilogue', z: 919, role: 'accent' },
-    { id: 'ac-cue-finish', z: 944, role: 'finish' },
+    { id: 'ac-cue-finish', z: 960, role: 'finish' },
   ],
 };
