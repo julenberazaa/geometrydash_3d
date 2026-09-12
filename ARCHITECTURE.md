@@ -334,7 +334,10 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   point lights). Manual `renderer.info` accounting per frame (honest
   scene + post cost). Per frame interpolates
   visuals between `prevPosition`→`position` (gameplay never interpolates),
-  advances camera, exposes `renderer.info` stats. QA probe
+  advances camera, exposes `renderer.info` stats. M6D hot-loop hygiene:
+  bloom staging reused + change-guarded (no per-frame literal), exactly
+  one projection-matrix update per presented frame (in `render()`), one
+  `dimmables` traversal per frame — all behavior-preserving. QA probe
   support: `projectToScreen(x,y,z)` (live-camera world→NDC/pixel projection;
   observability only, cold path) + `materialCount` / `geometryCount` /
   `postEnabled` / `postPassCount` / `bloomParams`.
@@ -347,7 +350,11 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   special-case. M6B adds the `fx` block in the SAME authority (trail/burst/
   streak counts, lifetimes, speeds, sizes, colors — presentation only,
   clamped by `validateProductionTheme`; the M6A provisional values above
-  are untouched by it).
+  are untouched by it). M6D hazard-semantic contract: the overlay flows
+  route/environment identity ONLY — hazards resolve to the single global
+  warm `GLOBAL_HAZARD_COLOR` on every level (`LevelTheme.hazard` stays on
+  the type for data compatibility but is renderer-inert, pinned by
+  `visualFoundation` cross-level resolution tests).
 - `visualTimeline.ts` (`src/visuals/`, M6C1) — the ONE renderer-side
   owner computing CURRENT VISUAL STATE = base theme + current section +
   transition interpolation. Position-driven only (active = last section
@@ -455,6 +462,15 @@ fixed-tick PHYSICAL input tape plus verification evidence.
 - `DeathSfx` (`src/audio/`, M2): lazy guarded Web Audio death blip (0.18 s),
   created on first user gesture; silence-on-failure; gameplay never depends
   on it.
+- `perfProfiler.ts` (`src/debug/`, M6D) — DEBUG/PERF-only frame profiler
+  living ABOVE gameplay (never touches sim/input/replay): bounded
+  Float64 ring (600 samples, zero hot-loop allocation, O(1) counters),
+  percentiles on the cold snapshot path, off by default (`?perf=1` — one
+  branch per frame when disabled). Owned by `Game` (composition root),
+  exposed as `__gd3d.perfSnapshot()` / `perfBeginSampling()`; the
+  `RendererHost.gpuIdentity()` cold probe reports the actual WebGL
+  vendor/renderer (SwiftShader verdicts are software, never a GPU pass).
+  Repeatable gate: `scripts/perf-gate.mjs` → `qa/perf/*.json`.
 - `LevelView` builds route/hazard/portal meshes from level data (M7.1:
   spike visuals orient relative to their declared `mount` surface — base
   attached, tip AWAY from the support (floor +Y, ceiling −Y); colliders
@@ -675,6 +691,8 @@ fixed-tick PHYSICAL input tape plus verification evidence.
 | Reference PNGs never runtime assets | Repo/runtime search + visual review |
 | Visual theme changes never alter gameplay or fingerprints; sim imports no rendering | `visualFoundation` theme/fingerprint + import-boundary tests + golden replay (unit + in-page) |
 | Shared materials/geometries only; no per-frame allocation; bounded resources | `visualFoundation` library tests + browser QA resource/draw-call guards |
+| Global warm hazard identity on every level (per-level themes move route/environment only) | `visualFoundation` cross-level hazard-resolution tests (M6D) |
+| DEBUG profiler bounded (ring ≤ capacity), off by default, sim-untouched; software rasterizers never a GPU pass | `perfProfiler` tests + `gpuIdentity()` probe + `perf-gate.mjs` evidence (M6D) |
 | Controlled bloom (contract-pinned), resize-safe post, playable no-post fallback | `visualFoundation` contract tests + browser QA m6a resize/fallback checks |
 | VFX observes but never writes sim; sim imports no VFX/rendering/visuals; nothing visual in replays | `motionVfx` boundary + golden-integration tests + browser QA m6b replay checks |
 | VFX pools bounded; no per-frame/per-event allocation; exact-once emission per real edge; reset on attempt/death/teleport; `?fx=off` preserves gameplay | `motionVfx` lifecycle tests + browser QA m6b section (counters, resets, resource guards, post×fx matrix) |

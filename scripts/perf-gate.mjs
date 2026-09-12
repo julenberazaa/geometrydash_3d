@@ -138,7 +138,7 @@ const measure = async (name, url, viewport, stress) => {
   return { name, url, viewport, warmupMs: WARMUP_MS, sampleMs: SAMPLE_MS, perf, gpu, userAgent: ua, before, peaks, leak };
 };
 
-const q = (params) => `${BASE}${params.includes('?') ? '&' : '?'}perf=1`;
+const q = (params) => `${BASE}${params}${params.includes('?') ? '&' : '?'}perf=1`;
 const results = [];
 // Primary production workload (M7.3 advanced level, default flags).
 results.push(await measure(
@@ -154,6 +154,216 @@ results.push(await measure('advanced-triggersoff-720p', q('?level=advanced-cube-
 // M7.1 opening reference + resolution matrix.
 results.push(await measure('slice-default-720p', q('?level=vertical-slice-01'), { width: 1280, height: 720 }, false));
 results.push(await measure('advanced-default-1080p', q('?level=advanced-cube-01'), { width: 1920, height: 1080 }, false));
+
+// --- M6D scenario pass: heaviest production sections on one 1280x720 page.
+// Staging coordinates reuse the proven M7.3 browser-QA values (same file
+// family: scripts/browser-qa.mjs m73 section).
+const SHOT_DIR = path.resolve('qa/screenshots');
+fs.mkdirSync(SHOT_DIR, { recursive: true });
+const scenarios = [];
+{
+  const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') consoleErrors.push(`[scenario] ${msg.text()}`);
+  });
+  page.on('pageerror', (err) => pageErrors.push(`[scenario] ${String(err)}`));
+  try {
+    await page.goto(q('?level=advanced-cube-01'), { waitUntil: 'load', timeout: 60000 });
+  } catch {
+    await page.goto(q('?level=advanced-cube-01'), { waitUntil: 'commit', timeout: 60000 });
+  }
+  await page.waitForFunction(() => window.__gd3d !== undefined, null, { timeout: 60000 });
+  await page.waitForTimeout(4000);
+  const snap = () => page.evaluate(() => ({
+    status: window.__gd3d.status(),
+    z: window.__gd3d.playerPosition().z,
+    section: window.__gd3d.visualSectionId(),
+    stats: window.__gd3d.rendererStats(),
+    children: window.__gd3d.sceneChildren(),
+    materials: window.__gd3d.materialCount(),
+    geometries: window.__gd3d.geometryCount(),
+    particles: window.__gd3d.activeParticles(),
+    trail: window.__gd3d.trailSamples(),
+    streaks: window.__gd3d.activeStreaks(),
+    punch: window.__gd3d.eventPunchEnergy(),
+    teleports: window.__gd3d.teleportEventCount(),
+  }));
+  const shot = async (name) => {
+    const p = path.join(SHOT_DIR, `${name}.png`);
+    await page.screenshot({ path: p });
+    return `${name}.png`;
+  };
+  const stage = async (x, y, z, settleMs = 1200) => {
+    await page.keyboard.press('KeyR');
+    await page.waitForTimeout(600);
+    await page.evaluate((pt) => window.__gd3d.debugTeleport(pt.x, pt.y, pt.z), { x, y, z });
+    await page.waitForTimeout(settleMs);
+  };
+  // Pause-photo: the uncommanded cube dies quickly in these sections, so
+  // freeze the sim (P) right after the probes and photograph the frozen
+  // section frame (M7.3 m73freeze pattern) — then resume.
+  const photoStage = async (name, x, y, z, file, settleMs = 1200) => {
+    await stage(x, y, z, settleMs);
+    const s = await snap();
+    await page.keyboard.press('KeyP');
+    await page.waitForTimeout(300);
+    const z1 = (await pos()).z;
+    await page.waitForTimeout(300);
+    if (Math.abs((await pos()).z - z1) > 0.05) {
+      await page.keyboard.press('KeyP'); // pause missed under load: retry
+      await page.waitForTimeout(300);
+    }
+    const file2 = await shot(file);
+    await page.keyboard.press('KeyP');
+    await page.waitForTimeout(400);
+    scenarios.push({ name, ...s, shot: file2 });
+  };
+  const pos = () => page.evaluate(() => window.__gd3d.playerPosition());
+  scenarios.push({ name: 'opening', ...(await snap()), shot: await shot('m6d-01-opening') });
+  await photoStage('islands', 2.6, 0.55, 100, 'm6d-02-islands');
+  // Ceiling: staging PAST the up-portal skips the crossing (mode stays
+  // floor, cube falls). Stage before portal 322 and ride it: poll for a
+  // settled ceiling run, then pause-photo.
+  await page.keyboard.press('KeyR');
+  await page.waitForTimeout(600);
+  await page.evaluate(() => window.__gd3d.debugTeleport(0, 0.55, 310));
+  for (let i = 0; i < 120; i++) {
+    await page.waitForTimeout(500);
+    const c = await page.evaluate(() => ({
+      st: window.__gd3d.status(),
+      z: window.__gd3d.playerPosition().z,
+      g: window.__gd3d.grounded(),
+      m: window.__gd3d.gravityMode(),
+    }));
+    if (c.m === 'ceiling' && c.g && c.st === 'running' && c.z > 338) break;
+  }
+  {
+    const s = await snap();
+    await page.keyboard.press('KeyP');
+    await page.waitForTimeout(500);
+    const file = await shot('m6d-03-ceiling');
+    await page.keyboard.press('KeyP');
+    await page.waitForTimeout(400);
+    scenarios.push({ name: 'ceiling', ...s, shot: file });
+  }
+  // Teleport short-hop: stage before the mid-air ring, poll the edge.
+  await page.keyboard.press('KeyR');
+  await page.waitForTimeout(600);
+  const tpBase = await page.evaluate(() => window.__gd3d.teleportEventCount());
+  await page.evaluate(() => window.__gd3d.debugTeleport(0, 0.55, 484));
+  let tpFired = null;
+  for (let i = 0; i < 200; i++) {
+    await page.waitForTimeout(200);
+    const s = await page.evaluate(() => ({
+      tp: window.__gd3d.teleportEventCount(),
+      id: window.__gd3d.lastTeleportId(),
+      z: window.__gd3d.playerPosition().z,
+    }));
+    if (s.tp > tpBase) { tpFired = s; break; }
+  }
+  await page.keyboard.press('KeyP');
+  await page.waitForTimeout(300);
+  scenarios.push({ name: 'teleport-hop', ...(await snap()), fired: tpFired, shot: await shot('m6d-04-teleport') });
+  await page.keyboard.press('KeyP');
+  await page.waitForTimeout(400);
+  await photoStage('lava-chomp', 0, 0.55, 521, 'm6d-05-lava-chomp');
+  await photoStage('storm', 0, 1.75, 795, 'm6d-06-storm', 900);
+  // Death burst: catch it LIVE in the death hold (M7.3 pattern) — fast
+  // polls, then P + presentation freeze in immediate succession so the
+  // 0.5 s burst is still mid-flight when the screenshot lands.
+  await page.keyboard.press('KeyR');
+  await page.waitForTimeout(600);
+  await page.evaluate(() => window.__gd3d.debugTeleport(0, 0.55, 14));
+  let burstSeen = false;
+  for (let i = 0; i < 200; i++) {
+    await page.waitForTimeout(100);
+    const s = await page.evaluate(() => ({
+      dead: window.__gd3d.status() === 'dead',
+      burst: window.__gd3d.burstActive(),
+    }));
+    if (s.dead && s.burst) { burstSeen = true; break; }
+  }
+  // Re-fire the REAL pooled burst at the latched death position with the
+  // live cube parked just behind it (z=13, ~8 u from the z~21 anchor),
+  // run it briefly, freeze mid-flight and photograph. NOTE: the burst
+  // probe is burstActive() (DeathBurstView) — activeParticles() is the
+  // VFX pool and never reflects the death burst.
+  await page.keyboard.press('KeyR');
+  await page.waitForTimeout(600);
+  await page.evaluate(() => window.__gd3d.debugTeleport(0, 0.55, 13));
+  await page.waitForTimeout(300);
+  await page.evaluate(() => window.__gd3d.debugReplayBurst());
+  await page.waitForTimeout(120);
+  await page.evaluate(() => window.__gd3d.debugFreezeFrame(true));
+  scenarios.push({ name: 'death-burst', ...(await snap()), burstSeen, shot: await shot('m6d-07-death-burst') });
+  await page.evaluate(() => window.__gd3d.debugFreezeFrame(false));
+  await page.waitForTimeout(400);
+  // Replay degradation: take a NATURAL death (uncommanded cube runs into
+  // the opening spike — no debug placement, which lives outside the input
+  // tape and would invalidate it by design), replay the finalized tape,
+  // and prove resources stay flat across repeated replays + teleports.
+  await page.keyboard.press('KeyR');
+  await page.waitForTimeout(600);
+  for (let i = 0; i < 240; i++) {
+    await page.waitForTimeout(250);
+    const dead = await page.evaluate(() => window.__gd3d.status() === 'dead');
+    if (dead) break;
+  }
+  const hasTape = await page.evaluate(() => window.__gd3d.hasReplay());
+  const resBefore = await page.evaluate(() => ({
+    children: window.__gd3d.sceneChildren(),
+    materials: window.__gd3d.materialCount(),
+    geometries: window.__gd3d.geometryCount(),
+  }));
+  let replay = { hasTape, started: false };
+  if (hasTape) {
+    await page.keyboard.press('KeyR');
+    await page.waitForTimeout(500);
+    replay.started = await page.evaluate(() => window.__gd3d.startReplay());
+    for (let i = 0; i < 120; i++) {
+      await page.waitForTimeout(250);
+      const v = await page.evaluate(() => window.__gd3d.replayVerification());
+      if (v.kind === 'pass' || v.kind === 'diverged') { replay.verification = v; break; }
+    }
+    replay.shot = await shot('m6d-08-replay');
+    await page.keyboard.press('KeyR'); // back to live
+    await page.waitForTimeout(500);
+    // Repeated-teleport stress: 3 hop loops, resources must stay flat.
+    for (let i = 0; i < 3; i++) {
+      await page.keyboard.press('KeyR');
+      await page.waitForTimeout(500);
+      const b = await page.evaluate(() => window.__gd3d.teleportEventCount());
+      await page.evaluate(() => window.__gd3d.debugTeleport(0, 0.55, 484));
+      for (let j = 0; j < 200; j++) {
+        await page.waitForTimeout(200);
+        const c = await page.evaluate(() => window.__gd3d.teleportEventCount());
+        if (c > b) break;
+      }
+    }
+  }
+  const resAfter = await page.evaluate(() => ({
+    children: window.__gd3d.sceneChildren(),
+    materials: window.__gd3d.materialCount(),
+    geometries: window.__gd3d.geometryCount(),
+  }));
+  scenarios.push({
+    name: 'replay-stress',
+    ...(await snap()),
+    replay,
+    childrenDelta: resAfter.children - resBefore.children,
+    materialsDelta: resAfter.materials - resBefore.materials,
+    geometriesDelta: resAfter.geometries - resBefore.geometries,
+  });
+  await page.close();
+}
+for (const s of scenarios) {
+  console.log(
+    `scenario ${s.name}: status=${s.status} z=${Number(s.z).toFixed(1)} section=${s.section} `
+    + `calls=${s.stats.calls} tris=${s.stats.triangles} children=${s.children} `
+    + `fx=${s.particles}/${s.trail}/${s.streaks}${s.burstSeen !== undefined ? ` burst=${s.burstSeen}` : ''}`
+    + `${s.fired ? ` tp=${s.fired.id}@${Number(s.fired.z).toFixed(1)}` : ''}`,
+  );
+}
 
 await browser.close();
 
@@ -175,6 +385,7 @@ const report = {
   consoleErrors,
   pageErrors,
   results,
+  scenarios,
 };
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, `${JSON.stringify(report, null, 2)}\n`);

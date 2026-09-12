@@ -883,8 +883,17 @@ readability verdict needs the real-GPU human gate.
 - [x] M6D/M7 NOT started.
 - [ ] HUMAN REACTIVE/CONTACT GATE (NOT PERFORMED).
 
-## M6D — Performance Closeout (PLANNED — do not implement yet)
+## M6D — Performance Closeout (ENGINEERING COMPLETE / REAL-GPU HUMAN PERF GATE OPEN)
 
-Real-GPU measurement, hot-loop allocation review (§11 constraints),
-draw-call/material/program audit, DPR/bloom quality scaling, final budget
-sign-off. Closes M6.
+Closeout performed against the M7.3 production workload
+(`advanced-cube-01`): hot-loop allocation review (§11 constraints —
+bloom-staging reuse, single projection update, single interaction
+traversal), draw-call/material/program audit (530 calls / 29 mats / 8
+geos / 3 passes / 62 children, flat across death/restart/replay),
+DPR/bloom quality scaling reviewed with no change (cap 1.5 stands),
+global warm hazard semantic locked, bounded DEBUG profiler (`?perf=1`)
++ `gpuIdentity()` probe + repeatable `scripts/perf-gate.mjs` harness.
+No hardware GPU was available: SwiftShader evidence only (leaks flat,
+replay PASS, zero errors), REAL-GPU PASS verdict left to the human gate.
+M6 NOT fully closed until that gate passes. Full record:
+`specs/milestones/M6_D_PERFORMANCE_CLOSEOUT.md`.

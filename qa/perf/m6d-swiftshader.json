@@ -1,0 +1,501 @@
+{
+  "milestone": "M6D",
+  "timestamp": "2026-09-12T08:51:03.167Z",
+  "commit": "9969f154b1ef566d4163bad581f5c7bd3a2372eb",
+  "verdict": "SOFTWARE RASTERIZER — functional/leak evidence only; REAL-GPU HUMAN PERF GATE OPEN",
+  "gpuSoftware": true,
+  "poolCapacity": {
+    "trail": 96,
+    "burst": 384,
+    "streak": 24,
+    "death": 24
+  },
+  "consoleErrors": [],
+  "pageErrors": [],
+  "results": [
+    {
+      "name": "advanced-default-720p",
+      "url": "http://localhost:5173/?level=advanced-cube-01&perf=1",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "warmupMs": 6000,
+      "sampleMs": 8000,
+      "perf": {
+        "frames": 86,
+        "fps": 10.322270899597912,
+        "p50": 90.39999999850988,
+        "p95": 132.10000000149012,
+        "p99": 141.89999999850988,
+        "max": 141.89999999850988,
+        "over25": 86,
+        "over33": 86,
+        "over50": 86,
+        "capacity": 600
+      },
+      "gpu": {
+        "version": "WebGL2",
+        "vendor": "Google Inc. (Google)",
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "devicePixelRatio": 1,
+        "renderPixelRatio": 1
+      },
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+      "before": {
+        "stats": {
+          "calls": 530,
+          "triangles": 6080
+        },
+        "children": 62,
+        "materials": 29,
+        "geometries": 8,
+        "passes": 3,
+        "heap": {
+          "used": 13400000,
+          "total": 23100000
+        }
+      },
+      "peaks": {
+        "particles": 11,
+        "trail": 29,
+        "streaks": 0
+      },
+      "leak": {
+        "deaths": 10,
+        "restarts": 10,
+        "childrenDelta": 0,
+        "materialsDelta": 0,
+        "geometriesDelta": 0,
+        "heapDelta": 0,
+        "after": {
+          "children": 62,
+          "materials": 29,
+          "geometries": 8,
+          "passes": 3,
+          "heap": 13400000
+        }
+      }
+    },
+    {
+      "name": "advanced-postoff-720p",
+      "url": "http://localhost:5173/?level=advanced-cube-01&post=off&perf=1",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "warmupMs": 6000,
+      "sampleMs": 8000,
+      "perf": {
+        "frames": 300,
+        "fps": 35.79738679076428,
+        "p50": 27.69999999552965,
+        "p95": 39.600000001490116,
+        "p99": 42.70000000298023,
+        "max": 43.70000000298023,
+        "over25": 192,
+        "over33": 57,
+        "over50": 0,
+        "capacity": 600
+      },
+      "gpu": {
+        "version": "WebGL2",
+        "vendor": "Google Inc. (Google)",
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "devicePixelRatio": 1,
+        "renderPixelRatio": 1
+      },
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+      "before": {
+        "stats": {
+          "calls": 518,
+          "triangles": 6090
+        },
+        "children": 62,
+        "materials": 29,
+        "geometries": 8,
+        "passes": 0,
+        "heap": {
+          "used": 12700000,
+          "total": 21700000
+        }
+      },
+      "peaks": {
+        "particles": 12,
+        "trail": 29,
+        "streaks": 0
+      },
+      "leak": null
+    },
+    {
+      "name": "advanced-fxoff-720p",
+      "url": "http://localhost:5173/?level=advanced-cube-01&fx=off&perf=1",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "warmupMs": 6000,
+      "sampleMs": 8000,
+      "perf": {
+        "frames": 66,
+        "fps": 7.922693715863393,
+        "p50": 129.39999999850988,
+        "p95": 144.30000000447035,
+        "p99": 149.19999999552965,
+        "max": 149.19999999552965,
+        "over25": 66,
+        "over33": 66,
+        "over50": 66,
+        "capacity": 600
+      },
+      "gpu": {
+        "version": "WebGL2",
+        "vendor": "Google Inc. (Google)",
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "devicePixelRatio": 1,
+        "renderPixelRatio": 1
+      },
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+      "before": {
+        "stats": {
+          "calls": 529,
+          "triangles": 6092
+        },
+        "children": 62,
+        "materials": 29,
+        "geometries": 8,
+        "passes": 3,
+        "heap": {
+          "used": 12700000,
+          "total": 23100000
+        }
+      },
+      "peaks": {
+        "particles": 0,
+        "trail": 0,
+        "streaks": 0
+      },
+      "leak": null
+    },
+    {
+      "name": "advanced-triggersoff-720p",
+      "url": "http://localhost:5173/?level=advanced-cube-01&triggers=off&perf=1",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "warmupMs": 6000,
+      "sampleMs": 8000,
+      "perf": {
+        "frames": 65,
+        "fps": 7.659855287652992,
+        "p50": 131,
+        "p95": 152.39999999850988,
+        "p99": 157.10000000149012,
+        "max": 157.10000000149012,
+        "over25": 65,
+        "over33": 65,
+        "over50": 65,
+        "capacity": 600
+      },
+      "gpu": {
+        "version": "WebGL2",
+        "vendor": "Google Inc. (Google)",
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "devicePixelRatio": 1,
+        "renderPixelRatio": 1
+      },
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+      "before": {
+        "stats": {
+          "calls": 530,
+          "triangles": 6080
+        },
+        "children": 62,
+        "materials": 29,
+        "geometries": 8,
+        "passes": 3,
+        "heap": {
+          "used": 15200000,
+          "total": 21700000
+        }
+      },
+      "peaks": {
+        "particles": 4,
+        "trail": 26,
+        "streaks": 0
+      },
+      "leak": null
+    },
+    {
+      "name": "slice-default-720p",
+      "url": "http://localhost:5173/?level=vertical-slice-01&perf=1",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "warmupMs": 6000,
+      "sampleMs": 8000,
+      "perf": {
+        "frames": 69,
+        "fps": 8.12079983993501,
+        "p50": 124.40000000596046,
+        "p95": 155.70000000298023,
+        "p99": 163.69999999552965,
+        "max": 163.69999999552965,
+        "over25": 69,
+        "over33": 69,
+        "over50": 69,
+        "capacity": 600
+      },
+      "gpu": {
+        "version": "WebGL2",
+        "vendor": "Google Inc. (Google)",
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "devicePixelRatio": 1,
+        "renderPixelRatio": 1
+      },
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+      "before": {
+        "stats": {
+          "calls": 363,
+          "triangles": 6132
+        },
+        "children": 62,
+        "materials": 29,
+        "geometries": 8,
+        "passes": 3,
+        "heap": {
+          "used": 11900000,
+          "total": 21700000
+        }
+      },
+      "peaks": {
+        "particles": 12,
+        "trail": 29,
+        "streaks": 0
+      },
+      "leak": null
+    },
+    {
+      "name": "advanced-default-1080p",
+      "url": "http://localhost:5173/?level=advanced-cube-01&perf=1",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "warmupMs": 6000,
+      "sampleMs": 8000,
+      "perf": {
+        "frames": 31,
+        "fps": 3.827822092706677,
+        "p50": 254.29999999701977,
+        "p95": 297.8999999985099,
+        "p99": 314.6000000014901,
+        "max": 314.6000000014901,
+        "over25": 31,
+        "over33": 31,
+        "over50": 31,
+        "capacity": 600
+      },
+      "gpu": {
+        "version": "WebGL2",
+        "vendor": "Google Inc. (Google)",
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "devicePixelRatio": 1,
+        "renderPixelRatio": 1
+      },
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+      "before": {
+        "stats": {
+          "calls": 527,
+          "triangles": 6044
+        },
+        "children": 62,
+        "materials": 29,
+        "geometries": 8,
+        "passes": 3,
+        "heap": {
+          "used": 15200000,
+          "total": 21700000
+        }
+      },
+      "peaks": {
+        "particles": 11,
+        "trail": 20,
+        "streaks": 0
+      },
+      "leak": null
+    }
+  ],
+  "scenarios": [
+    {
+      "name": "opening",
+      "status": "dead",
+      "z": 21.000000000000032,
+      "section": "ac-ember",
+      "stats": {
+        "calls": 546,
+        "triangles": 6314
+      },
+      "children": 62,
+      "materials": 29,
+      "geometries": 8,
+      "particles": 0,
+      "trail": 0,
+      "streaks": 0,
+      "punch": 0,
+      "teleports": 0,
+      "shot": "m6d-01-opening.png"
+    },
+    {
+      "name": "islands",
+      "status": "running",
+      "z": 107.99999999999955,
+      "section": "ac-ascent",
+      "stats": {
+        "calls": 530,
+        "triangles": 11040
+      },
+      "children": 62,
+      "materials": 29,
+      "geometries": 8,
+      "particles": 0,
+      "trail": 21,
+      "streaks": 0,
+      "punch": 0,
+      "teleports": 0,
+      "shot": "m6d-02-islands.png"
+    },
+    {
+      "name": "ceiling",
+      "status": "running",
+      "z": 348.700000000002,
+      "section": "ac-abyss",
+      "stats": {
+        "calls": 303,
+        "triangles": 15280
+      },
+      "children": 62,
+      "materials": 29,
+      "geometries": 8,
+      "particles": 0,
+      "trail": 23,
+      "streaks": 0,
+      "punch": 0,
+      "teleports": 0,
+      "shot": "m6d-03-ceiling.png"
+    },
+    {
+      "name": "teleport-hop",
+      "status": "running",
+      "z": 515.9000000000007,
+      "section": "ac-maw",
+      "stats": {
+        "calls": 326,
+        "triangles": 15416
+      },
+      "children": 62,
+      "materials": 29,
+      "geometries": 8,
+      "particles": 64,
+      "trail": 21,
+      "streaks": 0,
+      "punch": 0.41487417396063253,
+      "teleports": 1,
+      "fired": {
+        "tp": 1,
+        "id": "ac-teleport-hop",
+        "z": 515.1000000000005
+      },
+      "shot": "m6d-04-teleport.png"
+    },
+    {
+      "name": "lava-chomp",
+      "status": "running",
+      "z": 639.0000000000011,
+      "section": "ac-furnace",
+      "stats": {
+        "calls": 330,
+        "triangles": 8968
+      },
+      "children": 62,
+      "materials": 29,
+      "geometries": 8,
+      "particles": 0,
+      "trail": 28,
+      "streaks": 0,
+      "punch": 0.13806923731089277,
+      "teleports": 2,
+      "shot": "m6d-05-lava-chomp.png"
+    },
+    {
+      "name": "storm",
+      "status": "running",
+      "z": 802.2000000000016,
+      "section": "ac-storm",
+      "stats": {
+        "calls": 226,
+        "triangles": 5036
+      },
+      "children": 62,
+      "materials": 29,
+      "geometries": 8,
+      "particles": 0,
+      "trail": 29,
+      "streaks": 0,
+      "punch": 0,
+      "teleports": 2,
+      "shot": "m6d-06-storm.png"
+    },
+    {
+      "name": "death-burst",
+      "status": "dead",
+      "z": 21.000000000000064,
+      "section": "ac-ember",
+      "stats": {
+        "calls": 538,
+        "triangles": 6218
+      },
+      "children": 62,
+      "materials": 29,
+      "geometries": 8,
+      "particles": 0,
+      "trail": 0,
+      "streaks": 0,
+      "punch": 0,
+      "teleports": 2,
+      "burstSeen": true,
+      "shot": "m6d-07-death-burst.png"
+    },
+    {
+      "name": "replay-stress",
+      "status": "running",
+      "z": 516.0000000000007,
+      "section": "ac-maw",
+      "stats": {
+        "calls": 326,
+        "triangles": 15416
+      },
+      "children": 62,
+      "materials": 29,
+      "geometries": 8,
+      "particles": 64,
+      "trail": 26,
+      "streaks": 0,
+      "punch": 0.3327978601145566,
+      "teleports": 5,
+      "replay": {
+        "hasTape": true,
+        "started": true,
+        "verification": {
+          "kind": "pass"
+        },
+        "shot": "m6d-08-replay.png"
+      },
+      "childrenDelta": 0,
+      "materialsDelta": 0,
+      "geometriesDelta": 0
+    }
+  ]
+}

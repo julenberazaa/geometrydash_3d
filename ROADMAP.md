@@ -241,7 +241,8 @@ console/page errors, golden replay verifies unchanged (unit + in-page),
 `specs/milestones/M6_VISUAL_PRODUCTION_SYSTEM.md`. HUMAN VISUAL GATE = OPEN
 (M6B was explicitly scoped as a reversible layer on the provisional
 foundation — no re-approval implied). M6C (triggers),
-M6D (performance closeout): PLANNED, not started.
+M6D (performance closeout): ENGINEERING COMPLETE / REAL-GPU HUMAN PERF
+GATE OPEN (see the M6D entry below).
 
 M6B appendage (built on the provisional M6A foundation — M6A gate STILL
 OPEN, nothing re-canonicalized): reversible motion-juice layer
@@ -272,7 +273,8 @@ green, zero console/page errors, `qa/screenshots/m6c1-*` evidence set
 (wash contexts documented, not hidden). Spec: M6C1 sections in
 `M6_VISUAL_PRODUCTION_SYSTEM.md`. ARTISTIC TIMELINE HUMAN GATE = NOT
 PERFORMED. M6C2 (reactive pass, below, not the full timeline
-re-authoring)/M6D: M6C2 engineering-complete, M6D still PLANNED, not started.
+re-authoring)/M6D: M6C2 engineering-complete, M6D engineering-complete /
+human perf gate open (see the M6D entry below).
 
 M6C2 appendage (reactive visual authoring + ground contact FX
 ENGINEERING-COMPLETE, built at the user's direction without waiting for
@@ -343,8 +345,8 @@ intact. Spec: `specs/milestones/M7_2_ADVANCED_CUBE_EXPANSION.md`.
 Automation proves POSSIBLE, never FUN — do NOT mark PASS until the human
 plays the advanced level.
 
-Future direction (conceptual, not started): M6D real-GPU performance
-closeout (M7.2 is its workload) → music/rhythm synchronization
+Future direction (conceptual, not started): M6D human real-GPU gate
+(harness ready; M7.3 is its workload) → music/rhythm synchronization
 architecture → Ship mode → teleport expansions / Spider mode /
 inclined/ramp surfaces / dynamic/moving hazards / animated
 entities/monsters → harder production levels → editor/community later.
@@ -367,9 +369,28 @@ Ship remains BLOCKED.
 M6 human-feedback note (recorded 2026-09-08, conservative): the human
 played the M6 presentation, said it is "quite good", and explicitly chose
 to proceed to M7 — recorded as M6 PRESENTATION DIRECTION APPROVED TO
-PROCEED. No individual M6A/B/C parameter claimed locked; M6D real-GPU
-performance closeout intentionally deferred until representative M7 content
-exists (M7 is that workload). M6 is NOT fully closed.
+PROCEED. No individual M6A/B/C parameter claimed locked; M6D engineering
+closeout is complete with M7.3 as its workload (see the M6D entry above).
+M6 is NOT fully closed until the human real-GPU perf gate passes.
+
+## M6D — Performance / resource / stability closeout: ENGINEERING COMPLETE / REAL-GPU HUMAN PERF GATE OPEN
+
+M6D engineering is complete on `main`: production workload is
+`advanced-cube-01` (7475 ticks / 62.292 s). Hot-loop hygiene (bloom
+staging reuse, single projection update, single interaction traversal),
+global warm hazard semantic locked (`LevelTheme.hazard` renderer-inert),
+DEBUG profiler (`?perf=1`, bounded 600-sample ring) + `gpuIdentity()`
+renderer verdict probe + repeatable `scripts/perf-gate.mjs` harness
+(6 configs + 8 scenarios + death/restart/replay/teleport leak stress).
+Software evidence (`qa/perf/m6d-swiftshader.json`): 29 materials /
+8 geometries / 3 passes / 62 children flat; 10 deaths + 10 restarts +
+replays + teleports → zero resource/heap growth; natural-death replay
+PASS; VFX peaks bounded (burst ≤64/384, trail ≤33/96); zero
+console/page errors; 365/365 automated tests; build 624.88 kB.
+NOT a REAL-GPU PASS: only SwiftShader (software) was available — the
+60 FPS hardware verdict is the human gate (same harness, same JSON).
+Spec: `specs/milestones/M6_D_PERFORMANCE_CLOSEOUT.md`. M6 is NOT fully
+closed until the human perf gate passes. Next: M8 music/BPM/rhythm.
 
 ## M7.3 — Advanced Cube polish & spectacle pass: ENGINEERING COMPLETE / BROWSER QA GREEN / HUMAN RE-TEST APPROVED TO PROCEED
 
