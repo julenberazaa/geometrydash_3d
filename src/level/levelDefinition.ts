@@ -112,12 +112,43 @@ export interface TeleportPortalDef {
 }
 
 /**
+ * Authored lava gameplay volume (M8A): LAVA IS GAMEPLAY — touching any lava
+ * volume is instant death (cause `lava`, same swept-path CCD as hazards).
+ *
+ * Visual role vocabulary (Minecraft-like physical logic, authored — never a
+ * fluid simulation):
+ * - `source`: a glowing vent/opening visibly attached to solid geometry.
+ * - `fall`: a dense blocky downward stream from a source into a pool (or
+ *   continuing below the lethal world bounds).
+ * - `pool`: a contained basin surface bounded by surrounding solid geometry.
+ *
+ * Every composition must obey the sourced/contained contract enforced by
+ * `validateLavaAuthoring` (see `src/level/lavaAuthoring.ts`): no floating
+ * slabs. Registered as lethal hazard colliders (`lava-<id>`) by
+ * `levelRuntime`; fingerprinted conditionally (levels without lava hash
+ * byte-identically to before).
+ */
+export interface LavaVolumeDef {
+  /** Stable identifier (debug/QA; collider id becomes `lava-<id>`). */
+  id: string;
+  /** Lethal gameplay box center in world space. */
+  center: Vec3;
+  /** Lethal gameplay box half extents. */
+  halfExtents: Vec3;
+  /** Visual/physical role in the source → fall → pool chain. */
+  role: 'pool' | 'fall' | 'source';
+}
+
+/**
  * Presentation-only decorative setpiece (M7.2, e.g. a monster-like guardian
  * silhouette around a teleport gate; M7.3 adds lava). NEVER gameplay: no
  * collision, no AI, no movement, no trigger. Renderer-only: excluded from
  * the gameplay fingerprint and from replays. If it looks landable it must
  * BE landable — setpieces live outside the route corridor (see
  * GAME_DESIGN.md) or below it (lava reads as void dressing).
+ *
+ * M8A: lava setpieces remain the POOL SURFACE presentation; lethality now
+ * lives in `LavaVolumeDef` gameplay boxes (see above).
  */
 export interface VisualSetpieceDef {
   /** Stable identifier (debug/QA). */
@@ -305,6 +336,11 @@ export interface LevelDefinition {
    * Optional; levels without teleports behave exactly as before.
    */
   teleportPortals?: TeleportPortalDef[];
+  /**
+   * Lethal lava gameplay volumes (M8A). Optional; levels without lava
+   * behave exactly as before. See `LavaVolumeDef`.
+   */
+  lava?: LavaVolumeDef[];
   /**
    * Presentation-only decorative setpieces (M7.2). Renderer-only: never
    * read by simulation, collision, replay, or the level fingerprint.

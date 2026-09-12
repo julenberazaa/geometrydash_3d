@@ -284,6 +284,7 @@ export class LevelView {
 
     this.buildGravityPortals(level);
     this.buildTeleportPortals(level);
+    this.buildLavaVolumes(level);
     this.buildSetpieces(level);
   }
 
@@ -399,6 +400,83 @@ export class LevelView {
       // Exit: a smaller doorway ring at the authored destination.
       const exitR = portal.style === 'maw' ? 1.5 : 1.3;
       buildRingGate(portal.exit.x, portal.exit.y + 0.4, portal.exit.z, exitR);
+    }
+  }
+
+  /**
+   * M8A authored lava (gameplay-lethal volumes with sourced visuals).
+   *
+   * Every volume renders from its role — never a floating slab:
+   * - `pool`: a bright molten surface slab riding at the lethal box top +
+   *   a darker deep body filling the box below it (the basin solids in
+   *   level data visibly contain it; see `validateLavaAuthoring`).
+   * - `fall`: a dense blocky core column plus a short stack of wider
+   *   stepped rings (authored dense-flow read, zero simulation).
+   * - `source`: a dark rock collar (route body) with a glowing molten
+   *   mouth inset, attached to the neighboring solid geometry.
+   *
+   * Shared unit-box geometry + the two shared lava materials; zero
+   * per-frame work (the shimmer is an in-place material pulse owned by
+   * MaterialLibrary). Gameplay truth stays in the collider the runtime
+   * registers — these meshes are visuals only.
+   */
+  private buildLavaVolumes(level: LoadedLevel): void {
+    const lava = level.def.lava ?? [];
+    if (lava.length === 0) return;
+    const unitBox = this.library.unitBox;
+    const core = this.library.lavaSurface;
+    const deep = this.library.lavaDeep;
+    const rock = this.library.routeBody;
+    for (const l of lava) {
+      const w = l.halfExtents.x * 2;
+      const h = l.halfExtents.y * 2;
+      const d = l.halfExtents.z * 2;
+      if (l.role === 'pool') {
+        // Deep body: fills the lethal box (dark crust read at the edges).
+        const body = new THREE.Mesh(unitBox, deep);
+        body.scale.set(w, h, d);
+        body.position.set(l.center.x, l.center.y, l.center.z);
+        this.group.add(body);
+        // Molten surface: thin bright slab at the lethal top, inset
+        // slightly so the dark body rims it like cooling crust.
+        const topY = l.center.y + l.halfExtents.y;
+        const surface = new THREE.Mesh(unitBox, core);
+        surface.scale.set(Math.max(0.1, w - 0.3), 0.1, Math.max(0.1, d - 0.3));
+        surface.position.set(l.center.x, topY + 0.051, l.center.z);
+        this.group.add(surface);
+        continue;
+      }
+      if (l.role === 'fall') {
+        // Dense core column (60% footprint) + stepped flow rings: three
+        // wider collars spaced along the drop, each overhanging the core
+        // so the stream reads as thick blocky liquid, not a laser.
+        const coreMesh = new THREE.Mesh(unitBox, core);
+        coreMesh.scale.set(w * 0.6, h, d * 0.6);
+        coreMesh.position.set(l.center.x, l.center.y, l.center.z);
+        this.group.add(coreMesh);
+        const steps = 3;
+        for (let i = 0; i < steps; i++) {
+          const t = (i + 0.5) / steps;
+          const ring = new THREE.Mesh(unitBox, i % 2 === 0 ? deep : core);
+          ring.scale.set(w * 0.92, Math.max(0.12, h * 0.1), d * 0.92);
+          ring.position.set(
+            l.center.x,
+            l.center.y + l.halfExtents.y - t * h,
+            l.center.z,
+          );
+          this.group.add(ring);
+        }
+        continue;
+      }
+      // Source: rock collar block with a glowing mouth on its lower face.
+      const collar = new THREE.Mesh(unitBox, rock);
+      collar.scale.set(w, h, d);
+      collar.position.set(l.center.x, l.center.y, l.center.z);
+      this.group.add(collar);
+      const mouth = new THREE.Mesh(unitBox, core);
+      mouth.scale.set(Math.max(0.1, w * 0.7), 0.08, Math.max(0.1, d * 0.7));
+      mouth.position.set(l.center.x, l.center.y - l.halfExtents.y - 0.01, l.center.z);
+      this.group.add(mouth);
     }
   }
 

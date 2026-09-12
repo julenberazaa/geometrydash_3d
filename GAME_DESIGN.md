@@ -94,9 +94,11 @@ rolls when gravity changes.
   (lower `deathY` on Floor falls, optional upper `deathYMax` on Ceiling
   falls/launches).
 - Death: instantaneous at the lethal step, tagged with a cause
-  (`hazard` | `frontImpact` | `void`, internal/debug), exactly-once event,
-  short visual hold (0.30 s / 36 ticks) with a brief procedural burst,
-  deterministic respawn at start (restoring the level's start gravity mode).
+  (`hazard` | `frontImpact` | `void` | `lava`, internal/debug),
+  exactly-once event, readable visual hold (0.65 s / 78 ticks) with a
+  strong cyan-core explosion (fragments + core flash + shock ring +
+  camera punch), deterministic respawn at start (restoring the level's
+  start gravity mode).
   Attempts increment exactly once per respawn/restart, never on death itself;
   manual `R` restart is not death. `R` restarts immediately from any state.
   Finish can never trigger after death. Falling out of bounds after a lateral
@@ -240,9 +242,22 @@ verification tool, not a menu, timeline, or editor feature.
 
 ## 7. Out of scope for the current foundation
 
-Ship mode, moving hazards/obstacles, final VFX polish, music/BPM sync,
-public editor, backend, persistence. See `ROADMAP.md`. (Pads, orbs, speed
-portals and the trigger infrastructure shipped in M4 — §6.1.)
+Music/BPM sync, public editor, backend, persistence. See `ROADMAP.md`.
+(Pads, orbs, speed portals and the trigger infrastructure shipped in M4 —
+§6.1. Ship/Spider modes, wall gravity and moving hazards ship in M8.)
+
+## 7.3 Lava — CURRENT (M8A)
+
+LAVA IS GAMEPLAY. Touching lava (pool surface, fall column, source vent)
+kills INSTANTLY with cause `lava` — no delay, no damage bar, no bounce —
+through the same swept-path CCD as every other hazard (no tunneling at
+speed). Every lava composition is authored from one visual logic
+(Minecraft-like, never a fluid simulation): a `source` vent visibly
+attached to solid rock, an optional dense blocky downward `fall`, and a
+`pool` basin surface visibly contained by surrounding solid geometry
+(basin floor + rim walls) — or a fall visibly continuing below the lethal
+world bounds. Floating lava slabs are forbidden (enforced by
+`validateLavaAuthoring`; production levels pin it in-suite).
 
 ## 7.1 Vertical slice product contract — CURRENT (M7.1)
 

@@ -55,7 +55,7 @@ import type { LevelDefinition, TeleportPortalDef } from '../level/levelDefinitio
 export type SimulationStatus = 'running' | 'dead' | 'finished';
 
 /** Why the current (or most recent) death happened. Manual restart is NOT death. */
-export type DeathCause = 'hazard' | 'frontImpact' | 'void';
+export type DeathCause = 'hazard' | 'frontImpact' | 'void' | 'lava';
 
 /** Kind of the most recent interaction activation (debug/QA/VFX routing). */
 export type InteractionKind = 'pad' | 'jumpOrb' | 'gravityOrb' | 'speedPortal';
@@ -77,10 +77,15 @@ export interface SimulationEvents {
   onJump?: () => void;
 }
 
-/** Exact hold duration in fixed simulation ticks (single timing authority). */
-export const DEATH_HOLD_TICKS = 36;
+/**
+ * Exact hold duration in fixed simulation ticks (single timing authority).
+ * M8A: 78 ticks = 0.65 s — the M2 0.30 s hold respawned before the burst
+ * was readable. The longer linger keeps the arcade-fast restart feel while
+ * the stronger explosion (see DeathBurstView) stays on screen.
+ */
+export const DEATH_HOLD_TICKS = 78;
 /** How long (sim seconds) the dead status holds before auto-respawn eligibility.
- *  Derived from the tick authority (36/120 = 0.30 s) so the two can never drift. */
+ *  Derived from the tick authority (78/120 = 0.65 s) so the two can never drift. */
 export const DEATH_HOLD_SECONDS = DEATH_HOLD_TICKS * SIMULATION_DT;
 /** Vertical probe distance for the grounded support check (contact-tight). */
 const SUPPORT_PROBE_DISTANCE = 0.03;
@@ -157,7 +162,7 @@ export class GameSimulation {
   /** Simulated seconds since the current run started. */
   public elapsedSimTime = 0;
   /** Fixed-step ticks left while dead; respawn allowed when it hits 0 (or on key press).
-   *  Integer authority for restart timing (float seconds would drift over 36 ticks). */
+   *  Integer authority for restart timing (float seconds would drift over 78 ticks). */
   public deathHoldTicksLeft = 0;
   /** Cause of the current death; null while running (manual restart is NOT death). */
   public deathCause: DeathCause | null = null;
@@ -381,7 +386,10 @@ export class GameSimulation {
     }
     const lethalHazard = this.findOverlappingHazard();
     if (lethalHazard !== null) {
-      this.die('hazard', lethalHazard.id, null);
+      // M8A: lava volumes (collider id `lava-<id>`) kill through the same
+      // swept-path CCD but tag their own cause for readability/analytics.
+      const cause: DeathCause = lethalHazard.id.startsWith('lava-') ? 'lava' : 'hazard';
+      this.die(cause, lethalHazard.id, null);
       return;
     }
 

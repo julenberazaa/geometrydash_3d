@@ -58,6 +58,17 @@ export const loadLevel = (def: LevelDefinition): LoadedLevel => {
       halfExtents: vec3(h.halfExtents.x, h.halfExtents.y, h.halfExtents.z),
     });
   }
+  // M8A lethal lava: authored gameplay volumes ride the SAME deterministic
+  // hazard-collision pathway as spikes (no second lethal engine). The
+  // `lava-<id>` id prefix tags the death cause (`lava`) in GameSimulation.
+  for (const l of def.lava ?? []) {
+    colliders.push({
+      id: `lava-${l.id}`,
+      kind: 'hazard',
+      center: vec3(l.center.x, l.center.y, l.center.z),
+      halfExtents: vec3(l.halfExtents.x, l.halfExtents.y, l.halfExtents.z),
+    });
+  }
 
   const world = new CollisionWorld(8);
   world.addAll(colliders);

@@ -9,6 +9,7 @@
  *   startSpeedMultiplier, finishZ, deathY, deathYMax, startGravityMode,
  *   gravityPortals, speedPortals, jumpPads, jumpOrbs, gravityOrbs,
  *   teleportPortals (M7.2, only when present — absent writes zero bytes),
+ *   lava (M8A, only when present — absent writes zero bytes),
  *   solids, hazards, id.
  *
  * Explicitly EXCLUDED (not gameplay-relevant):
@@ -24,6 +25,7 @@ import type {
   GravityPortalDef,
   JumpOrbDef,
   JumpPadDef,
+  LavaVolumeDef,
   LevelDefinition,
   LevelHazard,
   LevelSolid,
@@ -85,6 +87,13 @@ const writeTeleport = (h: DeterministicHasher, t: TeleportPortalDef): void => {
   h.writeFloat64(t.entryZ);
   writeVec3(h, t.exit);
   h.writeInt32(t.exitLaneIndex);
+};
+
+const writeLava = (h: DeterministicHasher, l: LavaVolumeDef): void => {
+  h.writeString(l.id);
+  writeVec3(h, l.center);
+  writeVec3(h, l.halfExtents);
+  h.writeInt32(l.role === 'pool' ? 0 : l.role === 'fall' ? 1 : 2);
 };
 
 const writeSolid = (h: DeterministicHasher, s: LevelSolid): void => {
@@ -151,6 +160,16 @@ export const computeLevelFingerprint = (def: LevelDefinition): string => {
     h.writeString('teleports:v1');
     h.writeInt32(teleports.length);
     for (const t of teleports) writeTeleport(h, t);
+  }
+  // M8A lethal lava: gameplay volumes. Conditionally extended (bytes are
+  // written ONLY when lava exists, behind a domain separator): levels
+  // without lava hash byte-identically to before, so every pre-M8A replay
+  // stays compatible (golden fixture pinned).
+  const lava = def.lava ?? [];
+  if (lava.length > 0) {
+    h.writeString('lava:v1');
+    h.writeInt32(lava.length);
+    for (const l of lava) writeLava(h, l);
   }
   // visualSetpieces: presentation-only, never fingerprinted (like theme /
   // visualSequence / rhythmCues / hazard visual+mount / teleport style).

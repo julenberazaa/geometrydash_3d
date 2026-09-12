@@ -2,15 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { DeathBurstView, DEATH_BURST_LIFETIME } from '../src/rendering/DeathBurstView';
 
 /**
- * M7.3 death-burst contract: bigger and stronger (24 fragments, larger
- * chunks, faster spray, longer life) while staying bounded — one fixed
- * pool, shared resources, zero post-construction allocation.
+ * M8A death-burst contract: much stronger (32 fragments, core flash +
+ * shock ring, 0.65 s matching the 78-tick hold) while staying bounded —
+ * one fixed pool, shared resources, zero post-construction allocation.
  */
-describe('death burst presentation (M7.3)', () => {
-  it('carries a bigger fragment pool than the M2 original', () => {
+describe('death burst presentation (M8A)', () => {
+  it('carries a bigger fragment pool than the M7.3 effect', () => {
     const burst = new DeathBurstView();
-    // 24 pooled fragments (was 14): one mesh per fragment, nothing else.
-    expect(burst.group.children.length).toBe(24);
+    // 32 pooled fragments + core flash + shock ring = 34 scene children.
+    expect(burst.group.children.length).toBe(34);
     burst.dispose();
   });
 
@@ -35,7 +35,7 @@ describe('death burst presentation (M7.3)', () => {
       burst.update(0.1);
       burst.clear();
     }
-    expect(burst.group.children.length).toBe(24);
+    expect(burst.group.children.length).toBe(34);
     expect(burst.isActive).toBe(false);
     burst.dispose();
   });

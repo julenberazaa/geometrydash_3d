@@ -1,0 +1,314 @@
+PASS — canvas mounted
+FAIL — auto-forward along +Z at base speed :: dz=4.67 over 0.70s wall (6.7 u/s, ~14 expected)
+PASS — player settled onto runway :: y=0.55
+PASS — lane right reaches screen-right lane (−2.6) :: x=-2.600 idx=2
+PASS — lane left recenters to 0 :: x=0.000 idx=1
+PASS — rapid switch settles at center :: x=0.000
+PASS — jump gains altitude (~2 units) :: apexY≈2.67
+PASS — lands back on floor :: y=0.55
+PASS — hold-jump repeats (jump counter advances >= 2 in 1.5 s) :: jumps=2 maxY=2.67
+PASS — airborne lane change works :: dx=-2.60
+PASS — debug overlay visible
+PASS — debug overlay shows sim Hz + draw calls
+PASS — void death triggers :: attempts 9 -> 10, status=running
+PASS — auto-respawn increments attempts :: attempts=10
+PASS — R restarts immediately :: 10 -> 11
+PASS — restart returns to start line :: z=0.67
+PASS — resize adapts canvas :: {"w":900,"h":650}
+PASS — m12 framing valid (runway B, low-platform face ahead) :: z=37.1
+PASS — side fall begins (airborne past the edge, still running) :: x=-6.58 y=0.50
+PASS — side fall resets via death plane (attempts + 1, running) :: attempts=13 -> 14
+PASS — edge teeter stays grounded (support footprint overlaps) :: x=-5.20 grounded=true
+PASS — m2 F1 overlay enabled
+PASS — m2 pre-impact framing (alive near face) :: z=30.5
+PASS — m2 frontal wall impact kills :: cause=frontImpact
+PASS — m2 death cause is frontImpact :: cause=frontImpact
+PASS — m2 lethal contact recorded :: id=solid-5 n=(0,0,-1) preVZ=14.0
+PASS — m2 death burst seen live at detection (natural observation)
+PASS — m2 F1 overlay shows death cause
+PASS — m2 death burst photographed mid-flight (frozen death frame)
+PASS — m2 death burst clears
+PASS — m2 auto-respawn after wall death (attempts + 1) :: attempts=8 z=-3.3
+PASS — m2 spike run kills :: attempt=1 cause=hazard
+PASS — m2 spike death cause is hazard :: cause=hazard
+PASS — m2 lateral edge teeter survives (no scrape kill) :: x=-5.20 grounded=true
+PASS — m2 R during dead respawns immediately (+1 attempt)
+PASS — m2 repeated deaths complete (10x die/respawn) :: 10/10
+PASS — m2 no scene growth across deaths :: children 62 -> 62
+PASS — m2 draw cost stable after deaths :: calls 396 -> 396 tris 6536 -> 6536
+PASS — m3 floor baseline before portal (still Floor, grounded) :: z=175.7 mode=floor
+PASS — m3 portal up crossing flips gravity exactly once :: z=182.27 flips=1 id=portal-up-1
+PASS — m3 crossing does not teleport (observed just past the plane, still at portal height) :: z=182.27
+PASS — m3 support cleared on flip (airborne ceiling phase has no support) :: airborneSupportCleared=true
+PASS — m3 cube physically travels upward to the ceiling (grounded high; sampled maxY corroborates) :: maxY=4.27 y=5.45
+PASS — m3 grounded on ceiling underside (~5.45) with support id :: y=5.450 support=solid-14
+PASS — m3 camera up remains world +Y (no roll) :: cameraUpY=1
+PASS — m3 ArrowRight still moves screen-right (−X) on ceiling :: x=-2.60 idx=2
+PASS — m3 ArrowLeft recenters on ceiling :: x=0.00
+PASS — m3 ceiling support stays stable for 1.5 s (no oscillation) :: stable=15/15
+PASS — m3 pass2 reaches ceiling
+PASS — m3 ArrowDown jumps AWAY from ceiling (dips below 4.8, lands again) :: minY=3.32
+PASS — m3 Space jumps from ceiling (universal jump key) :: minY=3.32
+PASS — m3 ArrowUp airborne fast-fall returns to ceiling (running, grounded) :: y=5.45
+PASS — m3 F1 overlay shows ceiling gravity frame :: gravity: ceiling | g: (0,1,0) | N: (0,-1,0) | laneAxis: (-1,0,0)
+PASS — m3 pass3 reaches ceiling
+PASS — m3 ceiling side fall loses support physically (airborne, alive) :: x=-6.58 y=5.50
+PASS — m3 upper void death (cause void, high altitude) :: cause=void y=12.1
+PASS — m3 death from ceiling respawns in starting mode (Floor, at start) :: mode=floor z=-0.4
+PASS — m3 pass4 reaches ceiling
+PASS — m3 R from ceiling resets to Floor start :: mode=floor z=0.7
+PASS — m3 portal re-cross after R (re-armed)
+PASS — m3 ceiling gap jump executed
+PASS — m3 portal down returns gravity to Floor exactly once :: z=248.8 id=portal-down-1 flips=7
+PASS — m3 lands back on the floor after portal down :: z=255.3 y=0.55
+PASS — m3 no repeated portal toggles :: flips 7 -> 7
+PASS — m3 gravity section completes and the run reaches the level finish gate :: status=finished
+PASS — m3.1 floor framing unchanged (eye ~4.4u above track, track-relative) :: eyeY=4.42 (was ~4.4 pre-M3.1)
+FAIL — m3.1 camera eye stays inside the corridor through the rise (never in the slab band) :: samples=15 eyeY 0.22..1.61 (slab underside y=6)
+PASS — m3.1 ceiling eye settles below the cube with slab clearance :: eyeY=1.61 playerY=5.45 (underside y=6, M3.3 mirrored offset ~3.84 below)
+PASS — m3.1 look target reads the ceiling contact surface (above the eye) :: lookY=4.85 eyeY=1.61
+PASS — m3.1 stable ceiling run reaches the gap approach :: z=222.4
+PASS — m3.2 underside rails visible ahead during ceiling run :: 762,363 | 518,363 | 734,386 | 546,386
+PASS — m3.2 gap approach framed :: z=222.7
+PASS — m3.2 gap edges visible beside the cube silhouette :: cube x 594..686 | edges 442, 838
+PASS — m3.2 floor reference framing reached :: z=175.7
+PASS — m4 jump pad activates exactly once (passive contact, no input) :: pads=1 (pre=0) used=true
+PASS — m4 pad launch apex exceeds the normal jump envelope :: maxY=6.22 (jump apex ~2.07, pad 22 impulse -> ~5.76)
+PASS — m4 pad flight crosses the 10 u gap and lands on runway F :: z=318.7 y=0.55
+PASS — m4 restart re-arms the pad and resets speed :: padUsed=false speed=1
+PASS — m4 orb without press does not activate (orbs flat, not used) :: orbs=0 used=false
+PASS — m4 unassisted orb gap kills (void) :: cause=void
+PASS — m4 orb press inside the window activates exactly once :: orbs=1 used=true
+PASS — m4 orb activation VFX ring observed :: rings=1
+PASS — m4 orb boost carries the player onto runway G :: z=347.5
+PASS — m4 orb window approach framed :: z=329.7
+PASS — m4 gravity orb flips Floor -> Ceiling and grounds on slab C underside :: z=357.1 y=5.45 flips=10 mode=ceiling
+PASS — m4 ceiling state readable: camera up remains world +Y :: cameraUpY=1
+PASS — m4 portal-down-2 returns the run to the floor runway :: z=371.1 mode=floor
+PASS — m4 speed portal crossing sets the 2x tier (no position jump) :: speed=2 fwd=28 portals=2 z=373.0
+FAIL — m4 2x forward rate observed (~28 u/s peak) :: 0.0 u/s peak
+PASS — m4 speed portal approach framed :: z=369.7
+PASS — m4 restart resets the speed tier :: speed=1
+PASS — m4 2x sprint crosses the finish gate (collision-safe high-speed section) :: status=finished
+PASS — m4 high-speed screenshot framed :: -
+PASS — m4 repeated interactions leak guard (scene children flat) :: [{"kids":62,"calls":117,"pads":2},{"kids":62,"calls":117,"pads":3},{"kids":62,"calls":117,"pads":4}]
+PASS — m4 exactly one pad activation per attempt across repeats :: pads=[2,3,4]
+PASS — m3.3 floor free-face reference framed :: area=2059px² z=175.7
+PASS — m3.3 ceiling free-face reference framed :: area=2027px²
+PASS — m3.3 free-face projection parity (ceiling/floor projected area) :: ratio=0.985 (ceiling 2027px² / floor 2059px², acceptance 0.90..1.10)
+PASS — m3.3 ceiling gap approach framed with mirrored view :: z=222.7
+PASS — m5 default level loads (controller-test-01) :: controller-test-01
+PASS — m5 live death attempt completes :: cause=frontImpact
+PASS — m5 replay becomes available after the attempt
+PASS — m5 exported replay is a versioned input tape (no transforms) :: frames=441 outcome=dead
+PASS — m5 F4 starts playback (mode=replay, HUD badge REPLAY) :: mode=replay badge=REPLAY
+PASS — m5 injected input does not knock playback off the tape :: mode=replay tick=120->184
+PASS — m5 death replay verifies (input isolation holds, death reproduced) :: verify=pass status=dead cause=frontImpact frames=441
+PASS — m5 HUD reports REPLAY VERIFIED :: badge=REPLAY VERIFIED
+PASS — m5 F1 overlay shows replay state (mode/verify/fingerprint) :: replay: mode=live | tick=0 | frames=441 | hasReplay=true | verify=pass
+PASS — m5 R after replay resumes live play
+PASS — m5 level 02 route loads the second level (HUD confirms) :: id=validation-02 hud=VALIDATION LEVEL 02
+PASS — m5 level 02 real playthrough reaches the finish (no teleport)
+PASS — m5 level 02 completion records a level-02 replay :: {"has":true,"level":"validation-02"}
+PASS — m5 level 02 replay verifies end-to-end :: verify=pass status=finished
+PASS — m5 level-01 replay cannot silently run on level 02 (explicit reject) :: ok=false reason=replay was recorded on level "controller-test-01" but the loaded level is "validation-02"
+PASS — m5 unknown level id falls back to the default level :: id=controller-test-01
+PASS — m6a production theme active (post on, 3 passes, restrained bloom) :: post=true passes=3 bloom={"strength":0.45,"radius":0.5,"threshold":0.8}
+PASS — m6a shared resources bounded at build (materials/geometries) :: materials=28 geometries=8
+PASS — m6a player visible/readable at spawn :: pos=(0.0,0.6,14.7)
+PASS — m6a floor runway framed before hazards :: z=95.7
+PASS — m6a hazard readable before lethal distance (spike in view) :: spike(2.6,0.5,108)
+PASS — m6a playable surface readable ahead (floor point in view) :: floor(0,0,120)
+PASS — m6a floor hazard approach framed :: z=100.4
+PASS — m6a ceiling run framed with mirrored view :: z=205.9
+PASS — m6a floor/ceiling free-face parity holds under M6 visuals :: ratio=0.952 (ceiling 1977px² / floor 2077px²)
+PASS — m6a gravity portal framed (flip-up gateway ahead) :: z=171.7
+PASS — m6a gravity portal visible/readable :: portal(0,4.2,182)
+PASS — m6a interaction section framed (pad ahead) :: z=295.7
+PASS — m6a jump pad visible/readable :: pad(0,0.3,305)
+PASS — m6a 2x speed section framed (tier gateway ahead) :: z=363.9
+PASS — m6a speed portal visible/readable :: speed(0,1.4,372)
+PASS — m6a level 02 loads with the same production system :: id=validation-02 post=true
+PASS — m6a level 02 player/hazard readable :: player + spike(0,0.5,44)
+PASS — m6a live death finalizes a replay tape :: cause=frontImpact
+PASS — m6a F4 replay runs under M6 visuals :: badge=REPLAY
+PASS — m6a replay still reaches VERIFIED :: verify=pass badge=REPLAY VERIFIED
+PASS — m6a scene/resource counts stable across death/restart/replay :: children 62->62, mats 28->28, geos 8->8
+PASS — m6a draw calls do not grow per attempt :: calls 387->395
+PASS — m6a postprocessing survives viewport resize :: passes=3
+PASS — m6a post fallback stays playable (?post=off, direct render) :: post=false passes=0 dz=8.9
+PASS — m6b fx enabled by default (trail accumulates while running) :: enabled=true trail=26
+PASS — m6b runway run framed for trail evidence :: z=95.7
+PASS — m6b runtime toggle clears juice and resumes cleanly :: on=26 off=0 back=15
+PASS — m6b ?fx=off disables juice only (gameplay runs, no trail/particles) :: enabled=false trail=0 dz=7.5
+PASS — m6b trail clears on R restart :: attempts 2->3 resets 3->4
+PASS — m6b death/respawn clears trail and streaks :: attempts 4->5 resets 6->8 streaks=0
+PASS — m6b jump emits exactly one visual burst :: jump 0->1 photo=true
+PASS — m6b landing emits exactly one visual burst :: landing 8->9 intensity=0.53 photo=true
+PASS — m6b fast-fall landing is stronger but bounded :: soft=0.53 hard=0.70
+PASS — m6b gravity flip emits one transition pulse :: gravity 0->1
+PASS — m6b jump pad emits one impulse burst :: pad 0->1
+PASS — m6b jump orb emits one activation burst :: orb burst observed (post-off page)
+PASS — m6b gravity orb emits the flip pulse (deduped, one event) :: flip pulse observed
+PASS — m6b 2x portal emits speed pulse and raises streaks :: speed 0->1 streaks=12 tier=2x
+PASS — m6b ceiling reached for surface-relative juice :: z=189.1
+PASS — m6b ceiling jump + landing emit bursts (surface-relative) :: ceiling jump+landing observed
+PASS — m6b level 02 runs the same juice system :: id=validation-02 trail=23
+PASS — m6b live jump-then-death finalizes a replay tape :: cause=frontImpact
+PASS — m6b replay recreates juice live (burst re-fires from replayed sim) :: mode=replay jump=1 trail=27
+PASS — m6b replay still reaches VERIFIED with juice recreated :: verify=pass badge=REPLAY VERIFIED jump=2
+PASS — m6b scene/resources bounded over repeated attempts :: children 62->62, mats 28->28, trail=23
+PASS — m6b post OFF + fx ON works (streaks/trail without composer) :: post=false trail=29 z=28.1
+PASS — m6b minimal presentation (?post=off&fx=off) stays playable :: post=false fx=false dz=10.3
+PASS — m6b juice survives viewport resize :: trail=28
+PASS — m6c1 triggers enabled by default, opening section resolves :: enabled=true section=runway bg=0x7040f
+PASS — m6c1 level01 base framed for evidence :: z=11.7
+PASS — m6c1 mid-blend interpolation is bounded (between base and target) :: t=0.05 bg=0x60410 exp=1.138
+PASS — m6c1 gravity-descent section resolves on the ceiling run :: z=189.1 bg=0x40213
+PASS — m6c1 background/fog transition reads against base :: fog=0xd0722
+PASS — m6c1 interaction-run section resolves with route accent shift :: z=295.6 accent=0xc44dff vfx=1.1946570746527805
+PASS — m6c1 speed-sprint section resolves inside the bloom contract :: z=369.7 bloom=0.5456677001953142
+PASS — m6c1 route accent changed with zero geometry growth :: geos=8->8 accent=0xc44dff
+PASS — m6c1 player cyan identity unchanged across every section :: player=0xe4a56
+PASS — m6c1 hazard warm identity unchanged across every section :: hazard=0xff9d00
+PASS — m6c1 R returns to the opening visual state :: section=runway bg=0x7040f
+PASS — m6c1 death/respawn returns to the opening visual state :: section=runway
+PASS — m6c1 F4 replay walks the position-driven sections :: died=true tape=true mode=replay section=runway
+PASS — m6c1 F4 replay ends VERIFIED under timeline visuals :: verification=pass
+PASS — m6c1 replay carries zero timeline state :: keys=10 leaked=[]
+PASS — m6c1 resources flat across every transition (28/8/3) :: mats=28 geos=8 passes=3 children=62->62
+PASS — m6c1 ?triggers=off resolves the exact baseline (no stale sections) :: section=base bg=0x7040f exp=1.15
+PASS — m6c1 triggers-off stays baseline deep in the level :: section=base z far past blend zones
+PASS — m6c1 level02 opening section resolves with teal identity :: section=v2-weave accent=0x18e0a0
+PASS — m6c1 level02 ceiling section resolves after the portal flip :: z=88.3 section=v2-ceiling
+PASS — m6c1 level02 speed section resolves with lifted juice :: z=167.9 vfx=1.0796847873263955
+PASS — m6c1 post OFF + triggers ON still walks sections :: section=gravity-descent bloom=null
+PASS — m6c1 fx OFF + triggers ON still walks sections :: section=interaction-run z=297.5
+PASS — m6c1 minimal presentation (all-off) stays playable at baseline :: section=base dz=10.3
+PASS — m6c1 timeline survives viewport resize :: section=gravity-descent
+PASS — m6c2 reactive probes live, envelope at rest on load :: energy=0 contact=4 passes=3
+PASS — m6c2 floor run shows ground-contact skid under the cube :: z=11.7 contact=3 trail=22
+PASS — m6c2 pad event fires a warm punch (energy + yellow tint) :: energy=0.45 color=0xffd23f
+PASS — m6c2 pad punch lifts bloom/exposure/environment above the section :: bloom=0.567 exp=1.125 liveBg=0x1d1717
+PASS — m6c2 punch envelope decays to exact rest (bloom/exposure restored) :: energy=0 bloom=0.500 exp=1.080
+PASS — m6c2 gravity flip fires a blue punch (energy + blue tint) :: energy=0.15 color=0x4fc3ff
+PASS — m6c2 ceiling run shows ground-contact skid on the support side :: z=190.7 contact=3
+PASS — m6c2 speed portal fires a tier-colored punch :: energy=0.33 color=0x66ff8a
+PASS — m6c2 jump-orb event fires a warm punch (tint + residual envelope) :: orbs=1 energy=0.20 color=0xffd23f
+PASS — m6c2 triggers-off keeps the punch envelope silent (exact baseline) :: pads=2 energy=0 bloom=0.450
+PASS — m6c2 fx-off silences particles + skid while gameplay continues :: pads=1 parts=0 contact=0
+PASS — m6c2 level02 run shows ground-contact skid on the shared path :: z=10.9 contact=3
+PASS — m6c2 F4 replay verifies under reactive visuals :: died=true tape=true verification=pass mode=replay
+PASS — m6c2 replay carries zero punch/contact state :: keys=10 leaked=[]
+PASS — m6c2 resources flat (28/8/3, no new draws or pools) :: mats=28 geos=8 passes=3 children=62
+PASS — m71 level route resolves correctly :: id=vertical-slice-01
+PASS — m71 correct display name :: probe=VERTICAL SLICE 01 hud=VERTICAL SLICE 01
+PASS — m71 start state correct :: status=running lane=1 mode=floor speed=1
+PASS — m71 production visual sequence active :: section=vs-opening
+PASS — m71 player/hazard readability intact :: player=0xe4a56 hazard=0xff9d00
+PASS — m71 Act I route renders :: z=10.6
+PASS — m71 beat cue resolves at start :: cue=m71-cue-intro
+PASS — m71 opening bridge is genuinely narrow (off-lane placement falls) :: sawDeath=true
+PASS — m71 first signature moment renders :: z=168.4
+PASS — m71 gravity transition fires :: mode=ceiling z=170.8 live=ceiling
+PASS — m71 M6C2 gravity punch fires :: energy=0.79 color=0x4fc3ff
+PASS — m71 gravity punch carries the blue family tint :: color=0x4fc3ff
+PASS — m71 gravity scene clearly changes at the flip :: section=vs-gravity
+PASS — m71 Ceiling section is readable :: z=206.4 ndc=(-0.23,0.39) contact=6
+PASS — m71 ceiling spike points DOWN (tip below base on screen) :: tipPy=77.5 basePy=36.4 framed=true
+PASS — m71 ceiling bridge is genuinely narrow (off-lane placement falls) :: sawDeath=true
+PASS — m71 pad fires naturally :: z=312.8 pads=1
+PASS — m71 pad punch fires :: energy=0.65 color=0xffd23f
+PASS — m71 jump orb fires naturally :: z=354.4 orbs=1
+PASS — m71 jump orb punch fires :: energy=0.50 color=0xffd23f
+PASS — m71 tech scene resolves with shifted palette :: section=vs-tech z=332.4
+PASS — m71 floor spike points UP (tip above base on screen) :: tipPy=342.7 basePy=357.3
+PASS — m71 gravity orb fires naturally :: mode=floor orbs=1 
+PASS — m71 speed portal fires :: speed=2 z=519.2
+PASS — m71 2x streak state active :: streaks=13
+PASS — m71 speed punch fires :: energy=0.66 color=0x66ff8a
+PASS — m71 final-act visual state resolves :: section=vs-climax z=586.4
+PASS — m71 energy rays active in the climax :: rays=0.078
+PASS — m71 2x narrow route remains readable :: ndc=(0.00,-0.38)
+PASS — m71 release section resolves :: section=vs-release z=657.4
+PASS — m71 release quiets the energy rays :: rays=0
+PASS — m71 resource counts remain bounded :: mats=29 geos=8 passes=3 children=62
+PASS — m71 material/geometry counts stable :: mats=29 geos=8
+PASS — m71 finish reached via real input :: finished deaths=0
+PASS — m71 completion duration in target :: frames=6190 seconds=51.58
+PASS — m71 replay can be started :: verify=pass
+PASS — m71 replay ends VERIFIED :: verify=pass status=finished
+PASS — m71 no replay divergence :: verify=pass
+PASS — m71 rhythm cue resolves deterministically :: cue=m71-cue-gravity-hit z=199.6
+PASS — m71 release cue resolves at the finish approach :: cue=m71-cue-release z=663.2
+PASS — m71 rhythm cues absent from replay :: no tape
+PASS — m71 restart returns to correct starting section :: z=0.0 section=vs-opening
+PASS — m71 death/respawn works :: sawDeath=true respawned z=-3.7
+PASS — m71 post/fx/triggers fallback still playable :: z=12.6
+PASS — m71 triggers-off restores the exact baseline section :: section=base
+PASS — m72 level route resolves correctly :: id=advanced-cube-01
+PASS — m72 correct display name :: probe=ADVANCED CUBE 01 hud=ADVANCED CUBE 01
+PASS — m72 start state correct :: status=running lane=1 mode=floor speed=1
+PASS — m72 opening scene active :: section=ac-ember
+PASS — m72 player/hazard readability intact :: player=0xe4a56 hazard=0xff9d00
+PASS — m72 high band island renders distinctly :: y=2.95 grounded=true
+PASS — m72 narrow landing collider matches visual :: x=0.00 grounded=true
+PASS — m72 hazard garden readable :: section=ac-garden y=1.75
+PASS — m72 floor spikes point correctly :: tipPy=412.5 basePy=446.0
+PASS — m72 gravity portal fires :: z=326.0 flips=1
+PASS — m72 gravity punch fires :: peak=0.59 color=0x4fc3ff
+PASS — m72 ceiling transit reached :: z=360.4
+PASS — m72 ceiling spikes point correctly :: tipPy=354.0 basePy=330.1
+FAIL — m72 ceiling islands readable :: stalled
+PASS — m72 ceiling contact skid live :: contact=5
+PASS — m72 ceiling staging reaches the run surface :: z=330.0
+PASS — m72 ceiling pad activates :: pads=1 z=390.4
+FAIL — m72 fast-fall challenge works :: result=null z=6.4 y=0.55
+PASS — m72 guardian setpiece reads correctly :: ndc=(-0.14,0.49) z=521.8
+PASS — m72 teleport triggers :: z=634.2 id=ac-teleport-maw
+PASS — m72 teleport destination correct :: z=634.2 y=1.75 mode=floor
+PASS — m72 skipped portals do not fire :: mode=floor speed=1
+PASS — m72 teleport exit VFX fires :: teleportBursts=2
+PASS — m72 teleport event punch fires :: peak=0.62 color=0xc77dff
+PASS — m72 teleport exit framed :: z=631.2
+PASS — m72 post-teleport palette differs clearly :: before=0xa0318 after=0x341937
+PASS — m72 teleport rhythm cue handoff :: cue=ac-cue-teleport-out
+PASS — m72 post-teleport world section :: section=ac-furnace
+PASS — m72 speed portal fires :: z=709.2
+PASS — m72 2x climax visible :: streaks=8 section=ac-storm
+PASS — m72 fragmented 2x route completable surface :: z=745.8 grounded=true
+FAIL — m72 finish reached with real inputs :: timeout deaths=22
+FAIL — m72 runtime inside 60-75 s :: frames=2175 seconds=18.13
+PASS — m72 replay starts :: verify=pass
+PASS — m72 replay VERIFIED :: verify=pass status=dead
+PASS — m72 restart clean :: z=3.2 section=base tpId=null
+PASS — m72 death/respawn clean :: sawDeath=true respawned z=-3.9
+PASS — m72 triggers-off playable :: z=12.6
+PASS — m72 triggers-off restores the exact baseline section :: section=base
+PASS — m72 no material growth :: mats=29->29
+PASS — m72 no geometry growth :: geos=8->8
+PASS — m72 no unbounded scene growth :: children=62->62
+PASS — m72 vertical-slice-01 still playable :: z=12.8
+PASS — m73 level route resolves correctly :: id=advanced-cube-01
+PASS — m73 start state correct :: status=running lane=1 section=ac-ember
+PASS — m73 player/hazard readability intact :: player=0xe4a56 hazard=0xff9d00
+PASS — m73 offset island pair narrow but landable :: x=2.33 grounded=true
+PASS — m73 garden wall kills the no-jump line :: cause=frontImpact z=193.4
+PASS — m73 tall spike guards the bridge :: cause=hazard z=21.0
+PASS — m73 stronger death burst fires :: dead@21.0 burst live in hold
+PASS — m73 ceiling spike tip-down readable :: tipPy=382.6 basePy=358.0
+PASS — m73 hop entry+exit co-visible in one frame :: entry=(0.00,-0.07) exit=(0.00,0.14)
+PASS — m73 hop teleport fires to the authored exit :: z=513.6 y=0.64 id=ac-teleport-hop
+PASS — m73 hop exit VFX + violet punch fire :: bursts=2 peak=0.77
+PASS — m73 maw section staged :: section=ac-maw z=521.8
+PASS — m73 chain-beast reads in-frame :: ndc=(-0.13,0.31)
+FAIL — m73 finish reached with real inputs :: timeout deaths=23
+FAIL — m73 runtime inside 60-75 s :: frames=2175 seconds=18.13
+PASS — m73 replay VERIFIED :: verify=pass status=dead
+PASS — m73 restart clean :: z=2.8 section=base tpId=null
+PASS — m73 triggers-off playable :: z=12.2
+PASS — m73 no material/geometry/scene growth :: mats=29->29 geos=8->8 children=62->62
+PASS — no console errors :: []
+PASS — no page errors :: []
+
+303/312 checks passed

@@ -51,9 +51,12 @@ export const computeStateFingerprint = (sim: GameSimulation): string => {
 
   // Status: 0 running / 1 dead / 2 finished.
   h.writeInt32(sim.status === 'running' ? 0 : sim.status === 'dead' ? 1 : 2);
-  // Death cause: 0 none / 1 hazard / 2 frontImpact / 3 void.
+  // Death cause: 0 none / 1 hazard / 2 frontImpact / 3 void / 4 lava (M8A,
+  // appended — pre-M8A causes keep their codes, so old tapes hash identically).
   const cause = sim.deathCause;
-  h.writeInt32(cause === null ? 0 : cause === 'hazard' ? 1 : cause === 'frontImpact' ? 2 : 3);
+  h.writeInt32(
+    cause === null ? 0 : cause === 'hazard' ? 1 : cause === 'frontImpact' ? 2 : cause === 'void' ? 3 : 4,
+  );
 
   const p = sim.player;
   h.writeFloat64(p.position.x);

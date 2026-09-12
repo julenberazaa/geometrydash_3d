@@ -423,6 +423,21 @@ accepted and development may proceed — not "perfect", not permanently
 locked art, no redesign permission. Next: M6D real-GPU closeout →
 music/rhythm → Ship.
 
-## Ship mode — ONLY after the Cube vertical slice and control validation
+## M8 — Multimode & Hazard Expansion: IN PROGRESS (feature/m8-multimode-gameplay)
 
-Enclosed tunnels, multi-surface hazards, speed feel. Never before Cube is fun.
+PRODUCT REPRIORITIZATION (human direction): M8 is NO LONGER music/rhythm.
+M8 is the multimode & hazard expansion — real lethal lava (sourced/
+contained, instant death), stronger readable death (78-tick hold), compact
+professional portals, four-way gravity (Floor/Ceiling/Left wall/Right
+wall), Ship + Spider player modes, the dynamic lava Chomper, maze + trap-
+island production content (`multimode-gauntlet-01`), all deterministic and
+replay-safe. Music/BPM/rhythm synchronization is deferred to the NEXT
+provisional milestone after M8 (NOT started). M6 real-GPU hardware gate
+remains OPEN (the M8 workload is heavier; rerun after human approval).
+Ship mode is part of THIS milestone (was previously gated behind Cube
+validation — that validation has now passed twice: M7.1 + M7.3).
+
+## Ship mode — part of M8 (multimode expansion)
+
+Enclosed tunnels, multi-surface hazards, speed feel. Cube validation
+(M7.1 + M7.3 approvals) is complete, so Ship ships inside M8.

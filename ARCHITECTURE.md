@@ -118,6 +118,8 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
 - `levelDefinition.ts`: declarative `LevelDefinition` (id, display name,
   start, `startGravityMode` (default floor), `startLaneIndex`, `laneCenters`,
   speeds, `finishZ`, `deathY` (lower void), `deathYMax` (optional upper void),
+  `lava` (M8A lethal source/fall/pool volumes — gameplay, fingerprinted),
+  `visualSetpieces` (presentation-only — never gameplay, never fingerprinted),
   `startGravityMode`, `gravityPortals` (id + crossing Z + target mode),
   `speedPortals` (id + crossing Z + multiplier tier), `jumpPads`
   (trigger volume + mount surface + explicit impulse), `jumpOrbs` /
@@ -137,7 +139,10 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   from real forward distance. `LoadedLevel` also exposes the indexed
   interaction lists (`jumpPads`, `jumpOrbs`, `gravityOrbs`, Z-sorted
   `speedPortals`, entryZ-sorted `teleportPortals`) that `GameSimulation`
-  processes.
+  processes. M8A lethal lava volumes register as `lava-<id>` hazard-kind
+  colliders through the SAME hazard pathway (no second lethal engine;
+  the `lava-` prefix tags the `lava` death cause) — see
+  `lavaAuthoring.ts` for the sourced/contained authoring contract.
 - `testLevel01.ts`: controller test track (gaps ≤ 6.5 u, steps ≤ 1.7 u per
   jump limits; forced lane-change wall; spike weave; void gaps; finish gate)
   plus the appended M3 gravity section (z 176..278: Floor → portal up →
@@ -189,7 +194,7 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   Death at any earlier point wins the step. Owns `prevPosition` (also the
   portal/interaction forward-crossing reference) for render interpolation,
   `status` (`running`/`dead`/`finished`), `attempts`, `elapsedSimTime`,
-  36-tick `deathHoldTicksLeft` (0.30 s) with integer-tick authority. Single
+  78-tick `deathHoldTicksLeft` (0.65 s, M8A readability rework) with integer-tick authority. Single
   `die()`/`respawn()`/`restart()` paths (`restart()` converges to one
   `respawn()` from any status); `die(cause)` is idempotent with `deathCause`
   (`hazard` | `frontImpact` | `void`), stable `lastDeathCause`/
@@ -675,7 +680,7 @@ fixed-tick PHYSICAL input tape plus verification evidence.
 | Swept collision, no tunneling at speed | `collision` anti-tunneling tests |
 | Frontal kills, lateral/top contacts safe (either blocking kind, either surface) | `death` killFront semantics tests + `gravity` tests + browser QA |
 | Death exactly-once; attempts +1 per respawn/restart only | `death` event/attempt tests |
-| 36-tick death hold; respawn fully resets (incl. gravity mode) | `death` tick + reset tests + `gravity` tests |
+| 78-tick death hold; respawn fully resets (incl. gravity mode) | `death` tick + reset tests + `gravity` tests + `lava` hold tests |
 | Gravity portals: exactly once per attempt, no teleport, support cleared, death wins the step | `gravity` portal/precedence tests + browser QA |
 | Lethal checks precede ALL portal + interaction mutations (M3.3 invariant, extended in M4) | `interactions` ordering tests + `gravity` precedence tests |
 | Teleport portals: exactly once per attempt, lethal wins the step, skipped interval never fires, exit velocity/lane/support semantics pinned, gameplay fingerprinted (style excluded), ReplayV1 unchanged | `teleport` tests + `advancedCube01` teleport integration tests + browser QA m72 section |

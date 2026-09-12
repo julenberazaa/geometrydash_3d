@@ -6,7 +6,7 @@ import type { LevelDefinition } from '../../level/levelDefinition';
  * M7.3 polish/rework: harder and more vertical (offset island pairs with
  * mid-air transfers, a third ceiling spike, maze-like killFront lane walls,
  * tall spikes, denser groups, a second short-hop teleport whose entry and
- * exit share one readable frame, lava void-dressing, a chained beast
+ * exit share one readable frame, lethal contained lava, a chained beast
  * setpiece, smaller rounder portal rings, glowing mini-islands, closed
  * block corners) — same frozen controller, same fairness contract.
  *
@@ -39,7 +39,7 @@ import type { LevelDefinition } from '../../level/levelDefinition';
  *   PHASE 1  z  -10..176  precision ascent (LOW → MID → HIGH → offset drop)
  *   PHASE 2  z 176..325   hazard garden (maze wall + MID/HIGH + fast-fall)
  *   PHASE 3  z 322..527   ceiling world + MID return + floor pad + hop road
- *   PHASE 4  z 511..712   lava hop (489 → 513) + maw setpiece (524 → 634)
+ *   PHASE 4  z 511..712   lava hop over REAL lava (489 → 513) + maw setpiece (524 → 634)
  *   PHASE 5  z 708..960   2x fragmented climax + 1x technical epilogue
  * Teleport skips 489..513 (24 u lava lake) and 524..634 (110 u of void —
  * no portals, pads, orbs or geometry inside). The exact deterministic
@@ -131,44 +131,35 @@ export const ADVANCED_CUBE_01: LevelDefinition = {
       center: { x: 10, y: 4, z: 820 },
       halfExtents: { x: 5, y: 3.5, z: 1.5 },
     },
-    // M7.3 lava: void-danger dressing under key gaps and beside furnaces.
-    // Presentation-only (no collision); the void bound still kills.
-    {
-      id: 'ac-lava-chain',
-      kind: 'lava',
-      center: { x: 0, y: -5, z: 58 },
-      halfExtents: { x: 4, y: 1, z: 24 },
-    },
-    {
-      id: 'ac-lava-ff',
-      kind: 'lava',
-      center: { x: 0, y: -4, z: 250 },
-      halfExtents: { x: 3.5, y: 1, z: 8 },
-    },
-    {
-      id: 'ac-lava-lake',
-      kind: 'lava',
-      center: { x: 0, y: -5, z: 499 },
-      halfExtents: { x: 4, y: 1, z: 14 },
-    },
-    {
-      id: 'ac-lava-river',
-      kind: 'lava',
-      center: { x: 0, y: -8, z: 579 },
-      halfExtents: { x: 5, y: 1, z: 55 },
-    },
-    {
-      id: 'ac-lava-furnace',
-      kind: 'lava',
-      center: { x: 6.5, y: -3, z: 670 },
-      halfExtents: { x: 2.5, y: 1, z: 18 },
-    },
-    {
-      id: 'ac-lava-storm',
-      kind: 'lava',
-      center: { x: -7, y: -4, z: 810 },
-      halfExtents: { x: 3, y: 1, z: 25 },
-    },
+  ],
+  /**
+   * M8A lethal lava (GAMEPLAY — touching any volume kills instantly with
+   * cause `lava`). Six contained basins under the historic lava dressing
+   * spots (same footprints, now real: pool surface + basin floor + rim
+   * walls) plus one source → fall → pool composition at the furnace (rock
+   * pillar → vent → dense stream → basin). Every volume validates through
+   * `validateLavaAuthoring` (no floating slabs). All basins sit >= 1.4 u
+   * below the lowest success-path surface and outside the lane corridor,
+   * so the approved route (tick 7475) is untouched — gap falls that died
+   * at the void bound now die faster at the lava surface instead.
+   */
+  lava: [
+    // Chain basin (phase 1 islands): pool top -4.2.
+    { id: 'ac-lava-chain', center: { x: 0, y: -5, z: 58 }, halfExtents: { x: 4, y: 0.8, z: 24 }, role: 'pool' },
+    // Fast-fall basin (phase 2 gate): pool top -2.9.
+    { id: 'ac-lava-ff', center: { x: 0, y: -3.7, z: 250 }, halfExtents: { x: 3.5, y: 0.8, z: 8 }, role: 'pool' },
+    // Lava lake (phase 4 hop gap): pool top -3.9.
+    { id: 'ac-lava-lake', center: { x: 0, y: -4.7, z: 499 }, halfExtents: { x: 4, y: 0.8, z: 14 }, role: 'pool' },
+    // Maw river (phase 4 void): pool top -6.9.
+    { id: 'ac-lava-river', center: { x: 0, y: -7.7, z: 579 }, halfExtents: { x: 5, y: 0.8, z: 55 }, role: 'pool' },
+    // Furnace basin (phase 4/5 beside the route): pool top -1.9.
+    { id: 'ac-lava-furnace', center: { x: 6.5, y: -2.7, z: 670 }, halfExtents: { x: 2.5, y: 0.8, z: 18 }, role: 'pool' },
+    // Furnace source: vent attached to the rock pillar face (x 9.5).
+    { id: 'ac-lava-furnace-source', center: { x: 9.9, y: 1.5, z: 670 }, halfExtents: { x: 0.6, y: 0.6, z: 1.2 }, role: 'source' },
+    // Furnace fall: dense stream from the vent into the pool (top 1.5).
+    { id: 'ac-lava-furnace-fall', center: { x: 8.6, y: -0.2, z: 670 }, halfExtents: { x: 0.7, y: 1.7, z: 1.0 }, role: 'fall' },
+    // Storm basin (phase 5 beside the 2x islands): pool top -2.9.
+    { id: 'ac-lava-storm', center: { x: -7, y: -3.7, z: 810 }, halfExtents: { x: 3, y: 0.8, z: 25 }, role: 'pool' },
   ],
 
   solids: [
@@ -288,6 +279,46 @@ export const ADVANCED_CUBE_01: LevelDefinition = {
     // (finish 960) — the calm release keeps moving with one last clean jump.
     { center: { x: 0, y: -0.5, z: 945 }, halfExtents: { x: 5.4, y: 0.5, z: 6 } },
     { center: { x: 0, y: -0.5, z: 963 }, halfExtents: { x: 1.3, y: 0.5, z: 8 } },
+
+    // --- M8A lava basins: contained pools (floor + rim walls), all fully
+    // below/beside the success route (rims rise poolTop + 0.5 only). ---
+    // Chain basin (pool top -4.2, floor top -5.5).
+    { center: { x: 0, y: -6, z: 58 }, halfExtents: { x: 5, y: 0.5, z: 25 } },
+    { center: { x: -4.75, y: -4.6, z: 58 }, halfExtents: { x: 0.75, y: 0.9, z: 24.75 } },
+    { center: { x: 4.75, y: -4.6, z: 58 }, halfExtents: { x: 0.75, y: 0.9, z: 24.75 } },
+    { center: { x: 0, y: -4.6, z: 33.25 }, halfExtents: { x: 5.5, y: 0.9, z: 0.75 } },
+    { center: { x: 0, y: -4.6, z: 82.75 }, halfExtents: { x: 5.5, y: 0.9, z: 0.75 } },
+    // Fast-fall basin (pool top -2.9, floor top -4.5).
+    { center: { x: 0, y: -5, z: 250 }, halfExtents: { x: 4.5, y: 0.5, z: 9 } },
+    { center: { x: -4.25, y: -3.45, z: 250 }, halfExtents: { x: 0.75, y: 1.05, z: 8.75 } },
+    { center: { x: 4.25, y: -3.45, z: 250 }, halfExtents: { x: 0.75, y: 1.05, z: 8.75 } },
+    { center: { x: 0, y: -3.45, z: 241.25 }, halfExtents: { x: 4.5, y: 1.05, z: 0.75 } },
+    { center: { x: 0, y: -3.45, z: 258.75 }, halfExtents: { x: 4.5, y: 1.05, z: 0.75 } },
+    // Lava-lake basin (pool top -3.9, floor top -5.5).
+    { center: { x: 0, y: -6, z: 499 }, halfExtents: { x: 5, y: 0.5, z: 15 } },
+    { center: { x: -4.75, y: -4.45, z: 499 }, halfExtents: { x: 0.75, y: 1.05, z: 14.75 } },
+    { center: { x: 4.75, y: -4.45, z: 499 }, halfExtents: { x: 0.75, y: 1.05, z: 14.75 } },
+    { center: { x: 0, y: -4.45, z: 484.25 }, halfExtents: { x: 5.5, y: 1.05, z: 0.75 } },
+    { center: { x: 0, y: -4.45, z: 513.75 }, halfExtents: { x: 5.5, y: 1.05, z: 0.75 } },
+    // Maw-river basin (pool top -6.9, floor top -8.5).
+    { center: { x: 0, y: -9, z: 579 }, halfExtents: { x: 6, y: 0.5, z: 56 } },
+    { center: { x: -5.75, y: -7.45, z: 579 }, halfExtents: { x: 0.75, y: 1.05, z: 55.75 } },
+    { center: { x: 5.75, y: -7.45, z: 579 }, halfExtents: { x: 0.75, y: 1.05, z: 55.75 } },
+    { center: { x: 0, y: -7.45, z: 523.25 }, halfExtents: { x: 6.5, y: 1.05, z: 0.75 } },
+    { center: { x: 0, y: -7.45, z: 634.75 }, halfExtents: { x: 6.5, y: 1.05, z: 0.75 } },
+    // Furnace basin (pool top -1.9, floor top -3.5) + source rock pillar.
+    { center: { x: 6.5, y: -4, z: 670 }, halfExtents: { x: 3.5, y: 0.5, z: 19 } },
+    { center: { x: 3.625, y: -2.45, z: 670 }, halfExtents: { x: 0.375, y: 1.05, z: 18.75 } },
+    { center: { x: 6.5, y: -2.45, z: 650.25 }, halfExtents: { x: 3.5, y: 1.05, z: 0.75 } },
+    { center: { x: 6.5, y: -2.45, z: 689.75 }, halfExtents: { x: 3.5, y: 1.05, z: 0.75 } },
+    // Source pillar (off-corridor rock the vent attaches to).
+    { center: { x: 11, y: 0, z: 670 }, halfExtents: { x: 1.5, y: 4, z: 2 } },
+    // Storm basin (pool top -2.9, floor top -4.5).
+    { center: { x: -7, y: -5, z: 810 }, halfExtents: { x: 4, y: 0.5, z: 26 } },
+    { center: { x: -3.625, y: -3.45, z: 810 }, halfExtents: { x: 0.375, y: 1.05, z: 25.75 } },
+    { center: { x: -10.75, y: -3.45, z: 810 }, halfExtents: { x: 0.75, y: 1.05, z: 25.75 } },
+    { center: { x: -7, y: -3.45, z: 783.25 }, halfExtents: { x: 4, y: 1.05, z: 0.75 } },
+    { center: { x: -7, y: -3.45, z: 836.75 }, halfExtents: { x: 4, y: 1.05, z: 0.75 } },
   ],
 
   hazards: [

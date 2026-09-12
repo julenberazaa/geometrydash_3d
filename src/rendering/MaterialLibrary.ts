@@ -45,6 +45,13 @@ export class MaterialLibrary {
   /** M7.2 teleport gate: violet spatial-energy frame + pale pane. */
   public readonly teleportFrame: THREE.MeshStandardMaterial;
   public readonly teleportPane: THREE.MeshBasicMaterial;
+  /**
+   * M8A lava family (shared, bounded): bright molten core + darker deep
+   * flow. Pulsed subtly in place by `setLavaPulse` (dense-liquid read —
+   * no fluid simulation, no per-frame geometry).
+   */
+  public readonly lavaSurface: THREE.MeshStandardMaterial;
+  public readonly lavaDeep: THREE.MeshStandardMaterial;
   public readonly interactionDim: THREE.MeshBasicMaterial;
   public readonly finishGate: THREE.MeshBasicMaterial;
 
@@ -197,6 +204,27 @@ export class MaterialLibrary {
         side: THREE.DoubleSide,
       }),
     );
+    // M8A lava: hot orange/red core with a strong emissive (the brightest
+    // warm surface in the scene besides the hazard identity it shares the
+    // family with) + a darker crusted flow tone for falls/pool bodies.
+    this.lavaSurface = track(
+      new THREE.MeshStandardMaterial({
+        color: 0xff6a00,
+        roughness: 0.55,
+        metalness: 0,
+        emissive: 0xff5a00,
+        emissiveIntensity: 1.6,
+      }),
+    );
+    this.lavaDeep = track(
+      new THREE.MeshStandardMaterial({
+        color: 0x7a1e00,
+        roughness: 0.8,
+        metalness: 0,
+        emissive: 0xb92e00,
+        emissiveIntensity: 0.8,
+      }),
+    );
     this.interactionDim = track(new THREE.MeshBasicMaterial({ color: theme.interactionDim }));
     this.finishGate = track(
       new THREE.MeshBasicMaterial({
@@ -270,6 +298,18 @@ export class MaterialLibrary {
   /** Restore the exact theme route treatment (triggers-off === base). */
   public resetRouteToTheme(): void {
     this.applyRouteState(this.theme.routeBody, this.theme.routeTop, this.theme.routeEdge);
+  }
+
+  /**
+   * M8A lava pulse: dense-liquid shimmer on the SHARED lava materials
+   * (phase in [0,1), driven by sim time — pausing freezes it like every
+   * other presentation clock). In-place emissive retune only: zero
+   * allocation, zero new draws, fully reversible.
+   */
+  public setLavaPulse(phase01: number): void {
+    const wave = 0.5 + 0.5 * Math.sin(phase01 * Math.PI * 2);
+    this.lavaSurface.emissiveIntensity = 1.45 + wave * 0.35;
+    this.lavaDeep.emissiveIntensity = 0.7 + wave * 0.25;
   }
 
   /** Live material count (QA/resource-guard observability). */

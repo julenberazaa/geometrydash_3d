@@ -397,7 +397,7 @@ describe('Void bounds and start gravity', () => {
     for (let i = 0; i < 40; i++) sim.update(idleInput);
     sim.update(tapRight());
     expect(runUntil(sim, () => sim.status === 'dead', 600)).toBe(true);
-    // Auto-respawn after the 36-tick hold.
+    // Auto-respawn after the death hold.
     expect(runUntil(sim, () => sim.player.grounded, 200)).toBe(true);
     expect(sim.gravityMode).toBe('floor');
     expect(sim.player.gravityMode).toBe('floor');

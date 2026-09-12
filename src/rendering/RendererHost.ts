@@ -244,12 +244,14 @@ export class RendererHost {
     const p = sim.player.position;
     const prev = sim.prevPosition;
 
-    // Death edge: one-shot burst + small kick at the frozen death position.
+    // Death edge: one-shot burst + punchier kick at the frozen death
+    // position (M8A: FOV +5, lift +0.4 — the stronger burst needs a
+    // matching punch; still no roll, no shake).
     if (sim.deathId !== this.lastSeenDeathId) {
       this.lastSeenDeathId = sim.deathId;
       this.deathBurst.play(p);
-      this.fovKick = 3.5;
-      this.heightKick = 0.25;
+      this.fovKick = 5;
+      this.heightKick = 0.4;
     }
     // Respawn edge (dead -> running) or manual-teleport (R while running):
     // snap the camera to the start frame — no backward swoosh, no stale kick.
@@ -292,6 +294,9 @@ export class RendererHost {
     this.debugView.updatePlayerBox(p, sim.halfExtents);
     this.deathBurst.update(renderDtSeconds);
     this.interactionView.update(renderDtSeconds);
+    // M8A lava shimmer: slow dense pulse on the shared lava materials
+    // (sim-time driven so pause freezes it; zero geometry per frame).
+    this.library.setLavaPulse((sim.elapsedSimTime * 0.5) % 1);
 
     // Decay the death kick (~0.12 s time constant) and apply it as pure
     // presentation: FOV bump + tiny vertical lift. Never rolls, never shakes.

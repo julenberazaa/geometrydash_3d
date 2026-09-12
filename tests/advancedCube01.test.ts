@@ -219,7 +219,9 @@ describe('advanced cube 01 deterministic completion (real inputs)', () => {
       sim.update(driver.nextInput(sim.player.position.z));
     }
     expect(sim.attempts).toBeGreaterThan(1);
-    expect(sim.lastDeathCause).toBe('void');
+    // M8A: the missed-transfer fall lands in the contained chain-basin
+    // lava (previously the void bound) — lava IS the gap punishment now.
+    expect(sim.lastDeathCause).toBe('lava');
     expect(sim.deathPosition.z).toBeLessThan(60);
   });
 
@@ -286,9 +288,12 @@ describe('advanced cube 01 vertical geometry (real height bands)', () => {
     expect(narrow.length).toBeGreaterThanOrEqual(15);
     // At least one critical landing is substantially narrower than the
     // full-width recovery slabs (recovery tools exist AND are the minority).
-    // Overhead air-gate bars/pylons (y >= 3.5) are not route surface: only
-    // slabs the cube can stand on count as full-width route.
-    const routeSlabs = ADVANCED_CUBE_01.solids.filter((s) => s.center.y < 3);
+    // Overhead air-gate bars/pylons (y >= 3.5) are not route surface, and
+    // M8A lava-basin architecture (tops below y -1) is containment, not
+    // route: only slabs the cube can stand on count as full-width route.
+    const routeSlabs = ADVANCED_CUBE_01.solids.filter(
+      (s) => s.center.y < 3 && s.center.y + s.halfExtents.y >= -1,
+    );
     const full = routeSlabs.filter((s) => s.halfExtents.x > 2.7);
     expect(full.length).toBeGreaterThanOrEqual(1);
     expect(full.length).toBeLessThanOrEqual(4);
@@ -298,7 +303,9 @@ describe('advanced cube 01 vertical geometry (real height bands)', () => {
 
   it('keeps documented lateral margin on every single-lane island', () => {
     for (const s of ADVANCED_CUBE_01.solids) {
-      if (s.halfExtents.x <= 1.4 && s.center.y < 3) {
+      // M8A basin rims are narrow containment walls below the route, not
+      // landable islands (tops below y -1) — excluded like overhead bars.
+      if (s.halfExtents.x <= 1.4 && s.center.y < 3 && s.center.y + s.halfExtents.y >= -1) {
         const marginPerSide = (s.halfExtents.x * 2 - CUBE_TUNING.colliderSize) / 2;
         expect(marginPerSide).toBeGreaterThanOrEqual(0.5);
       }
@@ -570,12 +577,13 @@ describe('advanced cube 01 teleport + setpiece presentation structure', () => {
     };
     const bare = new LevelView(loadLevel(stripped), library);
     const bareCount = bare.group.children.length;
-    // M7.3 presentation meshes: maw entry (ring + rim + pane + 8 teeth =
+    // M8A presentation meshes: maw entry (ring + rim + pane + 8 teeth =
     // 11) + hop entry (3) + two exit rings (3 + 3) + maw guardian (body +
     // jaw + 6 teeth + 2 eyes + 4 chain links = 14) + storm beast (body +
-    // jaw + 6 teeth + 2 eyes + 3 links = 13) + 6 lava basins (crust +
-    // surface = 12): exactly 59.
-    expect(fullCount - bareCount).toBe(59);
+    // jaw + 6 teeth + 2 eyes + 3 links = 13): exactly 47. (The stripped
+    // baseline keeps the lethal lava volumes, so both sides carry the
+    // same lava meshes — the delta is portals + guardians only.)
+    expect(fullCount - bareCount).toBe(47);
     expect(fullCount).toBeGreaterThan(bareCount);
     full.dispose();
     bare.dispose();
@@ -633,13 +641,23 @@ describe('advanced cube 01 maze walls (M7.3 frontal-kill routing)', () => {
   });
 });
 
-describe('advanced cube 01 lava + beast setpieces (M7.3 spectacle)', () => {
-  it('dresses the voids with lava below the route (never gameplay)', () => {
-    const lavas = (ADVANCED_CUBE_01.visualSetpieces ?? []).filter((s) => s.kind === 'lava');
-    expect(lavas.length).toBeGreaterThanOrEqual(5);
-    // Lava always sits below the route (tops at y <= -2): pure dressing.
+describe('advanced cube 01 lethal lava basins (M8A gameplay)', () => {
+  it('places real lethal lava below/beside the route (never on it)', () => {
+    const lavas = ADVANCED_CUBE_01.lava ?? [];
+    expect(lavas.length).toBeGreaterThanOrEqual(6);
+    expect(lavas.some((l) => l.role === 'source')).toBe(true);
+    expect(lavas.some((l) => l.role === 'fall')).toBe(true);
+    expect(lavas.filter((l) => l.role === 'pool').length).toBeGreaterThanOrEqual(5);
+    // Pools sit below the route surface (tops at y <= -1.5); source/fall
+    // volumes live outside the lane corridor (|x| footprint beyond 4) —
+    // gap falls die at the lava, never on the success path.
     for (const lava of lavas) {
-      expect(lava.center.y + lava.halfExtents.y).toBeLessThanOrEqual(-2);
+      if (lava.role === 'pool') {
+        expect(lava.center.y + lava.halfExtents.y).toBeLessThanOrEqual(-1.5);
+      } else {
+        const innerEdge = Math.abs(lava.center.x) - lava.halfExtents.x;
+        expect(innerEdge).toBeGreaterThanOrEqual(4);
+      }
     }
     const { sim } = runVerificationRoute();
     expect(sim.status).toBe('finished');

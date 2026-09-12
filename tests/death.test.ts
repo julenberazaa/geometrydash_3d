@@ -226,7 +226,7 @@ describe('M2 — death-state correctness', () => {
       ],
     });
 
-  it('hazard death emits exactly once and auto-respawns after exactly 36 ticks', () => {
+  it('hazard death emits exactly once and auto-respawns after exactly DEATH_HOLD_TICKS ticks', () => {
     let deaths = 0;
     const sim = new GameSimulation(wallArena().level.def, {
       onDeath: () => deaths++,
@@ -239,7 +239,7 @@ describe('M2 — death-state correctness', () => {
     expect(sim.status).toBe('dead');
     expect(deaths).toBe(1);
     expect(sim.attempts).toBe(attemptsAtDeath);
-    // Tick 36: respawn, exactly one attempt.
+    // Final hold tick: respawn, exactly one attempt.
     sim.update(idleInput);
     expect(sim.status).toBe('running');
     expect(sim.attempts).toBe(attemptsAtDeath + 1);
