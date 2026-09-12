@@ -12,25 +12,48 @@
  * only (leaks, determinism, regression). The final M6D GPU verdict MUST come
  * from a hardware-accelerated browser — this script prints the actual
  * UNMASKED WebGL vendor/renderer and labels software rasterizers as such.
- * A human runs the SAME script on a real GPU and commits the JSON:
- *   1. npm run dev            (local server on :5173)
- *   2. node scripts/perf-gate.mjs [--url http://localhost:5173/]
- *   3. inspect qa/perf/m6d-real-gpu.json (+ gpuIdentity.renderer)
  *
- * Usage: node scripts/perf-gate.mjs [--url <base>] [--out <json>]
+ * Modes (gate rules live in ./perfGateLib.mjs — single owner, unit-tested):
+ *   node scripts/perf-gate.mjs
+ *     headless software-compatible mode (historical `chromium.launch()`
+ *     defaults, byte-identical). Evidence defaults to
+ *     qa/perf/m6d-swiftshader.json.
+ *   node scripts/perf-gate.mjs --real-gpu [--channel chrome|msedge]
+ *     HEADED hardware human-gate mode: installed branded browser via the
+ *     OS normal graphics stack (never SwiftShader flags). Evidence
+ *     defaults to qa/perf/m6d-real-gpu.json. If the requested channel is
+ *     unavailable the script FAILS LOUDLY — it never silently falls back
+ *     to bundled headless Chromium and calls that hardware.
+ *
+ * Human gate workflow:
+ *   1. Terminal 1: npm run dev            (local server on :5173)
+ *   2. Terminal 2: node scripts/perf-gate.mjs --real-gpu --channel chrome
+ *   3. inspect qa/perf/m6d-real-gpu.json (+ verdict line).
+ * Leave the headed window VISIBLE/FOCUSED (do NOT minimize), avoid
+ * GPU-heavy apps, let the script finish.
+ *
+ * Usage: node scripts/perf-gate.mjs [--real-gpu] [--channel <name>]
+ *        [--url <base>] [--out <json>]
  * Requires the dev server (see QA_URL env for browser-qa parity).
  */
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 import path from 'node:path';
 import nodeChildProcess from 'node:child_process';
+import {
+  buildLaunchOptions,
+  classifyGpuRenderer,
+  defaultOutPath,
+  evaluateRealGpuGate,
+  parsePerfGateArgs,
+  windowsGateInstructions,
+} from './perfGateLib.mjs';
 
-const BASE = process.argv.includes('--url')
-  ? process.argv[process.argv.indexOf('--url') + 1]
-  : (process.env.QA_URL ?? 'http://localhost:5173/');
-const OUT = process.argv.includes('--out')
-  ? process.argv[process.argv.indexOf('--out') + 1]
-  : path.resolve('qa/perf/m6d-real-gpu.json');
+const OPTS = parsePerfGateArgs(process.argv.slice(2));
+const BASE = OPTS.url ?? (process.env.QA_URL ?? 'http://localhost:5173/');
+const OUT = OPTS.out !== null
+  ? path.resolve(OPTS.out)
+  : path.resolve(defaultOutPath(OPTS.realGpu));
 
 const WARMUP_MS = 6000;
 const SAMPLE_MS = 8000;
@@ -48,13 +71,33 @@ const gitSha = (() => {
   }
 })();
 
-const browser = await chromium.launch();
+// M6D.1: real-gpu mode launches the installed branded browser headed on
+// the OS graphics stack. A missing channel is a LOUD failure (exit 1) —
+// never a silent fallback to bundled headless Chromium.
+let browser;
+try {
+  browser = await chromium.launch(buildLaunchOptions(OPTS));
+} catch (err) {
+  if (OPTS.realGpu) {
+    console.error(
+      `REAL-GPU LAUNCH FAILED: browser channel "${OPTS.channel}" unavailable.\n`
+      + `Install Google Chrome (or pass --channel msedge), then re-run.\n`
+      + `Refusing to fall back to bundled headless Chromium as hardware.\n`
+      + `Playwright: ${String(err).split('\n')[0]}`,
+    );
+    process.exit(1);
+  }
+  throw err;
+}
 const consoleErrors = [];
 const pageErrors = [];
+// The gate requires DPR 1: pin it explicitly (headed Windows displays may
+// be OS-scaled) and record the read-back values in the evidence JSON.
+const PAGE_OPTS = (viewport) => ({ viewport, deviceScaleFactor: 1 });
 
 /** One measured configuration: load, warm up, sample, report. */
 const measure = async (name, url, viewport, stress) => {
-  const page = await browser.newPage({ viewport });
+  const page = await browser.newPage(PAGE_OPTS(viewport));
   page.on('console', (msg) => {
     if (msg.type() === 'error') consoleErrors.push(`[${name}] ${msg.text()}`);
   });
@@ -162,7 +205,7 @@ const SHOT_DIR = path.resolve('qa/screenshots');
 fs.mkdirSync(SHOT_DIR, { recursive: true });
 const scenarios = [];
 {
-  const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+  const page = await browser.newPage(PAGE_OPTS({ width: 1280, height: 720 }));
   page.on('console', (msg) => {
     if (msg.type() === 'error') consoleErrors.push(`[scenario] ${msg.text()}`);
   });
@@ -367,19 +410,46 @@ for (const s of scenarios) {
 
 await browser.close();
 
-// Hardware-vs-software verdict from the ACTUAL renderer string.
+// Hardware-vs-software verdict from the ACTUAL renderer string
+// (WEBGL_debug_renderer_info is authoritative for the gate).
 const primaryGpu = results[0]?.gpu?.renderer ?? 'unknown';
-const softwareMarkers = ['swiftshader', 'llvmpipe', 'software', 'basic render', 'softpipe', 'swrast'];
-const isSoftware = softwareMarkers.some((m) => primaryGpu.toLowerCase().includes(m));
-const verdict = isSoftware
-  ? 'SOFTWARE RASTERIZER — functional/leak evidence only; REAL-GPU HUMAN PERF GATE OPEN'
-  : 'HARDWARE GPU IDENTIFIED — evaluate against the 60 FPS envelope';
+const gpuClass = classifyGpuRenderer(primaryGpu);
+const isSoftware = gpuClass === 'software';
+let verdict;
+let gateReasons = [];
+if (OPTS.realGpu) {
+  // Primary acceptance workload: advanced-cube-01, 1920x1080, DPR 1,
+  // production defaults ON. Frame DELIVERY (rAF cadence) — a headed
+  // browser may be vsync-limited, so this is smooth-delivery evidence,
+  // never a GPU-execution-time claim.
+  const primary1080 = results.find((r) => r.name === 'advanced-default-1080p');
+  const gate = evaluateRealGpuGate({
+    gpuClass,
+    renderer: primaryGpu,
+    primary: {
+      p50: primary1080?.perf.p50 ?? Number.POSITIVE_INFINITY,
+      p95: primary1080?.perf.p95 ?? Number.POSITIVE_INFINITY,
+      p99: primary1080?.perf.p99 ?? Number.POSITIVE_INFINITY,
+      over33: primary1080?.perf.over33 ?? Number.POSITIVE_INFINITY,
+    },
+  });
+  verdict = gate.verdict;
+  gateReasons = gate.reasons;
+} else {
+  verdict = isSoftware
+    ? 'SOFTWARE RASTERIZER — functional/leak evidence only; REAL-GPU HUMAN PERF GATE OPEN'
+    : 'HARDWARE GPU IDENTIFIED — evaluate against the 60 FPS envelope';
+}
 
 const report = {
   milestone: 'M6D',
   timestamp: new Date().toISOString(),
   commit: gitSha,
+  mode: OPTS.realGpu ? 'real-gpu-headed' : 'headless-software',
+  browserChannel: OPTS.realGpu ? OPTS.channel : 'bundled-chromium',
+  headed: OPTS.realGpu,
   verdict,
+  gateReasons,
   gpuSoftware: isSoftware,
   poolCapacity: POOL_CAPACITY,
   consoleErrors,
@@ -399,8 +469,16 @@ for (const r of results) {
     + `mat=${r.before.materials} geo=${r.before.geometries} passes=${r.before.passes}`,
   );
 }
+console.log(`mode: ${report.mode} (channel=${report.browserChannel} headed=${report.headed})`);
 console.log(`GPU: ${results[0]?.gpu?.vendor} | ${primaryGpu} | ${results[0]?.gpu?.version} | DPR ${results[0]?.gpu?.devicePixelRatio} (render ${results[0]?.gpu?.renderPixelRatio})`);
+console.log(isSoftware ? 'SOFTWARE RENDERER — REAL GPU GATE NOT VALID' : 'HARDWARE GPU DETECTED');
 console.log(`VERDICT: ${verdict}`);
+for (const reason of gateReasons) console.log(`  - ${reason}`);
 console.log(`console errors: ${consoleErrors.length}, page errors: ${pageErrors.length}`);
 console.log(`wrote ${OUT}`);
+if (OPTS.realGpu) console.log(windowsGateInstructions(OPTS.channel));
 if (consoleErrors.length > 0 || pageErrors.length > 0) process.exitCode = 1;
+// Exit-code contract: headless mode keeps the historical signal (errors
+// only). Real-gpu mode fails LOUDLY on anything but REAL-GPU PASS — an
+// invalid (software) or unmet gate must never look green to a caller.
+if (OPTS.realGpu && verdict !== 'REAL-GPU PASS') process.exitCode = 1;

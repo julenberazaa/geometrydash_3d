@@ -389,8 +389,13 @@ PASS; VFX peaks bounded (burst ≤64/384, trail ≤33/96); zero
 console/page errors; 365/365 automated tests; build 624.88 kB.
 NOT a REAL-GPU PASS: only SwiftShader (software) was available — the
 60 FPS hardware verdict is the human gate (same harness, same JSON).
-Spec: `specs/milestones/M6_D_PERFORMANCE_CLOSEOUT.md`. M6 is NOT fully
-closed until the human perf gate passes. Next: M8 music/BPM/rhythm.
+Spec: `specs/milestones/M6_D_PERFORMANCE_CLOSEOUT.md`. M6D.1 adds the
+explicit headed hardware mode (`--real-gpu [--channel chrome|msedge]`,
+rules in `scripts/perfGateLib.mjs`, unit-tested without a GPU; default
+headless mode unchanged, evidence now defaults to
+`qa/perf/m6d-swiftshader.json` vs `qa/perf/m6d-real-gpu.json`). M6 is
+NOT fully closed until the human perf gate passes. Next: M8
+music/BPM/rhythm.
 
 ## M7.3 — Advanced Cube polish & spectacle pass: ENGINEERING COMPLETE / BROWSER QA GREEN / HUMAN RE-TEST APPROVED TO PROCEED
 

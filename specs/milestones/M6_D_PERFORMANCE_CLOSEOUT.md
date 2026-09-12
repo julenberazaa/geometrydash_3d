@@ -393,19 +393,67 @@ gates keep their recorded states (M6A/B/C direction approved to proceed
 - `LevelTheme.hazard` is now renderer-inert but still present in data
   (compatibility; documented).
 
+## HEADED REAL-GPU GATE (M6D.1 HARNESS — READY, NOT YET RUN)
+
+`scripts/perf-gate.mjs` has two explicit modes (gate rules owned by
+`scripts/perfGateLib.mjs`, unit-tested without a GPU):
+
+- Default (`node scripts/perf-gate.mjs`): historical headless mode,
+  byte-identical launch (`chromium.launch()` with no options) —
+  software/CI FUNCTIONAL evidence only. Evidence defaults to
+  `qa/perf/m6d-swiftshader.json`. This is the mode that produced every
+  number in this file; its verdicts are never hardware claims.
+- Hardware (`node scripts/perf-gate.mjs --real-gpu [--channel chrome]`):
+  HEADED installed branded Chrome (or `--channel msedge`) on the OS
+  normal graphics stack — no SwiftShader flags, ever. Evidence defaults
+  to `qa/perf/m6d-real-gpu.json`. `--out` overrides either path.
+  A missing channel FAILS LOUDLY (exit 1); the script never silently
+  falls back to bundled headless Chromium and calls that hardware.
+
+GPU validation: `gpuIdentity()` (`WEBGL_debug_renderer_info`) is
+authoritative. Any software marker (SwiftShader, llvmpipe, Software
+Rasterizer, Basic Render Driver, …) — or an empty/unknown renderer —
+prints `SOFTWARE RENDERER — REAL GPU GATE NOT VALID` and yields
+`REAL-GPU GATE STILL OPEN` (exit 1 in `--real-gpu` mode). Hardware
+prints `HARDWARE GPU DETECTED` and is judged on the primary workload
+(advanced-cube-01, 1920×1080, DPR 1 pinned via `deviceScaleFactor: 1`,
+production defaults ON): p50 ≤ 17.5 ms, p95 ≤ 20 ms, p99 ≤ 25 ms, no
+repeated >33.3 ms hitch pattern (up to 3 isolated scheduling spikes
+are reported, not failed). Verdicts: `REAL-GPU PASS` (M6D may close),
+`REAL-GPU PERFORMANCE FAIL` (identify the bottleneck first — exit 1),
+`REAL-GPU GATE STILL OPEN` (do NOT close M6 — exit 1).
+
+Vsync rule: headed browsers may be vsync-limited, so ~16.67 ms rAF
+cadence is SMOOTH FRAME DELIVERY at 60 Hz, not GPU execution time.
+The gate reports delivery percentiles + missed-frame counts and makes
+no GPU-timer claim.
+
+Final command (Windows, two terminals):
+
+```
+Terminal 1:  cd C:\Users\Julen\Desktop\geometrydash_3d
+             npm run dev
+Terminal 2:  cd C:\Users\Julen\Desktop\geometrydash_3d
+             node scripts/perf-gate.mjs --real-gpu --channel chrome
+```
+
+Leave the headed window visible/focused (do NOT minimize), avoid
+GPU-heavy apps, let the script finish. M6 is NOT marked PASS until a
+human run produces `REAL-GPU PASS` in `qa/perf/m6d-real-gpu.json`.
+
 ## NEXT MILESTONE
 
 M8 — MUSIC / BPM / RHYTHM SYNCHRONIZATION (nothing implemented here:
 no audio, no clock, no sync engine — 31 position-bound rhythm cues stay
-presentation-only metadata). Human M6D perf gate first:
+presentation-only metadata). Human M6D perf gate first (see § HEADED
+REAL-GPU GATE above for the full contract):
 
 1. `npm run dev` (or serve the built `dist/`).
-2. Open a HARDWARE-accelerated browser (Chrome/Edge/Firefox with GPU).
-3. `node scripts/perf-gate.mjs [--url http://localhost:5173/]`.
-4. Check `qa/perf/m6d-real-gpu.json`: `gpu.renderer` must NOT match
-   SwiftShader/llvmpipe/software/Basic-Render; steady-state envelope
-   p50 ≤ 17.5 ms, p95 ≤ 20 ms, p99 ≤ 25 ms, no repeated >33.3 ms
-   pattern at 1920×1080 @ DPR 1 production defaults.
-5. If green: mark M6D PASS → M6 VISUAL PRODUCTION SYSTEM CLOSED, then M8.
+2. `node scripts/perf-gate.mjs --real-gpu --channel chrome` (headed
+   installed Chrome; `--channel msedge` if Chrome is unavailable).
+3. Check `qa/perf/m6d-real-gpu.json`: verdict `REAL-GPU PASS`
+   (hardware renderer + p50 ≤ 17.5 ms, p95 ≤ 20 ms, p99 ≤ 25 ms, no
+   repeated >33.3 ms pattern at 1920×1080 @ DPR 1 defaults).
+4. If green: mark M6D PASS → M6 VISUAL PRODUCTION SYSTEM CLOSED, then M8.
 
 No Ship, no new Cube content unless the human requests a specific fix.

@@ -692,7 +692,7 @@ fixed-tick PHYSICAL input tape plus verification evidence.
 | Visual theme changes never alter gameplay or fingerprints; sim imports no rendering | `visualFoundation` theme/fingerprint + import-boundary tests + golden replay (unit + in-page) |
 | Shared materials/geometries only; no per-frame allocation; bounded resources | `visualFoundation` library tests + browser QA resource/draw-call guards |
 | Global warm hazard identity on every level (per-level themes move route/environment only) | `visualFoundation` cross-level hazard-resolution tests (M6D) |
-| DEBUG profiler bounded (ring ≤ capacity), off by default, sim-untouched; software rasterizers never a GPU pass | `perfProfiler` tests + `gpuIdentity()` probe + `perf-gate.mjs` evidence (M6D) |
+| DEBUG profiler bounded (ring ≤ capacity), off by default, sim-untouched; software rasterizers never a GPU pass | `perfProfiler` tests + `gpuIdentity()` probe + `perf-gate.mjs` evidence (M6D; M6D.1 headed `--real-gpu` mode, rules in `scripts/perfGateLib.mjs` + colocated tests) |
 | Controlled bloom (contract-pinned), resize-safe post, playable no-post fallback | `visualFoundation` contract tests + browser QA m6a resize/fallback checks |
 | VFX observes but never writes sim; sim imports no VFX/rendering/visuals; nothing visual in replays | `motionVfx` boundary + golden-integration tests + browser QA m6b replay checks |
 | VFX pools bounded; no per-frame/per-event allocation; exact-once emission per real edge; reset on attempt/death/teleport; `?fx=off` preserves gameplay | `motionVfx` lifecycle tests + browser QA m6b section (counters, resets, resource guards, post×fx matrix) |
