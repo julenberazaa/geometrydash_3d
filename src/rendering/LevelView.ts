@@ -262,22 +262,46 @@ export class LevelView {
         continue;
       }
       const mesh = new THREE.Mesh(spike, hazardMat);
-      const ceilingMount = hazard.mount === 'ceiling';
-      const visualHeight = hazard.halfExtents.y * 3.4;
-      mesh.scale.set(hazard.halfExtents.x * 2.2, visualHeight, hazard.halfExtents.z * 2.2);
-      // Floor: base at the collider bottom (tip up). Ceiling: base at the
-      // collider top, flush with the run surface above (tip down). The cone
-      // geometry carries its tip at +height/2, so the ceiling mount flips it
-      // with rotation.x = PI (applied before the diamond yaw — tip −Y either
-      // way for the symmetric cross-section).
-      mesh.position.set(
-        hazard.center.x,
-        ceilingMount
-          ? hazard.center.y + hazard.halfExtents.y - visualHeight / 2
-          : hazard.center.y - hazard.halfExtents.y + visualHeight / 2,
-        hazard.center.z,
+      const mount = hazard.mount ?? 'floor';
+      // M8B: the tip points AWAY from the support along the surface
+      // normal on all four surfaces (floor +Y, ceiling −Y, leftWall −X,
+      // rightWall +X). The cone carries its tip at local +height/2;
+      // scale is applied in local space (height stays local Y) and the
+      // Z-roll lays it onto ±X for walls.
+      const alongX = mount === 'leftWall' || mount === 'rightWall';
+      const visualHeight = (alongX ? hazard.halfExtents.x : hazard.halfExtents.y) * 3.4;
+      mesh.scale.set(
+        alongX ? hazard.halfExtents.y * 2.2 : hazard.halfExtents.x * 2.2,
+        visualHeight,
+        hazard.halfExtents.z * 2.2,
       );
-      mesh.rotation.x = ceilingMount ? Math.PI : 0;
+      if (mount === 'leftWall') {
+        // Base on the +X support face, tip −X (away from the wall).
+        mesh.position.set(
+          hazard.center.x + hazard.halfExtents.x - visualHeight / 2,
+          hazard.center.y,
+          hazard.center.z,
+        );
+        mesh.rotation.z = Math.PI / 2;
+      } else if (mount === 'rightWall') {
+        // Base on the −X support face, tip +X.
+        mesh.position.set(
+          hazard.center.x - hazard.halfExtents.x + visualHeight / 2,
+          hazard.center.y,
+          hazard.center.z,
+        );
+        mesh.rotation.z = -Math.PI / 2;
+      } else {
+        const ceilingMount = mount === 'ceiling';
+        mesh.position.set(
+          hazard.center.x,
+          ceilingMount
+            ? hazard.center.y + hazard.halfExtents.y - visualHeight / 2
+            : hazard.center.y - hazard.halfExtents.y + visualHeight / 2,
+          hazard.center.z,
+        );
+        mesh.rotation.x = ceilingMount ? Math.PI : 0;
+      }
       mesh.rotation.y = Math.PI / 4;
       this.group.add(mesh);
     }

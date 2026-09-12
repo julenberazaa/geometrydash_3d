@@ -146,6 +146,21 @@ export const computeLevelFingerprint = (def: LevelDefinition): string => {
     h.writeBoolean(true);
     h.writeFloat64(def.deathYMax);
   }
+  // M8B side death bounds + wall lanes (optional, level-owned): bytes are
+  // written ONLY when present (domain-separated), so pre-M8B levels hash
+  // byte-identically and the golden fixture stays green.
+  if (def.deathXMin !== undefined || def.deathXMax !== undefined) {
+    h.writeString('sideBounds:v1');
+    h.writeBoolean(def.deathXMin !== undefined);
+    if (def.deathXMin !== undefined) h.writeFloat64(def.deathXMin);
+    h.writeBoolean(def.deathXMax !== undefined);
+    if (def.deathXMax !== undefined) h.writeFloat64(def.deathXMax);
+  }
+  if (def.wallLaneCenters !== undefined) {
+    h.writeString('wallLanes:v1');
+    h.writeInt32(def.wallLaneCenters.length);
+    for (const lane of def.wallLaneCenters) h.writeFloat64(lane);
+  }
   writeGravityMode(h, def.startGravityMode);
 
   const gravityPortals = def.gravityPortals ?? [];

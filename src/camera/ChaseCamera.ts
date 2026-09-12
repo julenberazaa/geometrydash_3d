@@ -22,11 +22,15 @@ import { vec3, dampFactor } from '../core/math';
 /**
  * Which side of the focus the camera frames it from. `aboveFocus` is the
  * classic floor framing (elevated, looking down ahead); `belowFocus` is the
- * ceiling framing (hanging mid-corridor, looking up at the contact surface).
- * The value follows the simulation's gravity mode — the WORLD framing logic
- * never rolls or rotates.
+ * ceiling framing (hanging mid-corridor, looking up at the contact
+ * surface); `freeMinusFocus` / `freePlusFocus` are the M8B wall framings —
+ * the eye shifts toward the FREE-face side (−X for leftWall support,
+ * +X for rightWall) while STAYING elevated like the floor framing, so the
+ * Cube's side free face AND its top face stay readable in one stable view.
+ * The value follows the simulation's gravity mode — the WORLD framing
+ * logic never rolls or rotates (`camera.up` stays world +Y everywhere).
  */
-export type CameraFocusSide = 'aboveFocus' | 'belowFocus';
+export type CameraFocusSide = 'aboveFocus' | 'belowFocus' | 'freeMinusFocus' | 'freePlusFocus';
 
 export interface CameraTuning {
   /** Distance behind the player along -forward. */
@@ -66,6 +70,13 @@ export interface CameraTuning {
   maxLateralBias: number;
   /** Fraction of player lateral offset converted into lateral bias. */
   lateralBiasFactor: number;
+  /**
+   * M8B wall-framing eye offset toward the free-face side (world units
+   * along X). Large enough to open the side free face (~3.4 u at the
+   * ~10 u follow distance ≈ 19°), small enough to keep the route and
+   * the top face in frame.
+   */
+  wallFreeSideOffset: number;
 }
 
 export const CAMERA_TUNING: CameraTuning = {
@@ -80,6 +91,7 @@ export const CAMERA_TUNING: CameraTuning = {
   lookSmoothing: 9,
   maxLateralBias: 0.55,
   lateralBiasFactor: 0.12,
+  wallFreeSideOffset: 3.4,
 };
 
 export class ChaseCamera {
@@ -114,23 +126,33 @@ export class ChaseCamera {
       -t.maxLateralBias,
       Math.min(t.maxLateralBias, lateralOffset * t.lateralBiasFactor),
     );
-    const desiredX = trackCenterX + bias;
+    // M8B wall framing: shift the eye toward the free-face side (open
+    // corridor side of the wall run) while keeping the floor-like height,
+    // so the side free face opens up AND the top face stays readable.
+    // Floor/Ceiling formulas are byte-untouched (regression-pinned).
+    const freeMinus = focusSide === 'freeMinusFocus';
+    const freePlus = focusSide === 'freePlusFocus';
+    const desiredX =
+      trackCenterX + bias + (freeMinus ? -t.wallFreeSideOffset : freePlus ? t.wallFreeSideOffset : 0);
     // Surface-relative vertical framing (M3.3): both height lines share the
     // same parallax slope and are exact mirrors about the corridor mid-plane,
     // so the free face opposite the support projects identically on both
     // surfaces. On the ceiling the eye hangs BELOW the focus (the open
     // corridor side) so it can never be pulled up into the slab the player
-    // runs under.
+    // runs under. Walls keep the elevated floor line (top-face readable).
     const below = focusSide === 'belowFocus';
     const desiredY = below
       ? playerPosition.y * t.verticalParallax + t.belowFocusAnchor
       : playerPosition.y * t.verticalParallax + t.height;
     const desiredZ = playerPosition.z - t.followDistance;
 
-    const desiredLookX = trackCenterX + bias * 0.5;
+    const desiredLookX =
+      trackCenterX + bias * 0.5 + (freeMinus ? -t.lookHeightBias : freePlus ? t.lookHeightBias : 0);
     // Look bias mirrors with the framing side: toward the free face on every
     // gravity surface (above the cube on Floor, below it on Ceiling) so the
     // view pitch — and with it the free-face perspective — mirrors exactly.
+    // On walls the look nudges toward the free side while staying above,
+    // keeping both the side free face and the top face in view.
     const desiredLookY = playerPosition.y + (below ? -t.lookHeightBias : t.lookHeightBias);
     const desiredLookZ = playerPosition.z + t.lookAhead;
 

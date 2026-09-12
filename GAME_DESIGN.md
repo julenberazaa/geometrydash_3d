@@ -22,10 +22,10 @@ no Practice Mode initially.
 
 ## 2. The Cube — CURRENT
 
-The Cube runs on a gravity surface (Floor or Ceiling — see §6). All movement
-math is expressed through the gameplay frame (`forwardAxis`, `gravityVector`,
-`surfaceNormal`, `laneAxis`); the world NEVER rotates and the camera NEVER
-rolls when gravity changes.
+The Cube runs on a gravity surface (Floor, Ceiling, Left wall, Right wall
+— see §6). All movement math is expressed through the gameplay frame
+(`forwardAxis`, `gravityVector`, `surfaceNormal`, `laneAxis`); the world
+NEVER rotates and the camera NEVER rolls when gravity changes.
 
 - **Auto-forward:** the player always moves forward at level base speed
   (Test Level: 14 units/s along +Z). No manual longitudinal control.
@@ -34,18 +34,27 @@ rolls when gravity changes.
   - Floor: `ArrowUp` or `Space` = fixed-impulse jump away from the floor.
   - Ceiling: `ArrowDown` or `Space` = fixed-impulse jump away from the
     ceiling (downward, then gravity pulls back up).
+  - Left wall (support at screen-left): `ArrowRight` or `Space` = jump
+    away from the wall (screen-right), then gravity pulls back left.
+  - Right wall (support at screen-right): `ArrowLeft` or `Space` = jump
+    away from the wall, then gravity pulls back right.
   No variable-height hold behavior. Holding jump causes an immediate re-jump
   after every valid landing (hold-to-repeat), never a mid-air extra jump.
   - Impulse 13.2 u/s, gravity 42 u/s² → apex ≈ 2.07 units, airtime ≈ 0.63 s,
-    forward distance ≈ 8.8 units (identical on both surfaces, mirrored along
-    gravity).
+    forward distance ≈ 8.8 units (identical on every surface, mirrored
+    along gravity).
 - **Fast-fall:** airborne, the key pointing INTO the current gravity surface
   adds extra acceleration along gravity (+55); on the surface it does nothing.
   - Floor: airborne `ArrowDown`.
   - Ceiling: airborne `ArrowUp`.
-- **Lanes:** `ArrowLeft`/`ArrowRight` change the *target lane index*. On BOTH
-  surfaces `ArrowRight` ALWAYS moves the Cube toward **screen-right** and
-  `ArrowLeft` toward screen-left — flipping gravity never mirrors lanes.
+  - Left wall: airborne `ArrowLeft`. Right wall: airborne `ArrowRight`.
+- **Lanes:** on Floor/Ceiling `ArrowLeft`/`ArrowRight` change the *target
+  lane index*. On BOTH surfaces `ArrowRight` ALWAYS moves the Cube toward
+  **screen-right** and `ArrowLeft` toward screen-left — flipping gravity
+  never mirrors lanes. On wall gravity the lane axis is VERTICAL:
+  `ArrowUp`/`ArrowDown` move along the wall lanes (Up = higher lanes on
+  BOTH walls — never mirrored), with the same one-press-one-lane,
+  accelerate/cruise/brake kinematics as horizontal lanes.
   Physical lateral position is **continuous**
   (accelerate → cruise → analytic braking → settle/snap; max lateral speed
   16 u/s), participates in collision, and remains substantially correctable
@@ -134,6 +143,13 @@ offset along the free-face normal) so future gravity surfaces inherit it.
 Presentation only — no camera roll, no world rotation, no gameplay
 difference, no Cube-scale or FOV tricks.
 
+**Wall framing (M8B):** on wall gravity the eye shifts ~3.4 u toward the
+free-face side (the open corridor side of the wall run) while STAYING at
+the elevated floor height and looking slightly toward the free side — so
+the side free face opens up AND the top face stays readable in one stable
+view. The camera NEVER rolls (`camera.up` stays world +Y on all four
+surfaces); Floor/Ceiling framing is numerically unchanged.
+
 **View parity (M3.2):** the ceiling must never be harder because of the VIEW.
 Because the below-focus eye makes the Cube's own silhouette partially occlude
 the ceiling run surface a few units ahead, ceiling run surfaces carry the
@@ -160,26 +176,36 @@ Two levels ship (selected via `?level=<id>`, default Test Level):
   orb return, 2× speed gap, final weave, real finish (~20 s). A validation
   and verification level, NOT the final production level.
 
-## 6. Gravity surfaces and transitions — CURRENT (Floor/Ceiling); walls PLANNED
+## 6. Gravity surfaces and transitions — CURRENT (all four surfaces)
 
-Gravity is a real gameplay state owned by the simulation. Two surfaces ship:
+Gravity is a real gameplay state owned by the simulation. Four support
+surfaces ship, named by SUPPORT SURFACE as seen from the chase camera:
 
 - **Floor:** gravity −Y, surface normal +Y (the original approved gameplay).
 - **Ceiling:** gravity +Y, surface normal −Y — the Cube physically runs on the
   UNDERSIDE of slabs. The world stays stationary; the camera stays level.
+- **Left wall:** support on the screen-left wall (world +X); gravity +X,
+  surface normal −X — the Cube runs on the +X wall face.
+- **Right wall:** support on the screen-right wall (world −X); gravity −X,
+  surface normal +X.
 
 **Gravity portals** are data-driven level objects (`id`, crossing plane `z`,
-`target` mode). Crossing the plane in the forward direction flips gravity
-exactly once per attempt: world position is NOT teleported, all velocity is
-preserved (no impulse, no snap), grounded/support is cleared immediately, and
-the Cube visibly accelerates toward the new gravity surface. Portals reset
-after respawn/restart. Visually each portal is a neon gateway spanning the
-route (cyan = flip up, warm = flip down); triggering never depends on
+`target` mode) supporting all four targets. Crossing the plane in the
+forward direction flips gravity exactly once per attempt: world position is
+NOT teleported, all velocity is preserved (no impulse, no snap),
+grounded/support is cleared immediately, and the Cube visibly accelerates
+toward the new gravity surface. Portals reset after respawn/restart.
+Visually each portal is a compact ring gate (cyan = flip up, warm = flip
+down, wall flips offset toward their wall); triggering never depends on
 renderer, camera, or visuals.
 
-Primary future state: Left wall (−X) / Right wall (+X) gravity (PLANNED).
-Frame data and lane conventions are designed so walls can be added without
-mirroring controls; wall gravity itself is not implemented.
+**Gravity orbs** flip to the OPPOSITE surface (floor ↔ ceiling,
+leftWall ↔ rightWall) — never an arbitrary cycle. Jump pads launch along
+the mount surface normal on all four supports. Spikes mount on all four
+surfaces (base attached, tip away from the support). Levels using wall
+gravity may declare `wallLaneCenters` (vertical lane layout) and side void
+bounds (`deathXMin`/`deathXMax`); otherwise lanes mirror about the
+corridor mid-plane and X is unbounded.
 
 ## 6.1 Interactive mechanics — CURRENT (M4)
 

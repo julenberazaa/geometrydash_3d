@@ -39,10 +39,18 @@ export interface SpeedPortalDef {
 }
 
 /**
+ * Support surface for mounted gameplay/rendering objects (M8B): the
+ * surface a pad/spike is attached to. Impulse/launch direction is ALWAYS
+ * the surface normal (away from the support): floor +Y, ceiling −Y,
+ * leftWall −X (away from the +X wall), rightWall +X.
+ */
+export type MountSurface = 'floor' | 'ceiling' | 'leftWall' | 'rightWall';
+
+/**
  * Jump pad (M4): a PASSIVE trigger volume mounted on a gravity surface.
  * Contacting/crossing the volume replaces the player's velocity component
- * along the pad's surface normal (+Y floor / −Y ceiling) with `impulse`.
- * Never reads input; one activation per attempt.
+ * along the pad's surface normal with `impulse`. Never reads input; one
+ * activation per attempt.
  */
 export interface JumpPadDef {
   /** Stable identifier (debug/QA). */
@@ -52,7 +60,7 @@ export interface JumpPadDef {
   /** Trigger volume half extents. */
   halfExtents: Vec3;
   /** Which surface the pad is mounted on (fixes the impulse direction). */
-  surface: GravityMode;
+  surface: MountSurface;
   /** Launch speed along the surface normal, units/s (explicit per-pad tuning). */
   impulse: number;
 }
@@ -267,16 +275,16 @@ export interface LevelHazard {
   /** Visual style hint consumed by rendering (e.g. spike vs block). */
   visual?: 'spike' | 'block';
   /**
-   * Presentation-only support surface for the hazard visual (M7.1):
-   * 'floor' (default) renders the spike base-down with the tip pointing
-   * +Y away from the surface below; 'ceiling' renders it base-up (attached
-   * to the surface above) with the tip pointing −Y away from that surface.
-   * Renderer-only like `visual`: `computeLevelFingerprint()` never reads
-   * it and gameplay colliders are unchanged, so annotating old replays'
-   * levels keeps them compatible. Omitted = 'floor' (existing content
-   * renders byte-identically).
+   * Presentation-only support surface for the hazard visual (M7.1,
+   * extended M8B): the base attaches to the support and the tip points
+   * AWAY from it along the surface normal (floor +Y, ceiling −Y,
+   * leftWall −X, rightWall +X). Renderer-only like `visual`:
+   * `computeLevelFingerprint()` never reads it and gameplay colliders
+   * are unchanged, so annotating old replays' levels keeps them
+   * compatible. Omitted = 'floor' (existing content renders
+   * byte-identically).
    */
-  mount?: 'floor' | 'ceiling';
+  mount?: MountSurface;
 }
 
 export interface LevelDefinition {
@@ -293,6 +301,16 @@ export interface LevelDefinition {
    * hardcode 3 in engine code.
    */
   laneCenters: number[];
+  /**
+   * Lane centers along world Y for wall-gravity surfaces (M8B), ordered
+   * by lane index with the SAME increasing-up convention as the wall
+   * laneAxis (+Y) on both walls. Optional: when a level uses wall gravity
+   * without declaring these, the runtime mirrors `laneCenters` about the
+   * corridor mid-plane (y = 3 − c per center c — the M3.3 mid-plane), so
+   * standard 3-lane content gets vertical lanes [0.4, 3, 5.6] for free.
+   * Length SHOULD match `laneCenters` (laneCount is still single-owner).
+   */
+  wallLaneCenters?: number[];
   /** Base forward speed for this level (the 1× tier; M4 speed authority). */
   baseForwardSpeed: number;
   /**
@@ -310,6 +328,14 @@ export interface LevelDefinition {
    * upward void falls terminate fairly. Never an engine hardcoded height.
    */
   deathYMax?: number;
+  /**
+   * Side death bounds (M8B, optional, level-owned): falling outward past
+   * these world X coordinates = death. Needed for wall-gravity content
+   * where the outward fall runs along X instead of Y. Absent = unbounded
+   * (backward compatible). Never an engine hardcoded width.
+   */
+  deathXMin?: number;
+  deathXMax?: number;
   /**
    * Starting gravity mode for this level (default 'floor' when omitted).
    * Existing levels remain valid unchanged.

@@ -4,8 +4,8 @@ import type { GravityMode } from './playerState';
 /**
  * Player gameplay frame: the four directions all controller math is expressed in.
  *
- * M3 ships Floor and Ceiling as complete frame DATA sets; wall modes are
- * future work and would add further data sets, not controller code.
+ * M8B ships all four support surfaces as complete frame DATA sets; wall
+ * modes add data, never controller code.
  *
  * IMPORTANT (per spec): laneAxis is explicit data, never derived from
  * cross(gravity, forward) — future ceiling/wall gameplay must preserve the same
@@ -70,8 +70,43 @@ export class GameplayFrame {
     );
   }
 
+  /**
+   * Left-wall frame: the Cube runs on the screen-left wall (world +X).
+   * Gravity pulls +X (toward the wall); the lane axis is world +Y, so
+   * increasing lane index runs UP — identical on both walls, never
+   * mirrored. Forward is still +Z; the world never rotates.
+   */
+  public static leftWall(): GameplayFrame {
+    return new GameplayFrame(
+      { x: 0, y: 0, z: 1 }, // forward +Z
+      { x: 1, y: 0, z: 0 }, // gravity +X (toward the screen-left wall)
+      { x: 0, y: 1, z: 0 }, // lanes: increasing index runs UP (+Y)
+    );
+  }
+
+  /**
+   * Right-wall frame: the Cube runs on the screen-right wall (world −X).
+   * Gravity pulls −X; lane axis identical to the left wall (+Y).
+   */
+  public static rightWall(): GameplayFrame {
+    return new GameplayFrame(
+      { x: 0, y: 0, z: 1 }, // forward +Z
+      { x: -1, y: 0, z: 0 }, // gravity −X (toward the screen-right wall)
+      { x: 0, y: 1, z: 0 }, // lanes: increasing index runs UP (+Y)
+    );
+  }
+
   /** Prebuilt frame for a gravity mode (no per-step allocation). */
   public static forMode(mode: GravityMode): GameplayFrame {
-    return mode === 'ceiling' ? GameplayFrame.ceiling() : GameplayFrame.floor();
+    switch (mode) {
+      case 'ceiling':
+        return GameplayFrame.ceiling();
+      case 'leftWall':
+        return GameplayFrame.leftWall();
+      case 'rightWall':
+        return GameplayFrame.rightWall();
+      default:
+        return GameplayFrame.floor();
+    }
   }
 }

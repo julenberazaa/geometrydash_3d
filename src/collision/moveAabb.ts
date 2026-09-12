@@ -157,16 +157,18 @@ export function moveAabbThroughWorld(
 /**
  * Ground support probe: is there a valid support surface within
  * `probeDistance` on the gravity-opposed side of the box (below it when
- * gravity pulls −Y, above it when gravity pulls +Y)?
+ * gravity pulls −Y, above it when gravity pulls +Y, sideways on walls)?
  *
- * "Support" is generalized in M3 to mean a blocking surface OPPOSING gravity:
- * the Cube is grounded when resting against the surface gravity pushes it
- * into. Floor probing is bit-identical to the pre-M3 build; ceiling probing
- * mirrors it exactly (same contact skin, same surface epsilon, same partial
- * footprint / edge-teeter semantics).
+ * "Support" means a blocking surface OPPOSING gravity: the Cube is
+ * grounded when resting against the surface gravity pushes it into.
+ * Floor probing is bit-identical to the pre-M3 build; ceiling probing
+ * mirrors it exactly; M8B wall probing rotates the same rule onto ±X
+ * (same contact skin, same surface epsilon, same partial footprint /
+ * edge-teeter semantics on the two axes perpendicular to gravity).
  *
  * Used for stable grounded state even when velocity along gravity is exactly
- * zero (no Y sweep occurs that step, but the player must remain "grounded").
+ * zero (no sweep occurs that step on the gravity axis, but the player must
+ * remain "grounded"). Gravity is always world-axis aligned (±X or ±Y).
  */
 export function probeGroundSupport(
   world: CollisionWorld,
@@ -175,24 +177,51 @@ export function probeGroundSupport(
   probeDistance: number,
   gravity: Readonly<Vec3>,
 ): ContactSurface | null {
-  const probeUp = gravity.y > 0;
-  const probeBox: Aabb = probeUp
+  // Support face = the box face gravity pushes into the support
+  // (face = position + gravity * halfExtent: feet on Floor, head on
+  // Ceiling, ±X side face on walls). The probe extends probeDistance PAST
+  // the face (away from the box interior) with an epsilon skin back into
+  // the box. Footprint = full extent (minus skin) on the two axes
+  // perpendicular to gravity.
+  const alongX = gravity.x !== 0;
+  const gSign = alongX ? Math.sign(gravity.x) : Math.sign(gravity.y);
+  // Support surface normal points along −gravity (away from the support).
+  const normal = alongX ? vec3(-gSign, 0, 0) : vec3(0, -gSign, 0);
+  // Box face coordinate on the support side, in world units.
+  const faceCenter = alongX
+    ? position.x + gSign * halfExtents.x
+    : position.y + gSign * halfExtents.y;
+  // Probe interval along the gravity axis: mostly past the face in the
+  // +gravity direction, epsilon back inside. (Floor: [feet − dist,
+  // feet + eps]; Ceiling: [head − eps, head + dist]; walls rotated.)
+  const probeMin = gSign > 0 ? faceCenter - GROUND_SURFACE_EPSILON : faceCenter - probeDistance;
+  const probeMax = gSign > 0 ? faceCenter + probeDistance : faceCenter + GROUND_SURFACE_EPSILON;
+  const probeBox: Aabb = alongX
     ? {
-        minX: position.x - halfExtents.x + SUPPORT_SKIN,
-        maxX: position.x + halfExtents.x - SUPPORT_SKIN,
-        minY: position.y + halfExtents.y - GROUND_SURFACE_EPSILON,
-        maxY: position.y + halfExtents.y + probeDistance,
+        minX: probeMin,
+        maxX: probeMax,
+        minY: position.y - halfExtents.y + SUPPORT_SKIN,
+        maxY: position.y + halfExtents.y - SUPPORT_SKIN,
         minZ: position.z - halfExtents.z,
         maxZ: position.z + halfExtents.z,
       }
-    : {
-        minX: position.x - halfExtents.x + SUPPORT_SKIN,
-        maxX: position.x + halfExtents.x - SUPPORT_SKIN,
-        minY: position.y - halfExtents.y - probeDistance,
-        maxY: position.y - halfExtents.y + GROUND_SURFACE_EPSILON,
-        minZ: position.z - halfExtents.z,
-        maxZ: position.z + halfExtents.z,
-      };
+    : gravity.y > 0
+      ? {
+          minX: position.x - halfExtents.x + SUPPORT_SKIN,
+          maxX: position.x + halfExtents.x - SUPPORT_SKIN,
+          minY: probeMin,
+          maxY: probeMax,
+          minZ: position.z - halfExtents.z,
+          maxZ: position.z + halfExtents.z,
+        }
+      : {
+          minX: position.x - halfExtents.x + SUPPORT_SKIN,
+          maxX: position.x + halfExtents.x - SUPPORT_SKIN,
+          minY: probeMin,
+          maxY: probeMax,
+          minZ: position.z - halfExtents.z,
+          maxZ: position.z + halfExtents.z,
+        };
   const candidates: Collider[] = [];
   world.queryBox(probeBox, candidates);
   let closest: ContactSurface | null = null;
@@ -200,13 +229,29 @@ export function probeGroundSupport(
   for (const c of candidates) {
     if (c.kind !== 'solid' && c.kind !== 'killFront') continue;
     const b = colliderToAabb(c);
-    const horizontalOverlap =
-      probeBox.minX < b.maxX &&
-      probeBox.maxX > b.minX &&
-      probeBox.minZ < b.maxZ &&
-      probeBox.maxZ > b.minZ;
-    if (!horizontalOverlap) continue;
-    if (probeUp) {
+    if (alongX) {
+      const footprintOverlap =
+        probeBox.minY < b.maxY &&
+        probeBox.maxY > b.minY &&
+        probeBox.minZ < b.maxZ &&
+        probeBox.maxZ > b.minZ;
+      if (!footprintOverlap) continue;
+      // Support plane = the wall face opposing gravity (the face toward
+      // the player: minX when gravity pulls +X, maxX when it pulls −X).
+      const plane = gSign > 0 ? b.minX : b.maxX;
+      if (plane < probeBox.minX || plane > probeBox.maxX) continue;
+      const depth = gSign > 0 ? faceCenter - plane : plane - faceCenter;
+      if (depth < closestDepth) {
+        closestDepth = depth;
+        closest = { collider: c, normal: vec3(normal.x, normal.y, normal.z) };
+      }
+    } else if (gravity.y > 0) {
+      const horizontalOverlap =
+        probeBox.minX < b.maxX &&
+        probeBox.maxX > b.minX &&
+        probeBox.minZ < b.maxZ &&
+        probeBox.maxZ > b.minZ;
+      if (!horizontalOverlap) continue;
       // Candidate support surface must sit at (or barely below) head level
       // (slab underside) and within probe distance above it.
       if (b.minY < probeBox.minY || b.minY > probeBox.maxY) continue;
@@ -216,6 +261,12 @@ export function probeGroundSupport(
         closest = { collider: c, normal: vec3(0, -1, 0) };
       }
     } else {
+      const horizontalOverlap =
+        probeBox.minX < b.maxX &&
+        probeBox.maxX > b.minX &&
+        probeBox.minZ < b.maxZ &&
+        probeBox.maxZ > b.minZ;
+      if (!horizontalOverlap) continue;
       // Candidate support surface height must sit at (or barely above) foot
       // level and within probe distance below the feet.
       if (b.maxY > probeBox.maxY || b.maxY < probeBox.minY) continue;

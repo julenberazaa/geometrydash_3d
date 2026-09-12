@@ -43,9 +43,12 @@ The DOM layer is gravity-agnostic: one key maps to one physical action.
 Gravity-relative interpretation happens INSIDE the simulation
 (`interpretPhysicalInput(physical, mode)` — pure, deterministic):
 Floor `jump = Space ∪ ArrowUp`, `fastFall = ArrowDown`; Ceiling
-`jump = Space ∪ ArrowDown`, `fastFall = ArrowUp`. Merge semantics match the
-historical ArrowUp+Space merge. Tests build physical snapshots directly — no
-browser needed. `Game` owns separate non-gameplay keys (`R` restart, `P`
+`jump = Space ∪ ArrowDown`, `fastFall = ArrowUp`. M8B walls: the lane axis
+is vertical, so `laneLeft/laneRight = Down/Up` (Up increments on BOTH
+walls) while the horizontal arrows work the support — Left wall:
+`jump = Space ∪ ArrowRight`, `fastFall = ArrowLeft`; Right wall mirrored.
+Merge semantics match the historical ArrowUp+Space merge. Tests build
+physical snapshots directly — no browser needed. `Game` owns separate non-gameplay keys (`R` restart, `P`
 pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
 
 ## 4. Player (`src/player/`)
@@ -53,20 +56,25 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
 - `playerState.ts`: `PlayerState` — center position, velocity, `grounded`,
   `targetLaneIndex` (INTENT, not position), `laneCount`, `gravityMode`,
   `supportColliderId`. Single velocity representation. `GravityMode` is
-  `'floor' | 'ceiling'` (wall modes are future work; no code may assume them).
-  The authoritative value lives on `GameSimulation`; `player.gravityMode` is a
+  `'floor' | 'ceiling' | 'leftWall' | 'rightWall'` (M8B; walls named by
+  support surface — leftWall = support at world +X/screen-left). The
+  authoritative value lives on `GameSimulation`; `player.gravityMode` is a
   read-only mirror for observers.
 - `gameplayFrame.ts`: `GameplayFrame` — explicit `forwardAxis`,
-  `gravityVector`, `surfaceNormal`, `laneAxis` data. Prebuilt `floor()` and
-  `ceiling()` frames exist (M3); future modes change FRAME DATA, not
-  controller code. `laneAxis` is explicit, never derived from a cross product
-  (no control mirroring on ceiling/walls). M1.1 convention: increasing lane
-  index runs toward screen-right, so the Floor AND Ceiling laneAxis is −X (the
-  +Z chase camera shows −X on the right).
+  `gravityVector`, `surfaceNormal`, `laneAxis` data. Prebuilt `floor()`,
+  `ceiling()`, `leftWall()` and `rightWall()` frames exist (M8B adds wall
+  DATA, not controller code). `laneAxis` is explicit, never derived from
+  a cross product (no control mirroring on ceiling/walls). M1.1
+  convention: increasing lane index runs toward screen-right, so the
+  Floor AND Ceiling laneAxis is −X (the +Z chase camera shows −X on the
+  right); wall laneAxis is +Y on BOTH walls (increasing index runs UP).
 - `CubeController`: owns Cube movement policy. Per step: lane intent
   (**edge-triggered only, unclamped since M1.2** — one tap = one lane change;
   taps past the outer lane address virtual lanes via `laneCenterForIndex`
   linear extrapolation, so side exit is possible where support runs out),
+  lateral kinematics computed in LANE-AXIS space (M8B: s = position ·
+  laneAxis — Floor/Ceiling behavior bit-identical, proven by the
+  floorCompat golden gate; walls steer world Y through the same policy),
   lateral kinematics
   (accelerate/cruise/analytic-brake/settle-snap, hard geometric no-overshoot
   cap), vertical kinematics (gravity + fast-fall + terminal speed, all along
@@ -117,9 +125,11 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
 
 - `levelDefinition.ts`: declarative `LevelDefinition` (id, display name,
   start, `startGravityMode` (default floor), `startLaneIndex`, `laneCenters`,
-  speeds, `finishZ`, `deathY` (lower void), `deathYMax` (optional upper void),
-  `lava` (M8A lethal source/fall/pool volumes — gameplay, fingerprinted),
-  `visualSetpieces` (presentation-only — never gameplay, never fingerprinted),
+  `wallLaneCenters` (M8B, optional Y lanes for walls), speeds, `finishZ`,
+  `deathY` (lower void), `deathYMax` (optional upper void), `deathXMin` /
+  `deathXMax` (M8B, optional side void bounds), `lava` (M8A lethal
+  source/fall/pool volumes — gameplay, fingerprinted), `visualSetpieces`
+  (presentation-only — never gameplay, never fingerprinted),
   `startGravityMode`, `gravityPortals` (id + crossing Z + target mode),
   `speedPortals` (id + crossing Z + multiplier tier), `jumpPads`
   (trigger volume + mount surface + explicit impulse), `jumpOrbs` /
@@ -142,7 +152,9 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   processes. M8A lethal lava volumes register as `lava-<id>` hazard-kind
   colliders through the SAME hazard pathway (no second lethal engine;
   the `lava-` prefix tags the `lava` death cause) — see
-  `lavaAuthoring.ts` for the sourced/contained authoring contract.
+  `lavaAuthoring.ts` for the sourced/contained authoring contract. M8B
+  resolves `wallLaneCenters` (explicit, else the corridor-mid mirror of
+  `laneCenters`); the simulation selects X/Y lane data per gravity mode.
 - `testLevel01.ts`: controller test track (gaps ≤ 6.5 u, steps ≤ 1.7 u per
   jump limits; forced lane-change wall; spike weave; void gaps; finish gate)
   plus the appended M3 gravity section (z 176..278: Floor → portal up →
@@ -306,9 +318,12 @@ fixed-tick PHYSICAL input tape plus verification evidence.
 - `ChaseCamera` (pure math): track-centered + tiny damped bias (max 0.55 u,
   factor 0.12), follow 8.5 / look-ahead 10 / FOV 62, no roll, render-dt
   smoothing only. Gravity-aware VERTICAL framing (M3.1): an explicit
-  `CameraFocusSide` (`'aboveFocus' | 'belowFocus'`) selects the height
-  formula — Floor: `playerY * 0.35 + 4.2` (elevated, unchanged); Ceiling:
-  `playerY * 0.35 - 0.3`. **Surface-relative projection symmetry (M3.3):**
+  `CameraFocusSide` (`'aboveFocus' | 'belowFocus'` + M8B `'freeMinusFocus' |
+  'freePlusFocus'`) selects the height formula — Floor: `playerY * 0.35 +
+  4.2` (elevated, unchanged); Ceiling: `playerY * 0.35 - 0.3`. M8B walls:
+  the eye shifts ±3.4 u toward the free-face side while keeping the
+  elevated floor height (side free face + top face readable, never a
+  side-on silhouette); `camera.up` stays world +Y on all four surfaces. **Surface-relative projection symmetry (M3.3):**
   the below-focus line is the EXACT mirror of the above-focus line about the
   corridor mid-plane (shared `verticalParallax` 0.35; reflected anchor
   `belowFocusAnchor` −0.3; look bias +0.6 above / −0.6 below with the focus
@@ -428,14 +443,15 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   passes render-dt 0 while paused so ALL presentation (VFX, rings, burst,
   tumble, camera) freezes with pause — sim pause untouched.
 - `PlayerView`: production Cube (M6A) — dark cyan metal body + bright
-  emissive free-face accents on BOTH faces (top = Floor free face, bottom =
-  Ceiling free face; children of the cube so they inherit tumble/rest roll)
-  + cyan edge lines + camera-side marker. Visual 1.24 vs collider 1.1;
-  airtime tumble is render-only and snaps to rest on landing — rest
-  orientation aligns to the surface normal (180° Z roll presentation on
-  Ceiling; the CAMERA never rolls and the collider never rotates). Collider
-  and mesh are independent by construction (debug F3 visualizes the real
-  hitbox). Visibility follows sim status (hidden while dead), applied in
+  emissive free-face accents on ALL FOUR side faces (top = Floor free
+  face, bottom = Ceiling free face, left/right = wall free faces; children
+  of the cube so they inherit tumble/rest roll) + cyan edge lines +
+  camera-side marker. Visual 1.24 vs collider 1.1; airtime tumble is
+  render-only and snaps to rest on landing — rest orientation aligns to
+  the surface normal (180° Z roll on Ceiling, ±90° Z roll on walls; the
+  CAMERA never rolls and the collider never rotates). Collider and mesh
+  are independent by construction (debug F3 visualizes the real hitbox).
+  Visibility follows sim status (hidden while dead), applied in
   `RendererHost` so debug frame-freezes capture true death frames.
 - `LevelView` builds the M3 gravity portal visuals from level data (shared
   unit box geometry, ONE shared material per direction — cyan up / warm down;

@@ -112,20 +112,40 @@ export class CubeController {
     if (input.laneRight.pressedThisStep) state.targetLaneIndex += 1;
 
     // ------------------------------------------------------------------
-    // 2. Lateral kinematics (along laneAxis; M1: world X).
+    // 2. Lateral kinematics in LANE-AXIS space (M8B generalization).
+    //    The lane coordinate s = position · laneAxis and lane velocity
+    //    vs = velocity · laneAxis (Floor/Ceiling: laneAxis −X, so s = −x;
+    //    walls: laneAxis +Y, so s = y). The accelerate/cruise/brake/snap
+    //    policy below is IDENTICAL in s-space on every surface; only the
+    //    projection axis changes. Floor/Ceiling behavior is bit-identical
+    //    to the M1 policy (the negation is linear — proven by the
+    //    floorCompat golden gate).
     // ------------------------------------------------------------------
+    const la = frame.laneAxis;
     const targetCenter = laneCenterForIndex(context.laneCenters, state.targetLaneIndex);
-    const dx = targetCenter - state.position.x;
+    // Target s: lane centers are stored in world units along the lane
+    // axis' dominant direction (X for Floor/Ceiling with laneAxis −X, Y
+    // for walls with laneAxis +Y) — see GameSimulation.laneCentersForMode.
+    const laneSign = la.x !== 0 ? Math.sign(la.x) : Math.sign(la.y);
+    const sTarget = targetCenter * laneSign;
+    const sPos = state.position.x * la.x + state.position.y * la.y + state.position.z * la.z;
+    const sVel = state.velocity.x * la.x + state.velocity.y * la.y + state.velocity.z * la.z;
+    const dx = sTarget - sPos;
     const absDx = Math.abs(dx);
-    const v = state.velocity.x;
-    const absV = Math.abs(v);
+    const absV = Math.abs(sVel);
 
     let desiredV: number;
     if (absDx <= t.laneTargetEpsilon) {
       if (absV <= t.laneSnapSpeedEpsilon) {
-        // Stabilization: physically arrived; tiny final snap onto exact center.
-        state.position.x = targetCenter;
-        state.velocity.x = 0;
+        // Stabilization: physically arrived; snap onto the exact center
+        // along the lane axis (no cross-axis position touched).
+        const snap = sTarget - sPos;
+        state.position.x += la.x * snap;
+        state.position.y += la.y * snap;
+        state.position.z += la.z * snap;
+        state.velocity.x -= la.x * sVel;
+        state.velocity.y -= la.y * sVel;
+        state.velocity.z -= la.z * sVel;
         desiredV = 0;
       } else {
         desiredV = 0; // still fast inside epsilon -> brake this step
@@ -140,22 +160,32 @@ export class CubeController {
     }
 
     // Rate-limited approach to desiredV, then HARD geometric caps:
-    // the velocity may never exceed absDx/dt toward the target, so the
-    // integration step (done by the simulation through the collision world)
-    // can never cross the lane center. No position mutation here — the
-    // controller computes velocities only; GameSimulation integrates.
+    // the lane velocity may never exceed absDx/dt toward the target, so
+    // the integration step (done by the simulation through the collision
+    // world) can never cross the lane center. No position mutation here
+    // beyond the stabilization snap above — the controller computes
+    // velocities only; GameSimulation integrates.
+    const sVelNow =
+      state.velocity.x * la.x + state.velocity.y * la.y + state.velocity.z * la.z;
     const rate =
-      Math.sign(state.velocity.x) === Math.sign(desiredV) &&
-      Math.abs(state.velocity.x) > Math.abs(desiredV)
+      Math.sign(sVelNow) === Math.sign(desiredV) && Math.abs(sVelNow) > Math.abs(desiredV)
         ? t.laneBrakeDecel
         : t.laneAccel;
-    const dv = desiredV - state.velocity.x;
+    const dv = desiredV - sVelNow;
     const maxDv = rate * context.dt;
-    state.velocity.x += clamp(dv, -maxDv, maxDv);
+    const appliedDv = clamp(dv, -maxDv, maxDv);
+    state.velocity.x += la.x * appliedDv;
+    state.velocity.y += la.y * appliedDv;
+    state.velocity.z += la.z * appliedDv;
 
     const speedCap = absDx / context.dt;
-    if (Math.abs(state.velocity.x) > speedCap) {
-      state.velocity.x = Math.sign(state.velocity.x) * speedCap;
+    const sVelFinal =
+      state.velocity.x * la.x + state.velocity.y * la.y + state.velocity.z * la.z;
+    if (Math.abs(sVelFinal) > speedCap) {
+      const correction = Math.sign(sVelFinal) * speedCap - sVelFinal;
+      state.velocity.x += la.x * correction;
+      state.velocity.y += la.y * correction;
+      state.velocity.z += la.z * correction;
     }
 
     // ------------------------------------------------------------------

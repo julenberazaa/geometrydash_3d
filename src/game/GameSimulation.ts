@@ -95,6 +95,30 @@ const REST_SPEED_EPSILON = 0.05;
 /** Prebuilt frames per gravity mode — never allocated per step. */
 const FRAME_FLOOR = GameplayFrame.floor();
 const FRAME_CEILING = GameplayFrame.ceiling();
+const FRAME_LEFT_WALL = GameplayFrame.leftWall();
+const FRAME_RIGHT_WALL = GameplayFrame.rightWall();
+
+/** Surface normal for a mounted pad (impulse direction, away from support). */
+const MOUNT_NORMALS = {
+  floor: { x: 0, y: 1, z: 0 },
+  ceiling: { x: 0, y: -1, z: 0 },
+  leftWall: { x: -1, y: 0, z: 0 },
+  rightWall: { x: 1, y: 0, z: 0 },
+} as const;
+
+/** Opposite support surface (gravity-orb flip contract, M8B). */
+const oppositeGravityMode = (mode: GravityMode): GravityMode => {
+  switch (mode) {
+    case 'floor':
+      return 'ceiling';
+    case 'ceiling':
+      return 'floor';
+    case 'leftWall':
+      return 'rightWall';
+    case 'rightWall':
+      return 'leftWall';
+  }
+};
 
 export class GameSimulation {
   public readonly level: LoadedLevel;
@@ -238,7 +262,28 @@ export class GameSimulation {
 
   /** Gameplay frame for the current gravity mode (prebuilt, read-only). */
   public get gameplayFrame(): Readonly<GameplayFrame> {
-    return this.gravityModeValue === 'ceiling' ? FRAME_CEILING : FRAME_FLOOR;
+    switch (this.gravityModeValue) {
+      case 'ceiling':
+        return FRAME_CEILING;
+      case 'leftWall':
+        return FRAME_LEFT_WALL;
+      case 'rightWall':
+        return FRAME_RIGHT_WALL;
+      default:
+        return FRAME_FLOOR;
+    }
+  }
+
+  /**
+   * Lane centers for the CURRENT gravity mode (M8B): Floor/Ceiling run
+   * the level's X lane layout; walls run the Y wall-lane layout (explicit
+   * `wallLaneCenters`, else the corridor-mid mirror resolved at load).
+   */
+  public get activeLaneCenters(): readonly number[] {
+    const mode = this.gravityModeValue;
+    return mode === 'leftWall' || mode === 'rightWall'
+      ? this.level.wallLaneCenters
+      : this.laneCenters;
   }
 
   /** AUTHORITATIVE current speed multiplier (debug/QA/HUD observability). */
@@ -292,7 +337,7 @@ export class GameSimulation {
     //    mode (pre-mutation), then intent + kinematics. The per-step forward
     //    speed comes from the authoritative level speed × speed multiplier.
     const ctx = this.stepContext;
-    ctx.laneCenters = this.laneCenters;
+    ctx.laneCenters = this.activeLaneCenters;
     ctx.dt = SIMULATION_DT;
     ctx.frame = this.gameplayFrame;
     ctx.forwardSpeed = this.currentForwardSpeed;
@@ -340,15 +385,29 @@ export class GameSimulation {
     }
 
     // 3. Grounding: support probe along the gravity direction + velocity
-    //    cleanup. Support = blocking surface OPPOSING gravity (below the Cube
-    //    on Floor, above it on Ceiling).
+    //    cleanup. Support = blocking surface OPPOSING gravity (below the
+    //    Cube on Floor, above it on Ceiling, sideways on walls).
     const g = this.gameplayFrame.gravityVector;
     const velAlongG =
       this.player.velocity.x * g.x + this.player.velocity.y * g.y + this.player.velocity.z * g.z;
 
-    // Head-bump: blocked while moving ANTI-gravity (into the surface gravity
-    // pulls away from) -> cancel the into-surface velocity component.
-    const blockedAntiGravity = g.y > 0 ? this.moveResult.hitFloor : this.moveResult.hitCeiling;
+    // Head-bump: blocked while moving ANTI-gravity (into the surface
+    // gravity pulls away from) -> cancel the into-surface velocity
+    // component. On ±Y gravity the move result carries dedicated flags;
+    // on walls the X-clip wall contacts carry the same information.
+    let blockedAntiGravity: boolean;
+    if (g.x !== 0) {
+      blockedAntiGravity = false;
+      for (const contact of this.moveResult.wallContacts) {
+        const n = contact.normal;
+        if (n.x * -g.x + n.y * -g.y + n.z * -g.z > 0.5) {
+          blockedAntiGravity = true;
+          break;
+        }
+      }
+    } else {
+      blockedAntiGravity = g.y > 0 ? this.moveResult.hitFloor : this.moveResult.hitCeiling;
+    }
     if (blockedAntiGravity && velAlongG < 0) {
       this.cancelVelocityAlongG();
     }
@@ -381,6 +440,16 @@ export class GameSimulation {
       return;
     }
     if (this.def.deathYMax !== undefined && this.player.position.y > this.def.deathYMax) {
+      this.die('void', null, null);
+      return;
+    }
+    // M8B side void bounds (level-owned, optional): outward falls along X
+    // in wall-gravity content terminate fairly instead of drifting forever.
+    if (this.def.deathXMin !== undefined && this.player.position.x < this.def.deathXMin) {
+      this.die('void', null, null);
+      return;
+    }
+    if (this.def.deathXMax !== undefined && this.player.position.x > this.def.deathXMax) {
       this.die('void', null, null);
       return;
     }
@@ -605,9 +674,15 @@ export class GameSimulation {
       if (!this.sweptWindowOverlap(pad.center, pad.halfExtents)) continue;
       this.usedInteractions.add(pad.id);
       // Replace the velocity component along the pad's surface normal
-      // (+Y floor / −Y ceiling) with the pad impulse; lateral/forward
-      // preserved. Deterministic identical launch.
-      this.player.velocity.y = (pad.surface === 'ceiling' ? -1 : 1) * pad.impulse;
+      // (away from the mount surface on all four supports) with the pad
+      // impulse; lateral/forward preserved. Deterministic identical launch.
+      const n = MOUNT_NORMALS[pad.surface];
+      const v = this.player.velocity;
+      const alongN = v.x * n.x + v.y * n.y + v.z * n.z;
+      const correction = pad.impulse - alongN;
+      v.x += n.x * correction;
+      v.y += n.y * correction;
+      v.z += n.z * correction;
       this.player.grounded = false;
       this.player.supportColliderId = null;
       this.registerInteraction(
@@ -640,8 +715,9 @@ export class GameSimulation {
       if (this.usedInteractions.has(orb.id)) continue;
       if (!this.sweptWindowOverlap(orb.center, orb.halfExtents)) continue;
       this.usedInteractions.add(orb.id);
-      const target: GravityMode = this.gravityModeValue === 'ceiling' ? 'floor' : 'ceiling';
-      this.applyGravityTransition(target);
+      // M8B: gravity orbs flip to the OPPOSITE surface (floor ↔ ceiling,
+      // leftWall ↔ rightWall) — never an arbitrary 4-state cycle.
+      this.applyGravityTransition(oppositeGravityMode(this.gravityModeValue));
       this.registerInteraction('gravityOrb', orb.id, orb.center.x, orb.center.y, orb.center.z);
     }
   }

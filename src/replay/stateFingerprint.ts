@@ -70,8 +70,11 @@ export const computeStateFingerprint = (sim: GameSimulation): string => {
   h.writeInt32(p.laneCount);
   writeNullableString(h, p.supportColliderId);
 
-  // Authoritative simulation-owned states.
-  h.writeInt32(sim.gravityMode === 'ceiling' ? 1 : 0);
+  // Authoritative simulation-owned states. Gravity codes (M8B): floor 0 /
+  // ceiling 1 (unchanged) + leftWall 2 / rightWall 3 (appended) — pre-M8B
+  // state hashes are byte-identical.
+  const mode = sim.gravityMode;
+  h.writeInt32(mode === 'ceiling' ? 1 : mode === 'leftWall' ? 2 : mode === 'rightWall' ? 3 : 0);
   h.writeFloat64(sim.speedMultiplier);
   h.writeFloat64(sim.elapsedSimTime);
   h.writeInt32(sim.deathHoldTicksLeft);

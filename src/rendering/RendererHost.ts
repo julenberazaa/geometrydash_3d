@@ -275,12 +275,7 @@ export class RendererHost {
     ip.y = lerp(prev.y, p.y, alpha);
     ip.z = lerp(prev.z, p.z, alpha);
 
-    this.playerView.updateFromSimulation(
-      ip,
-      sim.player.grounded,
-      renderDtSeconds,
-      sim.player.gravityMode === 'ceiling',
-    );
+    this.playerView.updateFromSimulation(ip, sim.player.grounded, renderDtSeconds, sim.player.gravityMode);
     // Motion juice follows the SAME interpolated cube position (trail
     // integrity) with the same render dt (pause-freeze parity).
     this.vfx.update(renderDtSeconds, sim, ip);
@@ -320,7 +315,19 @@ export class RendererHost {
    * pulled up into the ceiling slab (M3.1 fix; see ChaseCamera).
    */
   private focusSide(): CameraFocusSide {
-    return this.simulation.gravityMode === 'ceiling' ? 'belowFocus' : 'aboveFocus';
+    // M8B: wall gravity frames from the free-face side (eye toward −X on
+    // leftWall support, +X on rightWall) while staying elevated — the
+    // camera never rolls on any surface.
+    switch (this.simulation.gravityMode) {
+      case 'ceiling':
+        return 'belowFocus';
+      case 'leftWall':
+        return 'freeMinusFocus';
+      case 'rightWall':
+        return 'freePlusFocus';
+      default:
+        return 'aboveFocus';
+    }
   }
 
   public render(): void {

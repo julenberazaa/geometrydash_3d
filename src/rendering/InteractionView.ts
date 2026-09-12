@@ -103,15 +103,27 @@ export class InteractionView {
       slab.position.set(pad.center.x, pad.center.y, pad.center.z);
       this.group.add(slab);
 
+      // Base frame on the mount surface (M8B: all four supports — the
+      // frame rides on the support side of the trigger volume).
       const frame = new THREE.Mesh(unitBox, this.dimMaterial);
-      frame.scale.set(pad.halfExtents.x * 2 + 0.08, 0.05, pad.halfExtents.z * 2 + 0.08);
-      frame.position.set(
-        pad.center.x,
-        pad.surface === 'ceiling'
-          ? pad.center.y - pad.halfExtents.y
-          : pad.center.y - pad.halfExtents.y + 0.02,
-        pad.center.z,
-      );
+      if (pad.surface === 'leftWall' || pad.surface === 'rightWall') {
+        const sign = pad.surface === 'leftWall' ? 1 : -1;
+        frame.scale.set(0.05, pad.halfExtents.y * 2 + 0.08, pad.halfExtents.z * 2 + 0.08);
+        frame.position.set(
+          pad.center.x + sign * (pad.halfExtents.x + 0.01),
+          pad.center.y,
+          pad.center.z,
+        );
+      } else {
+        frame.scale.set(pad.halfExtents.x * 2 + 0.08, 0.05, pad.halfExtents.z * 2 + 0.08);
+        frame.position.set(
+          pad.center.x,
+          pad.surface === 'ceiling'
+            ? pad.center.y - pad.halfExtents.y
+            : pad.center.y - pad.halfExtents.y + 0.02,
+          pad.center.z,
+        );
+      }
       this.group.add(frame);
       this.dimmables.push({ id: pad.id, meshes: [slab], liveMaterial: padMat, baseY: null });
     }

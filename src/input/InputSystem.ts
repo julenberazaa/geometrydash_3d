@@ -78,19 +78,45 @@ export const makeIdlePhysicalSnapshot = (): PhysicalInputSnapshot =>
  * Gravity-relative interpretation of physical input (pure, deterministic).
  *
  * Floor: ArrowUp or Space = jump; ArrowDown = fast-fall.
- * Ceiling: ArrowDown or Space = jump (away from the ceiling); ArrowUp = fast-fall
- * (back toward the ceiling). Space is ALWAYS the universal jump key.
+ * Ceiling: ArrowDown or Space = jump (away from the ceiling); ArrowUp =
+ * fast-fall (back toward the ceiling). Space is ALWAYS the universal jump
+ * key; lanes never mirror (ArrowRight is always screen-right).
+ *
+ * Walls (M8B): the lane axis is vertical, so ArrowUp/ArrowDown drive lane
+ * intent (Up = toward higher lanes, Down = toward lower lanes on BOTH
+ * walls — never mirrored) while the horizontal arrows work the support:
+ * the key pointing AWAY from the wall jumps (Space always does too) and
+ * the key pointing INTO the wall fast-falls.
+ * - Left wall (support at screen-left/world +X): jump = Space|ArrowRight,
+ *   fastFall = ArrowLeft, lanes = Down/Up.
+ * - Right wall (support at screen-right/world −X): jump = Space|ArrowLeft,
+ *   fastFall = ArrowRight, lanes = Down/Up.
  *
  * Merge semantics for the jump action match the historical ArrowUp+Space
  * behavior: held/pressed/released each OR-combined across the merged keys.
- * Contradictory input (directional jump key AND opposite fast-fall key held
- * together) simply yields both logical actions — the controller's fixed step
- * order resolves it deterministically, as it always has.
+ * Contradictory input simply yields both logical actions — the
+ * controller's fixed step order resolves it deterministically.
  */
 export function interpretPhysicalInput(
   physical: Readonly<PhysicalInputSnapshot>,
   mode: GravityMode,
 ): InputSnapshot {
+  if (mode === 'leftWall') {
+    return {
+      jump: mergeEdges(physical.space, physical.laneRight),
+      fastFall: physical.laneLeft,
+      laneLeft: physical.down,
+      laneRight: physical.up,
+    };
+  }
+  if (mode === 'rightWall') {
+    return {
+      jump: mergeEdges(physical.space, physical.laneLeft),
+      fastFall: physical.laneRight,
+      laneLeft: physical.down,
+      laneRight: physical.up,
+    };
+  }
   const jump = mode === 'ceiling' ? mergeEdges(physical.space, physical.down) : mergeEdges(physical.space, physical.up);
   const fastFall = mode === 'ceiling' ? physical.up : physical.down;
   return {

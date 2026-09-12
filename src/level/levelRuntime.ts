@@ -19,6 +19,13 @@ export interface LoadedLevel {
   /** Flat collider list in definition order (solids then hazards). */
   colliders: Collider[];
   laneCenters: readonly number[];
+  /**
+   * Wall-gravity lane centers along world Y (M8B): the level's explicit
+   * `wallLaneCenters`, else the corridor-mid mirror of `laneCenters`
+   * (3 − c per center c — the M3.3 corridor mid-plane), so standard
+   * 3-lane content runs vertical lanes [0.4, 3, 5.6] with zero new data.
+   */
+  wallLaneCenters: readonly number[];
   start: Readonly<Vec3>;
   /** Level start gravity mode ('floor' when the level omits it). */
   startGravityMode: GravityMode;
@@ -77,11 +84,15 @@ export const loadLevel = (def: LevelDefinition): LoadedLevel => {
   const speedPortals = [...(def.speedPortals ?? [])].sort((a, b) => a.z - b.z);
   const teleportPortals = [...(def.teleportPortals ?? [])].sort((a, b) => a.entryZ - b.entryZ);
 
+  const wallLaneCenters =
+    def.wallLaneCenters !== undefined ? def.wallLaneCenters : def.laneCenters.map((c) => 3 - c);
+
   return {
     def,
     world,
     colliders,
     laneCenters: def.laneCenters,
+    wallLaneCenters,
     start: def.start,
     startGravityMode: def.startGravityMode ?? 'floor',
     startSpeedMultiplier: def.startSpeedMultiplier ?? 1,
