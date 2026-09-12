@@ -1,6 +1,7 @@
 import { FixedStepLoop } from '../core/FixedStepLoop';
 import { SIMULATION_DT, SIMULATION_HZ } from '../core/constants';
 import { InputSystem } from '../input/InputSystem';
+import { PerfProfiler, type PerfSnapshot } from '../debug/perfProfiler';
 import { GameSimulation } from './GameSimulation';
 import { RendererHost, type RendererOptions } from '../rendering/RendererHost';
 import { DeathSfx } from '../audio/deathSfx';
@@ -9,6 +10,12 @@ import { DebugOverlay } from '../debug/DebugOverlay';
 import { TEST_LEVEL } from '../content/levels/testLevel01';
 import { ReplayCoordinator, type ReplayVerification } from '../replay/ReplayCoordinator';
 import type { LevelDefinition } from '../level/levelDefinition';
+
+/** M6D Game-level options (presentation/QA only — never gameplay). */
+export interface GameOptions {
+  /** Enable the DEBUG frame profiler (`?perf=1`). Default off. */
+  perfEnabled?: boolean;
+}
 
 /**
  * Game: composition root. Wires input -> simulation -> renderer -> UI.
@@ -34,12 +41,20 @@ export class Game {
   private fpsEma = 60;
   private lastFrameTimeMs = performance.now();
   private disposed = false;
+  /** M6D DEBUG profiler switch (branch only when off). */
+  private readonly perfEnabled: boolean;
+  /** M6D bounded frame profiler (records only when enabled). */
+  private readonly perf = new PerfProfiler();
 
   constructor(
     private readonly container: HTMLElement,
     levelDef: LevelDefinition = TEST_LEVEL,
     rendererOptions: RendererOptions = {},
+    gameOptions: GameOptions = {},
   ) {
+    // M6D frame profiler (DEBUG/PERF-only, above gameplay): off by default
+    // (`?perf=1` enables) — one branch per frame when disabled.
+    this.perfEnabled = gameOptions.perfEnabled ?? false;
     this.deathSfx = new DeathSfx();
     this.simulation = new GameSimulation(levelDef, {
       onJump: () => {
@@ -186,9 +201,25 @@ export class Game {
   private debugPlayerBoxOn = false;
 
   /** Render-side frame work; gameplay state is only READ here. */
+  /** M6D rolling frame-delivery statistics (cold QA path; zeros when off). */
+  public perfSnapshot(): PerfSnapshot {
+    return this.perf.snapshot();
+  }
+
+  /** M6D discard profiler warmup (cold QA path; the harness calls this
+   *  after load/shader warmup, before the measured window). */
+  public perfBeginSampling(): void {
+    this.perf.beginSampling();
+  }
+
+  public get isPerfEnabled(): boolean {
+    return this.perfEnabled;
+  }
+
   private frameRender(alpha: number, renderDtSeconds: number): void {
     // FPS EMA.
     const nowMs = performance.now();
+    if (this.perfEnabled) this.perf.recordFrame(nowMs);
     const measuredDt = nowMs - this.lastFrameTimeMs;
     this.lastFrameTimeMs = nowMs;
     if (measuredDt > 0 && measuredDt < 1000) {

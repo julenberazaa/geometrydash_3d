@@ -29,10 +29,15 @@ const fxParam = gameParams.get('fx');
 // M6C1 trigger fallback: `?triggers=off` resolves the scene to the exact
 // M6A+M6B baseline (no section state) — same scene, same gameplay.
 const triggersParam = gameParams.get('triggers');
+// M6D perf profiler: `?perf=1` enables the DEBUG frame profiler (bounded
+// ring buffer, off by default, zero gameplay effect).
+const perfParam = gameParams.get('perf');
 const game = new Game(container, resolution.level, {
   postEnabled: postParam === null ? undefined : postParam !== 'off',
   fxEnabled: fxParam === null ? undefined : fxParam !== 'off',
   triggersEnabled: triggersParam === null ? undefined : triggersParam !== 'off',
+}, {
+  perfEnabled: perfParam === '1',
 });
 game.start();
 
@@ -117,6 +122,17 @@ declare global {
       // M7.1 beat-ready cue observability (presentation only).
       rhythmCue: () => string | null;
       energyRays: () => number;
+      // M6D performance observability (presentation only).
+      perfEnabled: () => boolean;
+      perfSnapshot: () => {
+        frames: number; fps: number; p50: number; p95: number; p99: number;
+        max: number; over25: number; over33: number; over50: number; capacity: number;
+      };
+      perfBeginSampling: () => void;
+      gpuIdentity: () => {
+        version: string; vendor: string; renderer: string;
+        devicePixelRatio: number; renderPixelRatio: number;
+      };
       // M6C2 reactive-visual observability (presentation only).
       eventPunchEnergy: () => number;
       eventPunchColor: () => number;
@@ -231,6 +247,13 @@ window.__gd3d = {
   rhythmCue: () => game['rendererHost'].rhythmCueId,
   // M7.1 background energy-ray opacity (cold path).
   energyRays: () => game['rendererHost'].energyRayOpacity,
+  // M6D probes: bounded profiler + real-GPU identity (cold path).
+  perfEnabled: () => game.isPerfEnabled,
+  perfSnapshot: () => ({ ...game.perfSnapshot() }),
+  perfBeginSampling: (): void => {
+    game.perfBeginSampling();
+  },
+  gpuIdentity: () => ({ ...game['rendererHost'].gpuIdentity() }),
   // M6C2 probes: punch envelope + dominant tint + contact skid (cold path).
   eventPunchEnergy: () => game['rendererHost'].eventPunchEnergy,
   eventPunchColor: () => game['rendererHost'].eventPunchColor,
