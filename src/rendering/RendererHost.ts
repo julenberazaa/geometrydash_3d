@@ -6,6 +6,7 @@ import { LevelView } from './LevelView';
 import { PlayerView } from './PlayerView';
 import { DeathBurstView } from './DeathBurstView';
 import { InteractionView } from './InteractionView';
+import { ChomperView } from './ChomperView';
 import { EnvironmentView } from './EnvironmentView';
 import { MaterialLibrary } from './MaterialLibrary';
 import { PostPipeline } from './PostPipeline';
@@ -106,6 +107,8 @@ export class RendererHost {
   private readonly environmentView: EnvironmentView;
   /** M4 interaction visuals + activation VFX (presentation only). */
   private readonly interactionView: InteractionView;
+  /** M8D Chomper presentation (observes sim Chomper states). */
+  private readonly chomperView: ChomperView;
   public get playerView(): Readonly<PlayerView> {
     return this.playerViewInternal;
   }
@@ -189,6 +192,9 @@ export class RendererHost {
 
     this.interactionView = new InteractionView(simulation.level, simulation, this.library, this.theme);
     this.scene.add(this.interactionView.group);
+
+    this.chomperView = new ChomperView(simulation.level.chompers, this.library);
+    this.scene.add(this.chomperView.group);
 
     this.playerViewInternal = new PlayerView(this.library);
     this.scene.add(this.playerViewInternal.group);
@@ -296,6 +302,7 @@ export class RendererHost {
     this.debugView.updatePlayerBox(p, sim.halfExtents);
     this.deathBurst.update(renderDtSeconds);
     this.interactionView.update(renderDtSeconds);
+    this.chomperView.update(sim.chomperStates, renderDtSeconds);
     // M8A lava shimmer: slow dense pulse on the shared lava materials
     // (sim-time driven so pause freezes it; zero geometry per frame).
     this.library.setLavaPulse((sim.elapsedSimTime * 0.5) % 1);
@@ -760,6 +767,7 @@ export class RendererHost {
     this.renderer.dispose();
     this.levelView.dispose();
     this.interactionView.dispose();
+    this.chomperView.dispose();
     this.playerViewInternal.dispose();
     this.deathBurst.dispose();
     this.vfx.dispose();

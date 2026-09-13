@@ -16,6 +16,8 @@
  *   - usedInteractions: one-shot lifecycle bits per pad/orb id (level order)
  *   - usedTeleports: one-shot lifecycle bits per teleport id (level order)
  *   - usedModePortals: one-shot lifecycle bits per mode portal (level order)
+ *   - chomperStates (M8D — ONLY when the level has chompers, else zero
+ *     bytes): phase + ticks + position + aim per Chomper
  *
  * EXCLUDED (with reason):
  *   - attempts: session counter, never read by gameplay
@@ -98,6 +100,21 @@ export const computeStateFingerprint = (sim: GameSimulation): string => {
   for (const t of sim.level.teleportPortals) h.writeBoolean(sim.isTeleportUsed(t.id));
   // M8C one-shot mode-portal lifecycle bits, in level order (conditional).
   for (const m of sim.level.modePortals) h.writeBoolean(sim.isModePortalUsed(m.id));
+  // M8D Chomper dynamic state — conditional (levels without chompers
+  // write zero bytes; pre-M8D state hashes are unchanged). Phase +
+  // deterministic progress + position + committed aim per Chomper.
+  if (sim.level.chompers.length > 0) {
+    for (const st of sim.chomperStates) {
+      h.writeInt32(
+        st.phase === 'telegraph' ? 1 : st.phase === 'lunging' ? 2 : st.phase === 'spent' ? 3 : 0,
+      );
+      h.writeInt32(st.ticksInPhase);
+      h.writeFloat64(st.x);
+      h.writeFloat64(st.y);
+      h.writeFloat64(st.z);
+      h.writeFloat64(st.aimX);
+    }
+  }
 
   return h.digest();
 };

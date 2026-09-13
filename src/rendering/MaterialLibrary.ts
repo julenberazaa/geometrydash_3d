@@ -59,6 +59,15 @@ export class MaterialLibrary {
    */
   public readonly modeShip: THREE.MeshStandardMaterial;
   public readonly modeSpider: THREE.MeshStandardMaterial;
+  /**
+   * M8D Chomper family (shared, bounded): dark basalt shell, molten
+   * crack glow, bright mouth core, dark chain links. Original lava-predator
+   * language — no licensed geometry.
+   */
+  public readonly chomperShell: THREE.MeshStandardMaterial;
+  public readonly chomperGlow: THREE.MeshStandardMaterial;
+  public readonly chomperCore: THREE.MeshBasicMaterial;
+  public readonly chomperChain: THREE.MeshStandardMaterial;
   public readonly interactionDim: THREE.MeshBasicMaterial;
   public readonly finishGate: THREE.MeshBasicMaterial;
 
@@ -246,6 +255,37 @@ export class MaterialLibrary {
       );
     this.modeShip = modeMat(0x4fd8ff);
     this.modeSpider = modeMat(0x5dff9d);
+    // M8D Chomper: near-black crust + orange crack glow + hot core.
+    this.chomperShell = track(
+      new THREE.MeshStandardMaterial({
+        color: 0x1a0d08,
+        roughness: 0.85,
+        metalness: 0.15,
+        emissive: 0x531a00,
+        emissiveIntensity: 0.35,
+      }),
+    );
+    this.chomperGlow = track(
+      new THREE.MeshStandardMaterial({
+        color: 0xff5a00,
+        roughness: 0.5,
+        metalness: 0,
+        emissive: 0xff4400,
+        emissiveIntensity: 1.6,
+      }),
+    );
+    this.chomperCore = track(
+      new THREE.MeshBasicMaterial({ color: 0xffb03a }),
+    );
+    this.chomperChain = track(
+      new THREE.MeshStandardMaterial({
+        color: 0x2a2a30,
+        roughness: 0.45,
+        metalness: 0.8,
+        emissive: 0xff4400,
+        emissiveIntensity: 0.25,
+      }),
+    );
     this.interactionDim = track(new THREE.MeshBasicMaterial({ color: theme.interactionDim }));
     this.finishGate = track(
       new THREE.MeshBasicMaterial({

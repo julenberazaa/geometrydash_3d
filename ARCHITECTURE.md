@@ -204,7 +204,8 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
 
 - `GameSimulation`: headless orchestration per fixed step — controller →
   integrate+collide → frontal kill → grounding → lethal checks (void bounds,
-  hazard CCD) → jump pads → jump orbs → gravity orbs → speed portals →
+  hazard CCD, M8D dynamic chompers) → teleport portals → mode portals →
+  jump pads → jump orbs → gravity orbs → speed portals →
   gravity portals → finish. Owns the AUTHORITATIVE gravity mode
   (`gravityMode`, reset to the level start mode by `respawn()`) and the
   AUTHORITATIVE speed state (`speedMultiplier`: the per-step forward speed is
@@ -258,6 +259,15 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   (`padActivationCount`, `orbActivationCount`, `speedPortalCount`),
   `isInteractionUsed(id)`, `lastSpeedPortalId`/`lastInteractionId` (reset per
   attempt).
+- `chomperSystem.ts` (M8D): the ONE owner of the dynamic-Chomper phase
+  machine (dormant → telegraph → lunging → spent) — pure fixed-tick
+  kinematics shared by the sim and the tests. The SIMULATION owns the
+  preallocated state array, activation (player Z), the swept
+  Chomper-vs-player lethal test (both sides sweep — no tunneling either
+  direction, lethal in EVERY phase under id `chomper-<id>`), and the
+  respawn reset. Aim (player X) is captured once at activation and never
+  re-homed; the lunge is linear over authored ticks. `ChomperView`
+  (owned by `RendererHost`) observes sim states only.
   **Teleport portals (M7.2):** deterministic forward entry-crossing
   (`prevZ < entryZ ≤ currentZ`, furthest unused entry wins), processed
   AFTER the lethal checks (death wins the step) and BEFORE pads/orbs/

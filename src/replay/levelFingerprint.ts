@@ -11,6 +11,7 @@
  *   teleportPortals (M7.2, only when present — absent writes zero bytes),
  *   lava (M8A, only when present — absent writes zero bytes),
  *   modePortals (M8C, only when present — absent writes zero bytes),
+ *   chompers (M8D, only when present — absent writes zero bytes),
  *   solids, hazards, id.
  *
  * Explicitly EXCLUDED (not gameplay-relevant):
@@ -23,6 +24,7 @@
 import { DeterministicHasher } from './hash';
 import type { GravityMode } from '../player/playerState';
 import type {
+  ChomperDef,
   GravityOrbDef,
   GravityPortalDef,
   JumpOrbDef,
@@ -108,6 +110,17 @@ const writeLava = (h: DeterministicHasher, l: LavaVolumeDef): void => {
   writeVec3(h, l.center);
   writeVec3(h, l.halfExtents);
   h.writeInt32(l.role === 'pool' ? 0 : l.role === 'fall' ? 1 : 2);
+};
+
+const writeChomper = (h: DeterministicHasher, c: ChomperDef): void => {
+  h.writeString(c.id);
+  writeVec3(h, c.dormant);
+  h.writeFloat64(c.triggerZ);
+  h.writeInt32(c.lungeDirection);
+  h.writeFloat64(c.lungeDistance);
+  h.writeInt32(c.telegraphTicks);
+  h.writeInt32(c.lungeTicks);
+  writeVec3(h, c.halfExtents);
 };
 
 const writeModePortal = (h: DeterministicHasher, m: PlayerModePortalDef): void => {
@@ -212,6 +225,14 @@ export const computeLevelFingerprint = (def: LevelDefinition): string => {
     h.writeString('modes:v1');
     h.writeInt32(modePortals.length);
     for (const m of modePortals) writeModePortal(h, m);
+  }
+  // M8D chompers: gameplay hazards. Same conditional pattern (gameplay
+  // fields only — chainAnchor is visual-only and excluded).
+  const chompers = def.chompers ?? [];
+  if (chompers.length > 0) {
+    h.writeString('chompers:v1');
+    h.writeInt32(chompers.length);
+    for (const c of chompers) writeChomper(h, c);
   }
   // visualSetpieces: presentation-only, never fingerprinted (like theme /
   // visualSequence / rhythmCues / hazard visual+mount / teleport style).

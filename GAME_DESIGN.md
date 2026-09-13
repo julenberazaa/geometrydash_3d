@@ -385,7 +385,28 @@ mint-green Spider rings (surface-switch glyph).
 `Space` is the universal primary action in every mode (jump / thrust /
 surface-switch).
 
-## 7.5 Out of scope for the current foundation
+## 7.5 Dynamic lava chomper — CURRENT (M8D)
+
+An ORIGINAL lava-predator design (dark basalt shell, molten cracks, bright
+maw, energy-chain tether — never licensed geometry) and a REAL moving
+gameplay hazard with a readable attack contract:
+
+- The creature waits/floats beside the route (`dormant`). Touching it
+  while dormant still kills — it is never decoration.
+- When the player reaches the authored `triggerZ`, it captures the
+  player's lateral X as its committed aim and telegraphs (eyes ignite,
+  anticipation pulse, ~0.3–0.6 s of fixed-tick warning).
+- It then lunges HORIZONTALLY across the route (linear, deterministic).
+  It never chases forward in Z and never re-homes after activation.
+- The lunge line is authored low so a timed jump clears it; lane
+  positioning after activation also matters (the attack is committed).
+- After crossing it rests `spent` at the far side; respawn/`R` resets
+  every Chomper to dormant. Contact in ANY phase kills (`hazard`).
+- Fixed-tick state, bounded count (≤ 8 per level), swept Chomper-vs-player
+  collision (no tunneling either direction), replay-safe (input-only
+  tapes; level + state fingerprints extend conditionally).
+
+## 7.6 Out of scope for the current foundation
 
 Music/BPM sync, public editor, backend, persistence. See `ROADMAP.md`.
 (Pads, orbs, speed portals and the trigger infrastructure shipped in M4 —

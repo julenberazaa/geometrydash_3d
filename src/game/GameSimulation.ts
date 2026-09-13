@@ -28,6 +28,12 @@ import {
 import { loadLevel, computeProgress } from '../level/levelRuntime';
 import type { LoadedLevel } from '../level/levelRuntime';
 import type { LevelDefinition, TeleportPortalDef } from '../level/levelDefinition';
+import {
+  createChomperState,
+  resetChomperState,
+  stepChomper,
+  type ChomperState,
+} from './chomperSystem';
 
 /**
  * Headless gameplay orchestration: the ENTIRE game simulates here.
@@ -197,6 +203,15 @@ export class GameSimulation {
   public modeTransitionCount = 0;
   /** Id of the most recent mode portal crossed THIS attempt (debug/QA). */
   public lastModePortalId: string | null = null;
+  /**
+   * Deterministic dynamic-chomper states (M8D), parallel to
+   * `level.chompers` (sorted by triggerZ). Preallocated at construction;
+   * `respawn()` resets every entry to dormant. Empty for levels without
+   * chompers (zero behavior change, zero fingerprint bytes).
+   */
+  public readonly chomperStates: ChomperState[] = [];
+  /** Previous-step chomper centers (swept lethal test scratch). */
+  private readonly chomperPrev: { x: number; y: number; z: number }[] = [];
   /** Monotonic count of teleport activations this session (VFX/punch edge). */
   public teleportEventCount = 0;
   /** Id of the most recent teleport activation THIS attempt (debug/QA). */
@@ -285,6 +300,10 @@ export class GameSimulation {
     this.controller = new CubeController(CUBE_TUNING);
     this.shipController = new ShipController(SHIP_TUNING);
     this.spiderController = new SpiderController();
+    for (const c of this.level.chompers) {
+      this.chomperStates.push(createChomperState(c));
+      this.chomperPrev.push({ x: c.dormant.x, y: c.dormant.y, z: c.dormant.z });
+    }
     this.prevPosition = vec3(levelDef.start.x, levelDef.start.y, levelDef.start.z);
     this.events = events;
     this.laneCenters = levelDef.laneCenters;
@@ -538,6 +557,17 @@ export class GameSimulation {
       this.die(cause, lethalHazard.id, null);
       return;
     }
+    // 5a. Dynamic chompers (M8D): advance the deterministic phase machine
+    //    from the post-collision player position, then test the swept
+    //    chomper-vs-player overlap. Lethal in EVERY phase (even dormant —
+    //    touching the waiting creature kills). Death wins the step like
+    //    every other lethal check: no portal/interaction below can rescue.
+    this.stepChompers();
+    const lethalChomperId = this.findLethalChomper();
+    if (lethalChomperId !== null) {
+      this.die('hazard', lethalChomperId, null);
+      return;
+    }
 
     // 5b. Teleport portals (M7.2): entry crossing AFTER the lethal checks
     //    (death wins the step) and BEFORE pads/orbs/portals, so the
@@ -586,6 +616,19 @@ export class GameSimulation {
     this.usedInteractions.clear();
     this.usedTeleports.clear();
     this.usedModePortals.clear();
+    for (let i = 0; i < this.chomperStates.length; i++) {
+      const def = this.level.chompers[i];
+      const st = this.chomperStates[i];
+      if (def !== undefined && st !== undefined) {
+        resetChomperState(st, def);
+        const prev = this.chomperPrev[i];
+        if (prev !== undefined) {
+          prev.x = def.dormant.x;
+          prev.y = def.dormant.y;
+          prev.z = def.dormant.z;
+        }
+      }
+    }
     this.lastPortalId = null;
     this.lastModePortalId = null;
     this.lastSpeedPortalId = null;
@@ -1086,6 +1129,69 @@ export class GameSimulation {
         sweptPathOverlaps(this.sweptPathScratch, q, afterY, afterZ, p, half, colliderToAabb(c))
       ) {
         return c;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Advance every Chomper phase machine one fixed step from the
+   * post-collision player position (M8D). Previous centers are snapshotted
+   * first so `findLethalChomper` tests the exact swept segment.
+   */
+  private stepChompers(): void {
+    const defs = this.level.chompers;
+    for (let i = 0; i < this.chomperStates.length; i++) {
+      const st = this.chomperStates[i];
+      const def = defs[i];
+      if (st === undefined || def === undefined) continue;
+      const prev = this.chomperPrev[i];
+      if (prev !== undefined) {
+        prev.x = st.x;
+        prev.y = st.y;
+        prev.z = st.z;
+      }
+      stepChomper(st, def, this.player.position.z, this.player.position.x);
+    }
+  }
+
+  /**
+   * Swept Chomper-vs-player overlap (M8D): the union of the Chomper's
+   * swept segment box (prev -> current center ± half extents) and the
+   * player's swept segment box (prevPosition -> position ± half) must
+   * overlap. Both sides sweep, so neither fast lunges nor 3x player
+   * speeds tunnel. Returns the lethal `chomper-<id>` or null.
+   */
+  private findLethalChomper(): string | null {
+    const defs = this.level.chompers;
+    if (this.chomperStates.length === 0) return null;
+    const half = this.halfExtentsVec;
+    const p = this.player.position;
+    const q = this.prevPosition;
+    for (let i = 0; i < this.chomperStates.length; i++) {
+      const st = this.chomperStates[i];
+      const def = defs[i];
+      const prev = this.chomperPrev[i];
+      if (st === undefined || def === undefined || prev === undefined) continue;
+      const h = def.halfExtents;
+      const cMinX = Math.min(prev.x, st.x) - h.x;
+      const cMaxX = Math.max(prev.x, st.x) + h.x;
+      const cMinY = Math.min(prev.y, st.y) - h.y;
+      const cMaxY = Math.max(prev.y, st.y) + h.y;
+      const cMinZ = Math.min(prev.z, st.z) - h.z;
+      const cMaxZ = Math.max(prev.z, st.z) + h.z;
+      const pMinX = Math.min(p.x, q.x) - half.x;
+      const pMaxX = Math.max(p.x, q.x) + half.x;
+      const pMinY = Math.min(p.y, q.y) - half.y;
+      const pMaxY = Math.max(p.y, q.y) + half.y;
+      const pMinZ = Math.min(p.z, q.z) - half.z;
+      const pMaxZ = Math.max(p.z, q.z) + half.z;
+      if (
+        cMinX < pMaxX && cMaxX > pMinX &&
+        cMinY < pMaxY && cMaxY > pMinY &&
+        cMinZ < pMaxZ && cMaxZ > pMinZ
+      ) {
+        return `chomper-${def.id}`;
       }
     }
     return null;

@@ -36,6 +36,43 @@ export interface PlayerModePortalDef {
 }
 
 /**
+ * Dynamic lava chomper (M8D): a bounded deterministic crossing hazard.
+ * The creature waits at `dormant` beside the route; when the player's
+ * forward position reaches `triggerZ` it captures the player's lateral X
+ * as its committed aim, telegraphs for `telegraphTicks`, then lunges
+ * horizontally (`lungeDirection` x `lungeDistance` along world X) over
+ * `lungeTicks`, and rests `spent` at the end. Linear interpolation —
+ * deterministic, no homing after activation. Touching it in ANY phase
+ * kills (cause `hazard`, id `chomper-<id>`). Jumpable: author the lunge
+ * line low (top below the Cube jump apex) so a timed jump clears it.
+ * Fingerprinted conditionally (levels without chompers hash
+ * byte-identically to before).
+ */
+export interface ChomperDef {
+  /** Stable identifier (debug/QA; lethal id becomes `chomper-<id>`). */
+  id: string;
+  /** Waiting position (hitbox center) beside the route. */
+  dormant: Vec3;
+  /** Activation: player.position.z >= triggerZ arms the telegraph. */
+  triggerZ: number;
+  /** Lunge direction along world X (+1 screen-left, -1 screen-right). */
+  lungeDirection: 1 | -1;
+  /** Horizontal travel distance (crosses the route width). */
+  lungeDistance: number;
+  /** Readable anticipation ticks before the lunge (fixed-tick timing). */
+  telegraphTicks: number;
+  /** Lunge travel ticks (dormant -> end, linear). */
+  lungeTicks: number;
+  /** Hitbox half extents (gameplay; visuals are bound to it). */
+  halfExtents: Vec3;
+  /**
+   * Chain anchor (visual only, never fingerprinted): the energy chain
+   * stretches from here to the creature. Defaults to `dormant`.
+   */
+  chainAnchor?: Vec3;
+}
+
+/**
  * Speed tier portal (M4): a deterministic forward-crossing plane at world Z.
  * Crossing it forward sets the authoritative speed multiplier — no teleport,
  * no impulse. Exactly-once per attempt by construction (forward motion never
@@ -399,6 +436,11 @@ export interface LevelDefinition {
    * behave exactly as before. See `LavaVolumeDef`.
    */
   lava?: LavaVolumeDef[];
+  /**
+   * Dynamic lava chompers (M8D). Optional; levels without chompers behave
+   * exactly as before. See `ChomperDef`.
+   */
+  chompers?: ChomperDef[];
   /**
    * Presentation-only decorative setpieces (M7.2). Renderer-only: never
    * read by simulation, collision, replay, or the level fingerprint.

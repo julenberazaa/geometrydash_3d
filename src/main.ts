@@ -62,6 +62,7 @@ declare global {
       gravityMode: () => GravityMode;
       playerMode: () => PlayerMode;
       modeTransitionCount: () => number;
+      chompers: () => { phase: string; x: number; y: number; z: number; aimX: number }[];
       lastPortalId: () => string | null;
       portalTransitionCount: () => number;
       speedMultiplier: () => number;
@@ -176,6 +177,14 @@ window.__gd3d = {
   gravityMode: () => game['simulation'].gravityMode,
   playerMode: () => game['simulation'].playerMode,
   modeTransitionCount: () => game['simulation'].modeTransitionCount,
+  chompers: () =>
+    game['simulation'].chomperStates.map((s) => ({
+      phase: s.phase,
+      x: s.x,
+      y: s.y,
+      z: s.z,
+      aimX: s.aimX,
+    })),
   lastPortalId: () => game['simulation'].lastPortalId,
   portalTransitionCount: () => game['simulation'].portalTransitionCount,
   speedMultiplier: () => game['simulation'].speedMultiplier,
