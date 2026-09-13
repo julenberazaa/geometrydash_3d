@@ -10,10 +10,11 @@ import { TEST_LEVEL } from './levels/testLevel01';
 import { VALIDATION_LEVEL_02 } from './levels/validationLevel02';
 import { VERTICAL_SLICE_01 } from './levels/verticalSlice01';
 import { ADVANCED_CUBE_01 } from './levels/advancedCube01';
+import { MULTIMODE_GAUNTLET_01 } from './levels/multimodeGauntlet01';
 
 export const DEFAULT_LEVEL_ID = TEST_LEVEL.id;
 
-const LEVELS: readonly LevelDefinition[] = [TEST_LEVEL, VALIDATION_LEVEL_02, VERTICAL_SLICE_01, ADVANCED_CUBE_01];
+const LEVELS: readonly LevelDefinition[] = [TEST_LEVEL, VALIDATION_LEVEL_02, VERTICAL_SLICE_01, ADVANCED_CUBE_01, MULTIMODE_GAUNTLET_01];
 
 const REGISTRY: ReadonlyMap<string, LevelDefinition> = new Map(
   LEVELS.map((level) => [level.id, level]),
