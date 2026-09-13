@@ -5,8 +5,11 @@ import { vec3, copyVec3 } from '../core/math';
 import { SIMULATION_DT } from '../core/constants';
 import { CUBE_TUNING } from '../player/cubeTuning';
 import { CubeController, type CubeControllerStepContext } from '../player/CubeController';
+import { ShipController, type ShipControllerStepContext } from '../player/ShipController';
+import { SpiderController, type SpiderControllerStepContext } from '../player/SpiderController';
+import { SHIP_TUNING } from '../player/shipTuning';
 import { GameplayFrame } from '../player/gameplayFrame';
-import type { GravityMode } from '../player/playerState';
+import type { GravityMode, PlayerMode } from '../player/playerState';
 import {
   createPlayerState,
   resetPlayerState,
@@ -14,9 +17,12 @@ import {
 } from '../player/playerState';
 import { moveAabbThroughWorld, createMoveResult, probeGroundSupport } from '../collision/moveAabb';
 import {
+  aabbOverlap,
   colliderToAabb,
   createSweptPathScratch,
   sweptPathOverlaps,
+  sweptSegmentAabb,
+  type Aabb,
   type Collider,
 } from '../collision/collider';
 import { loadLevel, computeProgress } from '../level/levelRuntime';
@@ -91,6 +97,8 @@ export const DEATH_HOLD_SECONDS = DEATH_HOLD_TICKS * SIMULATION_DT;
 const SUPPORT_PROBE_DISTANCE = 0.03;
 /** Max speed along gravity (toward surface) that still counts as "resting". */
 const REST_SPEED_EPSILON = 0.05;
+/** Max spider opposite-surface snap distance (world units, along gravity). */
+const SPIDER_SNAP_MAX_DISTANCE = 14;
 
 /** Prebuilt frames per gravity mode — never allocated per step. */
 const FRAME_FLOOR = GameplayFrame.floor();
@@ -125,6 +133,8 @@ export class GameSimulation {
   private readonly def: LevelDefinition;
   public readonly player: PlayerState;
   private readonly controller: CubeController;
+  private readonly shipController: ShipController;
+  private readonly spiderController: SpiderController;
   private readonly moveResult = createMoveResult();
   private readonly events: SimulationEvents;
 
@@ -139,6 +149,13 @@ export class GameSimulation {
    * `player.gravityMode` mirrors it for observers; never write there directly.
    */
   private gravityModeValue: GravityMode;
+  /**
+   * AUTHORITATIVE current player mode (M8C). Rendering observes;
+   * `player.playerMode` mirrors it. Attempts always start in `cube`.
+   */
+  private modeValue: PlayerMode = 'cube';
+  /** True while Ship thrust is applied this step (renderer flame edge). */
+  public shipThrusting = false;
   /** Id of the most recent gravity portal crossed THIS attempt (debug/QA). */
   public lastPortalId: string | null = null;
   /** Monotonic count of actual gravity transitions (debug/QA leak/toggle guard). */
@@ -171,6 +188,15 @@ export class GameSimulation {
    * respawn().
    */
   private readonly usedTeleports = new Set<string>();
+  /**
+   * One-shot mode-portal lifecycle state (M8C): portal ids already
+   * consumed this attempt. Pre-allocated once; cleared by respawn().
+   */
+  private readonly usedModePortals = new Set<string>();
+  /** Monotonic count of mode transitions this session (VFX edge). */
+  public modeTransitionCount = 0;
+  /** Id of the most recent mode portal crossed THIS attempt (debug/QA). */
+  public lastModePortalId: string | null = null;
   /** Monotonic count of teleport activations this session (VFX/punch edge). */
   public teleportEventCount = 0;
   /** Id of the most recent teleport activation THIS attempt (debug/QA). */
@@ -215,6 +241,17 @@ export class GameSimulation {
     jumpedThisStep: false,
     forwardSpeed: 0,
   };
+  private readonly shipStepContext: ShipControllerStepContext = {
+    laneCenters: [],
+    dt: SIMULATION_DT,
+    forwardSpeed: 0,
+    thrustingThisStep: false,
+  };
+  private readonly spiderStepContext: SpiderControllerStepContext = {
+    laneCenters: [],
+    dt: SIMULATION_DT,
+    forwardSpeed: 0,
+  };
   /** Scratch: full-step displacement passed to collision. Reused, never realloc'd. */
   private readonly stepDelta: Vec3 = vec3();
   /** Scratch: cached half extents. */
@@ -229,6 +266,10 @@ export class GameSimulation {
   private readonly interactionBoxScratch = {
     minX: 0, maxX: 0, minY: 0, maxY: 0, minZ: 0, maxZ: 0,
   };
+  /** Scratch destination + swept box for spider snaps (press-edge only). */
+  private readonly snapDest: Vec3 = vec3();
+  private readonly snapSwept: Aabb = { minX: 0, maxX: 0, minY: 0, maxY: 0, minZ: 0, maxZ: 0 };
+  private readonly snapTransit: Collider[] = [];
 
   constructor(levelDef: LevelDefinition, events: SimulationEvents = {}) {
     this.def = levelDef;
@@ -242,6 +283,8 @@ export class GameSimulation {
       gravityMode: this.level.startGravityMode,
     });
     this.controller = new CubeController(CUBE_TUNING);
+    this.shipController = new ShipController(SHIP_TUNING);
+    this.spiderController = new SpiderController();
     this.prevPosition = vec3(levelDef.start.x, levelDef.start.y, levelDef.start.z);
     this.events = events;
     this.laneCenters = levelDef.laneCenters;
@@ -258,6 +301,16 @@ export class GameSimulation {
   /** Current authoritative gravity mode. */
   public get gravityMode(): GravityMode {
     return this.gravityModeValue;
+  }
+
+  /** Current authoritative player mode (M8C). */
+  public get playerMode(): PlayerMode {
+    return this.modeValue;
+  }
+
+  /** Whether a mode portal id has already fired this attempt. */
+  public isModePortalUsed(id: string): boolean {
+    return this.usedModePortals.has(id);
   }
 
   /** Gameplay frame for the current gravity mode (prebuilt, read-only). */
@@ -333,19 +386,43 @@ export class GameSimulation {
     // forward-crossing detection).
     copyVec3(this.prevPosition, this.player.position);
 
-    // 1. Controller: physical input interpreted through the CURRENT gravity
-    //    mode (pre-mutation), then intent + kinematics. The per-step forward
-    //    speed comes from the authoritative level speed × speed multiplier.
-    const ctx = this.stepContext;
-    ctx.laneCenters = this.activeLaneCenters;
-    ctx.dt = SIMULATION_DT;
-    ctx.frame = this.gameplayFrame;
-    ctx.forwardSpeed = this.currentForwardSpeed;
+    // 1. Mode controllers: physical input interpreted through the CURRENT
+    //    gravity mode (pre-mutation), then intent + kinematics. The
+    //    per-step forward speed comes from the authoritative level speed ×
+    //    speed multiplier. Spider snap (opposite-surface teleport) resolves
+    //    BEFORE the controller so the step integrates from the destination.
     const logicalInput = interpretPhysicalInput(input, this.gravityModeValue);
-    this.controller.step(this.player, logicalInput, ctx);
-    if (ctx.jumpedThisStep) this.events.onJump?.();
-    // The orb press edge is the same logical jump action the ground jump uses.
     const jumpPressed = logicalInput.jump.pressedThisStep;
+    if (this.modeValue === 'spider' && jumpPressed) {
+      // Hazard in the snap path kills (death wins the step).
+      if (this.trySpiderSnap()) return;
+    }
+    this.shipThrusting = false;
+    if (this.modeValue === 'ship') {
+      const ctx = this.shipStepContext;
+      ctx.laneCenters = this.activeLaneCenters;
+      ctx.dt = SIMULATION_DT;
+      ctx.frame = this.gameplayFrame;
+      ctx.forwardSpeed = this.currentForwardSpeed;
+      this.shipController.step(this.player, logicalInput, ctx);
+      this.shipThrusting = ctx.thrustingThisStep;
+    } else if (this.modeValue === 'spider') {
+      const ctx = this.spiderStepContext;
+      ctx.laneCenters = this.activeLaneCenters;
+      ctx.dt = SIMULATION_DT;
+      ctx.frame = this.gameplayFrame;
+      ctx.forwardSpeed = this.currentForwardSpeed;
+      this.spiderController.step(this.player, logicalInput, ctx, CUBE_TUNING);
+    } else {
+      const ctx = this.stepContext;
+      ctx.laneCenters = this.activeLaneCenters;
+      ctx.dt = SIMULATION_DT;
+      ctx.frame = this.gameplayFrame;
+      ctx.forwardSpeed = this.currentForwardSpeed;
+      this.controller.step(this.player, logicalInput, ctx);
+      if (ctx.jumpedThisStep) this.events.onJump?.();
+    }
+    // The orb press edge is the same logical jump action the ground jump uses.
 
     // 2. Integrate + collide. Delta is velocity * dt (full-step displacement).
     // Snapshot pre-move velocity: the frontal-kill decision needs the approach
@@ -462,10 +539,14 @@ export class GameSimulation {
       return;
     }
 
-    // 5b. Teleport portals (M7.2): entry-plane crossing AFTER the lethal
-    //    checks (death wins the step) and BEFORE pads/orbs/portals, so the
+    // 5b. Teleport portals (M7.2): entry crossing AFTER the lethal checks
+    //    (death wins the step) and BEFORE pads/orbs/portals, so the
     //    destination overlap is what the remaining steps evaluate.
     this.processTeleportPortals();
+    // 5c. Player-mode portals (M8C): forward-crossing planes AFTER the
+    //    lethal checks (death wins) and BEFORE pads/orbs, so the new mode's
+    //    controller owns the very next step with clean transient state.
+    this.processModePortals();
     // 6. Passive interactions: jump pads (swept contact, one-shot/attempt).
     this.processJumpPads();
     // 6. Active interactions: jump orbs then gravity orbs (press edge inside
@@ -496,12 +577,17 @@ export class GameSimulation {
       laneIndex: this.def.startLaneIndex,
       laneCount: this.def.laneCenters.length,
       gravityMode: this.level.startGravityMode,
+      playerMode: 'cube',
     });
     this.gravityModeValue = this.level.startGravityMode;
+    this.modeValue = 'cube';
+    this.shipThrusting = false;
     this.speedMultiplierValue = this.level.startSpeedMultiplier;
     this.usedInteractions.clear();
     this.usedTeleports.clear();
+    this.usedModePortals.clear();
     this.lastPortalId = null;
+    this.lastModePortalId = null;
     this.lastSpeedPortalId = null;
     this.lastInteractionId = null;
     this.lastTeleportId = null;
@@ -577,7 +663,175 @@ export class GameSimulation {
   }
 
   /**
-   * THE single Floor ↔ Ceiling transition path — shared by M3 gravity portals
+   * Player-mode portal processing (M8C): deterministic forward crossings
+   * on the swept step path, ascending Z (furthest crossed wins). Pure mode
+   * mutation through the ONE shared `applyModeTransition` path — no
+   * position jump, no impulse. One-shot per attempt (respawn re-arms).
+   * Runs AFTER the lethal checks (death wins the step).
+   */
+  private processModePortals(): void {
+    if (this.level.modePortals.length === 0) return;
+    const prevZ = this.prevPosition.z;
+    const currentZ = this.player.position.z;
+    for (const portal of this.level.modePortals) {
+      if (this.usedModePortals.has(portal.id)) continue;
+      if (prevZ < portal.z && currentZ >= portal.z) {
+        this.usedModePortals.add(portal.id);
+        this.lastModePortalId = portal.id;
+        this.applyModeTransition(portal.target);
+      }
+    }
+  }
+
+  /**
+   * THE single player-mode transition path (M8C — no duplicate mode
+   * state). Preserves world position and forward/lateral flow, zeroes the
+   * velocity component along the current gravity axis (clean handoff — no
+   * inherited fall speed into the new mode), and immediately invalidates
+   * grounded/support so the new controller starts from a clean transient
+   * state. Crossing a plane whose target is already the current mode
+   * updates the debug id but does not count as a transition.
+   */
+  private applyModeTransition(target: PlayerMode): void {
+    if (this.modeValue === target) return;
+    this.modeValue = target;
+    this.player.playerMode = target;
+    const g = this.gameplayFrame.gravityVector;
+    const v = this.player.velocity;
+    const alongG = v.x * g.x + v.y * g.y + v.z * g.z;
+    v.x -= g.x * alongG;
+    v.y -= g.y * alongG;
+    v.z -= g.z * alongG;
+    this.player.grounded = false;
+    this.player.supportColliderId = null;
+    this.shipThrusting = false;
+    this.modeTransitionCount += 1;
+  }
+
+  /**
+   * Spider opposite-surface snap (M8C): on the primary press edge, the
+   * Spider teleports along −gravity (away from the current support) onto
+   * the nearest valid opposite support and flips to that gravity mode
+   * through the shared transition path.
+   *
+   * Contract (pinned):
+   * - destination = nearest blocking face ahead along −gravity within
+   *   SPIDER_SNAP_MAX_DISTANCE whose footprint overlaps the player box
+   *   (ties → first in world query order — deterministic per level);
+   * - the swept transit box is tested: any HAZARD overlap kills
+   *   (`hazard` — death wins, no magic pass-through); any OTHER solid
+   *   overlap aborts the snap (press ignored — never clip into rock);
+   * - no valid support in range → press ignored (never a void launch);
+   * - on success: position rests against the face, along-gravity velocity
+   *   is zeroed (lane/forward flow preserved), support clears, gravity
+   *   flips to the opposite surface (floor ↔ ceiling, wall ↔ wall).
+   *
+   * Returns true when the snap path crossed a hazard (the caller must end
+   * the step — death wins).
+   */
+  private trySpiderSnap(): boolean {
+    const frame = this.gameplayFrame;
+    const g = frame.gravityVector;
+    // Search direction: away from the current support (opposite surface).
+    // Gravity is always world-axis aligned, so exactly one of dx/dy is set.
+    const dx = -g.x;
+    const dy = -g.y;
+    const p = this.player.position;
+    const half = this.halfExtentsVec;
+    const alongX = dx !== 0;
+    // Leading-face coordinate along the search axis.
+    const face = alongX ? p.x + dx * half.x : p.y + dy * half.y;
+
+    // Broad query: player footprint extruded along the search axis by max.
+    const query: Aabb = alongX
+      ? {
+          minX: dx > 0 ? face : face - SPIDER_SNAP_MAX_DISTANCE,
+          maxX: dx > 0 ? face + SPIDER_SNAP_MAX_DISTANCE : face,
+          minY: p.y - half.y,
+          maxY: p.y + half.y,
+          minZ: p.z - half.z,
+          maxZ: p.z + half.z,
+        }
+      : {
+          minX: p.x - half.x,
+          maxX: p.x + half.x,
+          minY: dy > 0 ? face : face - SPIDER_SNAP_MAX_DISTANCE,
+          maxY: dy > 0 ? face + SPIDER_SNAP_MAX_DISTANCE : face,
+          minZ: p.z - half.z,
+          maxZ: p.z + half.z,
+        };
+    const candidates = this.hazardScratch;
+    this.level.world.queryBox(query, candidates);
+
+    let support: Collider | null = null;
+    let bestDistance = SPIDER_SNAP_MAX_DISTANCE;
+    for (const c of candidates) {
+      if (c.kind !== 'solid' && c.kind !== 'killFront') continue;
+      const b = colliderToAabb(c);
+      // Footprint overlap on the two axes perpendicular to the search.
+      const footprint = alongX
+        ? query.minY < b.maxY && query.maxY > b.minY && query.minZ < b.maxZ && query.maxZ > b.minZ
+        : query.minX < b.maxX && query.maxX > b.minX && query.minZ < b.maxZ && query.maxZ > b.minZ;
+      if (!footprint) continue;
+      // Opposing face: the face toward the player along the search axis.
+      const plane = alongX ? (dx > 0 ? b.minX : b.maxX) : dy > 0 ? b.minY : b.maxY;
+      const distance = (plane - face) * (alongX ? dx : dy);
+      if (distance < -0.001) continue; // behind the leading face
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        support = c;
+      }
+    }
+    if (support === null) return false; // no valid opposite support: ignore
+
+    // Destination: resting against the support face.
+    const dest = this.snapDest;
+    dest.x = p.x;
+    dest.y = p.y;
+    dest.z = p.z;
+    if (alongX) dest.x = face + dx * bestDistance - dx * half.x;
+    else dest.y = face + dy * bestDistance - dy * half.y;
+
+    // Swept transit box (single-axis → exact): hazards kill; a solid
+    // strictly INSIDE the transit aborts the snap (never clip into rock).
+    // Coplanar straddles (a neighboring slab sharing the support plane,
+    // e.g. segmented ceilings) are harmless and ignored — the probe below
+    // resolves multi-slab support with the usual teeter semantics.
+    const swept = this.snapSwept;
+    sweptSegmentAabb(swept, p, dest, half);
+    const transit = this.snapTransit;
+    this.level.world.queryBox(swept, transit);
+    for (const c of transit) {
+      if (c.id === support.id) continue;
+      const box = colliderToAabb(c);
+      if (!aabbOverlap(swept, box)) continue;
+      if (c.kind === 'hazard') {
+        this.die('hazard', c.id, null);
+        return true;
+      }
+      // Nearest face of the blocker along the search axis: strictly
+      // inside the transit (short of the support plane) = real blockage.
+      const nearFace = alongX ? (dx > 0 ? box.minX : box.maxX) : dy > 0 ? box.minY : box.maxY;
+      const nearDistance = (nearFace - face) * (alongX ? dx : dy);
+      if (nearDistance < bestDistance - 0.01) return false; // ignore press
+    }
+
+    // Commit: rest against the face, zero along-gravity velocity.
+    copyVec3(this.prevPosition, dest);
+    copyVec3(this.player.position, dest);
+    const v = this.player.velocity;
+    const alongG = v.x * g.x + v.y * g.y + v.z * g.z;
+    v.x -= g.x * alongG;
+    v.y -= g.y * alongG;
+    v.z -= g.z * alongG;
+    this.player.grounded = false;
+    this.player.supportColliderId = null;
+    this.applyGravityTransition(oppositeGravityMode(this.gravityModeValue));
+    return false;
+  }
+
+  /**
+   * THE single gravity transition path — shared by M3 gravity portals
    * and M4 gravity orbs (no duplicate gravity state). Preserves world position
    * and ALL velocity components (no teleport, no impulse, no snap); flips the
    * authoritative gravity mode and immediately invalidates grounded/support so
@@ -623,9 +877,11 @@ export class GameSimulation {
    *   steps below evaluate a zero-length destination path: only volumes
    *   overlapping the exit itself can fire the same step.
    * - Gravity mode and speed multiplier are UNCHANGED; lateral/forward
-   *   velocity is preserved (flow), vertical velocity is zeroed (clean
-   *   re-entry), lane intent is set to the authored `exitLaneIndex`, and
-   *   grounded/support is cleared (the next probe resolves it).
+   *   velocity is preserved (flow), velocity along the CURRENT gravity
+   *   axis is zeroed (clean re-entry — identical to the old vertical
+   *   zeroing on Floor/Ceiling, correct on walls), lane intent is set to
+   *   the authored `exitLaneIndex`, and grounded/support is cleared (the
+   *   next probe resolves it).
    * - Crossing an already-used entry is a no-op (forward motion never
    *   revisits a plane within an attempt anyway).
    */
@@ -651,7 +907,14 @@ export class GameSimulation {
     this.player.position.y = fired.exit.y;
     this.player.position.z = fired.exit.z;
     copyVec3(this.prevPosition, this.player.position);
-    this.player.velocity.y = 0;
+    // Zero the along-gravity component (M8C generalization of the M7.2
+    // vertical zeroing — behaviorally identical on Floor/Ceiling).
+    const g = this.gameplayFrame.gravityVector;
+    const v = this.player.velocity;
+    const alongG = v.x * g.x + v.y * g.y + v.z * g.z;
+    v.x -= g.x * alongG;
+    v.y -= g.y * alongG;
+    v.z -= g.z * alongG;
     this.player.targetLaneIndex = fired.exitLaneIndex;
     this.player.grounded = false;
     this.player.supportColliderId = null;

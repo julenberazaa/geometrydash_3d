@@ -5,6 +5,7 @@ import type {
   JumpOrbDef,
   JumpPadDef,
   LevelDefinition,
+  PlayerModePortalDef,
   SpeedPortalDef,
   TeleportPortalDef,
 } from './levelDefinition';
@@ -43,6 +44,8 @@ export interface LoadedLevel {
   gravityOrbs: readonly GravityOrbDef[];
   /** Teleport portals sorted by ascending entryZ (discontinuity order). */
   teleportPortals: readonly TeleportPortalDef[];
+  /** Player-mode portals sorted by ascending Z (M8C transition order). */
+  modePortals: readonly PlayerModePortalDef[];
 }
 
 /** Build runtime collision data from a declarative level. Pure: no THREE, no DOM. */
@@ -83,6 +86,7 @@ export const loadLevel = (def: LevelDefinition): LoadedLevel => {
   const gravityPortals = [...(def.gravityPortals ?? [])].sort((a, b) => a.z - b.z);
   const speedPortals = [...(def.speedPortals ?? [])].sort((a, b) => a.z - b.z);
   const teleportPortals = [...(def.teleportPortals ?? [])].sort((a, b) => a.entryZ - b.entryZ);
+  const modePortals = [...(def.modePortals ?? [])].sort((a, b) => a.z - b.z);
 
   const wallLaneCenters =
     def.wallLaneCenters !== undefined ? def.wallLaneCenters : def.laneCenters.map((c) => 3 - c);
@@ -102,6 +106,7 @@ export const loadLevel = (def: LevelDefinition): LoadedLevel => {
     jumpOrbs: def.jumpOrbs ?? [],
     gravityOrbs: def.gravityOrbs ?? [],
     teleportPortals: teleportPortals,
+    modePortals,
   };
 };
 

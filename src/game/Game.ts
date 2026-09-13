@@ -261,7 +261,7 @@ export class Game {
       `lane target: ${p.targetLaneIndex} / ${laneCount} | x: ${p.position.x.toFixed(3)} | vx: ${p.velocity.x.toFixed(2)}`,
       `grounded: ${String(p.grounded)} | support: ${p.supportColliderId ?? '—'}`,
       `gravity: ${sim.gravityMode} | g: (${frame.gravityVector.x},${frame.gravityVector.y},${frame.gravityVector.z}) | N: (${frame.surfaceNormal.x},${frame.surfaceNormal.y},${frame.surfaceNormal.z}) | laneAxis: (${frame.laneAxis.x},${frame.laneAxis.y},${frame.laneAxis.z})`,
-      `portal: ${sim.lastPortalId ?? '—'} | flips: ${sim.portalTransitionCount}`,
+      `portal: ${sim.lastPortalId ?? '—'} | flips: ${sim.portalTransitionCount} | mode: ${sim.playerMode} (${sim.lastModePortalId ?? '—'}/${sim.modeTransitionCount})`,
       `speed: ${sim.speedMultiplier}x (${sim.currentForwardSpeed.toFixed(1)} u/s) | pads: ${sim.padActivationCount} | orbs: ${sim.orbActivationCount} | speedPortals: ${sim.speedPortalCount} | last: ${sim.lastInteractionId ?? '—'}`,
       `status: ${sim.status} | attempt: ${sim.attempts} | progress: ${(sim.progress * 100).toFixed(1)}%`,
       `death: cause=${sim.lastDeathCause ?? '—'} | lethal=${sim.lastDeathLethalId ?? '—'} | holdTicks=${sim.deathHoldTicksLeft} | status=${sim.status}`,

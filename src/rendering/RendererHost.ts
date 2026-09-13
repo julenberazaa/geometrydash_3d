@@ -275,7 +275,14 @@ export class RendererHost {
     ip.y = lerp(prev.y, p.y, alpha);
     ip.z = lerp(prev.z, p.z, alpha);
 
-    this.playerView.updateFromSimulation(ip, sim.player.grounded, renderDtSeconds, sim.player.gravityMode);
+    this.playerView.updateFromSimulation(
+      ip,
+      sim.player.grounded,
+      renderDtSeconds,
+      sim.player.gravityMode,
+      sim.playerMode,
+      sim.shipThrusting,
+    );
     // Motion juice follows the SAME interpolated cube position (trail
     // integrity) with the same render dt (pause-freeze parity).
     this.vfx.update(renderDtSeconds, sim, ip);

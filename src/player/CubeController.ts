@@ -1,6 +1,6 @@
 import type { InputSnapshot } from '../input/InputSystem';
-import { clamp } from '../core/math';
 import { GameplayFrame } from './gameplayFrame';
+import { stepLaneKinematics } from './laneKinematics';
 import type { PlayerState } from './playerState';
 import type { CubeTuning } from './cubeTuning';
 
@@ -44,31 +44,6 @@ export interface CubeControllerStepContext {
   frame?: Readonly<GameplayFrame>;
 }
 
-/**
- * Lane index -> world lateral center, defined for ALL integers (M1.2).
- * Interior indices read the level array; exterior (virtual) lanes extrapolate
- * linearly from the outer pair, so each outward tap past the edge lane moves
- * one consistent lane step further out. Whether the Cube can stay there is
- * decided by support probing, gravity, and the death plane — never by
- * clamping intent or by invisible side walls.
- */
-function laneCenterForIndex(centers: readonly number[], index: number): number {
-  const n = centers.length;
-  if (n === 0) return 0;
-  const first = centers[0] ?? 0;
-  if (n === 1) return first;
-  const last = centers[n - 1] ?? first;
-  if (index < 0) {
-    const second = centers[1] ?? first;
-    return first + (first - second) * -index;
-  }
-  if (index > n - 1) {
-    const secondLast = centers[n - 2] ?? last;
-    return last + (last - secondLast) * (index - (n - 1));
-  }
-  return centers[index] ?? first;
-}
-
 export class CubeController {
   private readonly tuning: CubeTuning;
   /** Frame is replaceable data for future gravity modes; M1 always Floor. */
@@ -104,7 +79,7 @@ export class CubeController {
     //    key event spans multiple simulation steps; holding a lane key does
     //    NOT slide across lanes (precision arcade semantics).
     //    A tap past the outer lane steps onto a VIRTUAL lane (extrapolated
-    //    center — see laneCenterForIndex). Support governs the outcome: the
+    //    center — see laneKinematics). Support governs the outcome: the
     //    Cube brakes there if supported, steers back with an inward tap, or
     //    runs out of support and falls. No fake side walls, ever.
     // ------------------------------------------------------------------
@@ -112,81 +87,10 @@ export class CubeController {
     if (input.laneRight.pressedThisStep) state.targetLaneIndex += 1;
 
     // ------------------------------------------------------------------
-    // 2. Lateral kinematics in LANE-AXIS space (M8B generalization).
-    //    The lane coordinate s = position · laneAxis and lane velocity
-    //    vs = velocity · laneAxis (Floor/Ceiling: laneAxis −X, so s = −x;
-    //    walls: laneAxis +Y, so s = y). The accelerate/cruise/brake/snap
-    //    policy below is IDENTICAL in s-space on every surface; only the
-    //    projection axis changes. Floor/Ceiling behavior is bit-identical
-    //    to the M1 policy (the negation is linear — proven by the
-    //    floorCompat golden gate).
+    // 2. Lateral kinematics — the shared lane policy (M8C: owned by
+    //    laneKinematics.ts, used by every mode controller).
     // ------------------------------------------------------------------
-    const la = frame.laneAxis;
-    const targetCenter = laneCenterForIndex(context.laneCenters, state.targetLaneIndex);
-    // Target s: lane centers are stored in world units along the lane
-    // axis' dominant direction (X for Floor/Ceiling with laneAxis −X, Y
-    // for walls with laneAxis +Y) — see GameSimulation.laneCentersForMode.
-    const laneSign = la.x !== 0 ? Math.sign(la.x) : Math.sign(la.y);
-    const sTarget = targetCenter * laneSign;
-    const sPos = state.position.x * la.x + state.position.y * la.y + state.position.z * la.z;
-    const sVel = state.velocity.x * la.x + state.velocity.y * la.y + state.velocity.z * la.z;
-    const dx = sTarget - sPos;
-    const absDx = Math.abs(dx);
-    const absV = Math.abs(sVel);
-
-    let desiredV: number;
-    if (absDx <= t.laneTargetEpsilon) {
-      if (absV <= t.laneSnapSpeedEpsilon) {
-        // Stabilization: physically arrived; snap onto the exact center
-        // along the lane axis (no cross-axis position touched).
-        const snap = sTarget - sPos;
-        state.position.x += la.x * snap;
-        state.position.y += la.y * snap;
-        state.position.z += la.z * snap;
-        state.velocity.x -= la.x * sVel;
-        state.velocity.y -= la.y * sVel;
-        state.velocity.z -= la.z * sVel;
-        desiredV = 0;
-      } else {
-        desiredV = 0; // still fast inside epsilon -> brake this step
-      }
-    } else {
-      const dir = Math.sign(dx);
-      // Speed that exactly stops at the target under laneBrakeDecel...
-      const stoppingSpeed = Math.sqrt(2 * t.laneBrakeDecel * absDx);
-      // ...but never below the minimum approach speed (no asymptotic creep).
-      const cappedSpeed = clamp(stoppingSpeed, t.laneMinApproachSpeed, t.laneMaxSpeed);
-      desiredV = dir * cappedSpeed;
-    }
-
-    // Rate-limited approach to desiredV, then HARD geometric caps:
-    // the lane velocity may never exceed absDx/dt toward the target, so
-    // the integration step (done by the simulation through the collision
-    // world) can never cross the lane center. No position mutation here
-    // beyond the stabilization snap above — the controller computes
-    // velocities only; GameSimulation integrates.
-    const sVelNow =
-      state.velocity.x * la.x + state.velocity.y * la.y + state.velocity.z * la.z;
-    const rate =
-      Math.sign(sVelNow) === Math.sign(desiredV) && Math.abs(sVelNow) > Math.abs(desiredV)
-        ? t.laneBrakeDecel
-        : t.laneAccel;
-    const dv = desiredV - sVelNow;
-    const maxDv = rate * context.dt;
-    const appliedDv = clamp(dv, -maxDv, maxDv);
-    state.velocity.x += la.x * appliedDv;
-    state.velocity.y += la.y * appliedDv;
-    state.velocity.z += la.z * appliedDv;
-
-    const speedCap = absDx / context.dt;
-    const sVelFinal =
-      state.velocity.x * la.x + state.velocity.y * la.y + state.velocity.z * la.z;
-    if (Math.abs(sVelFinal) > speedCap) {
-      const correction = Math.sign(sVelFinal) * speedCap - sVelFinal;
-      state.velocity.x += la.x * correction;
-      state.velocity.y += la.y * correction;
-      state.velocity.z += la.z * correction;
-    }
+    stepLaneKinematics(state, frame, context.laneCenters, t, context.dt);
 
     // ------------------------------------------------------------------
     // 3. Vertical kinematics along gravityVector (BEFORE jump so the

@@ -168,7 +168,7 @@ describe('VfxSystem surface-contact emission', () => {
     runFrames(vfx, sim, 120);
     expect(vfx.contactSamples).toBeGreaterThan(0); // skid present...
     expect(vfx.countersSnapshot).toEqual({
-      jump: 0, landing: 0, gravity: 0, speed: 0, pad: 0, jumpOrb: 0, gravityOrb: 0, teleport: 0,
+      jump: 0, landing: 0, gravity: 0, speed: 0, pad: 0, jumpOrb: 0, gravityOrb: 0, teleport: 0, mode: 0,
     });
     vfx.dispose();
   });

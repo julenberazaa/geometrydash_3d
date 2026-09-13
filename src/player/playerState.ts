@@ -16,6 +16,14 @@ import { vec3 } from '../core/math';
 export type GravityMode = 'floor' | 'ceiling' | 'leftWall' | 'rightWall';
 
 /**
+ * Authoritative player mode (M8C). One mode is active at a time; rendering
+ * observes. `cube` = jump physics, `ship` = continuous thrust flight,
+ * `spider` = instant opposite-surface snaps. Owned by `GameSimulation`;
+ * `playerMode` here is the read-only mirror (same pattern as gravityMode).
+ */
+export type PlayerMode = 'cube' | 'ship' | 'spider';
+
+/**
  * Pure simulation state of the player. THREE.js never touches this.
  * Position is the CENTER of the gameplay hitbox.
  */
@@ -29,6 +37,8 @@ export interface PlayerState {
   /** Number of lanes configured by the level (bounds targetLaneIndex). */
   laneCount: number;
   gravityMode: GravityMode;
+  /** Read-only mirror of the simulation's authoritative player mode. */
+  playerMode: PlayerMode;
   /** Id of the collider currently supporting the player, when grounded. */
   supportColliderId: string | null;
 }
@@ -39,6 +49,8 @@ export interface PlayerStartState {
   laneCount: number;
   /** Starting gravity orientation (defaults to 'floor'). */
   gravityMode?: GravityMode;
+  /** Starting player mode (defaults to 'cube'). */
+  playerMode?: PlayerMode;
 }
 
 export const createPlayerState = (start: PlayerStartState): PlayerState => ({
@@ -48,6 +60,7 @@ export const createPlayerState = (start: PlayerStartState): PlayerState => ({
   targetLaneIndex: start.laneIndex,
   laneCount: start.laneCount,
   gravityMode: start.gravityMode ?? 'floor',
+  playerMode: start.playerMode ?? 'cube',
   supportColliderId: null,
 });
 
@@ -61,5 +74,6 @@ export const resetPlayerState = (state: PlayerState, start: PlayerStartState): v
   state.grounded = false;
   state.targetLaneIndex = start.laneIndex;
   state.gravityMode = start.gravityMode ?? 'floor';
+  state.playerMode = start.playerMode ?? 'cube';
   state.supportColliderId = null;
 };

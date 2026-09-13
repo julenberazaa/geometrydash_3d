@@ -1,5 +1,5 @@
 import { Game } from './game/Game';
-import type { GravityMode } from './player/playerState';
+import type { GravityMode, PlayerMode } from './player/playerState';
 import { resolveLevel } from './content/levelRegistry';
 import { parseReplay } from './replay/replayFormat';
 
@@ -60,6 +60,8 @@ declare global {
       laneIndex: () => number;
       playerPosition: () => { x: number; y: number; z: number };
       gravityMode: () => GravityMode;
+      playerMode: () => PlayerMode;
+      modeTransitionCount: () => number;
       lastPortalId: () => string | null;
       portalTransitionCount: () => number;
       speedMultiplier: () => number;
@@ -172,6 +174,8 @@ window.__gd3d = {
   laneIndex: () => game['simulation'].player.targetLaneIndex,
   playerPosition: () => ({ ...game['simulation'].player.position }),
   gravityMode: () => game['simulation'].gravityMode,
+  playerMode: () => game['simulation'].playerMode,
+  modeTransitionCount: () => game['simulation'].modeTransitionCount,
   lastPortalId: () => game['simulation'].lastPortalId,
   portalTransitionCount: () => game['simulation'].portalTransitionCount,
   speedMultiplier: () => game['simulation'].speedMultiplier,

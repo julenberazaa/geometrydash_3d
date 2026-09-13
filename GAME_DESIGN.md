@@ -266,12 +266,6 @@ rejected explicitly rather than mis-played. Deaths replay too (a death tape
 reproduces the same death). This is a determinism proof and a practice/
 verification tool, not a menu, timeline, or editor feature.
 
-## 7. Out of scope for the current foundation
-
-Music/BPM sync, public editor, backend, persistence. See `ROADMAP.md`.
-(Pads, orbs, speed portals and the trigger infrastructure shipped in M4 —
-§6.1. Ship/Spider modes, wall gravity and moving hazards ship in M8.)
-
 ## 7.3 Lava — CURRENT (M8A)
 
 LAVA IS GAMEPLAY. Touching lava (pool surface, fall column, source vent)
@@ -364,6 +358,38 @@ Deliberate M7.2 content/product decisions (no temporary coordinates here):
   floating volumes; death bursts hit harder. All Cube-only, all fair and
   telegraphed — difficulty from geometry, timing, route commitment and
   lane discipline, never hidden deaths.
+
+## 7.4 Player modes — CURRENT (M8C)
+
+One authoritative player mode lives in the simulation (`cube` | `ship` |
+`spider`); rendering observes. Attempts always start as Cube. Replay stays
+input-only (modes derive deterministically from physical inputs).
+
+- **Mode portals** are data-driven forward-crossing planes (`id`, `z`,
+  `target`). Crossing switches mode exactly once per attempt with a clean
+handoff: forward/lateral flow preserved, along-gravity velocity zeroed,
+grounded/support cleared. Sky-cyan Ship rings (forward-dart glyph),
+mint-green Spider rings (surface-switch glyph).
+- **Ship:** continuous flight, not jumping. Holding the primary action
+  (`Space`) thrusts AWAY from gravity; release lets gravity pull back
+  toward the support. Mode-owned terminal speeds both ways; frame-generic
+  on all four gravity orientations. Lane steering stays available.
+- **Spider:** runs like a Cube but never jumps. On the primary PRESS the
+  Spider instantly switches to the OPPOSITE support surface (floor ↔
+  ceiling, leftWall ↔ rightWall), landing on the nearest valid opposite
+  support within range and flipping gravity with it. Hold never repeats
+  (edge only). A hazard in the transit path kills (death wins — no
+  magical pass-through); a solid in the way, or no support in range,
+  ignores the press (never clip, never void-launch).
+
+`Space` is the universal primary action in every mode (jump / thrust /
+surface-switch).
+
+## 7.5 Out of scope for the current foundation
+
+Music/BPM sync, public editor, backend, persistence. See `ROADMAP.md`.
+(Pads, orbs, speed portals and the trigger infrastructure shipped in M4 —
+§6.1. Ship/Spider modes, wall gravity and moving hazards ship in M8.)
 
 ## 8. Reference art
 

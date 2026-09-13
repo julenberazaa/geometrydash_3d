@@ -10,6 +10,7 @@
  *   gravityPortals, speedPortals, jumpPads, jumpOrbs, gravityOrbs,
  *   teleportPortals (M7.2, only when present — absent writes zero bytes),
  *   lava (M8A, only when present — absent writes zero bytes),
+ *   modePortals (M8C, only when present — absent writes zero bytes),
  *   solids, hazards, id.
  *
  * Explicitly EXCLUDED (not gameplay-relevant):
@@ -30,6 +31,7 @@ import type {
   LevelDefinition,
   LevelHazard,
   LevelSolid,
+  PlayerModePortalDef,
   SpeedPortalDef,
   TeleportPortalDef,
 } from '../level/levelDefinition';
@@ -106,6 +108,12 @@ const writeLava = (h: DeterministicHasher, l: LavaVolumeDef): void => {
   writeVec3(h, l.center);
   writeVec3(h, l.halfExtents);
   h.writeInt32(l.role === 'pool' ? 0 : l.role === 'fall' ? 1 : 2);
+};
+
+const writeModePortal = (h: DeterministicHasher, m: PlayerModePortalDef): void => {
+  h.writeString(m.id);
+  h.writeFloat64(m.z);
+  h.writeInt32(m.target === 'cube' ? 0 : m.target === 'ship' ? 1 : 2);
 };
 
 const writeSolid = (h: DeterministicHasher, s: LevelSolid): void => {
@@ -197,6 +205,13 @@ export const computeLevelFingerprint = (def: LevelDefinition): string => {
     h.writeString('lava:v1');
     h.writeInt32(lava.length);
     for (const l of lava) writeLava(h, l);
+  }
+  // M8C mode portals: gameplay transitions. Same conditional pattern.
+  const modePortals = def.modePortals ?? [];
+  if (modePortals.length > 0) {
+    h.writeString('modes:v1');
+    h.writeInt32(modePortals.length);
+    for (const m of modePortals) writeModePortal(h, m);
   }
   // visualSetpieces: presentation-only, never fingerprinted (like theme /
   // visualSequence / rhythmCues / hazard visual+mount / teleport style).

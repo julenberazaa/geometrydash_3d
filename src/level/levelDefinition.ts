@@ -1,5 +1,5 @@
 import type { ColliderKind } from '../collision/collider';
-import type { GravityMode } from '../player/playerState';
+import type { GravityMode, PlayerMode } from '../player/playerState';
 import type { RhythmCue } from '../visuals/rhythmCues';
 import type { Vec3 } from '../core/math';
 
@@ -21,6 +21,18 @@ export interface GravityPortalDef {
   z: number;
   /** Gravity mode to switch to when crossed. */
   target: GravityMode;
+}
+
+/**
+ * Player-mode portal (M8C): switches cube/ship/spider on forward crossing.
+ */
+export interface PlayerModePortalDef {
+  /** Stable identifier (debug/QA). */
+  id: string;
+  /** World Z of the crossing plane. */
+  z: number;
+  /** Player mode to switch to when crossed. */
+  target: PlayerMode;
 }
 
 /**
@@ -372,6 +384,16 @@ export interface LevelDefinition {
    * Optional; levels without teleports behave exactly as before.
    */
   teleportPortals?: TeleportPortalDef[];
+  /**
+   * Player-mode portals (M8C): a deterministic forward-crossing plane at
+   * world Z. Crossing it switches the authoritative player mode
+   * (cube/ship/spider) exactly once per attempt: forward flow preserved,
+   * grounded/support cleared, velocity along the current gravity axis
+   * zeroed for a clean handoff. One-shot per attempt (respawn re-arms).
+   * Fingerprinted conditionally (levels without mode portals hash
+   * byte-identically to before).
+   */
+  modePortals?: PlayerModePortalDef[];
   /**
    * Lethal lava gameplay volumes (M8A). Optional; levels without lava
    * behave exactly as before. See `LavaVolumeDef`.

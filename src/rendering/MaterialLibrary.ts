@@ -52,6 +52,13 @@ export class MaterialLibrary {
    */
   public readonly lavaSurface: THREE.MeshStandardMaterial;
   public readonly lavaDeep: THREE.MeshStandardMaterial;
+  /**
+   * M8C mode-portal family: sky-cyan Ship rings + mint-green Spider rings
+   * (distinct from yellow jump, blue gravity, violet teleport and tier
+   * speed colors by construction).
+   */
+  public readonly modeShip: THREE.MeshStandardMaterial;
+  public readonly modeSpider: THREE.MeshStandardMaterial;
   public readonly interactionDim: THREE.MeshBasicMaterial;
   public readonly finishGate: THREE.MeshBasicMaterial;
 
@@ -225,6 +232,20 @@ export class MaterialLibrary {
         emissiveIntensity: 0.8,
       }),
     );
+    // M8C mode portals: sky-cyan Ship + mint-green Spider (crisp under
+    // bloom, below white-clip, distinct from every other portal family).
+    const modeMat = (color: number): THREE.MeshStandardMaterial =>
+      track(
+        new THREE.MeshStandardMaterial({
+          color,
+          roughness: 0.4,
+          metalness: 0,
+          emissive: color,
+          emissiveIntensity: 1.2,
+        }),
+      );
+    this.modeShip = modeMat(0x4fd8ff);
+    this.modeSpider = modeMat(0x5dff9d);
     this.interactionDim = track(new THREE.MeshBasicMaterial({ color: theme.interactionDim }));
     this.finishGate = track(
       new THREE.MeshBasicMaterial({

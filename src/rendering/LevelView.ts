@@ -308,6 +308,7 @@ export class LevelView {
 
     this.buildGravityPortals(level);
     this.buildTeleportPortals(level);
+    this.buildModePortals(level);
     this.buildLavaVolumes(level);
     this.buildSetpieces(level);
   }
@@ -423,6 +424,28 @@ export class LevelView {
       // Exit: a smaller doorway ring at the authored destination.
       const exitR = portal.style === 'maw' ? 1.5 : 1.3;
       this.buildPortalRing(portal.exit.x, portal.exit.y + 0.4, portal.exit.z, exitR, frameMat, paneMat);
+    }
+  }
+
+  /**
+   * M8C player-mode portals: compact ring gates in the family language —
+   * sky-cyan Ship rings with a forward-dart glyph, mint-green Spider rings
+   * with a surface-switch (down) chevron. Same shared geometries as every
+   * other portal; triggering lives in the simulation, never here.
+   */
+  private buildModePortals(level: LoadedLevel): void {
+    if (level.modePortals.length === 0) return;
+    for (const portal of level.modePortals) {
+      const isShip = portal.target === 'ship';
+      const mat = isShip ? this.library.modeShip : this.library.modeSpider;
+      this.buildPortalRing(0, 1.7, portal.z, 1.6, mat, mat);
+      const glyph = new THREE.Mesh(this.library.chevron, mat);
+      glyph.scale.setScalar(0.85);
+      glyph.position.set(0, 1.7, portal.z);
+      // Ship: dart pointing +Z (forward flight); Spider: chevron pointing
+      // down (surface-switch read).
+      glyph.rotation.x = isShip ? Math.PI / 2 : 0;
+      this.group.add(glyph);
     }
   }
 

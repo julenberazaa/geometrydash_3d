@@ -68,6 +68,9 @@ export interface VfxSimView {
   /** M7.2 teleport edge + exit anchor (exit-expansion burst). */
   readonly teleportEventCount: number;
   readonly lastTeleport: Readonly<{ x: number; y: number; z: number }>;
+  /** M8C mode-transition edge + current mode (semantic burst color). */
+  readonly modeTransitionCount: number;
+  readonly playerMode: string;
 }
 
 /** Compile-time proof that the real sim satisfies the view (no drift). */
@@ -85,6 +88,8 @@ export interface FxCounters {
   jumpOrb: number;
   gravityOrb: number;
   teleport: number;
+  /** M8C mode-transition pulses. */
+  mode: number;
 }
 
 /** Teleport/clear distance — mirrors the RendererHost camera-snap edge. */
@@ -150,6 +155,7 @@ export class VfxSystem {
   private lastSpeedCount = 0;
   private lastEventCount = 0;
   private lastTeleportCount = 0;
+  private lastModeCount = 0;
   private readonly lastRenderPos = { x: 0, y: 0, z: 0 };
   private hasRenderPos = false;
   private readonly lastAirVel = { x: 0, y: 0, z: 0 };
@@ -157,7 +163,7 @@ export class VfxSystem {
 
   // --- QA observability ---
   private readonly counters: FxCounters = {
-    jump: 0, landing: 0, gravity: 0, speed: 0, pad: 0, jumpOrb: 0, gravityOrb: 0, teleport: 0,
+    jump: 0, landing: 0, gravity: 0, speed: 0, pad: 0, jumpOrb: 0, gravityOrb: 0, teleport: 0, mode: 0,
   };
   /** Monotonic clear counter: +1 per clearAll (attempt/death/teleport/fx-off
    *  reset). Browser QA pairs it with the attempts edge to prove the live
@@ -388,6 +394,7 @@ export class VfxSystem {
     this.lastSpeedCount = sim.speedPortalCount;
     this.lastEventCount = sim.interactionEventCount;
     this.lastTeleportCount = sim.teleportEventCount;
+    this.lastModeCount = sim.modeTransitionCount;
     this.lastRenderPos.x = renderPos.x;
     this.lastRenderPos.y = renderPos.y;
     this.lastRenderPos.z = renderPos.z;
@@ -460,6 +467,19 @@ export class VfxSystem {
     // so the burst fires after the wipe, never before it).
     if (sim.teleportEventCount !== this.lastTeleportCount) {
       this.fireTeleportBurst(sim);
+    }
+
+    // M8C mode transition: one semantic-color pulse at the player (ship
+    // sky-cyan, spider mint-green, cube white) + a streak kick.
+    if (sim.modeTransitionCount !== this.lastModeCount) {
+      const modeColor =
+        sim.playerMode === 'ship' ? 0x4fd8ff : sim.playerMode === 'spider' ? 0x5dff9d : 0xffffff;
+      this.spawnBurst(
+        renderPos, fx.gravityCount, modeColor, fx.gravitySpeed, fx.gravityLife,
+        n.x, n.y, n.z, 0.9, 0.7,
+      );
+      this.streakSpike = Math.max(this.streakSpike, 0.7);
+      this.counters.mode += 1;
     }
 
     // Pad/orb activations from the sim's interaction edge. Same-frame

@@ -10,9 +10,12 @@
  *   - player position, velocity, grounded, supportColliderId
  *   - targetLaneIndex, laneCount (lane intent + policy input)
  *   - gravityMode (authoritative), speedMultiplier (authoritative)
+ *   - playerMode (M8C, authoritative — ONLY when the level has mode
+ *     portals, else zero bytes so old levels hash identically)
  *   - elapsedSimTime, deathHoldTicksLeft (integer-tick timing authority)
  *   - usedInteractions: one-shot lifecycle bits per pad/orb id (level order)
  *   - usedTeleports: one-shot lifecycle bits per teleport id (level order)
+ *   - usedModePortals: one-shot lifecycle bits per mode portal (level order)
  *
  * EXCLUDED (with reason):
  *   - attempts: session counter, never read by gameplay
@@ -79,6 +82,13 @@ export const computeStateFingerprint = (sim: GameSimulation): string => {
   h.writeFloat64(sim.elapsedSimTime);
   h.writeInt32(sim.deathHoldTicksLeft);
 
+  // M8C authoritative player mode — conditional (levels without mode
+  // portals write zero bytes; pre-M8C state hashes are unchanged).
+  if (sim.level.modePortals.length > 0) {
+    const mode = sim.playerMode;
+    h.writeInt32(mode === 'cube' ? 0 : mode === 'ship' ? 1 : 2);
+  }
+
   // One-shot interaction lifecycle bits, in deterministic level order.
   for (const pad of sim.level.jumpPads) h.writeBoolean(sim.isInteractionUsed(pad.id));
   for (const orb of sim.level.jumpOrbs) h.writeBoolean(sim.isInteractionUsed(orb.id));
@@ -86,6 +96,8 @@ export const computeStateFingerprint = (sim: GameSimulation): string => {
   // M7.2 one-shot teleport lifecycle bits, in level order. Levels without
   // teleports write zero bytes here — pre-M7.2 state hashes are unchanged.
   for (const t of sim.level.teleportPortals) h.writeBoolean(sim.isTeleportUsed(t.id));
+  // M8C one-shot mode-portal lifecycle bits, in level order (conditional).
+  for (const m of sim.level.modePortals) h.writeBoolean(sim.isModePortalUsed(m.id));
 
   return h.digest();
 };

@@ -338,7 +338,8 @@ describe('M8B wall player + hazard presentation', () => {
     const library = makeTestLibrary();
     const view = new PlayerView(library);
     view.updateFromSimulation({ x: 0, y: 0, z: 0 }, true, 0.016, 'leftWall');
-    const cube = view.group.children[0];
+    // M8C: the cube mesh rides inside the cube assembly group now.
+    const cube = view.group.children[0]?.children[0];
     expect((cube?.rotation.z ?? 0)).toBeCloseTo(Math.PI / 2, 6);
     view.updateFromSimulation({ x: 0, y: 0, z: 0 }, true, 0.016, 'rightWall');
     expect((cube?.rotation.z ?? 0)).toBeCloseTo(-Math.PI / 2, 6);

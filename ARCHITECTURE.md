@@ -68,6 +68,10 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   convention: increasing lane index runs toward screen-right, so the
   Floor AND Ceiling laneAxis is −X (the +Z chase camera shows −X on the
   right); wall laneAxis is +Y on BOTH walls (increasing index runs UP).
+- `laneKinematics.ts` (M8C): the ONE owner of the lane policy —
+  edge-triggered intent lives in each controller, but the
+  accelerate/cruise/brake/settle kinematics (`stepLaneKinematics` +
+  `laneCenterForIndex`) live here and serve Cube, Ship and Spider alike.
 - `CubeController`: owns Cube movement policy. Per step: lane intent
   (**edge-triggered only, unclamped since M1.2** — one tap = one lane change;
   taps past the outer lane address virtual lanes via `laneCenterForIndex`
@@ -85,7 +89,17 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   frame arrives PER STEP via the step context from the simulation's
   authoritative gravity mode; the controller's own frame is only a fallback
   for direct construction.
-- `cubeTuning.ts`: ALL gameplay magic numbers live here (see `GAME_DESIGN.md`
+- `ShipController` (M8C): continuous flight — shared lane intent +
+  kinematics, gravity always on, primary-held thrust away from the
+  support, mode-owned terminal speeds, constant forward speed.
+  Frame-generic (all accelerations through frame vectors). Own tuning
+  (`shipTuning.ts` — Cube tuning never touched for Ship).
+- `SpiderController` (M8C): Cube-like running (shared lane policy,
+  gravity + fast-fall + terminal from the frozen `CUBE_TUNING` — same
+  world gravity, deliberately) but NEVER jumps; the primary press is
+  consumed by the simulation as an opposite-surface snap (the controller
+  never touches the CollisionWorld).
+- `cubeTuning.ts`: ALL Cube gameplay magic numbers live here (see `GAME_DESIGN.md`
   §2 for values). Tune by playing, not by theory. NOTE (M4): forward speed is
   NOT tuning — the level's `baseForwardSpeed` × the simulation's speed
   multiplier is the single authority, delivered per step as

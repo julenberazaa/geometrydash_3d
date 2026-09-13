@@ -43,6 +43,8 @@ interface MutableSimView {
   lastInteraction: { kind: InteractionKind; x: number; y: number; z: number };
   teleportEventCount: number;
   lastTeleport: MutableVec;
+  modeTransitionCount: number;
+  playerMode: string;
 }
 
 const FLOOR_FRAME = (): MutableSimView['gameplayFrame'] => ({
@@ -67,6 +69,8 @@ const makeSimView = (): MutableSimView => ({
   lastInteraction: { kind: 'pad', x: 0, y: 0, z: 0 },
   teleportEventCount: 0,
   lastTeleport: { x: 0, y: 0, z: 0 },
+  modeTransitionCount: 0,
+  playerMode: 'cube',
 });
 
 const DT = 1 / 60;
@@ -259,7 +263,7 @@ describe('VfxSystem emits exactly once per real sim edge', () => {
     vfx.update(DT, sim, sim.player.position);
     runFrames(vfx, sim, 60); // no events: only trail accumulates
     expect(vfx.countersSnapshot).toEqual({
-      jump: 0, landing: 0, gravity: 0, speed: 0, pad: 0, jumpOrb: 0, gravityOrb: 0, teleport: 0,
+      jump: 0, landing: 0, gravity: 0, speed: 0, pad: 0, jumpOrb: 0, gravityOrb: 0, teleport: 0, mode: 0,
     });
     expect(vfx.activeParticles).toBe(0); // trail is not in the burst pool
     expect(vfx.trailSamples).toBeGreaterThan(0);
@@ -391,7 +395,7 @@ describe('VfxSystem independence (?fx=off)', () => {
     expect(vfx.activeParticles).toBe(0);
     expect(vfx.activeStreaks).toBe(0);
     expect(vfx.countersSnapshot).toEqual({
-      jump: 0, landing: 0, gravity: 0, speed: 0, pad: 0, jumpOrb: 0, gravityOrb: 0, teleport: 0,
+      jump: 0, landing: 0, gravity: 0, speed: 0, pad: 0, jumpOrb: 0, gravityOrb: 0, teleport: 0, mode: 0,
     });
     // Gameplay state flowed through untouched (positions kept advancing).
     expect(sim.player.position.z).toBeGreaterThan(30);

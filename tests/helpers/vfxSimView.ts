@@ -29,6 +29,8 @@ export interface MutableSimView {
   lastInteraction: { kind: InteractionKind; x: number; y: number; z: number };
   teleportEventCount: number;
   lastTeleport: MutableVec;
+  modeTransitionCount: number;
+  playerMode: string;
 }
 
 export const floorFrame = (): MutableSimView['gameplayFrame'] => ({
@@ -58,6 +60,8 @@ export const makeSimView = (): MutableSimView => ({
   lastInteraction: { kind: 'pad', x: 0, y: 0, z: 0 },
   teleportEventCount: 0,
   lastTeleport: { x: 0, y: 0, z: 0 },
+  modeTransitionCount: 0,
+  playerMode: 'cube',
 });
 
 export const DT = 1 / 60;
