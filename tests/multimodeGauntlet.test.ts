@@ -7,6 +7,16 @@ import { ReplayCoordinator } from '../src/replay/ReplayCoordinator';
 import { computeLevelFingerprint } from '../src/replay/levelFingerprint';
 import { TEST_LEVEL } from '../src/content/levels/testLevel01';
 import { idleInput } from './helpers/simulation';
+import type { PhysicalInputSnapshot } from '../src/input/InputSystem';
+
+/** Space held without edges (ship thrust continuation after the press). */
+const holdJumpInput: PhysicalInputSnapshot = {
+  space: { held: true, pressedThisStep: false, releasedThisStep: false },
+  up: { held: false, pressedThisStep: false, releasedThisStep: false },
+  down: { held: false, pressedThisStep: false, releasedThisStep: false },
+  laneLeft: { held: false, pressedThisStep: false, releasedThisStep: false },
+  laneRight: { held: false, pressedThisStep: false, releasedThisStep: false },
+};
 import { recordAttempt, playReplay } from './helpers/replay';
 import { MultimodeDriver, driveMultimodeToFinish } from './helpers/multimodeGauntletScript';
 
@@ -64,9 +74,9 @@ describe('M8E multimode gauntlet', () => {
 
   it('kills frontally through the wrong maze door', () => {
     const sim = new GameSimulation(MULTIMODE_GAUNTLET_01);
-    // Jump both S1 gaps but hold center: wall 1 (z 180) has its door on
-    // lane 0, so the center lane runs straight into killFront.
-    const driver = new MultimodeDriver([37.5, 87.5], [], []);
+    // Jump both S1 gaps + the S1 river curb but hold center: wall 1 (z 180)
+    // has its door on lane 0, so the center lane runs straight into killFront.
+    const driver = new MultimodeDriver([37.5, 87.5, 125.5], [], []);
     let tick = 0;
     for (; tick < 6000 && sim.attempts === 1; tick++) {
       sim.update(driver.nextInput(sim.player.position.z, sim));
@@ -85,6 +95,93 @@ describe('M8E multimode gauntlet', () => {
     }
     expect(sim.attempts).toBeGreaterThan(1);
     expect(sim.lastDeathCause).toBe('lava');
+  });
+
+  it('M8.1 river curb kills as lava when the hop is missed', () => {
+    const sim = new GameSimulation(MULTIMODE_GAUNTLET_01);
+    // Jump both S1 gaps but NOT the river curb: the Cube runs into lava.
+    const driver = new MultimodeDriver([37.5, 87.5], [], []);
+    for (let tick = 0; tick < 6000 && sim.attempts === 1; tick++) {
+      sim.update(driver.nextInput(sim.player.position.z, sim));
+    }
+    expect(sim.attempts).toBeGreaterThan(1);
+    expect(sim.lastDeathCause).toBe('lava');
+    expect(sim.deathPosition.z).toBeGreaterThan(125);
+    expect(sim.deathPosition.z).toBeLessThan(135);
+  });
+
+  it('M8.1 ship flying over the exit ring does NOT switch modes', () => {
+    const sim = new GameSimulation(MULTIMODE_GAUNTLET_01);
+    // Drive to ship mode, then take over and ceiling-ride (hold thrust)
+    // past the ship-off gate (z 845): the bounded exit volume (y −2..6)
+    // must not catch a ship at y ≈ 8.45 — missing the visible ring means
+    // no transition (the run then fails later by geometry, not here).
+    const driver = new MultimodeDriver();
+    let tick = 0;
+    // Take over past the z 790 dive-under block (holding thrust from the
+    // start would climb straight into it) but before the driver's own
+    // exit-gate descent (~815), then ceiling-ride through the gate plane.
+    for (
+      tick = 0;
+      tick < 12000 &&
+      !(sim.playerMode === 'ship' && sim.player.position.z > 801);
+      tick++
+    ) {
+      sim.update(driver.nextInput(sim.player.position.z, sim));
+    }
+    expect(sim.playerMode).toBe('ship');
+    for (; tick < 14000 && sim.player.position.z < 852; tick++) {
+      sim.update(holdJumpInput);
+    }
+    expect(sim.player.position.z).toBeGreaterThan(845);
+    expect(sim.playerMode).toBe('ship');
+    expect(sim.status).toBe('running');
+  });
+
+  it('M8.1 every gauntlet gravity/mode portal carries a bounded trigger', () => {
+    const def = MULTIMODE_GAUNTLET_01;
+    for (const p of def.gravityPortals ?? []) {
+      expect(p.triggerCenter, p.id).toBeDefined();
+      expect(p.triggerHalfExtents, p.id).toBeDefined();
+    }
+    for (const p of def.modePortals ?? []) {
+      expect(p.triggerCenter, p.id).toBeDefined();
+      expect(p.triggerHalfExtents, p.id).toBeDefined();
+    }
+    expect((def.gravityPortals ?? []).length).toBe(4);
+    expect((def.modePortals ?? []).length).toBe(4);
+  });
+
+  it('M8.1 S3 routing gaps kill floor-runners by geometry (void, not arbitrary)', () => {
+    const sim = new GameSimulation(MULTIMODE_GAUNTLET_01);
+    // A runner who "missed" the wall-left gate (placed past it, still on
+    // the floor) meets the first routing gap at z 320..330 and falls out.
+    sim.debugPlaceAt(0, 1.5, 315);
+    for (let tick = 0; tick < 2000 && sim.attempts === 1; tick++) {
+      sim.update(idleInput);
+    }
+    expect(sim.attempts).toBeGreaterThan(1);
+    expect(sim.lastDeathCause).toBe('void');
+    expect(sim.deathPosition.z).toBeGreaterThan(318);
+    expect(sim.deathPosition.z).toBeLessThan(345);
+  });
+
+  it('M8.1 ship corridor is a bounded tunnel (floor + ceiling + side walls)', () => {
+    const def = MULTIMODE_GAUNTLET_01;
+    for (const side of [-6.5, 6.5]) {
+      const wall = def.solids.find(
+        (s) =>
+          Math.abs(s.center.x - side) < 0.01 &&
+          s.center.z === 785 &&
+          s.halfExtents.z === 75,
+      );
+      expect(wall).toBeDefined();
+      // Walls meet the corridor floor (top −3) and ceiling (bottom 9).
+      if (wall !== undefined) {
+        expect(wall.center.y - wall.halfExtents.y).toBeLessThanOrEqual(-3);
+        expect(wall.center.y + wall.halfExtents.y).toBeGreaterThanOrEqual(9);
+      }
+    }
   });
 
   it('traps read visibly: decoy islands are spiked, the center route is clean', () => {

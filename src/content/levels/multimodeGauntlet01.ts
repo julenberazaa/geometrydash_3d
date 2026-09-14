@@ -5,8 +5,10 @@ import { TEST_LEVEL } from './testLevel01';
  * MULTIMODE GAUNTLET 01 (M8E) — the M8 integration/production level.
  *
  * Authored arc (base speed 14 u/s, finish z=1200 ≈ 86 s, medium-hard → hard):
- *   S1  z   0..150  Cube lava intro: two contained-basin gap jumps + a
- *                     sourced side composition (vent + fall + pool)
+ *   S1  z   0..150  Cube lava intro: two SOURCED gap-river jumps (twin
+ *                     vent pillars + falls pouring into the basins) + an
+ *                     at-grade lava river curb crossing the route at
+ *                     z 128..131 (3 u hop) + a sourced side composition
  *   S2  z 150..300  Maze run: three tall killFront walls with alternating
  *                     single-lane doors (readable, 30 u+ approaches)
  *   S3  z 300..540  Four-way gravity: floor → leftWall → ceiling →
@@ -34,17 +36,55 @@ export const MULTIMODE_GAUNTLET_01: LevelDefinition = {
   deathYMax: 14,
   startGravityMode: 'floor',
 
+  // M8.1 bounded portal triggers: every portal fires only inside its gate
+  // volume (the corridor cross-section at the gate) — crossing the Z plane
+  // outside the opening does NOT trigger. Missing a gravity gate leaves the
+  // player on the wrong surface, where the S3 floor routing gaps (below)
+  // end the run by geometry; missing a mode gate meets the corridor's own
+  // walls (ship) or the dodge wall (spider) — never an arbitrary kill.
   gravityPortals: [
-    { id: 'mg-wall-left', z: 310, target: 'leftWall' },
-    { id: 'mg-ceiling', z: 385, target: 'ceiling' },
-    { id: 'mg-wall-right', z: 455, target: 'rightWall' },
-    { id: 'mg-floor-again', z: 525, target: 'floor' },
+    {
+      id: 'mg-wall-left', z: 310, target: 'leftWall',
+      triggerCenter: { x: 0, y: 1.5, z: 310 },
+      triggerHalfExtents: { x: 5, y: 2.5, z: 1.5 },
+    },
+    {
+      id: 'mg-ceiling', z: 385, target: 'ceiling',
+      triggerCenter: { x: 3, y: 3, z: 385 },
+      triggerHalfExtents: { x: 3, y: 3, z: 1.5 },
+    },
+    {
+      id: 'mg-wall-right', z: 455, target: 'rightWall',
+      triggerCenter: { x: 0, y: 4, z: 455 },
+      triggerHalfExtents: { x: 4, y: 3, z: 1.5 },
+    },
+    {
+      id: 'mg-floor-again', z: 525, target: 'floor',
+      triggerCenter: { x: -3, y: 3, z: 525 },
+      triggerHalfExtents: { x: 3, y: 3, z: 1.5 },
+    },
   ],
   modePortals: [
-    { id: 'mg-ship-on', z: 715, target: 'ship' },
-    { id: 'mg-ship-off', z: 845, target: 'cube' },
-    { id: 'mg-spider-on', z: 865, target: 'spider' },
-    { id: 'mg-spider-off', z: 975, target: 'cube' },
+    {
+      id: 'mg-ship-on', z: 715, target: 'ship',
+      triggerCenter: { x: 0, y: 1.5, z: 715 },
+      triggerHalfExtents: { x: 3, y: 2.5, z: 1.5 },
+    },
+    {
+      id: 'mg-ship-off', z: 845, target: 'cube',
+      triggerCenter: { x: 0, y: 2, z: 845 },
+      triggerHalfExtents: { x: 3, y: 4, z: 1.5 },
+    },
+    {
+      id: 'mg-spider-on', z: 865, target: 'spider',
+      triggerCenter: { x: 0, y: 1.5, z: 865 },
+      triggerHalfExtents: { x: 3, y: 2.5, z: 1.5 },
+    },
+    {
+      id: 'mg-spider-off', z: 975, target: 'cube',
+      triggerCenter: { x: 0, y: 1.5, z: 975 },
+      triggerHalfExtents: { x: 3, y: 2.5, z: 1.5 },
+    },
   ],
   chompers: [
     {
@@ -71,10 +111,29 @@ export const MULTIMODE_GAUNTLET_01: LevelDefinition = {
     },
   ],
   lava: [
-    // S1 gap basin 1 (pool top −2.4, z 40..46).
+    // S1 gap basin 1 (pool top −2.4, z 40..46) — M8.1 sourced river: rock
+    // pillars flank the gap, vent mouths feed blocky falls that pour over
+    // the basin rims into the pool (jump line center stays clear).
     { id: 'mg-gap1', center: { x: 0, y: -3.2, z: 43 }, halfExtents: { x: 4, y: 0.8, z: 3 }, role: 'pool' },
-    // S1 gap basin 2 (pool top −2.4, z 90..96).
+    { id: 'mg-gap1-src-l', center: { x: -4.9, y: 0.5, z: 43 }, halfExtents: { x: 0.8, y: 0.6, z: 1 }, role: 'source' },
+    { id: 'mg-gap1-fall-l', center: { x: -4, y: -1.2, z: 43 }, halfExtents: { x: 0.7, y: 1.4, z: 0.9 }, role: 'fall' },
+    { id: 'mg-gap1-src-r', center: { x: 4.9, y: 0.5, z: 43 }, halfExtents: { x: 0.8, y: 0.6, z: 1 }, role: 'source' },
+    { id: 'mg-gap1-fall-r', center: { x: 4, y: -1.2, z: 43 }, halfExtents: { x: 0.7, y: 1.4, z: 0.9 }, role: 'fall' },
+    // S1 gap basin 2 (pool top −2.4, z 90..96) — same sourced treatment.
     { id: 'mg-gap2', center: { x: 0, y: -3.2, z: 93 }, halfExtents: { x: 4, y: 0.8, z: 3 }, role: 'pool' },
+    { id: 'mg-gap2-src-l', center: { x: -4.9, y: 0.5, z: 93 }, halfExtents: { x: 0.8, y: 0.6, z: 1 }, role: 'source' },
+    { id: 'mg-gap2-fall-l', center: { x: -4, y: -1.2, z: 93 }, halfExtents: { x: 0.7, y: 1.4, z: 0.9 }, role: 'fall' },
+    { id: 'mg-gap2-src-r', center: { x: 4.9, y: 0.5, z: 93 }, halfExtents: { x: 0.8, y: 0.6, z: 1 }, role: 'source' },
+    { id: 'mg-gap2-fall-r', center: { x: 4, y: -1.2, z: 93 }, halfExtents: { x: 0.7, y: 1.4, z: 0.9 }, role: 'fall' },
+    // S1 lava river crossing (M8.1): an at-grade lava curb (pool top 0.7,
+    // z 128..131) flows across the route and MUST be jumped (3 u hop).
+    // Twin rock pillars on the route edges carry vent mouths; blocky falls
+    // pour from the vents into the strip ends. Center jump line is clear.
+    { id: 'mg-river', center: { x: 0, y: 0.1, z: 129.5 }, halfExtents: { x: 4, y: 0.6, z: 1.5 }, role: 'pool' },
+    { id: 'mg-river-src-l', center: { x: -4.9, y: 2.7, z: 129.5 }, halfExtents: { x: 0.5, y: 0.5, z: 0.8 }, role: 'source' },
+    { id: 'mg-river-fall-l', center: { x: -4.2, y: 1.5, z: 129.5 }, halfExtents: { x: 0.6, y: 1, z: 0.8 }, role: 'fall' },
+    { id: 'mg-river-src-r', center: { x: 4.9, y: 2.7, z: 129.5 }, halfExtents: { x: 0.5, y: 0.5, z: 0.8 }, role: 'source' },
+    { id: 'mg-river-fall-r', center: { x: 4.2, y: 1.5, z: 129.5 }, halfExtents: { x: 0.6, y: 1, z: 0.8 }, role: 'fall' },
     // S1 side composition: vent on a rock pillar + dense fall into a
     // contained side pool (beside runway B, never on the route).
     { id: 'mg-side-source', center: { x: 10.6, y: 2.6, z: 68 }, halfExtents: { x: 0.6, y: 0.6, z: 1.2 }, role: 'source' },
@@ -88,6 +147,8 @@ export const MULTIMODE_GAUNTLET_01: LevelDefinition = {
   solids: [
     // --- S1 runways (top y=0) + gap-basin containment (pool top −2) ---
     { center: { x: 0, y: -0.5, z: 15 }, halfExtents: { x: 5.4, y: 0.5, z: 25 } },
+    // NOTE (M8.1): the z 96..150 runway now carries the at-grade lava river
+    // at z 128..131 — same slab, no Z shift for downstream sections.
     { center: { x: 0, y: -0.5, z: 68 }, halfExtents: { x: 5.4, y: 0.5, z: 22 } },
     { center: { x: 0, y: -0.5, z: 123 }, halfExtents: { x: 5.4, y: 0.5, z: 27 } },
     // Gap basin 1 containment: floor (top −4) + x rims + z rims (tops −1.5).
@@ -110,11 +171,37 @@ export const MULTIMODE_GAUNTLET_01: LevelDefinition = {
     { center: { x: 8, y: -2.25, z: 61.625 }, halfExtents: { x: 3.5, y: 0.75, z: 0.375 } },
     { center: { x: 8, y: -2.25, z: 74.375 }, halfExtents: { x: 3.5, y: 0.75, z: 0.375 } },
 
+    // S1 gap-river rock pillars (vent sources attach to their inner faces;
+    // clear of the center jump line, standing on the basin floors).
+    { center: { x: -6.5, y: -1, z: 43 }, halfExtents: { x: 1, y: 3, z: 1.5 } },
+    { center: { x: 6.5, y: -1, z: 43 }, halfExtents: { x: 1, y: 3, z: 1.5 } },
+    { center: { x: -6.5, y: -1, z: 93 }, halfExtents: { x: 1, y: 3, z: 1.5 } },
+    { center: { x: 6.5, y: -1, z: 93 }, halfExtents: { x: 1, y: 3, z: 1.5 } },
+    // S1 river-crossing pillars + strip curbs (at-grade lava gate, z 128..131).
+    { center: { x: -4.9, y: 1.75, z: 129.5 }, halfExtents: { x: 0.5, y: 1.75, z: 1 } },
+    { center: { x: 4.9, y: 1.75, z: 129.5 }, halfExtents: { x: 0.5, y: 1.75, z: 1 } },
+    { center: { x: -4.375, y: -0.1, z: 129.5 }, halfExtents: { x: 0.375, y: 0.75, z: 1.75 } },
+    { center: { x: 4.375, y: -0.1, z: 129.5 }, halfExtents: { x: 0.375, y: 0.75, z: 1.75 } },
+
     // --- S2 maze runway (decision walls live in `hazards` as killFront) ---
     { center: { x: 0, y: -0.5, z: 225 }, halfExtents: { x: 5.4, y: 0.5, z: 75 } },
 
-    // --- S3 four-way gravity: continuous floor + wall/ceiling slabs ---
-    { center: { x: 0, y: -0.5, z: 420 }, halfExtents: { x: 5.4, y: 0.5, z: 120 } },
+    // --- S3 four-way gravity: wall/ceiling slabs + a floor with routing gaps.
+    // M8.1 mandatory-routing consequence: the floor is cut at z 320..330 /
+    // 395..405 / 465..475 (10 u — unjumpable). Wall/ceiling riders cross
+    // above on their own surfaces; anyone who missed a gravity gate and is
+    // still on the floor falls to the void BY GEOMETRY (never an
+    // arbitrary kill). Transition landings (310->317, 385->390, 455->462,
+    // 525->532) all sit on solid segments.
+    { center: { x: 0, y: -0.5, z: 310 }, halfExtents: { x: 5.4, y: 0.5, z: 10 } },
+    { center: { x: 0, y: -0.5, z: 362.5 }, halfExtents: { x: 5.4, y: 0.5, z: 32.5 } },
+    { center: { x: 0, y: -0.5, z: 435 }, halfExtents: { x: 5.4, y: 0.5, z: 30 } },
+    { center: { x: 0, y: -0.5, z: 507.5 }, halfExtents: { x: 5.4, y: 0.5, z: 32.5 } },
+    // M8.1 ship tunnel walls (D): the corridor reads as a guided flight
+    // space — floor, ceiling AND visible side walls (z 710..860). The ship
+    // keeps full control authority inside; the tunnel bounds the route.
+    { center: { x: -6.5, y: 3, z: 785 }, halfExtents: { x: 0.5, y: 6, z: 75 } },
+    { center: { x: 6.5, y: 3, z: 785 }, halfExtents: { x: 0.5, y: 6, z: 75 } },
     // Left-wall run surface (face x=5.4, z 310..385).
     { center: { x: 5.9, y: 3, z: 347.5 }, halfExtents: { x: 0.5, y: 4, z: 37.5 } },
     // Ceiling run surface (face y=6, z 380..460).
@@ -162,6 +249,16 @@ export const MULTIMODE_GAUNTLET_01: LevelDefinition = {
   ],
 
   hazards: [
+    // M8.1 gate pylons: low killFront posts flanking the floor-approach
+    // portals (visible doorways; frontal contact kills, side scrape blocks).
+    // Ship/spider gates get tighter pairs; the ship-tunnel walls above are
+    // the corridor's own outer bound (posts sit inside, clear of lane 1).
+    { kind: 'killFront', visual: 'block', center: { x: -4.9, y: 1.25, z: 310 }, halfExtents: { x: 0.4, y: 1.25, z: 0.5 } },
+    { kind: 'killFront', visual: 'block', center: { x: 4.9, y: 1.25, z: 310 }, halfExtents: { x: 0.4, y: 1.25, z: 0.5 } },
+    { kind: 'killFront', visual: 'block', center: { x: -3.4, y: 1.25, z: 715 }, halfExtents: { x: 0.4, y: 1.25, z: 0.5 } },
+    { kind: 'killFront', visual: 'block', center: { x: 3.4, y: 1.25, z: 715 }, halfExtents: { x: 0.4, y: 1.25, z: 0.5 } },
+    { kind: 'killFront', visual: 'block', center: { x: -3.4, y: 1.25, z: 865 }, halfExtents: { x: 0.4, y: 1.25, z: 0.5 } },
+    { kind: 'killFront', visual: 'block', center: { x: 3.4, y: 1.25, z: 865 }, halfExtents: { x: 0.4, y: 1.25, z: 0.5 } },
     // S2 maze decision walls (killFront: frontal contact kills, side scrape
     // blocks; tops y=7 unjumpable; doors 2.6 u on a lane center).
     // Wall 1 (z 180): door on lane 0 (x 1.3..3.9).

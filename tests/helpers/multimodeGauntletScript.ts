@@ -13,6 +13,7 @@ import { holdJump, idleInput, tapLaneLeft, tapLaneRight } from './simulation';
  *
  * Section timing (base speed 14 u/s unless noted):
  * - S1 gaps 40..46 / 90..96 (6 u): press ≈2.5 u before the edge
+ * - S1 lava river curb z 128..131 (3 u hop): press ≈2.5 u before (M8.1)
  * - S2 maze doors z 180 (lane 0) / 215 (lane 2) / 250 (lane 1)
  * - S3 gravity portals ride on continuous runways (no input)
  * - S4 chompers: jump on the lunge-start edge (reactive, per Chomper)
@@ -44,7 +45,7 @@ export class MultimodeDriver {
   private holdingShip = false;
 
   constructor(
-    jumps: readonly number[] = [37.5, 87.5, 997.5, 1012.5],
+    jumps: readonly number[] = [37.5, 87.5, 125.5, 997.5, 1012.5],
     taps: readonly TapAction[] = [
       { atZ: 160, dir: 'left' }, // wall 1 (z 180): door lane 0
       { atZ: 196, dir: 'right' }, // wall 2 (z 215): lane 0 → 1
@@ -63,9 +64,19 @@ export class MultimodeDriver {
       this.releasingJump = false;
       return idleInput;
     }
-    // Ship hold windows (mode-observed: only while flying the corridor).
+    // Ship corridor (mode-observed: only while flying). M8.1: the exit
+    // gate is bounded (y −2..6 at z 845), so the driver must FLY the
+    // corridor — rise over the z 744 wall, dive under the z 790 block,
+    // then track the exit-gate altitude (≈2.75) instead of ceiling-riding
+    // past the ring. Closed-loop on sim Y: deterministic, still real
+    // physical inputs (held/released Space, no state edits). The dive
+    // starts at 780 (4 u of latency margin before the z 790 block).
     if (sim.playerMode === 'ship') {
-      const hold = z < 784 || z >= 800;
+      let hold: boolean;
+      if (z < 780) hold = true;
+      else if (z < 800) hold = false;
+      else if (z < 815) hold = true;
+      else hold = sim.player.position.y < 2.6;
       if (hold) {
         const first = !this.holdingShip;
         this.holdingShip = true;
