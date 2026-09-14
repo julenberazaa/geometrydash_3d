@@ -5,10 +5,12 @@ import type { ChomperDef } from '../src/level/levelDefinition';
 import { makeTestLibrary } from './helpers/visuals';
 
 /**
- * M8.1 Chomper visual redesign (lava creature read):
- * - armored snout + brow + dorsal heat-spikes + two crack bands + upper
- *   fangs + jaw-riding lower teeth + chomping jaw cycle;
- * - bounded mesh budget (22 per chomper, shared library geo/mats);
+ * M8.2 Chomper lava-chomper redesign (the M8.1 round dark body read as a
+ * mouse): bright molten-orange BLOCKY body + cooling-crust plates, a BIG
+ * square head, wide hot maw, 4 large upper fangs + 3 jaw teeth,
+ * brow-hooded eyes, bigger heat-spikes, dark crust bands — chomp cycle
+ * preserved.
+ * - bounded mesh budget (26 per chomper, shared library geo/mats);
  * - gameplay untouched (sim contract lives in tests/chomper.test.ts).
  */
 
@@ -27,14 +29,14 @@ describe('M8.1 chomper lava-creature presentation', () => {
   it('builds the full head/mouth/tooth anatomy within budget', () => {
     const library = makeTestLibrary();
     const view = new ChomperView([DEF], library);
-    // Per chomper: body + 2 bands + snout + brow + 3 spikes + mouth +
-    // 3 fangs + jaw + 2 teeth + 2 eyes (17 in-group) + 5 chain links.
+    // Per chomper: body + 2 crust + head + brow + maw + 4 fangs + jaw +
+    // 3 teeth + 2 eyes + 3 spikes + 2 bands (21 in-group) + 5 chain links.
     let meshes = 0;
     view.group.traverse((o) => {
       if ((o as { isMesh?: boolean }).isMesh === true) meshes += 1;
     });
-    expect(meshes).toBe(22);
-    expect(view.group.children.length).toBeLessThanOrEqual(25);
+    expect(meshes).toBe(26);
+    expect(view.group.children.length).toBeLessThanOrEqual(29);
     view.dispose();
     library.dispose();
   });
@@ -72,7 +74,7 @@ describe('M8.1 chomper lava-creature presentation', () => {
     view.group.traverse((o) => {
       if ((o as { isMesh?: boolean }).isMesh === true) meshes += 1;
     });
-    groups = meshes / 22;
+    groups = meshes / 26;
     expect(groups).toBe(MAX_CHOMPERS);
     view.dispose();
     library.dispose();

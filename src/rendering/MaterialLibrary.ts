@@ -256,6 +256,8 @@ export class MaterialLibrary {
     this.modeShip = modeMat(0x4fd8ff);
     this.modeSpider = modeMat(0x5dff9d);
     // M8D Chomper: near-black crust + orange crack glow + hot core.
+    // M8.2: the glow is the BODY now (brighter, more emissive molten
+    // orange); the shell survives only as cooling-crust plates/bands.
     this.chomperShell = track(
       new THREE.MeshStandardMaterial({
         color: 0x1a0d08,
@@ -267,11 +269,11 @@ export class MaterialLibrary {
     );
     this.chomperGlow = track(
       new THREE.MeshStandardMaterial({
-        color: 0xff5a00,
-        roughness: 0.5,
+        color: 0xff7a1a,
+        roughness: 0.45,
         metalness: 0,
-        emissive: 0xff4400,
-        emissiveIntensity: 1.6,
+        emissive: 0xff5500,
+        emissiveIntensity: 2.2,
       }),
     );
     this.chomperCore = track(
