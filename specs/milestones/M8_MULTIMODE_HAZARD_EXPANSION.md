@@ -102,6 +102,14 @@ mint-green Spider chevron). Teleport entries gain OPTIONAL bounded volumes
 Z-plane entries (old anchors valid). Mandatory routing comes from geometry
 funnels, never giant visuals.
 
+M8.1 AMENDMENT (superset, not rewrite): bounded trigger volumes extend to
+gravity/speed/mode portals (`triggerCenter`/`triggerHalfExtents`, same
+swept-volume test, legacy plane fallback, conditional fingerprints) — a
+Z-plane crossing outside the gate opening no longer fires. Bounded rings
+render ON their trigger volume (volume/visual agreement); radii shrunk
+~15–20%. Gauntlet gates all bounded, with pylon funnels + S3 routing gaps
+so misses fail by geometry. See `M8_1_MULTIMODE_POLISH_AND_PORTAL_BOUNDS.md`.
+
 ## M8B FOUR-WAY GRAVITY
 
 ### GRAVITY FRAMES

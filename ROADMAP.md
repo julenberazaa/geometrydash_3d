@@ -453,6 +453,27 @@ software-rendering load-flakes in this environment (unchanged product
 behavior; no test weakened). Human playtest next:
 `?level=multimode-gauntlet-01` on the feature branch.
 
+## M8.1 — Multimode polish & portal bounds: ENGINEERING COMPLETE / HUMAN POLISH GATE OPEN (feature/m8-1-polish-portals-lava-death, NOT merged)
+
+Focused human-feedback pass on the M8 branch (playtest: rest broadly
+good): sourced lava-river crossings (gap-river vents + an at-grade curb
+hop), BOUNDED portal triggers on gravity/speed/mode portals (swept-volume
+gates — crossing outside the opening no longer fires; S3 routing gaps +
+gate pylons make misses fail by geometry), a general wall-lane debt fix
+(impossible presses clamp to one lean step — single-press recovery, M1.2
+fall-off intact), a walled Ship tunnel with neon mid-bands, mode-aware
+voxel death breakup (palettes + ghost shell + held chunk size, same
+78-tick hold), a lava-creature Chomper (snout/fangs/spikes/chomp cycle,
+sim byte-identical), compact volume-centered portal rings. Gauntlet anchor
+tick 10321 preserved (0 deaths, replay VERIFIED); ReplayV1 unchanged;
+golden fixture intact. 37 files / 492 automated tests (+28), `npm run
+verify` green. Browser M8.1 gate: 43/43 green with zero console/page
+errors (35 M8 incl. full in-page finish + REPLAY VERIFIED, flat 35/8/63
+resources; 8 new M8.1) with `qa/screenshots/m81-*` evidence. Spec:
+`specs/milestones/M8_1_MULTIMODE_POLISH_AND_PORTAL_BOUNDS.md`.
+Automation proves POSSIBLE, never FUN — do NOT mark PASS until the human
+plays the M8.1 branch.
+
 ## Ship mode — part of M8 (multimode expansion)
 
 Enclosed tunnels, multi-surface hazards, speed feel. Cube validation

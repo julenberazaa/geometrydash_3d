@@ -49,7 +49,12 @@ NEVER rotates and the camera NEVER rolls when gravity changes.
   - Ceiling: airborne `ArrowUp`.
   - Left wall: airborne `ArrowLeft`. Right wall: airborne `ArrowRight`.
 - **Lanes:** on Floor/Ceiling `ArrowLeft`/`ArrowRight` change the *target
-  lane index*. On BOTH surfaces `ArrowRight` ALWAYS moves the Cube toward
+  lane index*. **Lane-debt rule (M8.1):** intent never accumulates against
+  an immovable wall — while lateral motion is blocked and the target lies
+  further into the blockage, the target clamps to one meaningful lean step
+  beyond the deepest reachable lane, so a single press back always
+  recovers. Open-edge virtual lanes (M1.2 fall-off) are unaffected.
+  On BOTH surfaces `ArrowRight` ALWAYS moves the Cube toward
   **screen-right** and `ArrowLeft` toward screen-left — flipping gravity
   never mirrors lanes. On wall gravity the lane axis is VERTICAL:
   `ArrowUp`/`ArrowDown` move along the wall lanes (Up = higher lanes on
@@ -105,9 +110,10 @@ NEVER rotates and the camera NEVER rolls when gravity changes.
 - Death: instantaneous at the lethal step, tagged with a cause
   (`hazard` | `frontImpact` | `void` | `lava`, internal/debug),
   exactly-once event, readable visual hold (0.65 s / 78 ticks) with a
-  strong cyan-core explosion (fragments + core flash + shock ring +
-  camera punch), deterministic respawn at start (restoring the level's
-  start gravity mode).
+  mode-aware voxel breakup (the ACTIVE avatar's palette/silhouette:
+  cube / ship / spider ghost shell + tinted chunks that hold size, then
+  core flash + shock ring + camera punch), deterministic respawn at
+  start (restoring the level's start gravity mode).
   Attempts increment exactly once per respawn/restart, never on death itself;
   manual `R` restart is not death. `R` restarts immediately from any state.
   Finish can never trigger after death. Falling out of bounds after a lateral
@@ -190,14 +196,20 @@ surfaces ship, named by SUPPORT SURFACE as seen from the chase camera:
   surface normal +X.
 
 **Gravity portals** are data-driven level objects (`id`, crossing plane `z`,
-`target` mode) supporting all four targets. Crossing the plane in the
-forward direction flips gravity exactly once per attempt: world position is
-NOT teleported, all velocity is preserved (no impulse, no snap),
-grounded/support is cleared immediately, and the Cube visibly accelerates
-toward the new gravity surface. Portals reset after respawn/restart.
-Visually each portal is a compact ring gate (cyan = flip up, warm = flip
-down, wall flips offset toward their wall); triggering never depends on
-renderer, camera, or visuals.
+`target` mode, optional bounded `triggerCenter`/`triggerHalfExtents`)
+supporting all four targets. **Bounded-gate rule (M8.1):** a portal fires
+ONLY when the player collider actually passes through the gate volume —
+crossing the Z plane outside the visible opening does NOT trigger it.
+Volume-less definitions keep the legacy plane crossing (compatibility).
+Crossing the gate in the forward direction flips gravity exactly once per
+attempt: world position is NOT teleported, all velocity is preserved (no
+impulse, no snap), grounded/support is cleared immediately, and the Cube
+visibly accelerates toward the new gravity surface. Portals reset after
+respawn/restart. Missing a gate fails later by geometry/routing (wrong
+surface, wall, void) — never by arbitrary instant death. Visually each
+portal is a compact ring gate (cyan = flip up, warm = flip down)
+rendered ON its trigger volume; triggering never depends on renderer,
+camera, or visuals.
 
 **Gravity orbs** flip to the OPPOSITE surface (floor ↔ ceiling,
 leftWall ↔ rightWall) — never an arbitrary cycle. Jump pads launch along
@@ -238,13 +250,14 @@ flags, speed tier, gravity mode).
   Ceiling through the SAME transition as gravity portals (world position and
   ALL velocity preserved, support cleared, no world/camera rotation). One
   press = one flip; oscillation is impossible (one-shot per attempt).
-- **Speed portals (passive):** deterministic forward-crossing plane
-  (`prevZ < z <= currentZ`, ascending Z, furthest crossed wins) setting the
-  authoritative speed multiplier (content tiers 0.5×/1×/2×/3×/4×). No
-  teleport, no impulse. There is ONE speed authority: the level's
-  `baseForwardSpeed` × the simulation's current multiplier, delivered to the
-  controller per step. Respawn/`R` restores the level's
-  `startSpeedMultiplier` (default 1).
+- **Speed portals (passive):** deterministic forward-crossing gate
+  (`prevZ < z <= currentZ`, ascending Z, furthest crossed wins — or the
+  swept gate volume when the portal carries one, per the M8.1
+  bounded-gate rule) setting the authoritative speed multiplier (content
+  tiers 0.5×/1×/2×/3×/4×). No teleport, no impulse. There is ONE speed
+  authority: the level's `baseForwardSpeed` × the simulation's current
+  multiplier, delivered to the controller per step. Respawn/`R` restores
+  the level's `startSpeedMultiplier` (default 1).
 - **Fairness windows:** orb activation windows are generous AABBs (Test
   Level: ~1.8 u across) and sit ABOVE the grounded envelope where a
   grounded-running press must not accidentally fire (gravity orb); visuals
@@ -266,7 +279,7 @@ rejected explicitly rather than mis-played. Deaths replay too (a death tape
 reproduces the same death). This is a determinism proof and a practice/
 verification tool, not a menu, timeline, or editor feature.
 
-## 7.3 Lava — CURRENT (M8A)
+## 7.3 Lava — CURRENT (M8A, rivers M8.1)
 
 LAVA IS GAMEPLAY. Touching lava (pool surface, fall column, source vent)
 kills INSTANTLY with cause `lava` — no delay, no damage bar, no bounce —
@@ -278,6 +291,12 @@ attached to solid rock, an optional dense blocky downward `fall`, and a
 (basin floor + rim walls) — or a fall visibly continuing below the lethal
 world bounds. Floating lava slabs are forbidden (enforced by
 `validateLavaAuthoring`; production levels pin it in-suite).
+
+**Lava rivers (M8.1):** lava crosses the track as sourced rivers that must
+be jumped — twin vent pillars feed blocky falls pouring into basin pools
+under gap jumps, and at-grade lava curbs flow across the route (3 u hop).
+Every river obeys the same sourced/contained contract: no floating slabs,
+no unsupported streams, the center jump line visibly clear of falls.
 
 ## 7.1 Vertical slice product contract — CURRENT (M7.1)
 
@@ -365,15 +384,21 @@ One authoritative player mode lives in the simulation (`cube` | `ship` |
 `spider`); rendering observes. Attempts always start as Cube. Replay stays
 input-only (modes derive deterministically from physical inputs).
 
-- **Mode portals** are data-driven forward-crossing planes (`id`, `z`,
-  `target`). Crossing switches mode exactly once per attempt with a clean
-handoff: forward/lateral flow preserved, along-gravity velocity zeroed,
-grounded/support cleared. Sky-cyan Ship rings (forward-dart glyph),
-mint-green Spider rings (surface-switch glyph).
+- **Mode portals** are data-driven forward-crossing gates (`id`, `z`,
+  `target`, optional bounded trigger volume — same bounded-gate rule as
+gravity portals: flying outside the visible ring does NOT switch modes).
+  Crossing switches mode exactly once per attempt with a clean handoff:
+  forward/lateral flow preserved, along-gravity velocity zeroed,
+  grounded/support cleared. Compact sky-cyan Ship rings (forward-dart
+glyph) and mint-green Spider rings (surface-switch glyph), rendered on
+  their trigger volumes.
 - **Ship:** continuous flight, not jumping. Holding the primary action
   (`Space`) thrusts AWAY from gravity; release lets gravity pull back
   toward the support. Mode-owned terminal speeds both ways; frame-generic
-  on all four gravity orientations. Lane steering stays available.
+  on all four gravity orientations. Lane steering stays available. Ship
+  sections are authored as bounded corridors/tunnels (floor + ceiling +
+  visible side walls with edge language) — free control inside, a guided
+  flight space overall, never free sky.
 - **Spider:** runs like a Cube but never jumps. On the primary PRESS the
   Spider instantly switches to the OPPOSITE support surface (floor ↔
   ceiling, leftWall ↔ rightWall), landing on the nearest valid opposite
@@ -390,8 +415,11 @@ An ORIGINAL lava-predator design (dark basalt shell, molten cracks, bright
 maw, energy-chain tether — never licensed geometry) and a REAL moving
 gameplay hazard with a readable attack contract:
 
-- The creature waits/floats beside the route (`dormant`). Touching it
-  while dormant still kills — it is never decoration.
+- The creature waits/floats beside the route (`dormant`) reading as a
+  lava predator (basalt shell, molten crack bands, snout, dorsal
+  heat-spikes, fanged maw that chews while telegraphing and gapes while
+  lunging). Touching it while dormant still kills — it is never
+  decoration.
 - When the player reaches the authored `triggerZ`, it captures the
   player's lateral X as its committed aim and telegraphs (eyes ignite,
   anticipation pulse, ~0.3–0.6 s of fixed-tick warning).

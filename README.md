@@ -41,7 +41,14 @@ build)**. M5 deterministic replay + Validation Level 02 PASS
 (every attempt records a verifiable fixed-tick input tape, F4 replays with
 live per-tick verification, the second level finishes via real inputs on
 the unmodified engine); human replay/Level-02 feel gate APPROVED
-(2026-09-07). M0–M5 complete. M6A visual production foundation
+(2026-09-07). M0–M5 complete. M8 multimode expansion engineering-complete
+on `feature/m8-multimode-gameplay` (lava, four-way gravity, Ship/Spider,
+Chompers, maze/traps, `?level=multimode-gauntlet-01` — human gameplay gate
+OPEN, not merged), plus the M8.1 polish follow-up on
+`feature/m8-1-polish-portals-lava-death` (bounded portal gates, lava
+rivers, wall-lane debt fix, ship tunnel, mode-aware death breakup, lava
+Chomper, compact rings — engineering complete, human gate OPEN; spec:
+`specs/milestones/M8_1_MULTIMODE_POLISH_AND_PORTAL_BOUNDS.md`). M6A visual production foundation
 engineering-complete (production theme + shared materials + controlled
 bloom/post, zero gameplay change, 182/182 tests, M6A browser QA 24/24
 green, golden replay intact) — HUMAN VISUAL GATE OPEN

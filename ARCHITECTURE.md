@@ -272,7 +272,9 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   direction, lethal in EVERY phase under id `chomper-<id>`), and the
   respawn reset. Aim (player X) is captured once at activation and never
   re-homed; the lunge is linear over authored ticks. `ChomperView`
-  (owned by `RendererHost`) observes sim states only.
+  (owned by `RendererHost`) observes sim states only — M8.1 lava-creature
+  anatomy (snout/brow/dorsal spikes/two crack bands/maw + fangs/jaw teeth
+  + chomp cycle), 22 meshes per Chomper, sim byte-identical.
   **Teleport portals (M7.2):** deterministic forward entry-crossing
   (`prevZ < entryZ ≤ currentZ`, furthest unused entry wins), processed
   AFTER the lethal checks (death wins the step) and BEFORE pads/orbs/
@@ -500,15 +502,16 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   orbs idle-bob (render-side only). Original palette language: yellow family
   = jump impulse (pads + jump orbs), blue = gravity orb, one color +
   chevron count per speed tier.
-- `DeathBurstView` (M2, owned by `RendererHost`; M7.3: 24 pooled fragments,
-  0.5 s lifetime, faster spray — bigger/stronger, still one bounded pool):
-  shared geometry + 2 shared materials, deterministic radial burst,
-  shrink-out; zero allocation post-construction; triggered by `deathId` edge.
-  Death kick (FOV +3.5, +0.25 u lift, ~0.12 s decay, no roll/shake) + camera
-  snap-to-start on respawn/teleport also live in `RendererHost`.
+- `DeathBurstView` (M2, owned by `RendererHost`; M8A: 32 pooled fragments
+  + core flash + shock ring, 0.65 s matching the 78-tick hold; M8.1: mode
+  voxel palettes + avatar ghost shell + chunks holding size for the first
+  half): owned materials (recolored per mode on play), deterministic radial
+  burst, zero allocation post-construction; triggered by the `deathId` edge
+  with the active player mode. Death kick (M8A: FOV +5, +0.4 u lift) +
+  camera snap-to-start on respawn/teleport also live in `RendererHost`.
   Debug-only `debugFreezeFrame` (skip visual updates, keep presenting) +
-  `debugReplayBurst` (re-fire at recorded death pos) exist SOLELY for
-  photographing the 0.5 s effect under headless screenshot latency.
+  `debugReplayBurst` (re-fire at recorded death pos, mode-aware) exist
+  SOLELY for photographing the effect under headless screenshot latency.
 - `DeathSfx` (`src/audio/`, M2): lazy guarded Web Audio death blip (0.18 s),
   created on first user gesture; silence-on-failure; gameplay never depends
   on it.
@@ -693,8 +696,9 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   records a level-02 tape; level-02 replay verifies end-to-end (finish);
   the level-01 tape on level 02 is explicitly rejected; unknown level ids
   fall back to default.
-- `tests/deathBurst.test.ts` (M7.3, 3 tests): 24-fragment pool pin,
-  play-then-clear lifecycle, bounded across repeated deaths.
+- `tests/deathBurst.test.ts` (M8.1: 35-child pool pin incl. the ghost
+  shell, play-then-clear lifecycle, repeated-death boundedness, mode
+  palettes/ghost scales, chunk-hold curve, ghost release timing).
 - `scripts/browser-qa.mjs`: M7.2 section migrated to the M7.3 rework
   (overlap-safe staging 521/484, race-free baseline→stage→poll teleport
   snapshots, holds-based full-route drivers) + M7.3 section (`m73-*`,
@@ -729,6 +733,11 @@ fixed-tick PHYSICAL input tape plus verification evidence.
 | Gravity portals: exactly once per attempt, no teleport, support cleared, death wins the step | `gravity` portal/precedence tests + browser QA |
 | Lethal checks precede ALL portal + interaction mutations (M3.3 invariant, extended in M4) | `interactions` ordering tests + `gravity` precedence tests |
 | Teleport portals: exactly once per attempt, lethal wins the step, skipped interval never fires, exit velocity/lane/support semantics pinned, gameplay fingerprinted (style excluded), ReplayV1 unchanged | `teleport` tests + `advancedCube01` teleport integration tests + browser QA m72 section |
+| M8.1 bounded portal triggers: gravity/speed/mode portals fire only when the swept step path overlaps the authored gate volume (legacy volume-less plane crossing kept); volumes fingerprinted conditionally (`portalvol:v1`, zero bytes when absent); ring visuals centered on the volume (volume/visual agreement) | `portalBounds` tests (inside/outside ×3 kinds, legacy compat, visual agreement, fingerprint reversibility) + `multimodeGauntlet` gate/routing tests + browser QA m81 section |
+| M8.1 lane-debt resync: laterally-blocked intent clamps to one lean step beyond the deepest reachable lane (all modes/surfaces); open-edge virtual lanes untouched; Y-clips count only when the lane axis is vertical | `laneDebt` tests (wall-bottom + floor side-wall + open-edge) + `death` lean-settle pin + golden fixture (bit-identical without lateral contacts) |
+| M8.1 death breakup: mode voxel palettes + ghost shell + held chunk size (same 78-tick hold); pooled 35, owned materials, render-only | `deathBurst` mode/lifecycle tests + browser QA m81 frozen-burst photo |
+| M8.1 chomper anatomy: snout/brow/spikes/bands/fangs/jaw teeth + chomp cycle, 22 meshes max × 8, sim byte-identical | `chomperView` structure/animation/bound tests + `chomper` sim contract + browser QA m81 portraits |
+| M8.1 tunnel-wall mid-band: tall thin walls carry a 0.07 neon bead (not the 0.055 rail stock) on both narrow faces; purely geometric | `tunnelWalls` tests + browser QA m81 tunnel checks |
 | Presentation setpieces: no collision/AI/movement/trigger, fingerprint-excluded, never landable-looking | `advancedCube01` setpiece structure + fingerprint-exclusion tests + browser QA m72 setpiece checks |
 | M4 interactions: swept-window detection (no skip at speed), press-edge orbs (no buffer, held-inert), one-shot per attempt, respawn re-arms | `interactions` tests + browser QA m4 section |
 | Replay records physical fixed-tick input only; playback feeds the real sim; sim stays replay-agnostic | `replay` lifecycle/determinism tests + `Game` protocol review (no sim import of replay code) |

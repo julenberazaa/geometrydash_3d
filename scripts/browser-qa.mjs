@@ -17,9 +17,11 @@ const OUT_DIR = path.resolve('qa/screenshots');
 fs.mkdirSync(OUT_DIR, { recursive: true });
 
 const results = [];
+let m8stagedOk = true;
 const log = (name, ok, detail) => {
-  results.push({ name, ok, detail });
-  console.log(`${ok ? 'PASS' : 'FAIL'} — ${name}${detail ? ` :: ${detail}` : ''}`);
+  const tag = !m8stagedOk ? ' [STAGE-FAIL]' : '';
+  results.push({ name, ok, detail: `${detail ?? ''}${tag}` });
+  console.log(`${ok ? 'PASS' : 'FAIL'} — ${name}${detail ? ` :: ${detail}` : ''}${tag}`);
 };
 
 // --- Provenance (git state at capture time) ---
@@ -5599,6 +5601,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     grounded: window.__gd3d.grounded(),
   }));
   const m8roll = async (pred, timeoutMs = 60000, pollMs = 40) => {
+    if (!m8stagedOk) return null;
     const t0 = Date.now();
     for (;;) {
       const s = await m8probe();
@@ -5611,6 +5614,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     await safeGoto(url);
     await waitReady();
     await page.waitForTimeout(2000);
+    m8stagedOk = true; // fresh page: clear any earlier stage failure
     for (let i = 0; i < 8; i++) {
       await page.keyboard.press('KeyR');
       await page.waitForTimeout(600);
@@ -5618,15 +5622,26 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
       if (p.z < 10) break;
     }
   };
+  // M8.1 hardened staging: pause for the read-back (a running sim drifts
+  // ~6 u in the settle window), confirm position, fail-fast on garbage
+  // states (see the slice harness for the full rationale).
   const m8stage = async (x, y, z) => {
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 12; i++) {
       await page.keyboard.press('KeyR');
-      await page.waitForTimeout(600);
+      await page.waitForTimeout(700);
+      await page.evaluate((pt) => window.__gd3d.debugTeleport(pt.x, pt.y, pt.z), { x, y, z });
+      await page.keyboard.press('KeyP');
+      await page.waitForTimeout(250);
       const p = await pos();
-      if (p.z < 10) break;
+      await page.keyboard.press('KeyP');
+      await page.waitForTimeout(150);
+      if (Math.abs(p.x - x) < 1.2 && Math.abs(p.y - y) < 2.5 && Math.abs(p.z - z) < 4) {
+        m8stagedOk = true;
+        return true;
+      }
     }
-    await page.evaluate((pt) => window.__gd3d.debugTeleport(pt.x, pt.y, pt.z), { x, y, z });
-    await page.waitForTimeout(300);
+    m8stagedOk = false;
+    return false;
   };
   const m8freeze = async (x, y, z) => {
     for (let round = 0; round < 3; round++) {
@@ -5683,16 +5698,37 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   // dead state lingers long enough to read before auto-respawn. Staged
   // just above the pool surface: the fall is short, so the swept path
   // enters the pool (not the far rim) and tags the lava cause.
+  // M8.1: the burst read is latched IN-PAGE (16 ms watcher armed before
+  // staging) — CDP poll latency alone cannot land inside the 0.65 s
+  // window under load. The latch is wiped after staging so only the
+  // staged lava death can set it.
+  await page.evaluate(() => {
+    if (window.__m8burstWatch) clearInterval(window.__m8burstWatch);
+    window.__m8burstSeen = -1;
+    window.__m8burstWatch = setInterval(() => {
+      if (window.__gd3d.status() === 'dead' && window.__gd3d.burstActive()) {
+        window.__m8burstSeen = window.__gd3d.attempts();
+      }
+    }, 16);
+  });
   await m8stage(0, -1.9, 43);
   const m8lavaDead = await m8roll((s) => s.status === 'dead', 15000);
   log('m8 lava contact kills instantly', m8lavaDead !== null && m8lavaDead.cause === 'lava',
     m8lavaDead ? `cause=${m8lavaDead.cause}` : 'survived');
-  // Burst edge first (fresh, ~ms old), then a tight linger proof: still
-  // dead 250 ms wall after the edge (holds at any sim/wall ratio given
-  // sub-150 ms poll latency; the authoritative 78-tick hold is pinned
-  // headlessly), then the evidence photo and the respawn wait.
-  const m8burst = await m8probe();
-  log('m8 death explosion fires', m8burst.burst === true, `burst=${m8burst.burst}`);
+  const m8burstSeen = await (async () => {
+    const t0 = Date.now();
+    for (;;) {
+      const snap = await page.evaluate(() => ({
+        seen: window.__m8burstSeen,
+        attempts: window.__gd3d.attempts(),
+      }));
+      if (snap.seen !== -1 && snap.seen === snap.attempts) return true;
+      if (Date.now() - t0 > 10000) return false;
+      await page.waitForTimeout(100);
+    }
+  })();
+  await page.evaluate(() => { if (window.__m8burstWatch) clearInterval(window.__m8burstWatch); window.__m8burstWatch = null; });
+  log('m8 death explosion fires', m8burstSeen === true, `burst=${m8burstSeen}`);
   await page.waitForTimeout(250);
   const m8stillDead = await m8probe();
   log('m8 dead state lingers readably before auto-respawn', m8stillDead.status === 'dead',
@@ -5822,11 +5858,18 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   // latency (~1-2 u) cannot hit the ±1.5 u jump window fairly, while the
   // in-page edge fires ~1 tick after the lunge starts (the exact timing
   // the deterministic suite pins). CDP only observes the outcome.
-  await safeEval(() => {
+  // Lunge-edge taps with attempt re-arm (see the slice harness): the jump
+  // fires ~1 tick after the lunge starts (unit-pinned timing).
+  await page.evaluate(() => {
     if (window.__m8chompWatch) clearInterval(window.__m8chompWatch);
     window.__m8chompJumped = [false, false];
+    window.__m8chompAttempts = window.__gd3d.attempts();
     window.__m8chompWatch = setInterval(() => {
       const g = window.__gd3d;
+      if (g.attempts() !== window.__m8chompAttempts) {
+        window.__m8chompAttempts = g.attempts();
+        window.__m8chompJumped = [false, false];
+      }
       if (g.status() !== 'running') return;
       const ch = g.chompers();
       for (let i = 0; i < ch.length; i++) {
@@ -5843,7 +5886,11 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   // 585 → 675 needs ~7 s sim (≈15-30 s wall here). Detail distinguishes
   // timeout-alive from real death.
   const m8jumped = await m8roll((s) => s.z > 675, 90000);
-  await safeEval(() => { if (window.__m8chompWatch) clearInterval(window.__m8chompWatch); window.__m8chompWatch = null; });
+  await page.evaluate(() => {
+    if (window.__m8chompWatch) clearInterval(window.__m8chompWatch);
+    window.__m8chompWatch = null;
+    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space' }));
+  });
   log('m8 player jumps over the chomper', m8jumped !== null && m8jumped.status === 'running',
     m8jumped ? `z=${m8jumped.z.toFixed(1)} status=${m8jumped.status}` : 'no crossing (timeout)');
   await m8stage(0, 0.55, 585);
@@ -5904,7 +5951,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     const down = (code) => window.dispatchEvent(new KeyboardEvent('keydown', { code }));
     const up = (code) => window.dispatchEvent(new KeyboardEvent('keyup', { code }));
     const tap = (code) => { down(code); setTimeout(() => up(code), 70); };
-    let jumps = [37.5, 87.5, 997.5, 1012.5];
+    let jumps = [37.5, 87.5, 125.5, 997.5, 1012.5];
     let taps = [{ z: 160, c: 'ArrowLeft' }, { z: 196, c: 'ArrowRight' }, { z: 199, c: 'ArrowRight' }, { z: 232, c: 'ArrowLeft' }];
     let presses = [890, 935];
     let jumpedCh = [false, false];
@@ -5915,7 +5962,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
       const g = window.__gd3d;
       if (g.attempts() !== attempts) {
         attempts = g.attempts();
-        jumps = [37.5, 87.5, 997.5, 1012.5];
+        jumps = [37.5, 87.5, 125.5, 997.5, 1012.5];
         taps = [{ z: 160, c: 'ArrowLeft' }, { z: 196, c: 'ArrowRight' }, { z: 199, c: 'ArrowRight' }, { z: 232, c: 'ArrowLeft' }];
         presses = [890, 935];
         jumpedCh = [false, false];
@@ -5929,7 +5976,14 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
       const z = g.playerPosition().z;
       const mode = g.playerMode();
       if (mode === 'ship') {
-        const wantHold = z < 784 || z >= 800;
+        // M8.1: mirror MultimodeDriver — recover after the dive, then
+        // track the bounded exit-gate altitude instead of ceiling-riding.
+        // Dive starts at 780 (latency margin before the z 790 block).
+        let wantHold;
+        if (z < 780) wantHold = true;
+        else if (z < 800) wantHold = false;
+        else if (z < 815) wantHold = true;
+        else wantHold = g.playerPosition().y < 2.6;
         if (wantHold && !shipHeld) { down('Space'); shipHeld = true; }
         if (!wantHold && shipHeld) { up('Space'); shipHeld = false; }
         return;
@@ -5992,6 +6046,88 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   log('m8 no material/geometry/scene growth',
     m8res1.mats === m8res0.mats && m8res1.geos === m8res0.geos && m8res1.children === m8res0.children,
     `mats=${m8res0.mats}->${m8res1.mats} geos=${m8res0.geos}->${m8res1.geos} children=${m8res0.children}->${m8res1.children}`);
+
+  // --- 24c. M8.1 POLISH / PORTAL-BOUNDS / LAVA-RIVER / DEATH GATE ---
+  await m8freeze(0, 0.55, 118);
+  const m81riverFrame = await page.evaluate(() => window.__gd3d.screenPoint(0, 0.7, 129.5));
+  const m81riverSrc = await page.evaluate(() => window.__gd3d.screenPoint(-4.9, 2.7, 129.5));
+  log('m81 lava river curb reads in-frame', !m81riverFrame.behind && Math.abs(m81riverFrame.ndcX) < 1 && Math.abs(m81riverFrame.ndcY) < 1,
+    `ndc=(${m81riverFrame.ndcX.toFixed(2)},${m81riverFrame.ndcY.toFixed(2)})`);
+  log('m81 river vent reads in-frame', !m81riverSrc.behind && Math.abs(m81riverSrc.ndcX) < 1.2,
+    `ndc=(${m81riverSrc.ndcX.toFixed(2)},${m81riverSrc.ndcY.toFixed(2)})`);
+  await capture('m81-01-lava-river');
+  await m8live();
+
+  await m8stage(0, 0.55, 118);
+  const m81riverDead = await m8roll((s) => s.status === 'dead', 15000);
+  log('m81 missed river hop kills as lava', m81riverDead !== null && m81riverDead.cause === 'lava' && m81riverDead.z > 125 && m81riverDead.z < 136,
+    m81riverDead ? `cause=${m81riverDead.cause} z=${m81riverDead.z.toFixed(1)}` : 'survived');
+
+  await m8stage(0, 1.5, 315);
+  const m81gapDead = await m8roll((s) => s.status === 'dead', 15000);
+  log('m81 missed-gate routing gap kills by geometry', m81gapDead !== null && m81gapDead.cause === 'void' && m81gapDead.grav === 'floor' && m81gapDead.z > 318 && m81gapDead.z < 345,
+    m81gapDead ? `cause=${m81gapDead.cause} grav=${m81gapDead.grav} z=${m81gapDead.z.toFixed(1)}` : 'survived');
+
+  await m8freeze(0, 0.55, 300);
+  const m81gateFrame = await page.evaluate(() => window.__gd3d.screenPoint(0, 1.7, 310));
+  log('m81 portal gate reads in-frame', !m81gateFrame.behind && Math.abs(m81gateFrame.ndcX) < 1 && Math.abs(m81gateFrame.ndcY) < 1,
+    `ndc=(${m81gateFrame.ndcX.toFixed(2)},${m81gateFrame.ndcY.toFixed(2)})`);
+  await capture('m81-02-portal-gate');
+  await m8live();
+
+  await m8freeze(0, 2, 745);
+  const m81wallL = await page.evaluate(() => window.__gd3d.screenPoint(-6, 3, 758));
+  const m81wallR = await page.evaluate(() => window.__gd3d.screenPoint(6, 3, 758));
+  log('m81 ship tunnel walls read both sides', !m81wallL.behind && !m81wallR.behind && Math.abs(m81wallL.ndcX) < 1.2 && Math.abs(m81wallR.ndcX) < 1.2,
+    `L=(${m81wallL.ndcX.toFixed(2)},${m81wallL.ndcY.toFixed(2)}) R=(${m81wallR.ndcX.toFixed(2)},${m81wallR.ndcY.toFixed(2)})`);
+  await capture('m81-03-ship-tunnel');
+  await m8live();
+
+  await m8freeze(3, 1.5, 586);
+  const m81chomp = await m8probe();
+  log('m81 chomper waits dormant before its trigger', m81chomp.chompers[0]?.phase === 'dormant',
+    `phase=${m81chomp.chompers[0]?.phase}`);
+  await capture('m81-04-chomper');
+  await m8live();
+  await m8freeze(5, 1.2, 598);
+  await capture('m81-04b-chomper-telegraph');
+  await m8live();
+
+  await page.evaluate(() => {
+    if (window.__m81watch) clearInterval(window.__m81watch);
+    window.__m81gate = null;
+    window.__m81watch = setInterval(() => {
+      if (window.__gd3d.status() === 'dead' && window.__m81gate === null) {
+        window.__m81gate = { pending: true };
+        window.__gd3d.debugFreezeFrame(true);
+        window.__gd3d.debugReplayBurst();
+        window.__gd3d.debugFreezeFrame(false);
+        setTimeout(() => {
+          window.__gd3d.debugFreezeFrame(true);
+          window.__m81gate = {
+            burst: window.__gd3d.burstActive(),
+            status: window.__gd3d.status(),
+          };
+        }, 250);
+      }
+    }, 16);
+  });
+  await m8stage(0, -1.9, 43);
+  const m81burstDead = await m8roll((s) => s.status === 'dead', 15000);
+  let m81gate = null;
+  for (let i = 0; i < 60 && (m81gate === null || m81gate.pending === true); i++) {
+    await page.waitForTimeout(100);
+    m81gate = await page.evaluate(() => window.__m81gate);
+  }
+  log('m81 death explosion + ghost read', m81burstDead !== null && m81gate !== null && m81gate.burst === true && m81gate.status === 'dead',
+    m81gate ? `burst=${m81gate.burst} status=${m81gate.status}` : 'no frozen frame');
+  await capture('m81-05-death-burst');
+  await page.evaluate(() => {
+    clearInterval(window.__m81watch);
+    window.__m81watch = null;
+    window.__gd3d.debugFreezeFrame(false);
+  });
+  await m8live();
 }
 
 // --- 25. Console audit ---
