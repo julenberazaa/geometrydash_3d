@@ -48,7 +48,12 @@ OPEN, not merged), plus the M8.1 polish follow-up on
 `feature/m8-1-polish-portals-lava-death` (bounded portal gates, lava
 rivers, wall-lane debt fix, ship tunnel, mode-aware death breakup, lava
 Chomper, compact rings — engineering complete, human gate OPEN; spec:
-`specs/milestones/M8_1_MULTIMODE_POLISH_AND_PORTAL_BOUNDS.md`). M6A visual production foundation
+`specs/milestones/M8_1_MULTIMODE_POLISH_AND_PORTAL_BOUNDS.md`), plus the
+M8.2 corrective follow-up on `feature/m8-2-lava-portal-spider-chomper-polish`
+(true opening-sized portal bounds + validator, viscous-flow lava read +
+vent-protrusion rule, lava-chomper redesign, spider-swap camera glide —
+engineering complete, human gate OPEN; spec:
+`specs/milestones/M8_2_LAVA_PORTAL_SPIDER_CHOMPER_POLISH.md`). M6A visual production foundation
 engineering-complete (production theme + shared materials + controlled
 bloom/post, zero gameplay change, 182/182 tests, M6A browser QA 24/24
 green, golden replay intact) — HUMAN VISUAL GATE OPEN

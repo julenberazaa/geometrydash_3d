@@ -75,21 +75,21 @@ camera feel, weakening any existing test.
 
 ## 4. Definition of Done
 
-- [ ] `npm run verify` green (typecheck + lint + tests + build).
-- [ ] Gauntlet driver still completes (same anchor tick unless a
+- [x] `npm run verify` green (typecheck + lint + tests + build).
+- [x] Gauntlet driver still completes (same anchor tick unless a
   documented content reason moves it), 0 deaths, replay VERIFIED.
-- [ ] Portal tests: through-opening fires / 2.5 u-beside-the-ring does
+- [x] Portal tests: through-opening fires / 2.5 u-beside-the-ring does
   NOT fire (gravity + mode + speed + teleport mechanism) / missed-gate
   geometric failure / validator rejects oversized volumes /
   gauntlet validates clean.
-- [ ] Lava tests: gauntlet validates clean under the protrusion rule /
+- [x] Lava tests: gauntlet validates clean under the protrusion rule /
   vent-over-fall alignment pinned / view structure bounded.
-- [ ] Chomper view tests updated (anatomy + budget + chomp cycle).
-- [ ] Spider camera unit tests (glide vs legacy whip, same endpoints,
+- [x] Chomper view tests updated (anatomy + budget + chomp cycle).
+- [x] Spider camera unit tests (glide vs legacy whip, same endpoints,
   gravity-flip path byte-identical).
-- [ ] Browser M8.2 section green + zero console/page errors:
+- [x] Browser M8.2 section green + zero console/page errors:
   lava source/fall/river, gate inside/outside, spider swap, chomper,
   replay verified.
-- [ ] Screenshots for every feedback item (evidence, not proof).
-- [ ] Docs: this spec, ROADMAP, ARCHITECTURE/GAME_DESIGN where behavior
+- [x] Screenshots for every feedback item (evidence, not proof).
+- [x] Docs: this spec, ROADMAP, ARCHITECTURE/GAME_DESIGN where behavior
   truly changed. No human approval claimed.

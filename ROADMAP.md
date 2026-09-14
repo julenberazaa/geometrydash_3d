@@ -474,6 +474,35 @@ resources; 8 new M8.1) with `qa/screenshots/m81-*` evidence. Spec:
 Automation proves POSSIBLE, never FUN — do NOT mark PASS until the human
 plays the M8.1 branch.
 
+## M8.2 — Lava / portal-bounds / spider-camera / chomper polish: ENGINEERING COMPLETE / HUMAN POLISH GATE OPEN (feature/m8-2-lava-portal-spider-chomper-polish, NOT merged)
+
+Corrective follow-up on the M8.1 branch (playtest: lava still an orange
+block; portal bug still fires from outside the ring; chomper reads like a
+mouse; spider camera snaps; wall-lane/ship-tunnel/death reported good
+and preserved untouched). (A) Lava render rework, presentation-only:
+pool crust plates over bright cracks, 4-step zigzag viscous falls grading
+bright-to-deep, impact splash discs, vent-mouth drips; re-authored vent
+compositions (protruding lips over their falls); new lavaAuthoring rule 4
+(vent mouths must not be buried in rock). Lethal boxes unchanged.
+(B) TRUE portal bounds: new `portalAuthoring.ts` validator (trigger
+volume ≈ visible ring opening, ring radii single-owned there and used by
+LevelView); gauntlet gates shrunk to opening size on probed rider lines;
+side runaway catcher (deathX ±11) so missed S3 wall gates fail by routing.
+Trigger mechanism untouched. (C) Chomper view-only redesign: bright
+emissive-orange blocky body, big square head, wide hot maw, 4 large fangs
++ jaw teeth, brow-hooded eyes; sim byte-identical. (D) Spider camera:
+presentation-only 0.55 s swap glide envelope (slower lambdas, spider-
+context only); gravity/Cube/Ship framing numerically untouched. Gauntlet
+driver still completes via real inputs (0 deaths, replay VERIFIED);
+ReplayV1 unchanged; golden fixture intact. 507 automated tests, `npm run
+verify` green. Browser M8.2 gate: 54/54 green with zero console/page
+errors (M8 + M8.1 + 11 new M8.2: lava source/fall/river, gate
+inside/outside + geometric miss failure, spider glide arming, chomper,
+replay VERIFIED) with `qa/screenshots/m82-*` evidence. Spec:
+`specs/milestones/M8_2_LAVA_PORTAL_SPIDER_CHOMPER_POLISH.md`.
+Automation proves POSSIBLE, never FUN — do NOT mark PASS until the human
+plays the M8.2 branch.
+
 ## Ship mode — part of M8 (multimode expansion)
 
 Enclosed tunnels, multi-surface hazards, speed feel. Cube validation

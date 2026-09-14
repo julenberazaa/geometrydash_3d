@@ -272,9 +272,10 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   direction, lethal in EVERY phase under id `chomper-<id>`), and the
   respawn reset. Aim (player X) is captured once at activation and never
   re-homed; the lunge is linear over authored ticks. `ChomperView`
-  (owned by `RendererHost`) observes sim states only — M8.1 lava-creature
-  anatomy (snout/brow/dorsal spikes/two crack bands/maw + fangs/jaw teeth
-  + chomp cycle), 22 meshes per Chomper, sim byte-identical.
+  (owned by `RendererHost`) observes sim states only — M8.2 lava-chomper
+  anatomy (bright emissive-orange blocky body + crust plates, big square
+  head, wide hot maw, 4 large fangs + jaw teeth, brow-hooded eyes,
+  bigger spikes + chomp cycle), 26 meshes per Chomper, sim byte-identical.
   **Teleport portals (M7.2):** deterministic forward entry-crossing
   (`prevZ < entryZ ≤ currentZ`, furthest unused entry wins), processed
   AFTER the lethal checks (death wins the step) and BEFORE pads/orbs/
@@ -369,7 +370,11 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   INSIDE the slabs (proven: 343 penetrating steps, worst 0.157 u;
   backface culling then hid the ceiling, which read as the cube floating).
   `RendererHost` maps the sim's authoritative gravity mode to the focus side
-  (presentation-only read; respawn `snapTo` included). Eye non-penetration
+  (presentation-only read; respawn `snapTo` included). M8.2 Spider-swap
+  glide: a Spider-context gravity swap arms a 0.55 s envelope of slower
+  position/look lambdas (same endpoints, no roll) so the teleport snap
+  reads as a controlled glide; gravity-portal/Cube/Ship paths never arm
+  it. Eye non-penetration
   across the real full-level playthrough is pinned by
   `tests/cameraFraming.test.ts` (level-data-aware auditor; the camera itself
   still never reads level data).
@@ -734,9 +739,26 @@ fixed-tick PHYSICAL input tape plus verification evidence.
 | Lethal checks precede ALL portal + interaction mutations (M3.3 invariant, extended in M4) | `interactions` ordering tests + `gravity` precedence tests |
 | Teleport portals: exactly once per attempt, lethal wins the step, skipped interval never fires, exit velocity/lane/support semantics pinned, gameplay fingerprinted (style excluded), ReplayV1 unchanged | `teleport` tests + `advancedCube01` teleport integration tests + browser QA m72 section |
 | M8.1 bounded portal triggers: gravity/speed/mode portals fire only when the swept step path overlaps the authored gate volume (legacy volume-less plane crossing kept); volumes fingerprinted conditionally (`portalvol:v1`, zero bytes when absent); ring visuals centered on the volume (volume/visual agreement) | `portalBounds` tests (inside/outside ×3 kinds, legacy compat, visual agreement, fingerprint reversibility) + `multimodeGauntlet` gate/routing tests + browser QA m81 section |
+| M8.2 TRUE portal bounds: trigger volumes must match the visible ring
+opening (ring radii single-owned in `portalAuthoring.ts` and used by
+LevelView; `validatePortalBounds` rejects oversized/off-plane volumes);
+gauntlet gates are opening-sized on probed rider lines; missed S3 wall
+gates fail by routing (floor gaps or deathX ±11 runaway catcher) |
+`portalBounds` tests (all four kinds inside/outside, missed-gate void,
+validator rejection, gauntlet clean) + browser QA m82 inside/outside checks |
+| M8.2 lava read: pool crust plates over bright cracks, stepped zigzag
+falls grading bright-to-deep, splash discs, vent drips; vent mouths must
+protrude from rock (`lavaAuthoring` rule 4); lethal boxes unchanged |
+`lava` protrusion/alignment/view-structure tests + gauntlet clean +
+browser QA m82 lava portraits |
 | M8.1 lane-debt resync: laterally-blocked intent clamps to one lean step beyond the deepest reachable lane (all modes/surfaces); open-edge virtual lanes untouched; Y-clips count only when the lane axis is vertical | `laneDebt` tests (wall-bottom + floor side-wall + open-edge) + `death` lean-settle pin + golden fixture (bit-identical without lateral contacts) |
 | M8.1 death breakup: mode voxel palettes + ghost shell + held chunk size (same 78-tick hold); pooled 35, owned materials, render-only | `deathBurst` mode/lifecycle tests + browser QA m81 frozen-burst photo |
-| M8.1 chomper anatomy: snout/brow/spikes/bands/fangs/jaw teeth + chomp cycle, 22 meshes max × 8, sim byte-identical | `chomperView` structure/animation/bound tests + `chomper` sim contract + browser QA m81 portraits |
+| M8.2 chomper redesign: bright lava-orange blocky body, big square head,
+wide hot maw, large fangs + jaw teeth, brow-hooded eyes, 26 meshes max;
+chomp cycle + sim byte-identical | `chomperView` structure/animation/bound tests + `chomper` sim contract + browser QA m82 portraits |
+| M8.2 spider-swap camera glide: Spider-context gravity swaps ease with
+slower lambdas over 0.55 s (same endpoints, no roll); gravity-portal /
+Cube / Ship framing numerically untouched | `spiderCamera` glide/endpoint/snap/expiry tests + `cameraFraming` regression pins + browser QA m82 glide arming |
 | M8.1 tunnel-wall mid-band: tall thin walls carry a 0.07 neon bead (not the 0.055 rail stock) on both narrow faces; purely geometric | `tunnelWalls` tests + browser QA m81 tunnel checks |
 | Presentation setpieces: no collision/AI/movement/trigger, fingerprint-excluded, never landable-looking | `advancedCube01` setpiece structure + fingerprint-exclusion tests + browser QA m72 setpiece checks |
 | M4 interactions: swept-window detection (no skip at speed), press-edge orbs (no buffer, held-inert), one-shot per attempt, respawn re-arms | `interactions` tests + browser QA m4 section |
