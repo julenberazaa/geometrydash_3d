@@ -386,7 +386,6 @@ mint-green Spider rings (surface-switch glyph).
 surface-switch).
 
 ## 7.5 Dynamic lava chomper — CURRENT (M8D)
-
 An ORIGINAL lava-predator design (dark basalt shell, molten cracks, bright
 maw, energy-chain tether — never licensed geometry) and a REAL moving
 gameplay hazard with a readable attack contract:
@@ -406,7 +405,22 @@ gameplay hazard with a readable attack contract:
   collision (no tunneling either direction), replay-safe (input-only
   tapes; level + state fingerprints extend conditionally).
 
-## 7.6 Out of scope for the current foundation
+## 7.6 Maze and trap islands — CURRENT (M8E)
+
+- **Maze:** tall lethal frontal walls with narrow passage doors force quick
+  horizontal route decisions. Correct openings are readable before the
+  decision window closes (no blind memorization): generous approaches,
+  doors centered on lanes, wrong paths visibly lethal (wall / spikes /
+  lava / void). Frontal contact kills; side scrape obeys the standard
+  blocking semantics.
+- **Trap islands:** tempting but visibly dangerous choices — spike-covered
+  decoy islands beside a clean precision line. "Trap" never means hidden
+  colliders, spawn-after-landing surprises, or unavoidable deaths.
+- **Multimode production levels** chain lava, gravity, modes, Chompers,
+  maze and traps into one authored arc with mandatory portal routing
+  (missing a transition naturally kills via wall / spike / lava / void).
+
+## 7.7 Out of scope for the current foundation
 
 Music/BPM sync, public editor, backend, persistence. See `ROADMAP.md`.
 (Pads, orbs, speed portals and the trigger infrastructure shipped in M4 —

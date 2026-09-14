@@ -194,7 +194,9 @@ export class RendererHost {
     this.scene.add(this.interactionView.group);
 
     this.chomperView = new ChomperView(simulation.level.chompers, this.library);
-    this.scene.add(this.chomperView.group);
+    // No empty groups in the scene: levels without Chompers add zero
+    // children (resource pins stay level-comparable).
+    if (simulation.level.chompers.length > 0) this.scene.add(this.chomperView.group);
 
     this.playerViewInternal = new PlayerView(this.library);
     this.scene.add(this.playerViewInternal.group);

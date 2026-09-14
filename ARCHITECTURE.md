@@ -199,6 +199,11 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   gap a 1× jump cannot cross, final weave, finish at z=258 (~19.5 s).
   Runs on the unmodified `GameSimulation`; scripted real-input playthrough
   finishes at tick 2346 (`tests/helpers/level02Script.ts`).
+- `multimodeGauntlet01.ts` (M8E, `multimode-gauntlet-01`): the multimode
+  integration level — lava intro, maze decisions, four-way gravity,
+  two-Chomper biome, Ship corridor, Spider snaps, trap islands; scripted
+  real-input playthrough finishes at tick 10321 (86.0 s), 0 deaths, replay
+  VERIFIED (`tests/helpers/multimodeGauntletScript.ts`).
 
 ## 7. Simulation (`src/game/`)
 

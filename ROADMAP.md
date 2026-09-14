@@ -423,7 +423,7 @@ accepted and development may proceed — not "perfect", not permanently
 locked art, no redesign permission. Next: M6D real-GPU closeout →
 music/rhythm → Ship.
 
-## M8 — Multimode & Hazard Expansion: IN PROGRESS (feature/m8-multimode-gameplay)
+## M8 — Multimode & Hazard Expansion: ENGINEERING COMPLETE / HUMAN MULTIMODE GAMEPLAY GATE OPEN (feature/m8-multimode-gameplay, NOT merged)
 
 PRODUCT REPRIORITIZATION (human direction): M8 is NO LONGER music/rhythm.
 M8 is the multimode & hazard expansion — real lethal lava (sourced/
@@ -436,6 +436,22 @@ provisional milestone after M8 (NOT started). M6 real-GPU hardware gate
 remains OPEN (the M8 workload is heavier; rerun after human approval).
 Ship mode is part of THIS milestone (was previously gated behind Cube
 validation — that validation has now passed twice: M7.1 + M7.3).
+
+M8 engineering record (2026-09-14, feature branch): lava gameplay +
+death rework, portal redesign + bounded teleports, four-way gravity with
+frame-relative lanes, Ship + Spider modes, deterministic Chomper system,
+`multimode-gauntlet-01` (finish z=1200, scripted real-input completion
+tick 10321 / 86.0 s / 0 deaths / all modes + gravities / both Chompers
+spent, replay VERIFIED in-suite). `npm run verify` green (33 files /
+464 tests, ReplayV1 unchanged, golden fixture intact). Browser M8 slice:
+35/35 green with zero console/page errors (lava, death, portals, walls,
+Ship, Spider, Chomper, maze, traps, full in-page finish + REPLAY
+VERIFIED, restart/resource guards). Screenshots `qa/screenshots/m8-*`
+(+ sidecars). Shared-material delta 28 → 36 recorded (+2 lava, +2 mode,
++4 chomper). Monolithic-gate M1–M7 sections show the documented
+software-rendering load-flakes in this environment (unchanged product
+behavior; no test weakened). Human playtest next:
+`?level=multimode-gauntlet-01` on the feature branch.
 
 ## Ship mode — part of M8 (multimode expansion)
 
