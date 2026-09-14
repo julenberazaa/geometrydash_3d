@@ -257,7 +257,7 @@ export class RendererHost {
     // matching punch; still no roll, no shake).
     if (sim.deathId !== this.lastSeenDeathId) {
       this.lastSeenDeathId = sim.deathId;
-      this.deathBurst.play(p);
+      this.deathBurst.play(p, sim.playerMode);
       this.fovKick = 5;
       this.heightKick = 0.4;
     }
@@ -702,7 +702,7 @@ export class RendererHost {
    * the natural one (same pool, same origin, same motion model).
    */
   public debugReplayBurst(): void {
-    this.deathBurst.play(this.simulation.deathPosition);
+    this.deathBurst.play(this.simulation.deathPosition, this.simulation.playerMode);
   }
 
   /**

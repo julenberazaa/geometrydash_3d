@@ -194,6 +194,44 @@ export class LevelView {
         this.group.add(stripSide);
       }
 
+      // M8.1 tunnel-wall mid-band: tall thin freestanding walls (corridor
+      // and tunnel sides — e.g. the Ship tunnel) otherwise render as tall
+      // unlit black masses, because their broad side faces catch almost no
+      // hemisphere or directional light. One neon bead at mid-height along
+      // BOTH side faces breaks the mass with the route's edge language and
+      // gives enclosed corridors a longitudinal structure cue. Purely
+      // geometric (height ≥ 5 with a horizontal half ≤ 0.6 — the same
+      // precedent as the 0.8 trim rule and the y ≥ 2 underside-rail rule),
+      // shared edge material, two meshes per wall, zero per-frame work.
+      // The 0.07 section deliberately differs from the 0.055 rail stock so
+      // rail-parity probes keep measuring exactly what they pinned.
+      const minHorizontalHalf = Math.min(solid.halfExtents.x, solid.halfExtents.z);
+      if (solidHeight >= 5 && minHorizontalHalf <= 0.6) {
+        // Bead runs along the wall's LONG horizontal axis, riding proud
+        // of each narrow face (tunnel walls are X-thin/Z-long; a Z-thin
+        // cross-wall gets the mirrored treatment).
+        const thinX = solid.halfExtents.x <= solid.halfExtents.z;
+        for (const side of [-1, 1]) {
+          const bead = new THREE.Mesh(box, edgeMat);
+          if (thinX) {
+            bead.scale.set(0.07, 0.07, solid.halfExtents.z * 2 + 0.1);
+            bead.position.set(
+              solid.center.x + side * (solid.halfExtents.x + 0.005),
+              solid.center.y,
+              solid.center.z,
+            );
+          } else {
+            bead.scale.set(solid.halfExtents.x * 2 + 0.1, 0.07, 0.07);
+            bead.position.set(
+              solid.center.x,
+              solid.center.y,
+              solid.center.z + side * (solid.halfExtents.z + 0.005),
+            );
+          }
+          this.group.add(bead);
+        }
+      }
+
       // M7.3 mini-island under-glow: narrow (single-lane-class) slabs carry
       // a full bottom-edge frame mirroring the top frame, so small aerial
       // platforms glow as floating volumes instead of dark chips. Shared
@@ -332,11 +370,23 @@ export class LevelView {
       const toFloor = portal.target === 'floor';
       const frameMat = toCeiling ? this.library.portalUp : this.library.portalDown;
       const paneMat = toCeiling ? this.library.portalPaneUp : this.library.portalPaneDown;
-      // Approach-side center: floor approaches fly low, ceiling approaches
-      // fly high, wall approaches hug their wall (lateral offset).
-      const cy = toCeiling ? 1.7 : toFloor ? 4.9 : 2.6;
-      const cx = portal.target === 'leftWall' ? 3.4 : portal.target === 'rightWall' ? -3.4 : 0;
-      this.buildPortalRing(cx, cy, portal.z, 1.7, frameMat, paneMat);
+      // Gate center: M8.1 bounded portals render ON their trigger volume
+      // (the ring marks the opening the sim actually tests — volume and
+      // visual can never disagree). Legacy volume-less portals keep the
+      // approach-side convention (low for floor approaches, high for
+      // ceiling approaches, wall targets offset toward their wall).
+      const vc = portal.triggerCenter;
+      const cy = vc !== undefined ? vc.y : toCeiling ? 1.7 : toFloor ? 4.9 : 2.6;
+      const cx =
+        vc !== undefined
+          ? vc.x
+          : portal.target === 'leftWall'
+            ? 3.4
+            : portal.target === 'rightWall'
+              ? -3.4
+              : 0;
+      // M8.1: radius 1.45 (was 1.7) — compact professional gate.
+      this.buildPortalRing(cx, cy, portal.z, 1.45, frameMat, paneMat);
       // Direction glyph: chevron along the target gravity pull (up = away
       // from floor, down = away from ceiling, sideways for walls).
       const glyph = new THREE.Mesh(this.library.chevron, frameMat);
@@ -376,8 +426,10 @@ export class LevelView {
     rim.scale.setScalar((radius * 0.72) / 0.62);
     rim.position.set(x, y, z);
     this.group.add(rim);
+    // M8.1: thinner energy disc (radius * 1.2, was 1.5) — the gate reads
+    // as a ring to fly through, never a wall pane.
     const disc = new THREE.Mesh(this.library.unitBox, paneMat);
-    disc.scale.set(radius * 1.5, radius * 1.5, 0.02);
+    disc.scale.set(radius * 1.2, radius * 1.2, 0.02);
     disc.position.set(x, y, z);
     this.group.add(disc);
   }
@@ -404,25 +456,26 @@ export class LevelView {
     for (const portal of level.teleportPortals) {
       if (portal.style === 'maw') {
         // Maw entry: a toothed mouth ring centered on the corridor — the
-        // guardian's bite. Smaller than M7.2 (radius 2.2 vs ~3) with a
-        // hazard-orange tooth crown (shared chevron geometry) so the
-        // entry reads as a creature mouth, not architecture.
-        this.buildPortalRing(0, 2.4, portal.entryZ, 2.2, frameMat, paneMat);
+        // guardian's bite. M8.1 radius 1.85 (was 2.2) with a hazard-orange
+        // tooth crown (shared chevron geometry) so the entry reads as a
+        // creature mouth, not architecture.
+        this.buildPortalRing(0, 2.4, portal.entryZ, 1.85, frameMat, paneMat);
         for (let i = 0; i < 8; i++) {
           const tooth = new THREE.Mesh(this.library.chevron, this.library.hazard);
           const a = (i / 8) * Math.PI * 2;
-          tooth.scale.setScalar(0.9);
-          tooth.position.set(Math.cos(a) * 2.2, 2.4 + Math.sin(a) * 2.2, portal.entryZ);
+          tooth.scale.setScalar(0.8);
+          tooth.position.set(Math.cos(a) * 1.85, 2.4 + Math.sin(a) * 1.85, portal.entryZ);
           // Teeth point inward (cone tip toward the mouth center).
           tooth.rotation.z = a + Math.PI / 2;
           this.group.add(tooth);
         }
       } else {
-        // Short-hop entry: compact ring on the route line.
-        this.buildPortalRing(0, 1.6, portal.entryZ, 1.8, frameMat, paneMat);
+        // Short-hop entry: compact ring on the route line (M8.1: 1.5).
+        this.buildPortalRing(0, 1.6, portal.entryZ, 1.5, frameMat, paneMat);
       }
-      // Exit: a smaller doorway ring at the authored destination.
-      const exitR = portal.style === 'maw' ? 1.5 : 1.3;
+      // Exit: a smaller doorway ring at the authored destination — the
+      // entry/exit pair reads as one connected moment in the same scene.
+      const exitR = portal.style === 'maw' ? 1.2 : 1.05;
       this.buildPortalRing(portal.exit.x, portal.exit.y + 0.4, portal.exit.z, exitR, frameMat, paneMat);
     }
   }
@@ -438,10 +491,15 @@ export class LevelView {
     for (const portal of level.modePortals) {
       const isShip = portal.target === 'ship';
       const mat = isShip ? this.library.modeShip : this.library.modeSpider;
-      this.buildPortalRing(0, 1.7, portal.z, 1.6, mat, mat);
+      // M8.1: radius 1.35 (was 1.6), centered on the trigger volume when
+      // the portal carries one (same volume/visual agreement as gravity).
+      const vc = portal.triggerCenter;
+      const gx = vc?.x ?? 0;
+      const gy = vc?.y ?? 1.7;
+      this.buildPortalRing(gx, gy, portal.z, 1.35, mat, mat);
       const glyph = new THREE.Mesh(this.library.chevron, mat);
       glyph.scale.setScalar(0.85);
-      glyph.position.set(0, 1.7, portal.z);
+      glyph.position.set(gx, gy, portal.z);
       // Ship: dart pointing +Z (forward flight); Spider: chevron pointing
       // down (surface-switch read).
       glyph.rotation.x = isShip ? Math.PI / 2 : 0;

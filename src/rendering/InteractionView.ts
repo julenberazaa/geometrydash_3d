@@ -172,14 +172,20 @@ export class InteractionView {
     for (const portal of level.speedPortals) {
       // Shared per-tier library material (not per-portal).
       const mat = this.speedTierMaterial(portal.multiplier);
-      const radius = 1.6;
+      // M8.1: radius 1.35 (was 1.6) with a tighter chevron stack, so the
+      // tier glyphs sit inside the ring instead of poking past it. Bounded
+      // portals center on their trigger volume (volume/visual agreement).
+      const radius = 1.35;
+      const vc = portal.triggerCenter;
+      const cx = vc?.x ?? 0;
+      const cy = vc?.y ?? 1.7;
       const ring = new THREE.Mesh(halo, mat);
       ring.scale.setScalar(radius / 0.62);
-      ring.position.set(0, 1.7, portal.z);
+      ring.position.set(cx, cy, portal.z);
       this.group.add(ring);
       const rim = new THREE.Mesh(halo, this.dimMaterial);
       rim.scale.setScalar((radius * 0.72) / 0.62);
-      rim.position.set(0, 1.7, portal.z);
+      rim.position.set(cx, cy, portal.z);
       this.group.add(rim);
       // Chevron count = rounded tier (min 1), stacked inside the ring,
       // each pointing +Z (the direction of travel).
@@ -187,8 +193,8 @@ export class InteractionView {
       for (let i = 0; i < chevrons; i++) {
         const c = new THREE.Mesh(chevron, mat);
         c.rotation.x = Math.PI / 2; // cone axis -> +Z
-        c.scale.setScalar(0.8);
-        c.position.set(0, 1.15 + i * 0.7, portal.z);
+        c.scale.setScalar(0.7);
+        c.position.set(cx, cy - 0.65 + i * 0.55, portal.z);
         this.group.add(c);
       }
     }

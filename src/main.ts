@@ -85,6 +85,8 @@ declare global {
       };
       debugTeleport: (x: number, y: number, z: number) => void;
       deathCause: () => string | null;
+      /** QA-only: the sim pause flag (explicit pause-sync for staging). */
+      paused: () => boolean;
       lethalInfo: () => {
         colliderId: string | null;
         normal: { x: number; y: number; z: number };
@@ -212,6 +214,7 @@ window.__gd3d = {
     game['simulation'].debugPlaceAt(x, y, z);
   },
   deathCause: () => game['simulation'].deathCause,
+  paused: () => game['paused'],
   lethalInfo: () => ({
     colliderId: game['simulation'].lastLethalColliderId,
     normal: { ...game['simulation'].lastContactNormal },
