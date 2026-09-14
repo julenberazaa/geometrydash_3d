@@ -55,16 +55,34 @@ const writeGravityMode = (h: DeterministicHasher, mode: GravityMode | undefined)
   h.writeInt32(mode === 'ceiling' ? 1 : mode === 'leftWall' ? 2 : mode === 'rightWall' ? 3 : 0);
 };
 
+const writePortalVolume = (
+  h: DeterministicHasher,
+  center: Vec3Like | undefined,
+  halfExtents: Vec3Like | undefined,
+): void => {
+  // M8.1 bounded trigger volumes are gameplay (they change the trigger),
+  // so they ARE fingerprinted — but with ZERO bytes when absent (a domain
+  // separator only when a volume exists), so volume-less portals hash
+  // byte-identically to before and pre-M8.1 replays stay compatible.
+  if (center !== undefined && halfExtents !== undefined) {
+    h.writeString('portalvol:v1');
+    writeVec3(h, center);
+    writeVec3(h, halfExtents);
+  }
+};
+
 const writePortal = (h: DeterministicHasher, p: GravityPortalDef): void => {
   h.writeString(p.id);
   h.writeFloat64(p.z);
   writeGravityMode(h, p.target);
+  writePortalVolume(h, p.triggerCenter, p.triggerHalfExtents);
 };
 
 const writeSpeedPortal = (h: DeterministicHasher, p: SpeedPortalDef): void => {
   h.writeString(p.id);
   h.writeFloat64(p.z);
   h.writeFloat64(p.multiplier);
+  writePortalVolume(h, p.triggerCenter, p.triggerHalfExtents);
 };
 
 const writePad = (h: DeterministicHasher, p: JumpPadDef): void => {
@@ -127,6 +145,7 @@ const writeModePortal = (h: DeterministicHasher, m: PlayerModePortalDef): void =
   h.writeString(m.id);
   h.writeFloat64(m.z);
   h.writeInt32(m.target === 'cube' ? 0 : m.target === 'ship' ? 1 : 2);
+  writePortalVolume(h, m.triggerCenter, m.triggerHalfExtents);
 };
 
 const writeSolid = (h: DeterministicHasher, s: LevelSolid): void => {

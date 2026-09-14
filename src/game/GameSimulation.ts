@@ -4,6 +4,7 @@ import type { Vec3 } from '../core/math';
 import { vec3, copyVec3 } from '../core/math';
 import { SIMULATION_DT } from '../core/constants';
 import { CUBE_TUNING } from '../player/cubeTuning';
+import { laneCenterForIndex } from '../player/laneKinematics';
 import { CubeController, type CubeControllerStepContext } from '../player/CubeController';
 import { ShipController, type ShipControllerStepContext } from '../player/ShipController';
 import { SpiderController, type SpiderControllerStepContext } from '../player/SpiderController';
@@ -480,6 +481,16 @@ export class GameSimulation {
       }
     }
 
+    // M8.1 lane-debt resync (wall-lane input bug fix): lateral intent must
+    // never accumulate hidden debt against an immovable wall. When a
+    // blocking contact opposed lane-axis motion this step while the target
+    // lane lies further in the blocked direction, the target is unreachable
+    // — resync it to the nearest REAL lane. Support-based side exits (the
+    // M1.2 fall-off) produce no contact, so teetering on virtual lanes is
+    // untouched; only true geometric blockage resyncs. General across all
+    // modes (Cube/Ship/Spider share intent) and all four gravity surfaces.
+    this.resyncLaneTargetOnLateralBlock();
+
     // 3. Grounding: support probe along the gravity direction + velocity
     //    cleanup. Support = blocking surface OPPOSING gravity (below the
     //    Cube on Floor, above it on Ceiling, sideways on walls).
@@ -698,7 +709,16 @@ export class GameSimulation {
     const prevZ = this.prevPosition.z;
     const currentZ = this.player.position.z;
     for (const portal of this.level.gravityPortals) {
-      if (prevZ < portal.z && currentZ >= portal.z) {
+      // M8.1 bounded trigger volumes: the swept path must overlap the gate
+      // volume — crossing the Z plane outside the visible opening does NOT
+      // trigger. Legacy volume-less portals keep the plane crossing.
+      const tc = portal.triggerCenter;
+      const th = portal.triggerHalfExtents;
+      const crossed =
+        tc !== undefined && th !== undefined
+          ? this.sweptWindowOverlap(tc, th)
+          : prevZ < portal.z && currentZ >= portal.z;
+      if (crossed) {
         this.lastPortalId = portal.id;
         this.applyGravityTransition(portal.target);
       }
@@ -718,7 +738,14 @@ export class GameSimulation {
     const currentZ = this.player.position.z;
     for (const portal of this.level.modePortals) {
       if (this.usedModePortals.has(portal.id)) continue;
-      if (prevZ < portal.z && currentZ >= portal.z) {
+      // M8.1 bounded trigger volumes (same contract as gravity portals).
+      const tc = portal.triggerCenter;
+      const th = portal.triggerHalfExtents;
+      const crossed =
+        tc !== undefined && th !== undefined
+          ? this.sweptWindowOverlap(tc, th)
+          : prevZ < portal.z && currentZ >= portal.z;
+      if (crossed) {
         this.usedModePortals.add(portal.id);
         this.lastModePortalId = portal.id;
         this.applyModeTransition(portal.target);
@@ -874,6 +901,87 @@ export class GameSimulation {
   }
 
   /**
+   * M8.1 lane-debt resync: cap unreachable lane intent after lateral
+   * blockage. Reads the authoritative post-collision contacts (deterministic
+   * move-result order) and the current lateral position; mutates ONLY
+   * `targetLaneIndex`, never position or velocity — so replays stay
+   * input-driven and trajectories without lateral contacts are bit-identical.
+   *
+   * Rule: while a wall blocks lane motion in direction d and the target lies
+   * further in direction d, the target is clamped to at most ONE lane-step
+   * beyond the deepest reachable real lane. One step is the physically
+   * meaningful lean/teeter allowance (M1.2 — the pinned side-blocked settle
+   * holds the Cube against the wall instead of dragging it back); anything
+   * deeper is unreachable hidden debt, so repeated impossible presses can
+   * never accumulate — a single press back always recovers. Support-based
+   * side exits produce no contact, so open-edge virtual lanes are untouched.
+   */
+  private resyncLaneTargetOnLateralBlock(): void {
+    const contacts = this.moveResult.wallContacts;
+    if (contacts.length === 0) return;
+    const frame = this.gameplayFrame;
+    const la = frame.laneAxis;
+    // First lateral contact in deterministic move-result order wins.
+    let blockedDir = 0;
+    for (const contact of contacts) {
+      const n = contact.normal;
+      const lateral = n.x * la.x + n.y * la.y + n.z * la.z;
+      if (Math.abs(lateral) > 0.5) {
+        // The normal points away from the blocking surface: motion toward
+        // −normal was stopped, i.e. lane-space direction −sign(lateral).
+        blockedDir = lateral > 0 ? -1 : 1;
+        break;
+      }
+    }
+    // Y-axis clips never enter wallContacts — they set hitFloor/hitCeiling.
+    // Those are landings on Floor/Ceiling (lane axis horizontal — never
+    // lateral), but on WALL gravity (lane axis vertical) they ARE the
+    // lane-direction blockage (floor below / ceiling above the wall run).
+    if (blockedDir === 0 && la.y !== 0) {
+      const ySign = Math.sign(la.y);
+      if (this.moveResult.hitFloor) blockedDir = -ySign;
+      else if (this.moveResult.hitCeiling) blockedDir = ySign;
+    }
+    if (blockedDir === 0) return;
+    const centers = this.activeLaneCenters;
+    if (centers.length === 0) return;
+    const laneSign = la.x !== 0 ? Math.sign(la.x) : Math.sign(la.y);
+    const p = this.player.position;
+    const sPos = p.x * la.x + p.y * la.y + p.z * la.z;
+    const sTarget = laneCenterForIndex(centers, this.player.targetLaneIndex) * laneSign;
+    const gap = sTarget - sPos;
+    // Only clamp when the target lies in the blocked direction (pressing
+    // back the other way already works — it must never be disturbed).
+    if (gap === 0 || Math.sign(gap) !== blockedDir) return;
+    const eps = 0.01;
+    if (blockedDir < 0) {
+      // Deepest reachable real lane, minus the one meaningful lean step.
+      let deepest = -1;
+      for (let i = 0; i < centers.length; i++) {
+        if ((centers[i] ?? 0) * laneSign >= sPos - eps) {
+          deepest = i;
+          break;
+        }
+      }
+      // Degenerate (position past every lane on the free side): fall back
+      // to the extreme real lane in the blocked direction — still bounded,
+      // still one press back to recovery.
+      const cap = deepest === -1 ? 0 : deepest - 1;
+      if (this.player.targetLaneIndex < cap) this.player.targetLaneIndex = cap;
+    } else {
+      let shallowest = -1;
+      for (let i = centers.length - 1; i >= 0; i--) {
+        if ((centers[i] ?? 0) * laneSign <= sPos + eps) {
+          shallowest = i;
+          break;
+        }
+      }
+      const cap = shallowest === -1 ? -1 : shallowest + 1;
+      if (this.player.targetLaneIndex > cap) this.player.targetLaneIndex = cap;
+    }
+  }
+
+  /**
    * THE single gravity transition path — shared by M3 gravity portals
    * and M4 gravity orbs (no duplicate gravity state). Preserves world position
    * and ALL velocity components (no teleport, no impulse, no snap); flips the
@@ -900,7 +1008,14 @@ export class GameSimulation {
     const prevZ = this.prevPosition.z;
     const currentZ = this.player.position.z;
     for (const portal of this.level.speedPortals) {
-      if (prevZ < portal.z && currentZ >= portal.z) {
+      // M8.1 bounded trigger volumes (same contract as gravity portals).
+      const tc = portal.triggerCenter;
+      const th = portal.triggerHalfExtents;
+      const crossed =
+        tc !== undefined && th !== undefined
+          ? this.sweptWindowOverlap(tc, th)
+          : prevZ < portal.z && currentZ >= portal.z;
+      if (crossed) {
         this.lastSpeedPortalId = portal.id;
         this.speedMultiplierValue = portal.multiplier;
         this.registerInteraction('speedPortal', portal.id, 0, 0, portal.z);

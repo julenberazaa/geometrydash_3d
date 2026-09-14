@@ -21,6 +21,16 @@ export interface GravityPortalDef {
   z: number;
   /** Gravity mode to switch to when crossed. */
   target: GravityMode;
+  /**
+   * OPTIONAL bounded trigger volume (M8.1). When present, the portal fires
+   * only when the swept step path overlaps this box — crossing the Z plane
+   * outside the visible gate opening does NOT trigger it. When absent, the
+   * legacy forward plane crossing applies (pre-M8.1 content stays
+   * compatible). New content must use the bounded volume.
+   */
+  triggerCenter?: Vec3;
+  /** Half extents of the bounded trigger volume (required with triggerCenter). */
+  triggerHalfExtents?: Vec3;
 }
 
 /**
@@ -33,6 +43,13 @@ export interface PlayerModePortalDef {
   z: number;
   /** Player mode to switch to when crossed. */
   target: PlayerMode;
+  /**
+   * OPTIONAL bounded trigger volume (M8.1 — same contract as the gravity
+   * portal volume above). New content must use it.
+   */
+  triggerCenter?: Vec3;
+  /** Half extents of the bounded trigger volume (required with triggerCenter). */
+  triggerHalfExtents?: Vec3;
 }
 
 /**
@@ -85,6 +102,13 @@ export interface SpeedPortalDef {
   z: number;
   /** Speed multiplier tier applied when crossed (content tiers: 0.5/1/2/3/4). */
   multiplier: number;
+  /**
+   * OPTIONAL bounded trigger volume (M8.1 — same contract as the gravity
+   * portal volume above). New content must use it.
+   */
+  triggerCenter?: Vec3;
+  /** Half extents of the bounded trigger volume (required with triggerCenter). */
+  triggerHalfExtents?: Vec3;
 }
 
 /**
