@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { GameSimulation } from '../game/GameSimulation';
 import { ChaseCamera, CAMERA_TUNING } from '../camera/ChaseCamera';
 import type { CameraFocusSide } from '../camera/ChaseCamera';
+import type { GravityMode } from '../player/playerState';
 import { LevelView } from './LevelView';
 import { PlayerView } from './PlayerView';
 import { DeathBurstView } from './DeathBurstView';
@@ -321,6 +322,16 @@ export class RendererHost {
     // M6D: no updateProjectionMatrix here — render() applies the fov kick
     // and updates the projection once per presented frame (this method ran
     // it redundantly every frame, doubling a matrix recompute).
+    // M8.2 Spider-swap glide: arm the camera envelope when gravity flips
+    // inside Spider mode. Gravity-portal flips never arm it (approved
+    // feel untouched); respawn/teleport snaps cut it (see snapTo).
+    const grav = sim.gravityMode;
+    if (this.lastCamGravity === null) {
+      this.lastCamGravity = grav;
+    } else if (grav !== this.lastCamGravity) {
+      if (sim.playerMode === 'spider') this.chaseCamera.noteSpiderSwap();
+      this.lastCamGravity = grav;
+    }
     this.chaseCamera.update(p, 0, renderDtSeconds, this.focusSide());
   }
 
@@ -377,6 +388,12 @@ export class RendererHost {
       triangles: this.renderer.info.render.triangles,
     };
   }
+
+  /**
+   * M8.2: last gravity mode observed by the camera wiring (Spider-swap
+   * edge detection; null before the first presented frame).
+   */
+  private lastCamGravity: GravityMode | null = null;
 
   /** Live scene child count (leak guard for repeated death/respawn QA). */
   public get sceneChildren(): number {

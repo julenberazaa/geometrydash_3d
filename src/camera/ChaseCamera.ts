@@ -94,11 +94,29 @@ export const CAMERA_TUNING: CameraTuning = {
   wallFreeSideOffset: 3.4,
 };
 
+/**
+ * M8.2 Spider-swap glide: how long (render seconds) the camera eases
+ * after a Spider surface swap, and the slower smoothing lambdas used
+ * while the envelope is open. Endpoints are identical to the legacy
+ * path — only the rate changes (95% converged at ~0.67 s instead of a
+ * 0.33 s look-whip). Gravity-portal/Cube/Ship framing never enters
+ * this envelope (their lambdas are byte-untouched).
+ */
+export const SPIDER_SWAP_GLIDE_SECONDS = 0.55;
+export const SPIDER_SWAP_POSITION_LAMBDA = 4.5;
+export const SPIDER_SWAP_LOOK_LAMBDA = 4.5;
+
 export class ChaseCamera {
   private readonly tuning: CameraTuning;
   private readonly position: Vec3;
   private readonly lookTarget: Vec3;
   private initialized = false;
+  /**
+   * M8.2 Spider-swap envelope clock (render seconds since the last
+   * Spider-context gravity swap; Infinity at rest). While open, update()
+   * eases with the slower swap lambdas instead of the tuning defaults.
+   */
+  private swapEnvelope = Infinity;
 
   constructor(tuning: CameraTuning = CAMERA_TUNING) {
     this.tuning = tuning;
@@ -112,6 +130,16 @@ export class ChaseCamera {
    * gravity mode (RendererHost maps it); the damped position smoothing makes
    * the desired-height change at a gravity flip a short glide, never a cut.
    */
+  /**
+   * M8.2: arm the Spider-swap glide (called by the rendering host when
+   * the simulation's gravity flips inside Spider mode). Pure presentation
+   * state — gameplay never reads it. Gravity-portal flips never call
+   * this, so their approved feel is numerically untouched.
+   */
+  public noteSpiderSwap(): void {
+    this.swapEnvelope = 0;
+  }
+
   public update(
     playerPosition: Readonly<Vec3>,
     trackCenterX: number,
@@ -167,8 +195,19 @@ export class ChaseCamera {
       return;
     }
 
-    const posK = dampFactor(t.positionSmoothing, renderDtSeconds);
-    const lookK = dampFactor(t.lookSmoothing, renderDtSeconds);
+    // M8.2 Spider-swap glide: while the envelope is open, ease with the
+    // slower swap lambdas (same endpoints, controlled rate — no whip).
+    // The clock advances on render dt, so pause freezes the glide too.
+    this.swapEnvelope += renderDtSeconds;
+    const gliding = this.swapEnvelope < SPIDER_SWAP_GLIDE_SECONDS;
+    const posK = dampFactor(
+      gliding ? SPIDER_SWAP_POSITION_LAMBDA : t.positionSmoothing,
+      renderDtSeconds,
+    );
+    const lookK = dampFactor(
+      gliding ? SPIDER_SWAP_LOOK_LAMBDA : t.lookSmoothing,
+      renderDtSeconds,
+    );
     this.position.x += (desiredX - this.position.x) * posK;
     this.position.y += (desiredY - this.position.y) * posK;
     this.position.z += (desiredZ - this.position.z) * posK;
@@ -184,6 +223,8 @@ export class ChaseCamera {
     focusSide: CameraFocusSide = 'aboveFocus',
   ): void {
     this.initialized = false;
+    // A snap cuts — it must never inherit an open glide envelope.
+    this.swapEnvelope = Infinity;
     this.update(playerPosition, trackCenterX, 1, focusSide);
   }
 
