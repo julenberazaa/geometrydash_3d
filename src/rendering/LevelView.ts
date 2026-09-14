@@ -1,6 +1,12 @@
 import * as THREE from 'three';
 import type { LoadedLevel } from '../level/levelRuntime';
 import type { MaterialLibrary } from './MaterialLibrary';
+import {
+  GRAVITY_GATE_RADIUS,
+  MODE_GATE_RADIUS,
+  TELEPORT_GATE_RADIUS,
+  TELEPORT_MAW_GATE_RADIUS,
+} from '../level/portalAuthoring';
 
 /** Solids shorter than this carry no face trims (markers, thin inlays). */
 const FACE_TRIM_MIN_HEIGHT = 0.8;
@@ -385,8 +391,9 @@ export class LevelView {
             : portal.target === 'rightWall'
               ? -3.4
               : 0;
-      // M8.1: radius 1.45 (was 1.7) — compact professional gate.
-      this.buildPortalRing(cx, cy, portal.z, 1.45, frameMat, paneMat);
+      // Gate opening radius is owned by portalAuthoring (the trigger
+      // validator enforces volume ≈ this opening — visual/sim agreement).
+      this.buildPortalRing(cx, cy, portal.z, GRAVITY_GATE_RADIUS, frameMat, paneMat);
       // Direction glyph: chevron along the target gravity pull (up = away
       // from floor, down = away from ceiling, sideways for walls).
       const glyph = new THREE.Mesh(this.library.chevron, frameMat);
@@ -459,19 +466,19 @@ export class LevelView {
         // guardian's bite. M8.1 radius 1.85 (was 2.2) with a hazard-orange
         // tooth crown (shared chevron geometry) so the entry reads as a
         // creature mouth, not architecture.
-        this.buildPortalRing(0, 2.4, portal.entryZ, 1.85, frameMat, paneMat);
+        this.buildPortalRing(0, 2.4, portal.entryZ, TELEPORT_MAW_GATE_RADIUS, frameMat, paneMat);
         for (let i = 0; i < 8; i++) {
           const tooth = new THREE.Mesh(this.library.chevron, this.library.hazard);
           const a = (i / 8) * Math.PI * 2;
           tooth.scale.setScalar(0.8);
-          tooth.position.set(Math.cos(a) * 1.85, 2.4 + Math.sin(a) * 1.85, portal.entryZ);
+          tooth.position.set(Math.cos(a) * TELEPORT_MAW_GATE_RADIUS, 2.4 + Math.sin(a) * TELEPORT_MAW_GATE_RADIUS, portal.entryZ);
           // Teeth point inward (cone tip toward the mouth center).
           tooth.rotation.z = a + Math.PI / 2;
           this.group.add(tooth);
         }
       } else {
-        // Short-hop entry: compact ring on the route line (M8.1: 1.5).
-        this.buildPortalRing(0, 1.6, portal.entryZ, 1.5, frameMat, paneMat);
+        // Short-hop entry: compact ring on the route line.
+        this.buildPortalRing(0, 1.6, portal.entryZ, TELEPORT_GATE_RADIUS, frameMat, paneMat);
       }
       // Exit: a smaller doorway ring at the authored destination — the
       // entry/exit pair reads as one connected moment in the same scene.
@@ -496,7 +503,7 @@ export class LevelView {
       const vc = portal.triggerCenter;
       const gx = vc?.x ?? 0;
       const gy = vc?.y ?? 1.7;
-      this.buildPortalRing(gx, gy, portal.z, 1.35, mat, mat);
+      this.buildPortalRing(gx, gy, portal.z, MODE_GATE_RADIUS, mat, mat);
       const glyph = new THREE.Mesh(this.library.chevron, mat);
       glyph.scale.setScalar(0.85);
       glyph.position.set(gx, gy, portal.z);

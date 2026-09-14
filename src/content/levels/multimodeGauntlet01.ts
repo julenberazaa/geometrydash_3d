@@ -34,56 +34,72 @@ export const MULTIMODE_GAUNTLET_01: LevelDefinition = {
   finishZ: 1200,
   deathY: -14,
   deathYMax: 14,
+  // M8.2 runaway catcher: with opening-sized gates a missed S3 wall gate
+  // can leave the rider drifting sideways off the corridor (wall gravity
+  // pulls along ±X with no surface ahead). Legit play never exceeds |x| 8
+  // (maze/chomper/tunnel play stays inside ±6); ±11 ends a lost run by
+  // routing failure instead of drifting forever.
+  deathXMin: -11,
+  deathXMax: 11,
   startGravityMode: 'floor',
 
-  // M8.1 bounded portal triggers: every portal fires only inside its gate
-  // volume (the corridor cross-section at the gate) — crossing the Z plane
-  // outside the opening does NOT trigger. Missing a gravity gate leaves the
-  // player on the wrong surface, where the S3 floor routing gaps (below)
+  // M8.2 TRUE bounded gates: every trigger volume matches its visible
+  // ring opening (ring radius + 0.15 — enforced by validatePortalBounds),
+  // centered on the PROBED rider line at the gate (M8.1 corridor-sized
+  // boxes fired from units beside the visible ring — the reported bug).
+  // Missing a gravity gate leaves the player on the wrong surface, where
+  // the S3 floor routing gaps or the side runaway bounds (deathX ±11)
   // end the run by geometry; missing a mode gate meets the corridor's own
   // walls (ship) or the dodge wall (spider) — never an arbitrary kill.
   gravityPortals: [
     {
       id: 'mg-wall-left', z: 310, target: 'leftWall',
       triggerCenter: { x: 0, y: 1.5, z: 310 },
-      triggerHalfExtents: { x: 5, y: 2.5, z: 1.5 },
+      triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
     },
     {
+      // Left-wall rider line ≈ (4.85, 1.1): gate hugs the wall face
+      // (ring clears the rock by 0.05 — a gate mounted on the wall).
       id: 'mg-ceiling', z: 385, target: 'ceiling',
-      triggerCenter: { x: 3, y: 3, z: 385 },
-      triggerHalfExtents: { x: 3, y: 3, z: 1.5 },
+      triggerCenter: { x: 3.9, y: 2, z: 385 },
+      triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
     },
     {
+      // Ceiling rider line ≈ (0, 5.45): gate hangs under the slab
+      // (ring top 0.15 below the rock — a gate in the ceiling run).
       id: 'mg-wall-right', z: 455, target: 'rightWall',
-      triggerCenter: { x: 0, y: 4, z: 455 },
-      triggerHalfExtents: { x: 4, y: 3, z: 1.5 },
+      triggerCenter: { x: 0, y: 4.4, z: 455 },
+      triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
     },
     {
+      // Right-wall rider line ≈ (−4.85, 2.6): mirrored wall gate.
       id: 'mg-floor-again', z: 525, target: 'floor',
-      triggerCenter: { x: -3, y: 3, z: 525 },
-      triggerHalfExtents: { x: 3, y: 3, z: 1.5 },
+      triggerCenter: { x: -3.9, y: 3, z: 525 },
+      triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
     },
   ],
   modePortals: [
     {
       id: 'mg-ship-on', z: 715, target: 'ship',
       triggerCenter: { x: 0, y: 1.5, z: 715 },
-      triggerHalfExtents: { x: 3, y: 2.5, z: 1.5 },
+      triggerHalfExtents: { x: 1.5, y: 1.5, z: 1.5 },
     },
     {
+      // Ship flight line crosses z 845 at y ≈ 4.4 (descending from the
+      // dive-under block toward the runway — probed, deterministic).
       id: 'mg-ship-off', z: 845, target: 'cube',
-      triggerCenter: { x: 0, y: 2, z: 845 },
-      triggerHalfExtents: { x: 3, y: 4, z: 1.5 },
+      triggerCenter: { x: 0, y: 4.4, z: 845 },
+      triggerHalfExtents: { x: 1.5, y: 1.5, z: 1.5 },
     },
     {
       id: 'mg-spider-on', z: 865, target: 'spider',
       triggerCenter: { x: 0, y: 1.5, z: 865 },
-      triggerHalfExtents: { x: 3, y: 2.5, z: 1.5 },
+      triggerHalfExtents: { x: 1.5, y: 1.5, z: 1.5 },
     },
     {
       id: 'mg-spider-off', z: 975, target: 'cube',
       triggerCenter: { x: 0, y: 1.5, z: 975 },
-      triggerHalfExtents: { x: 3, y: 2.5, z: 1.5 },
+      triggerHalfExtents: { x: 1.5, y: 1.5, z: 1.5 },
     },
   ],
   chompers: [
