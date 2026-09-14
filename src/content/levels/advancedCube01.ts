@@ -154,8 +154,10 @@ export const ADVANCED_CUBE_01: LevelDefinition = {
     { id: 'ac-lava-river', center: { x: 0, y: -7.7, z: 579 }, halfExtents: { x: 5, y: 0.8, z: 55 }, role: 'pool' },
     // Furnace basin (phase 4/5 beside the route): pool top -1.9.
     { id: 'ac-lava-furnace', center: { x: 6.5, y: -2.7, z: 670 }, halfExtents: { x: 2.5, y: 0.8, z: 18 }, role: 'pool' },
-    // Furnace source: vent attached to the rock pillar face (x 9.5).
-    { id: 'ac-lava-furnace-source', center: { x: 9.9, y: 1.5, z: 670 }, halfExtents: { x: 0.6, y: 0.6, z: 1.2 }, role: 'source' },
+    // Furnace source (M8.2): vent lip over the fall, protruding from the
+    // rock pillar face (x 9.5) — the old box sat inside the pillar with a
+    // buried mouth (invisible vent).
+    { id: 'ac-lava-furnace-source', center: { x: 8.6, y: 1.9, z: 670 }, halfExtents: { x: 1.0, y: 0.6, z: 1.2 }, role: 'source' },
     // Furnace fall: dense stream from the vent into the pool (top 1.5).
     { id: 'ac-lava-furnace-fall', center: { x: 8.6, y: -0.2, z: 670 }, halfExtents: { x: 0.7, y: 1.7, z: 1.0 }, role: 'fall' },
     // Storm basin (phase 5 beside the 2x islands): pool top -2.9.

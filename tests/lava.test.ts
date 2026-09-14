@@ -4,10 +4,13 @@ import { TEST_LEVEL } from '../src/content/levels/testLevel01';
 import { ADVANCED_CUBE_01 } from '../src/content/levels/advancedCube01';
 import type { LevelDefinition } from '../src/level/levelDefinition';
 import { validateLavaAuthoring } from '../src/level/lavaAuthoring';
+import { MULTIMODE_GAUNTLET_01 } from '../src/content/levels/multimodeGauntlet01';
 import { loadLevel } from '../src/level/levelRuntime';
 import { computeLevelFingerprint } from '../src/replay/levelFingerprint';
 import { computeStateFingerprint } from '../src/replay/stateFingerprint';
 import { idleInput, advance } from './helpers/simulation';
+import { LevelView } from '../src/rendering/LevelView';
+import { makeTestLibrary } from './helpers/visuals';
 
 /**
  * M8A lethal-lava + death-hold contract:
@@ -218,7 +221,7 @@ describe('M8A lava authoring contract (no floating slabs)', () => {
       ],
       hazards: [],
       lava: [
-        { id: 'vent', center: { x: 6.4, y: 6, z: 40 }, halfExtents: { x: 0.5, y: 0.5, z: 0.5 }, role: 'source' },
+        { id: 'vent', center: { x: 5.6, y: 6, z: 40 }, halfExtents: { x: 0.5, y: 0.5, z: 0.5 }, role: 'source' },
         { id: 'drop', center: { x: 6.4, y: -4, z: 40 }, halfExtents: { x: 0.4, y: 10.2, z: 0.4 }, role: 'fall' },
       ],
       theme: THEME,
@@ -239,5 +242,80 @@ describe('M8A lava fingerprinting (conditional encoding)', () => {
     // bytes, so pre-M8A fingerprints are byte-identical by construction.
     expect(TEST_LEVEL.lava).toBeUndefined();
     expect(computeLevelFingerprint(TEST_LEVEL)).toBe(computeLevelFingerprint({ ...TEST_LEVEL }));
+  });
+});
+
+describe('M8.2 lava vent readability (working mouths)', () => {
+  const ventDef = (source: { x: number; y: number; z: number }): LevelDefinition => ({
+    id: 'vent-fixture',
+    displayName: 'VENT',
+    start: { x: 0, y: 1.5, z: -4 },
+    startLaneIndex: 1,
+    laneCenters: [...LANES],
+    baseForwardSpeed: 14,
+    finishZ: 60,
+    deathY: -14,
+    solids: [
+      { center: { x: 0, y: -0.5, z: 0 }, halfExtents: { x: 5.4, y: 0.5, z: 10 } },
+      // Rock pillar the vent attaches to (x 4.4..5.4, y 0..3.5).
+      { center: { x: 4.9, y: 1.75, z: 40 }, halfExtents: { x: 0.5, y: 1.75, z: 1 } },
+      // Basin floor under the fall.
+      { center: { x: 4.2, y: -3.5, z: 40 }, halfExtents: { x: 1.5, y: 0.5, z: 1.5 } },
+    ],
+    hazards: [],
+    lava: [
+      { id: 'pool', center: { x: 4.2, y: -2.7, z: 40 }, halfExtents: { x: 1.2, y: 0.3, z: 1.2 }, role: 'pool' },
+      { id: 'vent', center: source, halfExtents: { x: 0.9, y: 0.5, z: 0.9 }, role: 'source' },
+      { id: 'drop', center: { x: 4.2, y: 1.5, z: 40 }, halfExtents: { x: 0.6, y: 1, z: 0.8 }, role: 'fall' },
+    ],
+    theme: THEME,
+  });
+
+  it('rejects a vent whose mouth is buried inside its pillar', () => {
+    // The M8.1 river-vent defect: box flush inside the rock, mouth hidden.
+    const errors = validateLavaAuthoring(ventDef({ x: 4.9, y: 2.7, z: 40 }));
+    expect(errors.some((e) => e.includes('mouth is buried'))).toBe(true);
+  });
+
+  it('accepts a vent lip protruding over its fall (mouth feeds air)', () => {
+    expect(validateLavaAuthoring(ventDef({ x: 4.2, y: 2.9, z: 40 }))).toEqual([]);
+  });
+
+  it('the gauntlet validates cleanly under the mouth rule', () => {
+    expect(validateLavaAuthoring(MULTIMODE_GAUNTLET_01)).toEqual([]);
+  });
+});
+
+describe('M8.2 lava viscous-flow presentation (bounded structure)', () => {
+  it('builds crust plates + stepped falls + splash + drip within budget', () => {
+    const def: LevelDefinition = {
+      id: 'lavaview-fixture',
+      displayName: 'LAVAVIEW',
+      start: { x: 0, y: 1.5, z: -4 },
+      startLaneIndex: 1,
+      laneCenters: [...LANES],
+      baseForwardSpeed: 14,
+      finishZ: 60,
+      deathY: -14,
+      solids: [],
+      hazards: [],
+      lava: [
+        { id: 'pool', center: { x: 0, y: -2.7, z: 40 }, halfExtents: { x: 1.2, y: 0.3, z: 1.2 }, role: 'pool' },
+        { id: 'drop', center: { x: 0, y: 0, z: 40 }, halfExtents: { x: 0.6, y: 2.6, z: 0.8 }, role: 'fall' },
+        { id: 'vent', center: { x: 0, y: 3.4, z: 40 }, halfExtents: { x: 0.9, y: 0.5, z: 0.9 }, role: 'source' },
+      ],
+      theme: THEME,
+    };
+    const library = makeTestLibrary();
+    const view = new LevelView(loadLevel(def), library);
+    // Pool: body + surface + 3 crust plates (5); fall: 4 viscous steps +
+    // 1 impact splash (5); source: collar + mouth + drip (3) = 13 meshes.
+    let meshes = 0;
+    view.group.traverse((o) => {
+      if ((o as { isMesh?: boolean }).isMesh === true) meshes += 1;
+    });
+    expect(meshes).toBe(13);
+    view.dispose();
+    library.dispose();
   });
 });

@@ -515,16 +515,18 @@ export class LevelView {
   }
 
   /**
-   * M8A authored lava (gameplay-lethal volumes with sourced visuals).
-   *
-   * Every volume renders from its role — never a floating slab:
-   * - `pool`: a bright molten surface slab riding at the lethal box top +
-   *   a darker deep body filling the box below it (the basin solids in
-   *   level data visibly contain it; see `validateLavaAuthoring`).
-   * - `fall`: a dense blocky core column plus a short stack of wider
-   *   stepped rings (authored dense-flow read, zero simulation).
-   * - `source`: a dark rock collar (route body) with a glowing molten
-   *   mouth inset, attached to the neighboring solid geometry.
+   * M8A authored lava (gameplay-lethal volumes with sourced visuals),
+   * M8.2 viscous-flow read — still blocky, still zero simulation:
+   * - `pool`: bright molten surface + dark body + DARK CRUST PLATES
+   *   riding on the surface (deterministic per-pool pattern), so the
+   *   basin reads as cooling lava with bright cracks, never a flat
+   *   orange slab.
+   * - `fall`: a stepped zigzag stream (alternating widths/offsets —
+   *   thick blocky liquid), bright at the vent grading darker downward
+   *   (cools as it falls), plus a bright impact splash where it meets
+   *   its pool.
+   * - `source`: rock collar + glowing mouth + a short bright drip
+   *   joining the mouth to the fed fall below (one continuous pour).
    *
    * Shared unit-box geometry + the two shared lava materials; zero
    * per-frame work (the shimmer is an in-place material pulse owned by
@@ -538,6 +540,19 @@ export class LevelView {
     const core = this.library.lavaSurface;
     const deep = this.library.lavaDeep;
     const rock = this.library.routeBody;
+    // Pool tops first (falls splash onto them; static, deterministic).
+    const poolTops: { x: number; topY: number; z: number; hx: number; hz: number }[] = [];
+    for (const l of lava) {
+      if (l.role !== 'pool') continue;
+      poolTops.push({
+        x: l.center.x,
+        topY: l.center.y + l.halfExtents.y,
+        z: l.center.z,
+        hx: l.halfExtents.x,
+        hz: l.halfExtents.z,
+      });
+    }
+    let poolIndex = 0;
     for (const l of lava) {
       const w = l.halfExtents.x * 2;
       const h = l.halfExtents.y * 2;
@@ -555,27 +570,55 @@ export class LevelView {
         surface.scale.set(Math.max(0.1, w - 0.3), 0.1, Math.max(0.1, d - 0.3));
         surface.position.set(l.center.x, topY + 0.051, l.center.z);
         this.group.add(surface);
+        // M8.2 crust plates: dark cooling chunks floating on the bright
+        // surface (fixed pattern from the pool index — deterministic).
+        // Bright cracks stay visible between them: no flat orange slab.
+        const pi = poolIndex++;
+        for (let c = 0; c < 3; c++) {
+          const plate = new THREE.Mesh(unitBox, deep);
+          const fx = [-0.28, 0.1, 0.34][c] as number;
+          const fz = c % 2 === 0 ? -0.2 : 0.22;
+          plate.scale.set(Math.max(0.1, w * 0.2), 0.06, Math.max(0.1, d * 0.3));
+          plate.position.set(
+            l.center.x + fx * w + (pi % 2 === 0 ? 0.1 : -0.1),
+            topY + 0.13,
+            l.center.z + fz * d,
+          );
+          this.group.add(plate);
+        }
         continue;
       }
       if (l.role === 'fall') {
-        // Dense core column (60% footprint) + stepped flow rings: three
-        // wider collars spaced along the drop, each overhanging the core
-        // so the stream reads as thick blocky liquid, not a laser.
-        const coreMesh = new THREE.Mesh(unitBox, core);
-        coreMesh.scale.set(w * 0.6, h, d * 0.6);
-        coreMesh.position.set(l.center.x, l.center.y, l.center.z);
-        this.group.add(coreMesh);
-        const steps = 3;
-        for (let i = 0; i < steps; i++) {
-          const t = (i + 0.5) / steps;
-          const ring = new THREE.Mesh(unitBox, i % 2 === 0 ? deep : core);
-          ring.scale.set(w * 0.92, Math.max(0.12, h * 0.1), d * 0.92);
-          ring.position.set(
-            l.center.x,
-            l.center.y + l.halfExtents.y - t * h,
-            l.center.z,
+        // M8.2 viscous steps: four stacked blocks with alternating
+        // widths and sideways offsets (blocky zigzag pour), bright at
+        // the vent (top) grading to crusted deep at the basin (bottom).
+        const segs = 4;
+        for (let i = 0; i < segs; i++) {
+          const seg = new THREE.Mesh(unitBox, i < 2 ? core : deep);
+          const wide = i % 2 === 1;
+          const segH = h / segs;
+          seg.scale.set(w * (wide ? 0.74 : 0.58), segH + 0.02, d * (wide ? 0.74 : 0.58));
+          seg.position.set(
+            l.center.x + (i % 2 === 0 ? 1 : -1) * w * 0.07,
+            l.center.y + l.halfExtents.y - segH * (i + 0.5),
+            l.center.z + (i % 2 === 0 ? -1 : 1) * d * 0.07,
           );
-          this.group.add(ring);
+          this.group.add(seg);
+        }
+        // Impact splash: bright spread disc where the stream meets its
+        // pool surface (skipped for void-continuing falls — no pool).
+        const bottomY = l.center.y - l.halfExtents.y;
+        const pool = poolTops.find(
+          (p) =>
+            Math.abs(p.topY - bottomY) < 0.9 &&
+            Math.abs(l.center.x - p.x) <= p.hx &&
+            Math.abs(l.center.z - p.z) <= p.hz,
+        );
+        if (pool !== undefined) {
+          const splash = new THREE.Mesh(unitBox, core);
+          splash.scale.set(Math.max(0.2, w * 1.15), 0.08, Math.max(0.2, d * 1.15));
+          splash.position.set(l.center.x, pool.topY + 0.12, l.center.z);
+          this.group.add(splash);
         }
         continue;
       }
@@ -584,10 +627,29 @@ export class LevelView {
       collar.scale.set(w, h, d);
       collar.position.set(l.center.x, l.center.y, l.center.z);
       this.group.add(collar);
+      const mouthY = l.center.y - l.halfExtents.y - 0.01;
       const mouth = new THREE.Mesh(unitBox, core);
       mouth.scale.set(Math.max(0.1, w * 0.7), 0.08, Math.max(0.1, d * 0.7));
-      mouth.position.set(l.center.x, l.center.y - l.halfExtents.y - 0.01, l.center.z);
+      mouth.position.set(l.center.x, mouthY, l.center.z);
       this.group.add(mouth);
+      // M8.2 vent drip: a short bright lip joining the mouth to the fed
+      // fall below (one continuous pour instead of vent + separate jet).
+      const fed = lava.some(
+        (o) =>
+          o.role === 'fall' &&
+          l.center.x >= o.center.x - o.halfExtents.x &&
+          l.center.x <= o.center.x + o.halfExtents.x &&
+          l.center.z >= o.center.z - o.halfExtents.z &&
+          l.center.z <= o.center.z + o.halfExtents.z &&
+          mouthY - (o.center.y + o.halfExtents.y) >= -0.3 &&
+          mouthY - (o.center.y + o.halfExtents.y) <= 1.2,
+      );
+      if (fed) {
+        const drip = new THREE.Mesh(unitBox, core);
+        drip.scale.set(0.34, 0.7, 0.34);
+        drip.position.set(l.center.x, mouthY - 0.2, l.center.z);
+        this.group.add(drip);
+      }
     }
   }
 

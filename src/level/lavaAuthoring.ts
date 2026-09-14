@@ -12,6 +12,11 @@ import type { LevelDefinition, LavaVolumeDef } from './levelDefinition';
  *  3. Every `fall` touches a `source` (or a solid) at/above its top AND
  *     (touches a `pool` (or a solid) at/below its bottom OR extends below
  *     the level's `deathY` — visibly continuing into the void).
+ *  4. Every `source` shows a working mouth (M8.2): the glowing mouth
+ *     rendered on the vent's lower face must not be buried inside rock
+ *     — a mouth glowing inside a pillar is invisible and the lava
+ *     reads as sourceless. Vents sit proud of their rock with the
+ *     mouth feeding air or the fall below.
  *
  * Pure function of level data (no sim, no THREE). Returns human-readable
  * error strings; empty = valid. Production levels must validate cleanly
@@ -84,6 +89,18 @@ const receivesBottom = (fall: Box, other: Box): boolean => {
   return other.maxY >= fall.minY - TOUCH_EPSILON && other.minY <= fall.minY + TOUCH_EPSILON;
 };
 
+/** True when the point lies strictly inside the box (epsilon shrink). */
+const strictlyInside = (
+  p: { x: number; y: number; z: number },
+  b: Box,
+): boolean =>
+  p.x > b.minX + TOUCH_EPSILON &&
+  p.x < b.maxX - TOUCH_EPSILON &&
+  p.y > b.minY + TOUCH_EPSILON &&
+  p.y < b.maxY - TOUCH_EPSILON &&
+  p.z > b.minZ + TOUCH_EPSILON &&
+  p.z < b.maxZ - TOUCH_EPSILON;
+
 export const validateLavaAuthoring = (def: LevelDefinition): string[] => {
   const errors: string[] = [];
   const lava = def.lava ?? [];
@@ -105,6 +122,20 @@ export const validateLavaAuthoring = (def: LevelDefinition): string[] => {
       const attached = solidBoxes.some((s) => touches(box, s));
       if (!attached) {
         errors.push(`lava source '${l.id}' touches no solid (floating vent — attach it to rock)`);
+      } else {
+        // M8.2 working mouth: mirrors the render (mouth inset on the
+        // vent's lower face) — a mouth buried in rock never reads.
+        const mouth = {
+          x: l.center.x,
+          y: l.center.y - l.halfExtents.y - 0.01,
+          z: l.center.z,
+        };
+        const buried = solidBoxes.some((s) => strictlyInside(mouth, s));
+        if (buried) {
+          errors.push(
+            `lava source '${l.id}' mouth is buried in solid (invisible vent — sit it proud of the rock, feeding the fall)`,
+          );
+        }
       }
     } else {
       // Fall: needs a feeder above and a receiver below (or the void).

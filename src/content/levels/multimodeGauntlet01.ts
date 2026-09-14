@@ -131,28 +131,28 @@ export const MULTIMODE_GAUNTLET_01: LevelDefinition = {
     // pillars flank the gap, vent mouths feed blocky falls that pour over
     // the basin rims into the pool (jump line center stays clear).
     { id: 'mg-gap1', center: { x: 0, y: -3.2, z: 43 }, halfExtents: { x: 4, y: 0.8, z: 3 }, role: 'pool' },
-    { id: 'mg-gap1-src-l', center: { x: -4.9, y: 0.5, z: 43 }, halfExtents: { x: 0.8, y: 0.6, z: 1 }, role: 'source' },
+    { id: 'mg-gap1-src-l', center: { x: -4.2, y: 0.5, z: 43 }, halfExtents: { x: 1.3, y: 0.6, z: 1 }, role: 'source' },
     { id: 'mg-gap1-fall-l', center: { x: -4, y: -1.2, z: 43 }, halfExtents: { x: 0.7, y: 1.4, z: 0.9 }, role: 'fall' },
-    { id: 'mg-gap1-src-r', center: { x: 4.9, y: 0.5, z: 43 }, halfExtents: { x: 0.8, y: 0.6, z: 1 }, role: 'source' },
+    { id: 'mg-gap1-src-r', center: { x: 4.2, y: 0.5, z: 43 }, halfExtents: { x: 1.3, y: 0.6, z: 1 }, role: 'source' },
     { id: 'mg-gap1-fall-r', center: { x: 4, y: -1.2, z: 43 }, halfExtents: { x: 0.7, y: 1.4, z: 0.9 }, role: 'fall' },
     // S1 gap basin 2 (pool top −2.4, z 90..96) — same sourced treatment.
     { id: 'mg-gap2', center: { x: 0, y: -3.2, z: 93 }, halfExtents: { x: 4, y: 0.8, z: 3 }, role: 'pool' },
-    { id: 'mg-gap2-src-l', center: { x: -4.9, y: 0.5, z: 93 }, halfExtents: { x: 0.8, y: 0.6, z: 1 }, role: 'source' },
+    { id: 'mg-gap2-src-l', center: { x: -4.2, y: 0.5, z: 93 }, halfExtents: { x: 1.3, y: 0.6, z: 1 }, role: 'source' },
     { id: 'mg-gap2-fall-l', center: { x: -4, y: -1.2, z: 93 }, halfExtents: { x: 0.7, y: 1.4, z: 0.9 }, role: 'fall' },
-    { id: 'mg-gap2-src-r', center: { x: 4.9, y: 0.5, z: 93 }, halfExtents: { x: 0.8, y: 0.6, z: 1 }, role: 'source' },
+    { id: 'mg-gap2-src-r', center: { x: 4.2, y: 0.5, z: 93 }, halfExtents: { x: 1.3, y: 0.6, z: 1 }, role: 'source' },
     { id: 'mg-gap2-fall-r', center: { x: 4, y: -1.2, z: 93 }, halfExtents: { x: 0.7, y: 1.4, z: 0.9 }, role: 'fall' },
     // S1 lava river crossing (M8.1): an at-grade lava curb (pool top 0.7,
     // z 128..131) flows across the route and MUST be jumped (3 u hop).
     // Twin rock pillars on the route edges carry vent mouths; blocky falls
     // pour from the vents into the strip ends. Center jump line is clear.
     { id: 'mg-river', center: { x: 0, y: 0.1, z: 129.5 }, halfExtents: { x: 4, y: 0.6, z: 1.5 }, role: 'pool' },
-    { id: 'mg-river-src-l', center: { x: -4.9, y: 2.7, z: 129.5 }, halfExtents: { x: 0.5, y: 0.5, z: 0.8 }, role: 'source' },
+    { id: 'mg-river-src-l', center: { x: -4.2, y: 2.9, z: 129.5 }, halfExtents: { x: 0.9, y: 0.5, z: 0.9 }, role: 'source' },
     { id: 'mg-river-fall-l', center: { x: -4.2, y: 1.5, z: 129.5 }, halfExtents: { x: 0.6, y: 1, z: 0.8 }, role: 'fall' },
-    { id: 'mg-river-src-r', center: { x: 4.9, y: 2.7, z: 129.5 }, halfExtents: { x: 0.5, y: 0.5, z: 0.8 }, role: 'source' },
+    { id: 'mg-river-src-r', center: { x: 4.2, y: 2.9, z: 129.5 }, halfExtents: { x: 0.9, y: 0.5, z: 0.9 }, role: 'source' },
     { id: 'mg-river-fall-r', center: { x: 4.2, y: 1.5, z: 129.5 }, halfExtents: { x: 0.6, y: 1, z: 0.8 }, role: 'fall' },
     // S1 side composition: vent on a rock pillar + dense fall into a
     // contained side pool (beside runway B, never on the route).
-    { id: 'mg-side-source', center: { x: 10.6, y: 2.6, z: 68 }, halfExtents: { x: 0.6, y: 0.6, z: 1.2 }, role: 'source' },
+    { id: 'mg-side-source', center: { x: 10.2, y: 2.6, z: 68 }, halfExtents: { x: 0.6, y: 0.6, z: 1.2 }, role: 'source' },
     { id: 'mg-side-fall', center: { x: 9.4, y: -0.3, z: 68 }, halfExtents: { x: 0.9, y: 2.5, z: 1.0 }, role: 'fall' },
     { id: 'mg-side-pool', center: { x: 8, y: -3.2, z: 68 }, halfExtents: { x: 3, y: 0.8, z: 6 }, role: 'pool' },
     // S4 biome side pools (menace dressing, contained, off-route).
