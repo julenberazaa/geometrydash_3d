@@ -113,6 +113,8 @@ declare global {
       lastLandingIntensity: () => number;
       fxResets: () => number;
       burstActive: () => boolean;
+      /** QA-only: Spider-swap camera glides armed (M8.2 smoothing proof). */
+      swapGlideCount: () => number;
       // M6C1 visual-trigger observability (presentation only).
       visualSectionId: () => string;
       visualSectionProgress: () => number;
@@ -246,6 +248,7 @@ window.__gd3d = {
   lastLandingIntensity: () => game['rendererHost'].lastLandingIntensity,
   fxResets: () => game['rendererHost'].fxResets,
   burstActive: () => game['rendererHost'].deathBurstActive,
+  swapGlideCount: () => game['rendererHost'].swapGlideCount,
   // M6C1 probes: trigger state + resolved presentation (cold path).
   visualSectionId: () => game['rendererHost'].visualSectionId,
   visualSectionProgress: () => game['rendererHost'].visualSectionProgress,

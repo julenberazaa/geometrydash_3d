@@ -329,7 +329,10 @@ export class RendererHost {
     if (this.lastCamGravity === null) {
       this.lastCamGravity = grav;
     } else if (grav !== this.lastCamGravity) {
-      if (sim.playerMode === 'spider') this.chaseCamera.noteSpiderSwap();
+      if (sim.playerMode === 'spider') {
+        this.chaseCamera.noteSpiderSwap();
+        this.swapGlideCount += 1;
+      }
       this.lastCamGravity = grav;
     }
     this.chaseCamera.update(p, 0, renderDtSeconds, this.focusSide());
@@ -394,6 +397,11 @@ export class RendererHost {
    * edge detection; null before the first presented frame).
    */
   private lastCamGravity: GravityMode | null = null;
+  /**
+   * M8.2 QA observability: Spider-swap glide envelopes armed this
+   * session (presentation only — proves the smoothing path engaged).
+   */
+  public swapGlideCount = 0;
 
   /** Live scene child count (leak guard for repeated death/respawn QA). */
   public get sceneChildren(): number {

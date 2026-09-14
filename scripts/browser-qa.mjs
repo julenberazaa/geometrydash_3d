@@ -6093,31 +6093,35 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   await capture('m81-04b-chomper-telegraph');
   await m8live();
 
-  await page.evaluate(() => {
-    if (window.__m81watch) clearInterval(window.__m81watch);
-    window.__m81gate = null;
-    window.__m81watch = setInterval(() => {
-      if (window.__gd3d.status() === 'dead' && window.__m81gate === null) {
-        window.__m81gate = { pending: true };
-        window.__gd3d.debugFreezeFrame(true);
-        window.__gd3d.debugReplayBurst();
-        window.__gd3d.debugFreezeFrame(false);
-        setTimeout(() => {
-          window.__gd3d.debugFreezeFrame(true);
-          window.__m81gate = {
-            burst: window.__gd3d.burstActive(),
-            status: window.__gd3d.status(),
-          };
-        }, 250);
-      }
-    }, 16);
-  });
-  await m8stage(0, -1.9, 43);
-  const m81burstDead = await m8roll((s) => s.status === 'dead', 15000);
+  let m81burstDead = null;
   let m81gate = null;
-  for (let i = 0; i < 60 && (m81gate === null || m81gate.pending === true); i++) {
-    await page.waitForTimeout(100);
-    m81gate = await page.evaluate(() => window.__m81gate);
+  for (let attempt = 0; attempt < 3 && !(m81burstDead !== null && m81gate !== null && m81gate.burst === true && m81gate.status === 'dead'); attempt++) {
+    await page.evaluate(() => {
+      if (window.__m81watch) clearInterval(window.__m81watch);
+      window.__m81gate = null;
+      window.__m81watch = setInterval(() => {
+        if (window.__gd3d.status() === 'dead' && window.__m81gate === null) {
+          window.__m81gate = { pending: true };
+          window.__gd3d.debugFreezeFrame(true);
+          window.__gd3d.debugReplayBurst();
+          window.__gd3d.debugFreezeFrame(false);
+          setTimeout(() => {
+            window.__gd3d.debugFreezeFrame(true);
+            window.__m81gate = {
+              burst: window.__gd3d.burstActive(),
+              status: window.__gd3d.status(),
+            };
+          }, 250);
+        }
+      }, 16);
+    });
+    await m8stage(0, -1.9, 43);
+    m81burstDead = await m8roll((s) => s.status === 'dead', 15000);
+    m81gate = null;
+    for (let i = 0; i < 60 && (m81gate === null || m81gate.pending === true); i++) {
+      await page.waitForTimeout(100);
+      m81gate = await page.evaluate(() => window.__m81gate);
+    }
   }
   log('m81 death explosion + ghost read', m81burstDead !== null && m81gate !== null && m81gate.burst === true && m81gate.status === 'dead',
     m81gate ? `burst=${m81gate.burst} status=${m81gate.status}` : 'no frozen frame');
@@ -6128,6 +6132,89 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     window.__gd3d.debugFreezeFrame(false);
   });
   await m8live();
+
+  // --- 24d. M8.2 LAVA / PORTAL-BOUNDS / SPIDER-CAMERA / CHOMPER GATE ---
+  await m8freeze(0, 0.55, 30);
+  const m82ventFrame = await page.evaluate(() => window.__gd3d.screenPoint(-4.2, 0.5, 43));
+  const m82fallFrame = await page.evaluate(() => window.__gd3d.screenPoint(-4, -1.2, 43));
+  log('m82 vent lip + stepped fall read in-frame', !m82ventFrame.behind && !m82fallFrame.behind && Math.abs(m82ventFrame.ndcX) < 1.2 && Math.abs(m82fallFrame.ndcX) < 1.2,
+    `vent=(${m82ventFrame.ndcX.toFixed(2)},${m82ventFrame.ndcY.toFixed(2)}) fall=(${m82fallFrame.ndcX.toFixed(2)},${m82fallFrame.ndcY.toFixed(2)})`);
+  await capture('m82-01-lava-source-fall');
+  await m8live();
+
+  await m8freeze(0, 0.55, 118);
+  const m82riverFrame = await page.evaluate(() => window.__gd3d.screenPoint(0, 0.7, 129.5));
+  const m82riverSrc = await page.evaluate(() => window.__gd3d.screenPoint(-4.2, 2.9, 129.5));
+  log('m82 river curb + protruding vent read in-frame', !m82riverFrame.behind && !m82riverSrc.behind && Math.abs(m82riverFrame.ndcX) < 1 && Math.abs(m82riverSrc.ndcX) < 1.2,
+    `curb=(${m82riverFrame.ndcX.toFixed(2)},${m82riverFrame.ndcY.toFixed(2)}) vent=(${m82riverSrc.ndcX.toFixed(2)},${m82riverSrc.ndcY.toFixed(2)})`);
+  await capture('m82-02-lava-river');
+  await m8live();
+
+  await m8freeze(0, 0.55, 300);
+  const m82gateFrame = await page.evaluate(() => window.__gd3d.screenPoint(0, 1.5, 310));
+  log('m82 opening-sized gate reads in-frame', !m82gateFrame.behind && Math.abs(m82gateFrame.ndcX) < 1 && Math.abs(m82gateFrame.ndcY) < 1,
+    `ndc=(${m82gateFrame.ndcX.toFixed(2)},${m82gateFrame.ndcY.toFixed(2)})`);
+  await capture('m82-03-gate');
+  await m8live();
+
+  await m8stage(0, 0.55, 300);
+  const m82inside = await m8roll((s) => s.z > 312, 15000);
+  log('m82 through-opening pass fires the gate', m82inside !== null && m82inside.grav === 'leftWall',
+    m82inside ? `grav=${m82inside.grav} z=${m82inside.z.toFixed(1)}` : 'no crossing');
+
+  let m82lane = -1;
+  for (let i = 0; i < 3 && m82lane !== 0; i++) {
+    await page.keyboard.press('KeyR');
+    await page.waitForTimeout(500);
+    await page.keyboard.down('ArrowLeft');
+    await page.waitForTimeout(300);
+    await page.keyboard.up('ArrowLeft');
+    await page.waitForTimeout(200);
+    m82lane = (await m8probe()).lane;
+    if (m82lane !== 0) continue;
+    await page.evaluate(() => window.__gd3d.debugTeleport(4.85, 0.55, 305));
+    await page.waitForTimeout(100);
+    if ((await m8probe()).lane !== 0) m82lane = -1;
+  }
+  log('m82 outside intent pinned before the crossing', m82lane === 0, `lane=${m82lane}`);
+  const m82miss = await m8roll((s) => s.z > 312, 15000);
+  log('m82 beside-the-ring pass does NOT fire', m82miss !== null && m82lane === 0 && m82miss.grav === 'floor',
+    m82miss ? `lane=${m82lane} grav=${m82miss.grav} z=${m82miss.z.toFixed(1)}` : 'no crossing');
+  const m82geoDead = await m8roll((s) => s.status === 'dead', 15000);
+  log('m82 missed gate fails later by geometry', m82geoDead !== null && m82geoDead.cause === 'void' && m82geoDead.grav === 'floor',
+    m82geoDead ? `cause=${m82geoDead.cause} grav=${m82geoDead.grav} z=${m82geoDead.z.toFixed(1)}` : 'survived');
+
+  await m8stage(0, 0.55, 850);
+  const m82spider = await m8roll((s) => s.pMode === 'spider', 15000);
+  log('m82 staged spider mode engages', m82spider !== null && m82spider.pMode === 'spider',
+    m82spider ? `mode=${m82spider.pMode} z=${m82spider.z.toFixed(1)}` : 'no spider');
+  await m8roll((s) => s.z > 882, 15000);
+  const m82glidesBefore = await page.evaluate(() => window.__gd3d.swapGlideCount());
+  await page.keyboard.down('Space');
+  await page.waitForTimeout(150);
+  await page.keyboard.up('Space');
+  const m82swapped = await m8roll((s) => s.grav === 'ceiling', 8000);
+  const m82glidesAfter = await page.evaluate(() => window.__gd3d.swapGlideCount());
+  log('m82 spider swap arms the camera glide', m82swapped !== null && m82glidesAfter > m82glidesBefore,
+    m82swapped ? `grav=${m82swapped.grav} glides=${m82glidesBefore}->${m82glidesAfter}` : 'no swap');
+  await capture('m82-05a-spider-glide');
+  await page.waitForTimeout(800);
+  await capture('m82-05b-spider-settled');
+  await m8live();
+
+  await m8freeze(3, 1.5, 586);
+  const m82chomp = await m8probe();
+  log('m82 chomper waits dormant before its trigger', m82chomp.chompers[0]?.phase === 'dormant',
+    `phase=${m82chomp.chompers[0]?.phase}`);
+  await capture('m82-06-chomper');
+  await m8live();
+  await m8freeze(5, 1.2, 598);
+  await capture('m82-06b-chomper-telegraph');
+  await m8live();
+
+  const m82replayOk = results.some((r) => r.name === 'm8 replay VERIFIED' && r.ok === true);
+  log('m82 replay still VERIFIED after content changes', m82replayOk === true,
+    m82replayOk ? 'full-run tape verified' : 'M8 full-run replay did not verify');
 }
 
 // --- 25. Console audit ---

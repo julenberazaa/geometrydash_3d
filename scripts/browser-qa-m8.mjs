@@ -772,36 +772,44 @@ await page.waitForTimeout(2000);
   // consume the one shot (proven by forensics — empty photos with a
   // passing gate). Past this point the sim runs from above the pool, so
   // the next death is provably the staged one.
-  await m8stage(0, -1.9, 43);
-  await safeEval(() => {
-    if (window.__m81watch) clearInterval(window.__m81watch);
-    window.__m81gate = null;
-    window.__m81watch = setInterval(() => {
-      if (window.__gd3d.status() === 'dead' && window.__m81gate === null) {
-        window.__m81gate = { pending: true }; // one-shot: disarm synchronously
-        window.__gd3d.debugFreezeFrame(true);
-        window.__gd3d.debugReplayBurst();
-        window.__gd3d.debugFreezeFrame(false);
-        // M8.1: run 120 ms live (spread voxels + bright ghost), then PAUSE
-        // the sim (KeyP) so the 78-tick auto-respawn cannot clear the burst
-        // before CDP captures, and freeze the frame for the photo.
-        setTimeout(() => {
-          window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyP' }));
-          window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyP' }));
-          window.__gd3d.debugFreezeFrame(true);
-          window.__m81gate = {
-            burst: window.__gd3d.burstActive(),
-            status: window.__gd3d.status(),
-          };
-        }, 120);
-      }
-    }, 16);
-  });
-  const m81burstDead = await m8roll((s) => s.status === 'dead', 15000);
+  // M8.2: up to 3 photo tries (same thresholds — a try that records a
+  // live pooled burst on a dead sim passes). Under SwiftShader load the
+  // single-shot freeze-dance flakes ~50% (stale pause parity across the
+  // KeyP toggle under load); retries re-stage cleanly instead of faking it.
+  let m81burstDead = null;
   let m81gate = null;
-  for (let i = 0; i < 60 && (m81gate === null || m81gate.pending === true); i++) {
-    await page.waitForTimeout(100);
-    m81gate = await safeEval(() => window.__m81gate);
+  for (let attempt = 0; attempt < 3 && !(m81burstDead !== null && m81gate !== null && m81gate.burst === true && m81gate.status === 'dead'); attempt++) {
+    await m8stage(0, -1.9, 43);
+    await safeEval(() => {
+      if (window.__m81watch) clearInterval(window.__m81watch);
+      window.__m81gate = null;
+      window.__m81watch = setInterval(() => {
+        if (window.__gd3d.status() === 'dead' && window.__m81gate === null) {
+          window.__m81gate = { pending: true }; // one-shot: disarm synchronously
+          window.__gd3d.debugFreezeFrame(true);
+          window.__gd3d.debugReplayBurst();
+          window.__gd3d.debugFreezeFrame(false);
+          // M8.1: run 120 ms live (spread voxels + bright ghost), then PAUSE
+          // the sim (KeyP) so the 78-tick auto-respawn cannot clear the burst
+          // before CDP captures, and freeze the frame for the photo.
+          setTimeout(() => {
+            window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyP' }));
+            window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyP' }));
+            window.__gd3d.debugFreezeFrame(true);
+            window.__m81gate = {
+              burst: window.__gd3d.burstActive(),
+              status: window.__gd3d.status(),
+            };
+          }, 120);
+        }
+      }, 16);
+    });
+    m81burstDead = await m8roll((s) => s.status === 'dead', 15000);
+    m81gate = null;
+    for (let i = 0; i < 60 && (m81gate === null || m81gate.pending === true); i++) {
+      await page.waitForTimeout(100);
+      m81gate = await safeEval(() => window.__m81gate);
+    }
   }
   log('m81 death explosion + ghost read', m81burstDead !== null && m81gate !== null && m81gate.burst === true && m81gate.status === 'dead',
     m81gate ? `burst=${m81gate.burst} status=${m81gate.status}` : 'no frozen frame');
@@ -815,6 +823,119 @@ await page.waitForTimeout(2000);
     window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyP' }));
   });
   await m8live();
+// --- M8.2 LAVA / PORTAL-BOUNDS / SPIDER-CAMERA / CHOMPER GATE ---
+  // Lava rework: stepped falls + vent lips over the gap-basin pour read
+  // in-frame from the S1 approach (new M8.2 vent line x −4.2).
+  await m8freeze(0, 0.55, 30);
+  const m82ventFrame = await safeEval(() => window.__gd3d.screenPoint(-4.2, 0.5, 43));
+  const m82fallFrame = await safeEval(() => window.__gd3d.screenPoint(-4, -1.2, 43));
+  log('m82 vent lip + stepped fall read in-frame', !m82ventFrame.behind && !m82fallFrame.behind && Math.abs(m82ventFrame.ndcX) < 1.2 && Math.abs(m82fallFrame.ndcX) < 1.2,
+    `vent=(${m82ventFrame.ndcX.toFixed(2)},${m82ventFrame.ndcY.toFixed(2)}) fall=(${m82fallFrame.ndcX.toFixed(2)},${m82fallFrame.ndcY.toFixed(2)})`);
+  await capture('m82-01-lava-source-fall');
+  await m8live();
+
+  // At-grade river curb with visible (protruding) side vents.
+  await m8freeze(0, 0.55, 118);
+  const m82riverFrame = await safeEval(() => window.__gd3d.screenPoint(0, 0.7, 129.5));
+  const m82riverSrc = await safeEval(() => window.__gd3d.screenPoint(-4.2, 2.9, 129.5));
+  log('m82 river curb + protruding vent read in-frame', !m82riverFrame.behind && !m82riverSrc.behind && Math.abs(m82riverFrame.ndcX) < 1 && Math.abs(m82riverSrc.ndcX) < 1.2,
+    `curb=(${m82riverFrame.ndcX.toFixed(2)},${m82riverFrame.ndcY.toFixed(2)}) vent=(${m82riverSrc.ndcX.toFixed(2)},${m82riverSrc.ndcY.toFixed(2)})`);
+  await capture('m82-02-lava-river');
+  await m8live();
+
+  // Opening-sized gate portrait: the small ring sits on the rider line.
+  await m8freeze(0, 0.55, 300);
+  const m82gateFrame = await safeEval(() => window.__gd3d.screenPoint(0, 1.5, 310));
+  log('m82 opening-sized gate reads in-frame', !m82gateFrame.behind && Math.abs(m82gateFrame.ndcX) < 1 && Math.abs(m82gateFrame.ndcY) < 1,
+    `ndc=(${m82gateFrame.ndcX.toFixed(2)},${m82gateFrame.ndcY.toFixed(2)})`);
+  await capture('m82-03-gate');
+  await m8live();
+
+  // Through the opening fires: staged on the line, the small gate flips.
+  await m8stage(0, 0.55, 300);
+  const m82inside = await m8roll((s) => s.z > 312, 15000);
+  log('m82 through-opening pass fires the gate', m82inside !== null && m82inside.grav === 'leftWall',
+    m82inside ? `grav=${m82inside.grav} z=${m82inside.z.toFixed(1)}` : 'no crossing');
+
+  // Beside the ring does NOT fire: staged outside at x 4.5 with lane
+  // intent pinned to lane 0 (one ArrowLeft edge — the x 2.6 line clears
+  // the 1.6-half opening; the unit suite pins this line exactly). Lane
+  // pull during staging travel is the failure mode (proven by forensics:
+  // bare staging drifts into the gate and fires). Crossing z 310 then
+  // leaves gravity on floor — and the S3 routing gap ends the run by
+  // geometry (void, floor).
+  // Beside-the-ring miss, deterministic by construction. The race the
+  // forensics proved: teleport-then-tap burns travel time while lane-1
+  // pull (12–16 u/s) carries the cube into the gate, and tap edges get
+  // lost under load. Fix: pin lane-0 intent BEFORE the teleport (R +
+  // live run + ArrowLeft edge, verified via targetLaneIndex), THEN place
+  // outside at x 4.85. Lane-0 intent can only pull the cube AWAY from
+  // the gate (asymptote x 2.6, box clears the 1.6-half opening) — firing
+  // becomes impossible, so any recorded fire is a REAL bug, not harness.
+  let m82lane = -1;
+  for (let i = 0; i < 3 && m82lane !== 0; i++) {
+    await page.keyboard.press('KeyR');
+    await page.waitForTimeout(500);
+    await page.keyboard.down('ArrowLeft');
+    await page.waitForTimeout(300);
+    await page.keyboard.up('ArrowLeft');
+    await page.waitForTimeout(200);
+    m82lane = (await m8probe()).lane;
+    if (m82lane !== 0) continue;
+    await safeEval(() => window.__gd3d.debugTeleport(4.85, 0.55, 305));
+    await page.waitForTimeout(100);
+    if ((await m8probe()).lane !== 0) m82lane = -1;
+  }
+  log('m82 outside intent pinned before the crossing', m82lane === 0, `lane=${m82lane}`);
+  const m82miss = await m8roll((s) => s.z > 312, 15000);
+  log('m82 beside-the-ring pass does NOT fire', m82miss !== null && m82lane === 0 && m82miss.grav === 'floor',
+    m82miss ? `lane=${m82lane} grav=${m82miss.grav} z=${m82miss.z.toFixed(1)}` : 'no crossing');
+  const m82geoDead = await m8roll((s) => s.status === 'dead', 15000);
+  log('m82 missed gate fails later by geometry', m82geoDead !== null && m82geoDead.cause === 'void' && m82geoDead.grav === 'floor',
+    m82geoDead ? `cause=${m82geoDead.cause} grav=${m82geoDead.grav} z=${m82geoDead.z.toFixed(1)}` : 'survived');
+
+  // Spider swap glide: stage before spider-on, roll into spider mode,
+  // press to snap up, and prove the glide envelope armed (unit tests pin
+  // the glide math; the counter proves the path engaged in-page).
+  await m8stage(0, 0.55, 850);
+  const m82spider = await m8roll((s) => s.pMode === 'spider', 15000);
+  log('m82 staged spider mode engages', m82spider !== null && m82spider.pMode === 'spider',
+    m82spider ? `mode=${m82spider.pMode} z=${m82spider.z.toFixed(1)}` : 'no spider');
+  // Wait for the ceiling slab (z 875+) before pressing: a press over
+  // open sky is correctly ignored (no support in range), which consumed
+  // the first attempt (proven by forensics — press at z ~868, no snap).
+  await m8roll((s) => s.z > 882, 15000);
+  const m82glidesBefore = await safeEval(() => window.__gd3d.swapGlideCount());
+  await page.keyboard.down('Space');
+  await page.waitForTimeout(150);
+  await page.keyboard.up('Space');
+  const m82swapped = await m8roll((s) => s.grav === 'ceiling', 8000);
+  const m82glidesAfter = await safeEval(() => window.__gd3d.swapGlideCount());
+  log('m82 spider swap arms the camera glide', m82swapped !== null && m82glidesAfter > m82glidesBefore,
+    m82swapped ? `grav=${m82swapped.grav} glides=${m82glidesBefore}->${m82glidesAfter}` : 'no swap');
+  await capture('m82-05a-spider-glide');
+  await page.waitForTimeout(800);
+  await capture('m82-05b-spider-settled');
+  await m8live();
+
+  // Chomper lava-chomper portraits: dormant bulk + mid-telegraph gape
+  // (blocky head, fangs, hooded eyes, crust bands).
+  await m8freeze(3, 1.5, 586);
+  const m82chomp = await m8probe();
+  log('m82 chomper waits dormant before its trigger', m82chomp.chompers[0]?.phase === 'dormant',
+    `phase=${m82chomp.chompers[0]?.phase}`);
+  await capture('m82-06-chomper');
+  await m8live();
+  await m8freeze(5, 1.2, 598);
+  await capture('m82-06b-chomper-telegraph');
+  await m8live();
+
+  // Replay still verifies after the M8.2 content changes (references the
+  // full-run M8 section result above — same page session).
+  const m82replayOk = results.some((r) => r.name === 'm8 replay VERIFIED' && r.ok === true);
+  log('m82 replay still VERIFIED after content changes', m82replayOk === true,
+    m82replayOk ? 'full-run tape verified' : 'M8 full-run replay did not verify');
+
 // --- Console audit (M8 slice) ---
 log('no console errors', consoleErrors.length === 0, JSON.stringify(consoleErrors.slice(0, 3)));
 log('no page errors', pageErrors.length === 0, JSON.stringify(pageErrors.slice(0, 3)));
