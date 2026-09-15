@@ -59,6 +59,7 @@ declare global {
       grounded: () => boolean;
       laneIndex: () => number;
       playerPosition: () => { x: number; y: number; z: number };
+      playerVelocity: () => { x: number; y: number; z: number };
       gravityMode: () => GravityMode;
       playerMode: () => PlayerMode;
       modeTransitionCount: () => number;
@@ -180,6 +181,7 @@ window.__gd3d = {
   grounded: () => game['simulation'].player.grounded,
   laneIndex: () => game['simulation'].player.targetLaneIndex,
   playerPosition: () => ({ ...game['simulation'].player.position }),
+  playerVelocity: () => ({ ...game['simulation'].player.velocity }),
   gravityMode: () => game['simulation'].gravityMode,
   playerMode: () => game['simulation'].playerMode,
   modeTransitionCount: () => game['simulation'].modeTransitionCount,

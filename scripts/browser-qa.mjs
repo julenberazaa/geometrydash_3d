@@ -90,7 +90,7 @@ page.on('console', (msg) => {
 });
 page.on('pageerror', (err) => pageErrors.push(String(err)));
 
-await safeGoto(URL);
+await safeGoto(`${URL}?level=controller-test-01`);
 await waitReady();
 await page.waitForTimeout(2000);
 
@@ -2043,7 +2043,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   };
 
   // Fresh page for the M6A section.
-  await safeGoto(URL);
+  await safeGoto(`${URL}?level=controller-test-01`);
   await waitReady();
   await page.waitForTimeout(2000);
 
@@ -2162,7 +2162,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
 
   // Replay under M6 visuals: natural death -> F4 -> VERIFIED (no teleports,
   // no tight windows — the center lane dies on the z=116 spike by itself).
-  await safeGoto(URL);
+  await safeGoto(`${URL}?level=controller-test-01`);
   await waitReady();
   await page.waitForTimeout(2000);
   const m6aDeath = await waitDead();
@@ -2284,7 +2284,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   };
 
   // Fresh page, default flags (post on, fx on).
-  await safeGoto(URL);
+  await safeGoto(`${URL}?level=controller-test-01`);
   await waitReady();
   await page.waitForTimeout(2000);
 
@@ -2330,7 +2330,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     `enabled=${m6bOffLater.enabled} trail=${m6bOffLater.trail} dz=${(m6bOffZ1 - m6bOffZ0).toFixed(1)}`);
 
   // Back to the default page for the lifecycle checks.
-  await safeGoto(URL);
+  await safeGoto(`${URL}?level=controller-test-01`);
   await waitReady();
   await page.waitForTimeout(2000);
 
@@ -2579,7 +2579,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   // 2x speed portal: tier pulse + streak count rises (M6A-proven
   // coordinates: teleport 366, approach 368-371, cross 373).
   // Back on the default page (post on) after the post-off orb detour.
-  await safeGoto(URL);
+  await safeGoto(`${URL}?level=controller-test-01`);
   await waitReady();
   await page.waitForTimeout(2000);
   const m6bSpeedBase = (await fx()).counters.speed;
@@ -2650,7 +2650,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   await fxResume();
 
   // Replay recreates juice from the replayed sim, then still VERIFIES.
-  await safeGoto(URL);
+  await safeGoto(`${URL}?level=controller-test-01`);
   await waitReady();
   await page.waitForTimeout(2000);
   await page.keyboard.press('KeyR');
@@ -2749,7 +2749,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     `post=${m6bMinimal.post} fx=${m6bMinimal.fx} dz=${(m6bMinimalZ1 - m6bMinimal.z0).toFixed(1)}`);
 
   // Resize survival with juice live.
-  await safeGoto(URL);
+  await safeGoto(`${URL}?level=controller-test-01`);
   await waitReady();
   await page.waitForTimeout(2000);
   await page.setViewportSize({ width: 960, height: 540 });
@@ -2825,7 +2825,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   const HAZARD_HEX = 0xff9d00;
 
   // Fresh page, default flags (post on, fx on, triggers on).
-  await safeGoto(URL);
+  await safeGoto(`${URL}?level=controller-test-01`);
   await waitReady();
   await page.waitForTimeout(2000);
   const m6c1Base = await pollTl((s) => s.section === 'runway', 15000);
@@ -2971,7 +2971,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   // NATURAL death tape only: the center lane dies on the z=116 spike by
   // itself (M6A-proven, no teleports — a teleported death cannot replay
   // because teleports are not inputs). Fresh page for a clean tape.
-  await safeGoto(URL);
+  await safeGoto(`${URL}?level=controller-test-01`);
   await waitReady();
   await page.waitForTimeout(2000);
   await page.keyboard.press('KeyR');
@@ -3015,10 +3015,11 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   // Resource stability across the whole Level 01 pass. M8 delta (shared
   // library growth, zero per-frame cost): 28 → 36 = +2 lava (M8A) +2 mode
   // portals (M8C) +4 chomper (M8D); geometries unchanged (all new views
-  // reuse shared geo).
+  // reuse shared geo). M8.5: +1 shared line material (routeEdgeLine) for
+  // the merged edge-line pass (36 → 37; +1 draw call, view-owned buffer).
   const m6c1ResEnd = await tl();
-  log('m6c1 resources flat across every transition (36/8/3)',
-    m6c1ResEnd.mats === 36 && m6c1ResEnd.geos === 8 && m6c1ResEnd.passes === 3 &&
+  log('m6c1 resources flat across every transition (37/8/3)',
+    m6c1ResEnd.mats === 37 && m6c1ResEnd.geos === 8 && m6c1ResEnd.passes === 3 &&
     m6c1ResEnd.children === m6c1Base.children,
     `mats=${m6c1ResEnd.mats} geos=${m6c1ResEnd.geos} passes=${m6c1ResEnd.passes} children=${m6c1Base.children}->${m6c1ResEnd.children}`);
 
@@ -3113,7 +3114,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     `section=${m6c1Min0.section} dz=${(m6c1MinZ1 - m6c1Min0.z).toFixed(1)}`);
 
   // Resize survival with a section live.
-  await safeGoto(URL);
+  await safeGoto(`${URL}?level=controller-test-01`);
   await waitReady();
   await page.waitForTimeout(2000);
   await startGravityRun(200);
@@ -3195,7 +3196,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   const TIER2_GREEN = 0x66ff8a;
 
   // Fresh page, default flags (post on, fx on, triggers on).
-  await safeGoto(URL);
+  await safeGoto(`${URL}?level=controller-test-01`);
   await waitReady();
   await page.waitForTimeout(2000);
   const m6c2Probes = await punchProbe();
@@ -3381,7 +3382,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   await resumeM6c2();
 
   // Replay under the new visuals: natural death -> F4 -> VERIFIED.
-  await safeGoto(URL);
+  await safeGoto(`${URL}?level=controller-test-01`);
   await waitReady();
   await page.waitForTimeout(2000);
   await page.keyboard.press('KeyR');
@@ -3423,15 +3424,16 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   }
   log('m6c2 replay carries zero punch/contact state', m6c2TapeClean, m6c2TapeDetail);
 
-  // Resource stability: 36/8/3 library counts (26 shared + 2 shared M7.2
-  // teleport materials + 8 shared M8: 2 lava, 2 mode portals, 4 chomper);
-  // scene children grew by exactly the 12 fixed M7.1
-  // background energy rays (50 → 62, bounded by construction — one shared
+  // Resource stability: 37/8/3 library counts (26 shared + 2 shared M7.2
+  // teleport materials + 8 shared M8: 2 lava, 2 mode portals, 4 chomper +
+  // 1 shared M8.5 edge-line material); scene children grew by exactly
+  // the 12 fixed M7.1 background energy rays plus the 1 merged edge-line
+  // pass (50 → 63, bounded by construction — one shared
   // geometry + one shared material, no pools).
   const m6c2ResEnd = await punchProbe();
-  log('m6c2 resources flat (36/8/3, no new draws or pools)',
-    m6c2ResEnd.mats === 36 && m6c2ResEnd.geos === 8 && m6c2ResEnd.passes === 3 &&
-    m6c2ResEnd.children === 62,
+  log('m6c2 resources flat (37/8/3, no new draws or pools)',
+    m6c2ResEnd.mats === 37 && m6c2ResEnd.geos === 8 && m6c2ResEnd.passes === 3 &&
+    m6c2ResEnd.children === 63,
     `mats=${m6c2ResEnd.mats} geos=${m6c2ResEnd.geos} passes=${m6c2ResEnd.passes} children=${m6c2ResEnd.children}`);
 }
 
@@ -4172,9 +4174,9 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   // proof run below uses ?post=off (passes=0).
   const m71res = await m71probe();
   log('m71 resource counts remain bounded',
-    m71res.mats === 37 && m71res.geos === 8 && m71res.passes === 3 && m71res.children === 62,
+    m71res.mats === 38 && m71res.geos === 8 && m71res.passes === 3 && m71res.children === 63,
     `mats=${m71res.mats} geos=${m71res.geos} passes=${m71res.passes} children=${m71res.children}`);
-  log('m71 material/geometry counts stable', m71res.mats === 37 && m71res.geos === 8,
+  log('m71 material/geometry counts stable', m71res.mats === 38 && m71res.geos === 8,
     `mats=${m71res.mats} geos=${m71res.geos}`);
 
   // Full real-input playthrough via the in-page driver (mirrors
@@ -6419,6 +6421,19 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     `src=(${m85src.ndcX.toFixed(2)},${m85src.ndcY.toFixed(2)}) cross=(${m85cross.ndcX.toFixed(2)},${m85cross.ndcY.toFixed(2)})`);
   await m8live();
 
+  // Showcase lava conveyors advance live in-page (M8.4 flow on the
+  // forge river composition, not just the gauntlet probes above).
+  await m8freeze(0, 0.55, 118);
+  const m85lavaA = await page.evaluate(() => window.__gd3d.lavaMotion());
+  await m8live(1);
+  await page.keyboard.press('KeyP');
+  await page.waitForTimeout(800);
+  await page.keyboard.press('KeyP');
+  const m85lavaB = await page.evaluate(() => window.__gd3d.lavaMotion());
+  log('m85 lava conveyors advance live in-page', m85lavaA !== '' && m85lavaB !== '' && m85lavaA !== m85lavaB,
+    `a=${m85lavaA} b=${m85lavaB}`);
+  await m8live();
+
   // Chomper telegraph: staged ahead of the first trigger, the lunge arms.
   await m8stage(0, 0.55, 800);
   const m85chomp = await m8roll((s) => (s.chompers ?? []).some((c) => c.phase !== 'dormant'), 60000);
@@ -6430,39 +6445,65 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   // automated ShowcaseDriver primary policy. Deaths re-arm the plan.
   await m8fresh(`${URL}?level=production-showcase-01&post=off&fx=off&triggers=off`);
   await page.setViewportSize({ width: 960, height: 540 });
+  const m85baseAttempts = await page.evaluate(() => window.__gd3d.attempts());
   await page.evaluate(() => {
     if (window.__m85driver) clearInterval(window.__m85driver);
     window.__m85done = null;
     const down = (code) => window.dispatchEvent(new KeyboardEvent('keydown', { code }));
     const up = (code) => window.dispatchEvent(new KeyboardEvent('keyup', { code }));
-    const tap = (code) => { down(code); setTimeout(() => up(code), 70); };
+    // M8.5 confirmed-hold driver: NO setTimeout key-ups anywhere (a stale
+    // timer firing after a later hold-down silently releases thrust while
+    // the tracker still believes it is held — the exact ship-wall failure
+    // seen in QA). Repeat key-downs are harmless (the InputSystem ignores
+    // held repeats), so holds re-assert every poll (self-healing) and
+    // releases fire only on observed confirmation (airborne / lane intent
+    // / interaction used) with a wall-clock failsafe.
     const reset = () => ({
-      jumps: [37.5, 93.5, 172.5, 192.0, 235.5, 251.5, 267.5, 291.5, 352.0, 909.5, 1418.0, 1712.5],
-      taps: [
-        { z: 150, c: 'ArrowLeft' }, { z: 162, c: 'ArrowRight' },
-        { z: 395, c: 'ArrowLeft' }, { z: 430, c: 'ArrowRight' },
-        { z: 630, c: 'ArrowLeft' }, { z: 648, c: 'ArrowRight' },
-        { z: 1202, c: 'ArrowLeft' }, { z: 1225, c: 'ArrowRight' },
-        { z: 1350, c: 'ArrowLeft' }, { z: 1466, c: 'ArrowRight' },
-        { z: 1530, c: 'ArrowLeft' }, { z: 1562, c: 'ArrowRight' },
+      // In-page leads: spike/river jumps (early takeoff still clears)
+      // fire ~1.5 u ahead of the unit thresholds to absorb dispatch
+      // latency; gap jumps keep exact thresholds (late-tolerant windows).
+      jumps: [
+        { z: 37.5, done: false }, { z: 93.5, done: false },
+        { z: 171.0, done: false }, { z: 190.5, done: false },
+        { z: 235.5, done: false }, { z: 251.5, done: false },
+        { z: 267.5, done: false }, { z: 291.5, done: false },
+        { z: 352.0, done: false, orb: 'ps-orb-gap' },
+        { z: 908.0, done: false },
+        { z: 1418.0, done: false, orb: 'ps-orb-high' },
+        { z: 1711.0, done: false },
       ],
-      presses: [1180, 1215, 1222, 1245, 1273, 1291],
+      taps: [
+        { z: 150, c: 'ArrowLeft', to: 0, done: false }, { z: 162, c: 'ArrowRight', to: 1, done: false },
+        { z: 395, c: 'ArrowLeft', to: 0, done: false }, { z: 430, c: 'ArrowRight', to: 1, done: false },
+        { z: 630, c: 'ArrowLeft', to: 0, done: false }, { z: 648, c: 'ArrowRight', to: 1, done: false },
+        { z: 1202, c: 'ArrowLeft', to: 0, done: false }, { z: 1225, c: 'ArrowRight', to: 1, done: false },
+        { z: 1350, c: 'ArrowLeft', to: 0, done: false }, { z: 1466, c: 'ArrowRight', to: 1, done: false },
+        // Finale 2x weave taps lead by ~4 u: at 28 u/s the lane change
+        // needs ~10 u, so dispatch-latency starts still clear the spikes.
+        { z: 1526, c: 'ArrowLeft', to: 0, done: false }, { z: 1558, c: 'ArrowRight', to: 1, done: false },
+      ],
+      presses: [
+        { z: 1180, done: false }, { z: 1215, done: false }, { z: 1222, done: false },
+        { z: 1245, done: false }, { z: 1273, done: false }, { z: 1291, done: false },
+      ],
       jumpedCh: [false, false, false, false],
     });
     let plan = reset();
-    let release = false;
     let attempts = window.__gd3d.attempts();
-    let shipHeld = false;
-    let orbTaps = 0;
-    let lastOrbTap = 0;
+    // Pending confirmed-hold state (at most one Space + one arrow hold).
+    let spaceHold = null;
+    let arrowHold = null;
+    let shipHoldPrev = false; // PD hysteresis memory (ship bands)
+    const releaseAll = () => {
+      if (spaceHold !== null) { up('Space'); spaceHold = null; }
+      if (arrowHold !== null) { up(arrowHold.c); arrowHold = null; }
+    };
     window.__m85driver = setInterval(() => {
       const g = window.__gd3d;
       if (g.attempts() !== attempts) {
         attempts = g.attempts();
         plan = reset();
-        release = false;
-        orbTaps = 0;
-        if (shipHeld) { up('Space'); shipHeld = false; }
+        releaseAll();
       }
       if (g.status() !== 'running') {
         if (g.status() === 'finished') window.__m85done = { attempts: g.attempts() };
@@ -6472,40 +6513,123 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
       window.__m85done = null;
       const z = g.playerPosition().z;
       const y = g.playerPosition().y;
-      if (g.playerMode() === 'ship') {
+      const now = performance.now();
+      const airborne = !g.grounded() || y > 1.2;
+      const flying = g.playerMode() === 'ship';
+      // Confirm or failsafe-release the pending Space hold (never
+      // while flying — the ship branch owns the hold there).
+      if (spaceHold !== null && !flying) {
+        // Spider snaps land instantly GROUNDED on the opposite surface,
+        // so airborne-confirm never fires for them — confirm on the
+        // gravity flip (every snap changes gravityMode) or forward
+        // progress past the press instead.
+        const snapped = spaceHold.mark !== null && spaceHold.mark.isPress &&
+          (g.gravityMode() !== spaceHold.grav || z > spaceHold.z + 4);
+        if (airborne || snapped || now - spaceHold.t0 > 1500) {
+          up('Space');
+          if (spaceHold.mark !== null) spaceHold.mark.done = true;
+          spaceHold = null;
+        }
+      }
+      // Confirm or failsafe-release the pending arrow hold.
+      if (arrowHold !== null) {
+        if (g.laneIndex() === arrowHold.to || now - arrowHold.t0 > 3000) {
+          up(arrowHold.c);
+          arrowHold.mark.done = true;
+          arrowHold = null;
+        }
+      }
+      if (flying) {
+        if (arrowHold !== null) { up(arrowHold.c); arrowHold = null; }
+        // PD regulation (gravity-observed, like the unit ShowcaseDriver):
+        // headless SwiftShader (~8 fps) batches sim ticks between polls,
+        // so pure z-band bang-bang limit-cycles into the ceiling block
+        // (bottom y=7) and floor ribs (top y=1). Damping on the sampled
+        // vertical velocity + guard rails keep every bounded gate
+        // (invert/revert 1.4..4.6, ship-off 1.1..4.1 + 0.55 half-height)
+        // catching the flight even when polls land late.
+        const vy = g.playerVelocity().y;
+        const inverted = g.gravityMode() === 'ceiling';
         let wantHold;
-        if (z < 984) wantHold = true;
-        else if (z < 1000) wantHold = false;
-        else if (z < 1030) wantHold = y < 2.6;
-        else if (z < 1090) wantHold = y > 3.5;
-        else wantHold = y < 2.6;
-        if (wantHold && !shipHeld) { down('Space'); shipHeld = true; }
-        if (!wantHold && shipHeld) { up('Space'); shipHeld = false; }
+        if (inverted) {
+          if (y > 4.2) wantHold = true;
+          else if (y < 3.4) wantHold = false;
+          else wantHold = vy > 1 ? true : vy < -1 ? false : shipHoldPrev;
+        } else if (z < 978) wantHold = y < 4.5 && !(y > 3.0 && vy > 9);
+        else if (z < 995) wantHold = false;
+        else if (z < 1010) wantHold = y < 2.0;
+        else if (z < 1030) {
+          wantHold = y < 2.8;
+          if (y < 1.2 || vy < -6) wantHold = true;
+          if (y > 4.2 || vy > 6) wantHold = false;
+        } else {
+          if (y < 1.6) wantHold = true;
+          else if (y > 3.2) wantHold = false;
+          else wantHold = vy < -1 ? true : vy > 1 ? false : shipHoldPrev;
+        }
+        shipHoldPrev = wantHold;
+        // Self-healing: re-assert down every poll while held-wanted
+        // (held repeats are ignored) so a lost release can never stick.
+        if (wantHold) { down('Space'); spaceHold = { t0: now, mark: null }; }
+        else if (spaceHold !== null) { up('Space'); spaceHold = null; }
         return;
       }
-      if (shipHeld) { up('Space'); shipHeld = false; }
+      if (spaceHold !== null && spaceHold.mark === null) { up('Space'); spaceHold = null; }
+      // Priority: reactive Chomper jumps. Keyed on the TELEGRAPH (+2.5 u
+      // into it) rather than the lunge edge: the jump arc then straddles
+      // the whole kill window with margin, absorbing in-page observation
+      // latency that a lunge-edge reaction cannot afford. Trigger Zs are
+      // level data mirrored here (810/850/885/1680); the unit driver keys
+      // on the exact lunge edge instead (deterministic, delay-free).
+      const chompTriggerZ = [810, 850, 885, 1680];
       const ch = g.chompers();
       for (let i = 0; i < ch.length; i++) {
-        if (ch[i]?.phase === 'lunging' && !plan.jumpedCh[i]) { plan.jumpedCh[i] = true; tap('Space'); release = true; return; }
+        const tz = chompTriggerZ[i] ?? 1e9;
+        if ((ch[i]?.phase === 'telegraph' || ch[i]?.phase === 'lunging') && !plan.jumpedCh[i] && z >= tz + 2.5 && spaceHold === null) {
+          plan.jumpedCh[i] = true;
+          down('Space');
+          spaceHold = { t0: now, mark: null };
+          return;
+        }
       }
-      if (release) { release = false; return; }
-      // Required orbs: repeated discrete presses across the window until
-      // the sim confirms activation (robust to single-edge timing).
-      const now = performance.now();
-      if (!g.isInteractionUsed('ps-orb-gap') && z >= 350 && z <= 354.5 && now - lastOrbTap > 60 && orbTaps < 12) {
-        lastOrbTap = now; orbTaps += 1; tap('Space'); return;
+      if (spaceHold !== null || arrowHold !== null) return;
+      // Required orbs: hold across the window until the sim confirms.
+      if (!g.isInteractionUsed('ps-orb-gap') && z >= 350 && z <= 354.5) {
+        down('Space');
+        spaceHold = { t0: now, mark: null };
+        return;
       }
-      if (!g.isInteractionUsed('ps-orb-high') && z >= 1416 && z <= 1420 && now - lastOrbTap > 60 && orbTaps < 24) {
-        lastOrbTap = now; orbTaps += 1; tap('Space'); return;
+      if (!g.isInteractionUsed('ps-orb-high') && z >= 1416 && z <= 1420) {
+        down('Space');
+        spaceHold = { t0: now, mark: null };
+        return;
       }
-      if (plan.presses.length > 0 && z >= (plan.presses[0] ?? 1e9)) { plan.presses.shift(); tap('Space'); release = true; return; }
-      if (plan.jumps.length > 0 && z >= (plan.jumps[0] ?? 1e9)) {
-        const j = plan.jumps[0] ?? 1e9;
-        // Orb windows are press-serviced above — never double-fire there.
-        if ((j === 352.0 && !g.isInteractionUsed('ps-orb-gap')) || (j === 1418.0 && !g.isInteractionUsed('ps-orb-high'))) return;
-        plan.jumps.shift(); tap('Space'); release = true; return;
+      const press = plan.presses.find((p) => !p.done);
+      if (press !== undefined && z >= press.z) {
+        down('Space');
+        press.isPress = true;
+        spaceHold = { t0: now, mark: press, grav: g.gravityMode(), z };
+        return;
       }
-      if (plan.taps.length > 0 && z >= ((plan.taps[0]?.z) ?? 1e9)) { const t = plan.taps.shift(); if (t) tap(t.c); }
+      const jump = plan.jumps.find((j) => !j.done);
+      if (jump !== undefined && z >= jump.z) {
+        // Orb windows are hold-serviced above — a plain jump edge there
+        // would double-fire; wait for the hold path instead. Once the
+        // orb has fired, the paired entry retires without hopping.
+        if (jump.orb !== undefined) {
+          if (!g.isInteractionUsed(jump.orb)) return;
+          jump.done = true;
+          return;
+        }
+        down('Space');
+        spaceHold = { t0: now, mark: jump };
+        return;
+      }
+      const tapItem = plan.taps.find((t) => !t.done);
+      if (tapItem !== undefined && z >= tapItem.z) {
+        down(tapItem.c);
+        arrowHold = { c: tapItem.c, to: tapItem.to, t0: now, mark: tapItem };
+      }
     }, 10);
   });
   const m85shots = { ship: false, inverted: false, spiderWall: false, tele: false, core: false };
@@ -6545,17 +6669,24 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
       await page.waitForTimeout(250);
     }
   })();
-  log('m85 full real-input reference run finishes', m85run !== 'timeout' && m85run?.attempts === 1 && !m85run?.dead,
-    typeof m85run === 'string' ? m85run : `attempts=${m85run?.attempts} dead=${m85run?.dead ?? 'no'}`);
+  // Every R is an attempt (respawn semantics), so the 1-attempt bar is
+  // measured against the post-reset baseline, not the absolute counter.
+  log('m85 full real-input reference run finishes', m85run !== 'timeout' && m85run?.attempts === m85baseAttempts && !m85run?.dead,
+    typeof m85run === 'string' ? m85run : `attempts=${m85run?.attempts} (base ${m85baseAttempts}) dead=${m85run?.dead ?? 'no'}`);
   const m85final = await m8probe();
   log('m85 reference run covers all modes and gravities',
     m85final.status === 'finished',
     `status=${m85final.status} mode=${m85final.pMode} grav=${m85final.grav}`);
   await capture('showcase-12-finish');
-  // F4 replays the showcase tape to VERIFIED in-page.
+  // F4 replays the showcase tape to VERIFIED in-page. Headless
+  // time-dilation slows the sim well below real time: poll for the
+  // terminal verification instead of a fixed sleep.
   await page.keyboard.press('F4');
-  await page.waitForTimeout(1500);
-  const m85verify = await page.evaluate(() => window.__gd3d.replayVerification());
+  let m85verify = { kind: 'running' };
+  for (let i = 0; i < 100 && m85verify.kind === 'running'; i++) {
+    await page.waitForTimeout(5000);
+    m85verify = await page.evaluate(() => window.__gd3d.replayVerification());
+  }
   log('m85 showcase replay VERIFIED in-page', m85verify.kind === 'pass', `verify=${m85verify.kind}`);
 }
 

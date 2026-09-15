@@ -92,26 +92,61 @@ reconnect runway (1465..1480), the 1× return (1600..1620).
   frontImpact, basin lava, river lava, orb-gap void, divider frontImpact.
 - Browser QA (`scripts/browser-qa.mjs`, M8.5 section): default-load +
   legacy-override checks, 8 staged environment frames
-  (`showcase-01..12`), NDC river-composition proof, Chomper telegraph
-  proof, FULL in-page real-input reference run with checkpoint captures
-  (ship / inverted / spider-wall / teleport / core / finish) + in-page
-  REPLAY VERIFIED. M5 default/fallback strings updated to the showcase
-  (legacy geometry now pins via explicit `?level=controller-test-01`).
+  (`showcase-01..12`), NDC river-composition proof, showcase lava-
+  conveyor live-advance proof, Chomper telegraph proof, FULL in-page
+  real-input reference run with checkpoint captures (ship / inverted /
+  spider-wall / teleport / core / finish) + in-page REPLAY VERIFIED.
+  M5 default/fallback strings updated to the showcase (legacy geometry
+  now pins via explicit `?level=controller-test-01`).
+- In-page driver hardening (environment robustness ONLY — the unit
+  `ShowcaseDriver` policy and every level threshold are untouched):
+  headless SwiftShader runs at ~8 fps, so one control decision spans a
+  whole catch-up batch. Pure z-band bang-bang Ship control limit-cycled
+  into the ceiling block / floor ribs and missed the bounded invert
+  gate. The in-page Ship policy is therefore PD regulation on the
+  sampled `playerVelocity` (new `__gd3d.playerVelocity` cold probe in
+  `main.ts`, presentation/QA surface only): hysteresis bands
+  (inverted 3.4..4.2, floor cruise 1.6..3.2) with velocity damping,
+  guard rails on every gate approach, and early dive/brake leads.
+  Spider-press holds confirm on the gravity flip (snaps land instantly
+  grounded, so airborne-confirm never fires) with a 1.5 s failsafe;
+  finale 2× weave taps lead ~4 u. The 1-attempt bar measures against
+  the post-reset attempts baseline (every R is an attempt by respawn
+  semantics), and the replay check polls to the terminal verdict
+  instead of a fixed sleep (time-dilated sims replay slower than real
+  time). Result: full in-page finish, 0 deaths, REPLAY VERIFIED.
 
 ## 7. Visual identity (presentation-only, fingerprint-excluded)
 
-Nine `visualSequence` scenes (forge ember / islands teal / labyrinth
+Nine `visualSequence` scenes (forge gold / islands teal / labyrinth
 violet / cathedral cyan / canyon red / reactor green / temple gold /
 void indigo / core magenta), 28 `rhythmCues` (position metadata, no
 audio), guardian route markers, lava menace setpieces, reactor glow,
-void lake, finish arch. Renderer-owned only; ReplayV1 unchanged; golden
+void lake, finish arch. Art direction follows neon-arcade references
+(dark block faces + luminous edge outlines, pyramid hazards, enclosed
+tunnel framing, cyan player, portal rings as goals, single-hue section
+identity) via the generic M8.5 edge-line pass: one merged LineSegments
+per level on the shared vertex-colored `routeEdgeLine` material (solids
+tint with the section accent, spikes stay hazard-warm; +1 material,
++1 draw call, zero per-frame allocation, library geometry count
+unchanged). Renderer-owned only; ReplayV1 unchanged; golden
 fixture intact.
+
+Plain 6 u gaps keep fair human takeoff windows (~200 ms); required
+pad/orb gaps stay strictly uncrossable without their assistance
+(pinned). In-page scripted drivers lead delay-sensitive spike/river
+jumps by ~1.5 u against CDP/event-loop dispatch latency (unit thresholds
+stay exact) — environment robustness only, never a gameplay change.
 
 ## 8. Resource impact
 
-Level data only (no new materials/geometries/systems). Heavier than the
-gauntlet by content volume (more solids/hazards/lava/portals), same
-shared-library budget. Real-GPU gate stays with the human (M6D
+Level data + one generic renderer pass: +1 shared line material
+(`routeEdgeLine`), +1 draw call and +1 scene child per level
+(the merged edge lines), +0 library geometries (the buffer is
+view-owned), zero per-frame allocation. Absolute browser pins updated
+(m6c1 37/8/3, m6c2 37/8/3/63 children, m71 38/8/3/63); all relative
+growth guards hold. Heavier than the gauntlet by content volume, same
+bounded architecture. Real-GPU gate stays with the human (M6D
 methodology applies when the level is approved).
 
 ## 9. Definition of Done

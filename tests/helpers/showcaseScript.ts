@@ -113,14 +113,19 @@ export class ShowcaseDriver {
     // Ship reactor (mode-observed, gravity-aware closed loop).
     if (sim.playerMode === 'ship') {
       let hold: boolean;
-      if (z < 984) hold = true; // rise over the z 964 wall
-      else if (z < 1000) hold = false; // dive under the z 1010 block
-      else if (z < 1030) hold = sim.player.position.y < 2.6;
-      else if (z < 1090) {
+      const inverted = sim.gravityMode === 'ceiling';
+      if (inverted) {
         // Inverted flight (ceiling gravity): thrust pushes DOWN, so the
         // regulation inverts — hold while ABOVE the target line.
         hold = sim.player.position.y > 3.5;
-      } else hold = sim.player.position.y < 2.6;
+      } else if (z < 984) hold = true; // rise over the z 964 wall
+      else if (z < 1000) hold = false; // dive under the z 1010 block
+      else if (z < 1015) hold = sim.player.position.y < 2.6;
+      // Final approach threads the invert-gate center (y 3.0); past the
+      // gate on floor gravity the 2.6 line still clears every obstacle,
+      // so a missed gate degrades to safe flight, never a blind crash.
+      else if (z < 1030) hold = sim.player.position.y < 3.0;
+      else hold = sim.player.position.y < 2.6;
       if (hold) {
         const first = !this.holdingShip;
         this.holdingShip = true;
