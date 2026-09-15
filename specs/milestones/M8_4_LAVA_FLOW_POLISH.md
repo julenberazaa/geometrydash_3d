@@ -121,3 +121,13 @@ survive 20 u); deep floor +0.15. Speed, still viscous: cores 0.55 → 0.8
 u/s, crust 0.32 → 0.45 u/s (shear preserved), pour traverse 2.5 → 1.8 s,
 fall wave +20%. No sim, no fingerprint, no budget change; unit rates
 re-pinned, slice 65/65 green, replay VERIFIED.
+
+Second follow-up (continuous glow): the bright band still breathed as
+a GLOBAL synchronized swing (surface 1.9..2.6, deep 0.85..1.35, every
+mesh in lockstep) — the whole river flashed on/off together. Removed:
+`setLavaPulse` now holds a stable baseline (surface 2.35..2.47, deep
+1.0..1.1, ripple <= 0.12) so lava never has a dim phase and stays
+above maze-wall luminance at all times; peak 2.47 stays inside shipped
+cream-safe territory. Motion is now purely the traveling features
+(cores 0.8 u/s, shear crust, 1.8 s pour traverse, fall waves). Unit
+test pins floor + small ripple; slice 65/65 green, replay VERIFIED.
