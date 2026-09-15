@@ -28,12 +28,12 @@ describe('level registry', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it('resolves Test Level 01 by id and as the default', () => {
+  it('resolves Test Level 01 by id; the default is the showcase (M8.5)', () => {
     expect(getLevel(TEST_LEVEL.id)).toBe(TEST_LEVEL);
     const def = resolveLevel(null);
     expect(def.ok).toBe(true);
-    expect(def.level.id).toBe(TEST_LEVEL.id);
-    expect(DEFAULT_LEVEL_ID).toBe(TEST_LEVEL.id);
+    expect(def.level.id).toBe('production-showcase-01');
+    expect(DEFAULT_LEVEL_ID).toBe('production-showcase-01');
   });
 
   it('resolves Validation Level 02 by id', () => {
@@ -45,7 +45,7 @@ describe('level registry', () => {
   it('rejects unknown ids with an explicit logged fallback', () => {
     const def = resolveLevel('no-such-level');
     expect(def.ok).toBe(false);
-    expect(def.level.id).toBe(TEST_LEVEL.id);
+    expect(def.level.id).toBe('production-showcase-01');
     expect(def.reason).toContain('no-such-level');
     expect(def.reason).toContain(DEFAULT_LEVEL_ID);
   });
