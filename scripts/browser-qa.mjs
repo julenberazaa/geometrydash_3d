@@ -6313,6 +6313,57 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     m83replayOk ? 'full-run tape verified' : 'M8 full-run replay did not verify');
 }
 
+// --- 24f. M8.4 DIRECTED LAVA FLOW GATE ---
+{
+  await m8freeze(0, 0.55, 118);
+  const m84lavaA = await page.evaluate(() => window.__gd3d.lavaMotion());
+  await m8setPaused(false);
+  await page.waitForTimeout(800);
+  await m8freeze(0, 0.55, 118);
+  const m84lavaB = await page.evaluate(() => window.__gd3d.lavaMotion());
+  log('m84 lava conveyors advance live in-page', m84lavaA !== '' && m84lavaB !== '' && m84lavaA !== m84lavaB,
+    `a=${m84lavaA} b=${m84lavaB}`);
+  const m84lavaC = await page.evaluate(() => window.__gd3d.lavaMotion());
+  await page.waitForTimeout(300);
+  const m84lavaD = await page.evaluate(() => window.__gd3d.lavaMotion());
+  log('m84 lava conveyors freeze exactly on pause', m84lavaC !== '' && m84lavaC === m84lavaD,
+    `c=${m84lavaC} d=${m84lavaD}`);
+  await m8live();
+
+  await m8freeze(0, 1.5, 118);
+  const m84src = await page.evaluate(() => window.__gd3d.screenPoint(4.2, 2.9, 129.5));
+  const m84cross = await page.evaluate(() => window.__gd3d.screenPoint(0, 0.7, 129.5));
+  const m84chan = await page.evaluate(() => window.__gd3d.screenPoint(-6.4, 0, 129.5));
+  const m84drop = await page.evaluate(() => window.__gd3d.screenPoint(-8.6, -2, 129.5));
+  const m84in = (p) => !p.behind && Math.abs(p.ndcX) < 1.2 && Math.abs(p.ndcY) < 1.2;
+  log('m84 river reads as one source-to-fall composition',
+    m84in(m84src) && m84in(m84cross) && m84in(m84chan) && m84in(m84drop),
+    `src=(${m84src.ndcX.toFixed(2)},${m84src.ndcY.toFixed(2)}) cross=(${m84cross.ndcX.toFixed(2)},${m84cross.ndcY.toFixed(2)}) chan=(${m84chan.ndcX.toFixed(2)},${m84chan.ndcY.toFixed(2)}) drop=(${m84drop.ndcX.toFixed(2)},${m84drop.ndcY.toFixed(2)})`);
+  await m8live();
+
+  await m8freeze(2.5, 2.2, 121);
+  await capture('m84-01-source');
+  await m8live();
+  await m8freeze(0, 1.2, 121);
+  await capture('m84-02-crossing');
+  await m8live();
+  await m8freeze(-2.5, 1.6, 119);
+  await capture('m84-03-drop');
+  await m8live();
+  await m8freeze(-3, 1.4, 123);
+  await capture('m84-04-closeup');
+  await m8live();
+
+  await m8stage(0, 0.55, 118);
+  const m84kill = await m8roll((s) => s.status === 'dead', 15000);
+  log('m84 missed hop still kills as lava', m84kill !== null && m84kill.cause === 'lava',
+    m84kill ? `cause=${m84kill.cause} z=${m84kill.z.toFixed(1)}` : 'survived');
+
+  const m84replayOk = results.some((r) => r.name === 'm8 replay VERIFIED' && r.ok === true);
+  log('m84 replay still VERIFIED after M8.4 changes', m84replayOk === true,
+    m84replayOk ? 'full-run tape verified' : 'M8 full-run replay did not verify');
+}
+
 // --- 25. Console audit ---
 log('no console errors', consoleErrors.length === 0, JSON.stringify(consoleErrors.slice(0, 3)));
 log('no page errors', pageErrors.length === 0, JSON.stringify(pageErrors.slice(0, 3)));

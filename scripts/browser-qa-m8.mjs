@@ -1042,6 +1042,63 @@ await page.waitForTimeout(2000);
   log('m83 replay still VERIFIED after M8.3 changes', m83replayOk === true,
     m83replayOk ? 'full-run tape verified' : 'M8 full-run replay did not verify');
 
+// --- M8.4 DIRECTED LAVA FLOW GATE ---
+  // Conveyor checksum still advances live / freezes on pause (now covers
+  // traveling cores, current-riding crust, pour pulses).
+  await m8freeze(0, 0.55, 118);
+  const m84lavaA = await safeEval(() => window.__gd3d.lavaMotion());
+  await m8setPaused(false);
+  await page.waitForTimeout(800);
+  await m8freeze(0, 0.55, 118);
+  const m84lavaB = await safeEval(() => window.__gd3d.lavaMotion());
+  log('m84 lava conveyors advance live in-page', m84lavaA !== '' && m84lavaB !== '' && m84lavaA !== m84lavaB,
+    `a=${m84lavaA} b=${m84lavaB}`);
+  const m84lavaC = await safeEval(() => window.__gd3d.lavaMotion());
+  await page.waitForTimeout(300);
+  const m84lavaD = await safeEval(() => window.__gd3d.lavaMotion());
+  log('m84 lava conveyors freeze exactly on pause', m84lavaC !== '' && m84lavaC === m84lavaD,
+    `c=${m84lavaC} d=${m84lavaD}`);
+  await m8live();
+
+  // River coherence: east vent + crossing + channel + cliff drop all
+  // project in-frame from one pre-river anchor — one continuous
+  // source-to-fall composition, not scattered blobs.
+  await m8freeze(0, 1.5, 118);
+  const m84src = await safeEval(() => window.__gd3d.screenPoint(4.2, 2.9, 129.5));
+  const m84cross = await safeEval(() => window.__gd3d.screenPoint(0, 0.7, 129.5));
+  const m84chan = await safeEval(() => window.__gd3d.screenPoint(-6.4, 0, 129.5));
+  const m84drop = await safeEval(() => window.__gd3d.screenPoint(-8.6, -2, 129.5));
+  const m84in = (p) => !p.behind && Math.abs(p.ndcX) < 1.2 && Math.abs(p.ndcY) < 1.2;
+  log('m84 river reads as one source-to-fall composition',
+    m84in(m84src) && m84in(m84cross) && m84in(m84chan) && m84in(m84drop),
+    `src=(${m84src.ndcX.toFixed(2)},${m84src.ndcY.toFixed(2)}) cross=(${m84cross.ndcX.toFixed(2)},${m84cross.ndcY.toFixed(2)}) chan=(${m84chan.ndcX.toFixed(2)},${m84chan.ndcY.toFixed(2)}) drop=(${m84drop.ndcX.toFixed(2)},${m84drop.ndcY.toFixed(2)})`);
+  await m8live();
+
+  // Evidence portraits: source gate, crossing, cliff drop, close-up.
+  await m8freeze(2.5, 2.2, 121);
+  await capture('m84-01-source');
+  await m8live();
+  await m8freeze(0, 1.2, 121);
+  await capture('m84-02-crossing');
+  await m8live();
+  await m8freeze(-2.5, 1.6, 119);
+  await capture('m84-03-drop');
+  await m8live();
+  await m8freeze(-3, 1.4, 123);
+  await capture('m84-04-closeup');
+  await m8live();
+
+  // The redirected river still kills: stage before it, roll in swinging.
+  await m8stage(0, 0.55, 118);
+  const m84kill = await m8roll((s) => s.status === 'dead', 15000);
+  log('m84 missed hop still kills as lava', m84kill !== null && m84kill.cause === 'lava',
+    m84kill ? `cause=${m84kill.cause} z=${m84kill.z.toFixed(1)}` : 'survived');
+
+  // Replay still verifies after the M8.4 content changes (same session).
+  const m84replayOk = results.some((r) => r.name === 'm8 replay VERIFIED' && r.ok === true);
+  log('m84 replay still VERIFIED after M8.4 changes', m84replayOk === true,
+    m84replayOk ? 'full-run tape verified' : 'M8 full-run replay did not verify');
+
 // --- Console audit (M8 slice) ---
 log('no console errors', consoleErrors.length === 0, JSON.stringify(consoleErrors.slice(0, 3)));
 log('no page errors', pageErrors.length === 0, JSON.stringify(pageErrors.slice(0, 3)));
