@@ -131,3 +131,15 @@ above maze-wall luminance at all times; peak 2.47 stays inside shipped
 cream-safe territory. Motion is now purely the traveling features
 (cores 0.8 u/s, shear crust, 1.8 s pour traverse, fall waves). Unit
 test pins floor + small ripple; slice 65/65 green, replay VERIFIED.
+
+Third follow-up (REAL glow on real GPUs): playtesting on a discrete
+GPU showed the lava as flat matte plastic with zero halo while the
+trail/rails/portals bloomed. HDR math: surface luma ~0.79, cores
+~0.78 — BOTH just under the 0.8 bloom threshold, so the lava never
+entered the bloom pass (SwiftShader QA has no bloom, hiding it).
+Fixed without new meshes: surface emissive 0xff4a00 @ 3.45..3.6
+(luma ~1.04, always past threshold with margin); cores are now HDR
+working-space (2.2, 1.25, 0.35, luma ~1.6) — blooming traveling hot
+spots. Red-dominant/blue-free emissive keeps ACES orange, never
+cream. Unit test pins the luma math + hue safety (bloom-less runners
+can't catch this class of regression otherwise).

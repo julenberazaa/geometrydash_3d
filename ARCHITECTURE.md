@@ -771,8 +771,10 @@ current-riding crust with viscous shear, descending pour pulses, spill
 lips, vent chimneys; all kinds t = 0-continuous) | `lava` rule-5 /
 spillover / fingerprint-neutrality / conveyor-motion / freeze / budget
 tests + `multimodeGauntlet` run + browser QA m84 coherence/kill/portraits +
-continuous-glow follow-up (global pulse flattened to a stable base —
-surface 2.35..2.47, deep 1.0..1.1 — motion carried by traveling features) |
+continuous-glow follow-up (global pulse flattened to a stable base,
+motion carried by traveling features) +
+real-bloom follow-up (surface HDR luma ~1.04 past the 0.8 threshold,
+HDR cores ~1.6; lava genuinely blooms on real GPUs) |
 | M8.1 lane-debt resync: laterally-blocked intent clamps to one lean step beyond the deepest reachable lane (all modes/surfaces); open-edge virtual lanes untouched; Y-clips count only when the lane axis is vertical | `laneDebt` tests (wall-bottom + floor side-wall + open-edge) + `death` lean-settle pin + golden fixture (bit-identical without lateral contacts) |
 | M8.1 death breakup: mode voxel palettes + ghost shell + held chunk size (same 78-tick hold); pooled 35, owned materials, render-only | `deathBurst` mode/lifecycle tests + browser QA m81 frozen-burst photo |
 | M8.2 chomper redesign: bright lava-orange blocky body, big square head,
