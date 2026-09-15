@@ -612,15 +612,20 @@ describe('M8.3 lava motion (alive, not a slab)', () => {
     library.dispose();
   });
 
-  it('the shared pulse breathes deeper (living heat, reversible)', () => {
+  it('the shared glow is continuous (stable baseline, faint ripple)', () => {
     const library = makeTestLibrary();
     library.setLavaPulse(0.75);
     const lowSurface = library.lavaSurface.emissiveIntensity;
+    const lowDeep = library.lavaDeep.emissiveIntensity;
     library.setLavaPulse(0.25);
     const highSurface = library.lavaSurface.emissiveIntensity;
-    // Swing >= 0.5 (was 0.35) with a brighter floor.
-    expect(highSurface - lowSurface).toBeGreaterThanOrEqual(0.5);
-    expect(lowSurface).toBeGreaterThanOrEqual(1.3);
+    const highDeep = library.lavaDeep.emissiveIntensity;
+    // No dim phase: the surface floor stays hot at all times and the
+    // ripple is a faint shimmer, not a breath.
+    expect(lowSurface).toBeGreaterThanOrEqual(2.3);
+    expect(highSurface - lowSurface).toBeLessThanOrEqual(0.2);
+    expect(lowDeep).toBeGreaterThanOrEqual(0.95);
+    expect(highDeep - lowDeep).toBeLessThanOrEqual(0.2);
     library.dispose();
   });
 });

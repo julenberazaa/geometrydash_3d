@@ -47,8 +47,8 @@ export class MaterialLibrary {
   public readonly teleportPane: THREE.MeshBasicMaterial;
   /**
    * M8A lava family (shared, bounded): bright molten core + darker deep
-   * flow. Pulsed in place by `setLavaPulse` (M8.3 deeper swing — living
-   * heat read) while `LevelView.updateLava` convects the crust plates
+   * flow. Steady hot baseline from `setLavaPulse` (continuous glow,
+   * faint ripple only) while `LevelView.updateLava` convects the crust plates
    * and descends the fall segments (no fluid simulation, no per-frame
    * allocation).
    */
@@ -393,19 +393,25 @@ export class MaterialLibrary {
   }
 
   /**
-   * M8A lava pulse: dense-liquid shimmer on the SHARED lava materials
+   * M8A lava glow: STABLE base emissive on the SHARED lava materials
    * (phase in [0,1), driven by sim time — pausing freezes it like every
-   * other presentation clock). M8.3: deeper swing (surface 1.4..2.0,
-   * deep 0.6..1.1) so the heat visibly breathes. In-place emissive
-   * retune only: zero allocation, zero new draws, fully reversible.
+   * other presentation clock). M8.4 follow-up: the old global breathing
+   * swing (surface 1.9..2.6, deep 0.85..1.35, all meshes in lockstep)
+   * read as the whole river flashing on/off, so it is gone — replaced by
+   * a continuous hot baseline (surface 2.35..2.47, deep 1.0..1.1) with
+   * only a faint ripple. Motion now comes from the traveling features
+   * in `LevelView.updateLava` (flow cores, shear crust, pour pulses,
+   * fall waves), not from brightness. In-place emissive retune only:
+   * zero allocation, zero new draws, fully reversible.
    */
   public setLavaPulse(phase01: number): void {
     const wave = 0.5 + 0.5 * Math.sin(phase01 * Math.PI * 2);
-    // M8.4 follow-up: brighter band (1.9..2.6) with the same deep swing
-    // — matches maze-wall peak luminance on the bright phase while the
-    // saturated amber emissive keeps large areas cream-safe.
-    this.lavaSurface.emissiveIntensity = 1.9 + wave * 0.7;
-    this.lavaDeep.emissiveIntensity = 0.85 + wave * 0.5;
+    // Continuous-glow baselines: the lava NEVER has a dim phase — both
+    // materials stay above maze-wall luminance at all times, while the
+    // saturated amber emissive + ripple <= 0.12 keep large areas
+    // cream-safe under ACES (peak 2.47 stays inside shipped territory).
+    this.lavaSurface.emissiveIntensity = 2.35 + wave * 0.12;
+    this.lavaDeep.emissiveIntensity = 1.0 + wave * 0.1;
   }
 
   /** Live material count (QA/resource-guard observability). */
