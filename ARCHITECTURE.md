@@ -272,10 +272,12 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   direction, lethal in EVERY phase under id `chomper-<id>`), and the
   respawn reset. Aim (player X) is captured once at activation and never
   re-homed; the lunge is linear over authored ticks. `ChomperView`
-  (owned by `RendererHost`) observes sim states only — M8.2 lava-chomper
-  anatomy (bright emissive-orange blocky body + crust plates, big square
-  head, wide hot maw, 4 large fangs + jaw teeth, brow-hooded eyes,
-  bigger spikes + chomp cycle), 26 meshes per Chomper, sim byte-identical.
+  (owned by `RendererHost`) observes sim states only — M8.3 voxel lava
+  chain-chomp anatomy (single mottled magma head-ball + hot-yellow voxel
+  mottle, large dark cavity maw on the lunge face, 4 upper + 3 lower
+  chunky block teeth, white-hot square eyes + dark pupils, lava-hot
+  chain + anchor weight cube, chomp cycle), 26 meshes per Chomper, sim
+  byte-identical.
   **Teleport portals (M7.2):** deterministic forward entry-crossing
   (`prevZ < entryZ ≤ currentZ`, furthest unused entry wins), processed
   AFTER the lethal checks (death wins the step) and BEFORE pads/orbs/
@@ -370,11 +372,13 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   INSIDE the slabs (proven: 343 penetrating steps, worst 0.157 u;
   backface culling then hid the ceiling, which read as the cube floating).
   `RendererHost` maps the sim's authoritative gravity mode to the focus side
-  (presentation-only read; respawn `snapTo` included). M8.2 Spider-swap
-  glide: a Spider-context gravity swap arms a 0.55 s envelope of slower
-  position/look lambdas (same endpoints, no roll) so the teleport snap
-  reads as a controlled glide; gravity-portal/Cube/Ship paths never arm
-  it. Eye non-penetration
+  (presentation-only read; respawn `snapTo` included). M8.3 Spider-swap
+  continuity: swaps SKIP the teleport-snap (the swap's ~5 u displacement
+  tripped the >5 u cut detector, so the M8.2 glide armed after the cut)
+  and `noteSpiderSwap` captures the pre-swap pose; the 0.55 s envelope
+  blends it onto the moving desired framing with smootherstep (zero
+  velocity at both ends — continuous, never a cut or whip). Teleport
+  portals, respawn, and R-teleport still snap. Eye non-penetration
   across the real full-level playthrough is pinned by
   `tests/cameraFraming.test.ts` (level-data-aware auditor; the camera itself
   still never reads level data).
@@ -751,14 +755,32 @@ falls grading bright-to-deep, splash discs, vent drips; vent mouths must
 protrude from rock (`lavaAuthoring` rule 4); lethal boxes unchanged |
 `lava` protrusion/alignment/view-structure tests + gauntlet clean +
 browser QA m82 lava portraits |
+| M8.3 living lava: tone-map-safe saturated glow (orange, never cream)
++ deeper shared pulse + `LevelView.updateLava` (render-dt crust
+convection, descending fall pulse, splash/drip/mouth breathing; zero
+alloc, pause freezes, mesh budget unchanged) + `sampleLavaMotion`
+checksum probe | `lava` motion/freeze/budget/pulse tests + browser QA
+m83 flow-advance + pause-freeze checks + two-phase portraits |
 | M8.1 lane-debt resync: laterally-blocked intent clamps to one lean step beyond the deepest reachable lane (all modes/surfaces); open-edge virtual lanes untouched; Y-clips count only when the lane axis is vertical | `laneDebt` tests (wall-bottom + floor side-wall + open-edge) + `death` lean-settle pin + golden fixture (bit-identical without lateral contacts) |
 | M8.1 death breakup: mode voxel palettes + ghost shell + held chunk size (same 78-tick hold); pooled 35, owned materials, render-only | `deathBurst` mode/lifecycle tests + browser QA m81 frozen-burst photo |
 | M8.2 chomper redesign: bright lava-orange blocky body, big square head,
 wide hot maw, large fangs + jaw teeth, brow-hooded eyes, 26 meshes max;
 chomp cycle + sim byte-identical | `chomperView` structure/animation/bound tests + `chomper` sim contract + browser QA m82 portraits |
+| M8.3 chomper reference match: ONE mottled magma head-ball, large dark
+cavity maw on the lunge face, 7 chunky block teeth, white-hot square
+eyes + dark pupils (eye children), lava-hot chain + anchor weight cube;
+same 26 budget, same 8 geometries, one new shared eye-white material |
+`chomperView` anatomy/budget/cycle/cap tests + browser QA m83 portraits |
 | M8.2 spider-swap camera glide: Spider-context gravity swaps ease with
 slower lambdas over 0.55 s (same endpoints, no roll); gravity-portal /
 Cube / Ship framing numerically untouched | `spiderCamera` glide/endpoint/snap/expiry tests + `cameraFraming` regression pins + browser QA m82 glide arming |
+| M8.3 spider-swap continuity: swaps SKIP the teleport-snap (the ~5 u
+swap displacement tripped the >5 u cut detector — the M8.2 glide armed
+after the cut); the envelope blends the captured pre-swap pose onto the
+moving target with smootherstep (zero velocity both ends, same
+endpoints); teleport/respawn/R still snap | `spiderCamera`
+first-frame stillness/peak/endpoints/snap/expiry tests + browser QA m83
+in-page eye-velocity proof (no cut) |
 | M8.1 tunnel-wall mid-band: tall thin walls carry a 0.07 neon bead (not the 0.055 rail stock) on both narrow faces; purely geometric | `tunnelWalls` tests + browser QA m81 tunnel checks |
 | Presentation setpieces: no collision/AI/movement/trigger, fingerprint-excluded, never landable-looking | `advancedCube01` setpiece structure + fingerprint-exclusion tests + browser QA m72 setpiece checks |
 | M4 interactions: swept-window detection (no skip at speed), press-edge orbs (no buffer, held-inert), one-shot per attempt, respawn re-arms | `interactions` tests + browser QA m4 section |

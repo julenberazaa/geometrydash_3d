@@ -503,6 +503,30 @@ replay VERIFIED) with `qa/screenshots/m82-*` evidence. Spec:
 Automation proves POSSIBLE, never FUN — do NOT mark PASS until the human
 plays the M8.2 branch.
 
+## M8.3 — Lava motion, Chomper style match, spider camera continuity: ENGINEERING COMPLETE / HUMAN POLISH GATE OPEN (feature/m8-3-lava-motion-chomper-style-spider-camera, NOT merged)
+
+Second corrective follow-up (M8.2 verdict: lava still static/dull;
+Chomper still off-reference; Spider swap still a teleport/reload).
+Root causes, all audited: (a) every lava mesh was build-time static —
+the only motion a global ±0.35 emissive breathe; (b) the M8.2 head was a
+box bolted on a separate body with a slab maw, glow-sphere eyes and
+cone fangs; (c) REAL camera bug — every Spider swap tripped the >5 u
+teleport detector and hard-cut via `snapTo` BEFORE the M8.2 glide armed.
+Fixes (mechanism untouched everywhere): living lava — tone-map-safe
+saturated glow + deeper pulse + `LevelView.updateLava` convection/flow
+(render-dt, zero alloc, pause freezes); reference-match Chomper — one
+mottled magma head-ball, cavity maw, 7 block teeth, square white/pupil
+eyes, hot chain + weight cube (same 26 budget, sim identical); Spider
+continuity — swaps skip the snap, pose-capture smootherstep blend
+(in-page peak eye velocity ~4 u/s; a snap would read >100 u/s).
+512 automated tests, `npm run verify` green. Browser M8 slice: all M8.3
+checks green, zero console/page errors, replay VERIFIED (`qa/screenshots/m83-*`);
+residual scripted-timing flakes (ship pair) proven environmental by a
+same-day pristine-M8.2 control run failing the identical checks. Spec:
+`specs/milestones/M8_3_LAVA_MOTION_CHOMPER_STYLE_SPIDER_CAMERA.md`.
+Automation proves POSSIBLE, never FUN — do NOT mark PASS until the human
+plays the M8.3 branch.
+
 ## Ship mode — part of M8 (multimode expansion)
 
 Enclosed tunnels, multi-surface hazards, speed feel. Cube validation

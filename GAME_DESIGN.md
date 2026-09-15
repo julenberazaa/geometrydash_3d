@@ -416,14 +416,15 @@ maw, energy-chain tether — never licensed geometry) and a REAL moving
 gameplay hazard with a readable attack contract:
 
 - The creature waits/floats beside the route (`dormant`) reading as a
-  lava predator (basalt shell, molten crack bands, snout, dorsal
-  heat-spikes, fanged maw that chews while telegraphing and gapes while
-  lunging). Touching it while dormant still kills — it is never
-  decoration.
+  voxel lava chain-chomp (single mottled magma ball, huge dark maw on
+  the lunge face, chunky block teeth, white-hot square eyes with dark
+  pupils, lava-hot chain + weight cube). Touching it while dormant still
+  kills — it is never decoration.
 - When the player reaches the authored `triggerZ`, it captures the
-  player's lateral X as its committed aim and telegraphs (eyes ignite,
-  anticipation pulse, ~0.3–0.6 s of fixed-tick warning).
-- It then lunges HORIZONTALLY across the route (linear, deterministic).
+  player's lateral X as its committed aim and telegraphs (eyes flare,
+  anticipation pulse, jaw chews, ~0.3–0.6 s of fixed-tick warning).
+- It then lunges HORIZONTALLY across the route (linear, deterministic,
+  jaw gaping).
   It never chases forward in Z and never re-homes after activation.
 - The lunge line is authored low so a timed jump clears it; lane
   positioning after activation also matters (the attack is committed).

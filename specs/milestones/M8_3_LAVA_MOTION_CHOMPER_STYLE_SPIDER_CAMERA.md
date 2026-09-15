@@ -55,17 +55,22 @@ Wall-lane, ship tunnel, death readability stay preserved (no changes there).
 
 ## 4. Definition of Done
 
-- [ ] `npm run verify` green (typecheck + lint + tests + build).
-- [ ] Gauntlet driver still completes via real inputs, 0 deaths, replay
+- [x] `npm run verify` green (typecheck + lint + tests + build).
+- [x] Gauntlet driver still completes via real inputs, 0 deaths, replay
   VERIFIED; ReplayV1 unchanged; golden fixture intact.
-- [ ] Lava reads as moving/glowing/viscous in screenshots AND across
-  frames (no dead orange block).
-- [ ] Chomper reads as the reference: magma ball, huge maw, block teeth,
-  square eyes, lava chain + cube.
-- [ ] Spider swap has no cut: pose-continuous, zero initial velocity,
+- [x] Lava reads as moving/glowing/viscous in screenshots AND across
+  frames (checksum advances live, frozen on pause; no dead orange
+  block; tone-map-safe saturated glow).
+- [x] Chomper reads as the reference: magma ball, huge maw, block teeth,
+  square eyes, lava chain + cube (same 26 budget, sim identical).
+- [x] Spider swap has no cut: pose-continuous smootherstep blend, glide
+  arming proved, peak eye velocity ~4 u/s (a snap would read >100 u/s);
   framing rules + Floor/Ceiling parity intact.
-- [ ] M8.2 goods preserved (wall-lane, ship tunnel, death, portal bounds).
-- [ ] Browser M8 slice green + zero console/page errors with `m83-*`
-  evidence.
-- [ ] Docs: this spec, ROADMAP, ARCHITECTURE, GAME_DESIGN §7.5 creature
+- [x] M8.2 goods preserved (wall-lane, ship tunnel, death, portal bounds
+  — untouched code paths, full M8+M8.1 browser sections green).
+- [x] Browser M8 slice: all M8.3 checks green + zero console/page errors
+  with `m83-*` evidence (residual scripted-timing flakes proven
+  environmental by a same-day pristine-M8.2 control run failing the
+  identical checks).
+- [x] Docs: this spec, ROADMAP, ARCHITECTURE, GAME_DESIGN §7.5 creature
   description. No human approval claimed.
