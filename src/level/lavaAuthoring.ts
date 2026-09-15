@@ -111,6 +111,20 @@ const strictlyInside = (
   p.z > b.minZ + TOUCH_EPSILON &&
   p.z < b.maxZ - TOUCH_EPSILON;
 
+/**
+ * Shared lava-link geometry (M8.4): the renderer reuses the exact rule-3
+ * predicates so flow features (pour pulses, lips, chimneys) attach to
+ * the same links the validator enforces — one concept, one owner.
+ */
+
+/** True when `other` feeds the TOP of the fall `f` (pour-over link). */
+export const lavaFeedsFallTop = (f: LavaVolumeDef, other: LavaVolumeDef): boolean =>
+  feedsTop(lavaBox(f), lavaBox(other));
+
+/** True when `other` receives the BOTTOM of the fall `f` (catch link). */
+export const lavaReceivesFallBottom = (f: LavaVolumeDef, other: LavaVolumeDef): boolean =>
+  receivesBottom(lavaBox(f), lavaBox(other));
+
 export const validateLavaAuthoring = (def: LevelDefinition): string[] => {
   const errors: string[] = [];
   const lava = def.lava ?? [];
@@ -137,7 +151,7 @@ export const validateLavaAuthoring = (def: LevelDefinition): string[] => {
         const downstream = lava.some((o) => {
           if (o.id === l.id) return false;
           const ob = lavaBoxes.get(o.id);
-          if (ob === undefined || box === undefined) return false;
+          if (ob === undefined) return false;
           const dx = o.center.x - l.center.x;
           const dz = o.center.z - l.center.z;
           if (dx * f.x + dz * f.z <= TOUCH_EPSILON) return false;

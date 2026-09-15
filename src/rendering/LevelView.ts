@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { LoadedLevel } from '../level/levelRuntime';
 import type { MaterialLibrary } from './MaterialLibrary';
+import { lavaFeedsFallTop, lavaReceivesFallBottom } from '../level/lavaAuthoring';
 import {
   GRAVITY_GATE_RADIUS,
   MODE_GATE_RADIUS,
@@ -25,23 +26,32 @@ const UNDER_RAIL_MIN_BOTTOM_Y = 2.0;
 // Fully embedded trims are invisible inside the opaque solid (M1.2 lesson).
 
 /**
- * M8.3 lava motion node: a build-time lava mesh animated per frame by
- * `LevelView.updateLava` (convection drift on crust plates, descending
- * width pulse on fall segments, breathing on splash/drip/mouth). Base
- * transform + deterministic phase are captured at build; the update
- * mutates position/scale in place — zero per-frame allocation.
+ * M8.3 lava motion node (+ M8.4 conveyor kinds): a build-time lava mesh
+ * animated per frame by `LevelView.updateLava`. Base transform +
+ * deterministic phase are captured at build; the update mutates
+ * position/scale in place — zero per-frame allocation.
+ *
+ * M8.4 conveyor nodes (`core`, `crustFlow`, `pulse`) ride a build-time
+ * path: the upstream start (baseX, baseZ) plus (dirX, dirZ, travel);
+ * progress wraps 0..1 in render-clock. `slot` stays the pattern/segment
+ * index.
  */
 interface LavaAnimNode {
   mesh: THREE.Mesh;
-  kind: 'crust' | 'fall' | 'splash' | 'drip' | 'mouth';
+  kind: 'crust' | 'fall' | 'splash' | 'drip' | 'mouth' | 'core' | 'crustFlow' | 'pulse';
   baseX: number;
   baseY: number;
+  baseZ: number;
   baseSX: number;
   baseSY: number;
   baseSZ: number;
-  /** Segment index down the fall (fall) or pattern slot (crust). */
+  /** Segment index down the fall (fall) or pattern slot (crust/core). */
   slot: number;
   phase: number;
+  /** M8.4 conveyor path: unit-ish XZ direction + travel length. */
+  dirX: number;
+  dirZ: number;
+  travel: number;
 }
 
 /**
@@ -563,7 +573,39 @@ export class LevelView {
     const unitBox = this.library.unitBox;
     const core = this.library.lavaSurface;
     const deep = this.library.lavaDeep;
+    const flowCore = this.library.lavaCore;
     const rock = this.library.routeBody;
+    // M8.4 directed-flow prepass (same predicates the validator enforces):
+    // hinted pools drive conveyor features; a fall touching a hinted pool
+    // (fed above or received below) earns a descending pour pulse.
+    const flowPools = lava.filter(
+      (l) => l.role === 'pool' && l.flow !== undefined && (l.flow.x !== 0 || l.flow.z !== 0),
+    );
+    const pulseFallIds = new Set<string>();
+    for (const f of lava) {
+      if (f.role !== 'fall') continue;
+      const linked = flowPools.some((p) => lavaFeedsFallTop(f, p) || lavaReceivesFallBottom(f, p));
+      if (linked) pulseFallIds.add(f.id);
+    }
+    // Upstream start of a hinted pool's conveyor (flow-tail edge center)
+    // from the pool's full width/depth and unit-ish hint direction.
+    const flowStart = (
+      cx: number, cz: number, w: number, d: number, fx: number, fz: number,
+    ): { x: number; z: number; travel: number; dx: number; dz: number } => {
+      const len = Math.hypot(fx, fz) || 1;
+      const dx = fx / len;
+      const dz = fz / len;
+      const travel = Math.max(0.5, Math.abs(dx) * w + Math.abs(dz) * d - 1.2);
+      return { x: cx - dx * (travel / 2), z: cz - dz * (travel / 2), travel, dx, dz };
+    };
+    // Conveyor phase from a build position (t = 0 resumes the build pose).
+    const flowPhase = (
+      x: number, z: number, s: { x: number; z: number; travel: number; dx: number; dz: number },
+    ): number => {
+      const off = (x - s.x) * s.dx + (z - s.z) * s.dz;
+      const p = (off / s.travel) % 1;
+      return p < 0 ? p + 1 : p;
+    };
     // Pool tops first (falls splash onto them; static, deterministic).
     const poolTops: { x: number; topY: number; z: number; hx: number; hz: number }[] = [];
     for (const l of lava) {
@@ -597,7 +639,13 @@ export class LevelView {
         // M8.2 crust plates: dark cooling chunks floating on the bright
         // surface (fixed pattern from the pool index — deterministic).
         // Bright cracks stay visible between them: no flat orange slab.
+        // M8.4: on flow-hinted pools the plates RIDE the current
+        // (conveyor + wrap at the pour zone); elsewhere ambient bob.
         const pi = poolIndex++;
+        const flow = l.flow;
+        const conv = flow !== undefined && (flow.x !== 0 || flow.z !== 0)
+          ? flowStart(l.center.x, l.center.z, Math.max(0.6, w - 0.3), Math.max(0.6, d - 0.3), flow.x, flow.z)
+          : null;
         for (let c = 0; c < 3; c++) {
           const plate = new THREE.Mesh(unitBox, deep);
           const fx = [-0.28, 0.1, 0.34][c] as number;
@@ -610,12 +658,48 @@ export class LevelView {
           );
           this.group.add(plate);
           // M8.3 convection: plates drift + bob on the bright surface.
+          // M8.4 conveyor bases are the BUILD pose; (prog - phase) is the
+          // delta from build, so t = 0 resumes exactly and wrap recycles.
           this.lavaAnim.push({
-            mesh: plate, kind: 'crust',
-            baseX: plate.position.x, baseY: plate.position.y,
+            mesh: plate, kind: conv !== null ? 'crustFlow' : 'crust',
+            baseX: plate.position.x,
+            baseY: plate.position.y,
+            baseZ: plate.position.z,
             baseSX: plate.scale.x, baseSY: plate.scale.y, baseSZ: plate.scale.z,
-            slot: c, phase: pi * 2.1 + c * 1.3,
+            slot: c, phase: conv !== null
+              ? flowPhase(plate.position.x, plate.position.z, conv)
+              : pi * 2.1 + c * 1.3,
+            dirX: conv !== null ? conv.dx : 0, dirZ: conv !== null ? conv.dz : 0,
+            travel: conv !== null ? conv.travel : 0,
           });
+        }
+        if (conv !== null) {
+          // M8.4 traveling flow cores: small near-white-hot blocks riding
+          // the surface from the pour zone to the lip (the visible
+          // current). Spaced thirds; t = 0 resumes the build pose.
+          const cross = Math.abs(conv.dz) * w + Math.abs(conv.dx) * d;
+          for (let c = 0; c < 3; c++) {
+            const block = new THREE.Mesh(unitBox, flowCore);
+            block.scale.set(
+              Math.abs(conv.dx) * 0.5 + Math.abs(conv.dz) * Math.max(0.2, cross * 0.55),
+              0.1,
+              Math.abs(conv.dz) * 0.5 + Math.abs(conv.dx) * Math.max(0.2, cross * 0.55),
+            );
+            const prog = (c + 0.5) / 3;
+            block.position.set(
+              conv.x + prog * conv.travel * conv.dx,
+              topY + 0.08,
+              conv.z + prog * conv.travel * conv.dz,
+            );
+            this.group.add(block);
+            this.lavaAnim.push({
+              mesh: block, kind: 'core',
+              baseX: block.position.x, baseY: block.position.y, baseZ: block.position.z,
+              baseSX: block.scale.x, baseSY: block.scale.y, baseSZ: block.scale.z,
+              slot: c, phase: prog,
+              dirX: conv.dx, dirZ: conv.dz, travel: conv.travel,
+            });
+          }
         }
         continue;
       }
@@ -638,9 +722,10 @@ export class LevelView {
           // M8.3 descent: segments fatten in sequence top -> bottom.
           this.lavaAnim.push({
             mesh: seg, kind: 'fall',
-            baseX: seg.position.x, baseY: seg.position.y,
+            baseX: seg.position.x, baseY: seg.position.y, baseZ: seg.position.z,
             baseSX: seg.scale.x, baseSY: seg.scale.y, baseSZ: seg.scale.z,
             slot: i, phase: l.center.z * 0.35 + l.center.x * 0.21,
+            dirX: 0, dirZ: 0, travel: 0,
           });
         }
         // Impact splash: bright spread disc where the stream meets its
@@ -660,33 +745,71 @@ export class LevelView {
           // M8.3 impact breathing (fed by the descending pulse above).
           this.lavaAnim.push({
             mesh: splash, kind: 'splash',
-            baseX: splash.position.x, baseY: splash.position.y,
+            baseX: splash.position.x, baseY: splash.position.y, baseZ: splash.position.z,
             baseSX: splash.scale.x, baseSY: splash.scale.y, baseSZ: splash.scale.z,
             slot: 0, phase: l.center.z * 0.35,
+            dirX: 0, dirZ: 0, travel: 0,
           });
+        }
+        if (pulseFallIds.has(l.id)) {
+          // M8.4 pour pulse: a hot blocky chunk descending the fall
+          // (the visible downward current). Wraps at the pour zone
+          // above and inside the catch below — both masked by motion.
+          const pulse = new THREE.Mesh(unitBox, flowCore);
+          const topY = l.center.y + l.halfExtents.y;
+          pulse.scale.set(Math.min(0.55, w * 0.6), 0.5, Math.min(0.55, d * 0.6));
+          pulse.position.set(l.center.x, topY - 0.25, l.center.z);
+          this.group.add(pulse);
+          this.lavaAnim.push({
+            mesh: pulse, kind: 'pulse',
+            baseX: pulse.position.x, baseY: pulse.position.y, baseZ: pulse.position.z,
+            baseSX: pulse.scale.x, baseSY: pulse.scale.y, baseSZ: pulse.scale.z,
+            slot: 0, phase: 0,
+            dirX: 0, dirZ: 0, travel: Math.max(0.5, h - 0.3),
+          });
+          // Spill lip: where a hinted pool pours over the edge into this
+          // fall, a hot lip slab bridges the joint (breathing catch).
+          const feeder = flowPools.find((p) => lavaFeedsFallTop(l, p));
+          if (feeder !== undefined) {
+            const lipY = feeder.center.y + feeder.halfExtents.y;
+            const lip = new THREE.Mesh(unitBox, flowCore);
+            lip.scale.set(Math.max(0.2, w * 1.35), 0.08, Math.max(0.2, d * 1.35));
+            lip.position.set(l.center.x, lipY + 0.12, l.center.z);
+            this.group.add(lip);
+            this.lavaAnim.push({
+              mesh: lip, kind: 'splash',
+              baseX: lip.position.x, baseY: lip.position.y, baseZ: lip.position.z,
+              baseSX: lip.scale.x, baseSY: lip.scale.y, baseSZ: lip.scale.z,
+              slot: 0, phase: l.center.z * 0.35,
+              dirX: 0, dirZ: 0, travel: 0,
+            });
+          }
         }
         continue;
       }
       // Source: rock collar block with a glowing mouth on its lower face.
+      // M8.4: wider mouth + thicker drip (vents must read at 20 u chase
+      // distance); flow-fed vents stack a rock chimney above the collar.
       const collar = new THREE.Mesh(unitBox, rock);
       collar.scale.set(w, h, d);
       collar.position.set(l.center.x, l.center.y, l.center.z);
       this.group.add(collar);
       const mouthY = l.center.y - l.halfExtents.y - 0.01;
       const mouth = new THREE.Mesh(unitBox, core);
-      mouth.scale.set(Math.max(0.1, w * 0.7), 0.08, Math.max(0.1, d * 0.7));
+      mouth.scale.set(Math.max(0.1, w * 0.85), 0.1, Math.max(0.1, d * 0.85));
       mouth.position.set(l.center.x, mouthY, l.center.z);
       this.group.add(mouth);
       // M8.3 vent breathing (the pour source visibly works).
       this.lavaAnim.push({
         mesh: mouth, kind: 'mouth',
-        baseX: mouth.position.x, baseY: mouth.position.y,
+        baseX: mouth.position.x, baseY: mouth.position.y, baseZ: mouth.position.z,
         baseSX: mouth.scale.x, baseSY: mouth.scale.y, baseSZ: mouth.scale.z,
         slot: 0, phase: l.center.x * 0.53 + l.center.z * 0.29,
+        dirX: 0, dirZ: 0, travel: 0,
       });
       // M8.2 vent drip: a short bright lip joining the mouth to the fed
       // fall below (one continuous pour instead of vent + separate jet).
-      const fed = lava.some(
+      const fedFall = lava.find(
         (o) =>
           o.role === 'fall' &&
           l.center.x >= o.center.x - o.halfExtents.x &&
@@ -696,18 +819,27 @@ export class LevelView {
           mouthY - (o.center.y + o.halfExtents.y) >= -0.3 &&
           mouthY - (o.center.y + o.halfExtents.y) <= 1.2,
       );
-      if (fed) {
+      if (fedFall !== undefined) {
         const drip = new THREE.Mesh(unitBox, core);
-        drip.scale.set(0.34, 0.7, 0.34);
+        drip.scale.set(0.44, 0.7, 0.44);
         drip.position.set(l.center.x, mouthY - 0.2, l.center.z);
         this.group.add(drip);
         // M8.3 pour stretch (joins the mouth to the falling pulse).
         this.lavaAnim.push({
           mesh: drip, kind: 'drip',
-          baseX: drip.position.x, baseY: drip.position.y,
+          baseX: drip.position.x, baseY: drip.position.y, baseZ: drip.position.z,
           baseSX: drip.scale.x, baseSY: drip.scale.y, baseSZ: drip.scale.z,
           slot: 0, phase: l.center.x * 0.53 + l.center.z * 0.29,
+          dirX: 0, dirZ: 0, travel: 0,
         });
+        if (pulseFallIds.has(fedFall.id)) {
+          // Flow-fed vent: a rock chimney stacks the collar (the source
+          // works harder where the river runs — static, shared rock).
+          const chimney = new THREE.Mesh(unitBox, rock);
+          chimney.scale.set(w * 0.85, h * 0.7, d * 0.85);
+          chimney.position.set(l.center.x, l.center.y + h * 0.85, l.center.z);
+          this.group.add(chimney);
+        }
       }
     }
   }
@@ -830,8 +962,10 @@ export class LevelView {
   }
 
   /**
-   * M8.3 lava motion: convect the crust plates, descend a width pulse
-   * down each fall, breathe the splash/drip/mouth — viscous blocky flow
+   * M8.3 lava motion (+ M8.4 conveyors): convect the crust plates,
+   * descend a width pulse down each fall, breathe the splash/drip/mouth —
+   * and ride the directed current on hinted pools (traveling cores,
+   * current-borne crust, descending pour pulses). Viscous blocky flow
    * with zero simulation and zero per-frame allocation (in-place
    * position/scale retunes from build-time bases). Render-dt driven so
    * pause freezes the flow with everything else; dt = 0 is a no-op.
@@ -846,30 +980,65 @@ export class LevelView {
       switch (n.kind) {
         case 'crust': {
           // Slow convection drift + bob (never leaves the bright surface).
-          n.mesh.position.x = n.baseX + 0.12 * Math.sin(t * 0.9 + n.phase);
-          n.mesh.position.y = n.baseY + 0.03 * Math.sin(t * 1.7 + n.phase * 1.6);
+          // M8.4: t = 0 resumes the build pose (no first-frame pop).
+          n.mesh.position.x = n.baseX + 0.12 * (Math.sin(t * 0.9 + n.phase) - Math.sin(n.phase));
+          n.mesh.position.y = n.baseY + 0.03 * (Math.sin(t * 1.7 + n.phase * 1.6) - Math.sin(n.phase * 1.6));
           break;
         }
         case 'fall': {
           // A fattening wave travels top -> bottom (dense descent).
-          const s = 1 + 0.13 * Math.sin(t * 4.2 - n.slot * 1.1 + n.phase);
+          // M8.4: oscillates around the build pose (t = 0 continuous).
+          const s = 1 + 0.13 * (Math.sin(t * 4.2 - n.slot * 1.1 + n.phase) - Math.sin(-n.slot * 1.1 + n.phase));
           n.mesh.scale.x = n.baseSX * s;
           n.mesh.scale.z = n.baseSZ * s;
-          n.mesh.position.x = n.baseX + 0.05 * Math.sin(t * 2.1 + n.slot + n.phase);
+          // M8.4: lateral sway resumes the build pose at t = 0.
+          n.mesh.position.x =
+            n.baseX + 0.05 * (Math.sin(t * 2.1 + n.slot + n.phase) - Math.sin(n.slot + n.phase));
           break;
         }
         case 'splash': {
-          const s = 1 + 0.16 * Math.sin(t * 5 + n.phase);
+          // M8.4: breathes around the build pose (t = 0 continuous).
+          const s = 1 + 0.16 * (Math.sin(t * 5 + n.phase) - Math.sin(n.phase));
           n.mesh.scale.x = n.baseSX * s;
           n.mesh.scale.z = n.baseSZ * s;
           break;
         }
         case 'drip': {
-          n.mesh.scale.y = n.baseSY * (1 + 0.2 * Math.sin(t * 3.4 + n.phase));
+          n.mesh.scale.y = n.baseSY * (1 + 0.2 * (Math.sin(t * 3.4 + n.phase) - Math.sin(n.phase)));
           break;
         }
         case 'mouth': {
-          const s = 1 + 0.1 * Math.sin(t * 3.4 + n.phase);
+          const s = 1 + 0.1 * (Math.sin(t * 3.4 + n.phase) - Math.sin(n.phase));
+          n.mesh.scale.x = n.baseSX * s;
+          n.mesh.scale.z = n.baseSZ * s;
+          break;
+        }
+        case 'core': {
+          // The visible current: rigid blocky travel, pour zone -> lip.
+          // Viscous pace (0.55 u/s); phases space thirds at build.
+          // Delta-from-build form: t = 0 is the build pose, wrap recycles.
+          const prog = (((t * 0.55) / n.travel + n.phase) % 1 + 1) % 1;
+          const delta = (prog - n.phase) * n.travel;
+          n.mesh.position.x = n.baseX + delta * n.dirX;
+          n.mesh.position.z = n.baseZ + delta * n.dirZ;
+          break;
+        }
+        case 'crustFlow': {
+          // Crust rides the same current SLOWER (viscous shear against
+          // the bright flow) with a faint bob; wraps under the pour.
+          const prog = (((t * 0.32) / n.travel + n.phase) % 1 + 1) % 1;
+          const delta = (prog - n.phase) * n.travel;
+          n.mesh.position.x = n.baseX + delta * n.dirX;
+          n.mesh.position.z = n.baseZ + delta * n.dirZ;
+          n.mesh.position.y = n.baseY + 0.02 * (Math.sin(t * 1.7 + n.phase * 6.28) - Math.sin(n.phase * 6.28));
+          break;
+        }
+        case 'pulse': {
+          // A hot chunk descending the fall (one traverse ~2.5 s — dense,
+          // never frantic); fattens mid-fall like a surging pour.
+          const prog = (((t / 2.5) + n.phase) % 1 + 1) % 1;
+          n.mesh.position.y = n.baseY - prog * n.travel;
+          const s = 1 + 0.25 * Math.sin(prog * Math.PI);
           n.mesh.scale.x = n.baseSX * s;
           n.mesh.scale.z = n.baseSZ * s;
           break;

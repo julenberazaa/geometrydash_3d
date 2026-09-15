@@ -341,7 +341,7 @@ describe('M8.4 directed lava flow (hint + downstream continuation)', () => {
     lava,
     theme: THEME,
   });
-  const chain = (): LevelDefinition['lava'] => [
+  const chain = (): Exclude<LevelDefinition['lava'], undefined> => [
     { id: 'cross', center: { x: 0, y: 0.1, z: 40 }, halfExtents: { x: 4, y: 0.6, z: 1.5 }, role: 'pool', flow: { x: -1, z: 0 } },
     { id: 'channel', center: { x: -6.4, y: -0.05, z: 40 }, halfExtents: { x: 2.4, y: 0.6, z: 1.5 }, role: 'pool', flow: { x: -1, z: 0 } },
     { id: 'drop', center: { x: -8.6, y: -7.25, z: 40 }, halfExtents: { x: 0.6, y: 7.75, z: 0.9 }, role: 'fall' },
@@ -372,13 +372,172 @@ describe('M8.4 directed lava flow (hint + downstream continuation)', () => {
     const hinted = flowDef(chain());
     const stripped: LevelDefinition = {
       ...hinted,
-      lava: hinted.lava?.map((l) => ({ id: l.id, center: l.center, halfExtents: l.halfExtents, role: l.role })),
+      lava: hinted.lava?.map((l) => ({ id: l.id, center: l.center, halfExtents: l.halfExtents, role: l.role })) ?? [],
     };
     expect(computeLevelFingerprint(hinted)).toBe(computeLevelFingerprint(stripped));
   });
 
   it('the gauntlet river chain satisfies rule 5 (crossing -> channel -> drop)', () => {
     expect(validateLavaAuthoring(MULTIMODE_GAUNTLET_01)).toEqual([]);
+  });
+});
+
+describe('M8.4 directed lava flow presentation (conveyors)', () => {
+  // Hinted pool (westward flow) + vent fall pouring into its east end:
+  // pool 8 (body/surface/3 crustFlow/3 cores), fall 6 (4 segs/splash/
+  // pulse), source 4 (collar/mouth/drip/chimney) = 18 meshes.
+  const fixture = (): { view: LevelView; library: MaterialLibrary } => {
+    const def: LevelDefinition = {
+      id: 'lavaflow-fixture',
+      displayName: 'LAVAFLOW',
+      start: { x: 0, y: 1.5, z: -4 },
+      startLaneIndex: 1,
+      laneCenters: [...LANES],
+      baseForwardSpeed: 14,
+      finishZ: 60,
+      deathY: -14,
+      solids: [],
+      hazards: [],
+      lava: [
+        { id: 'p', center: { x: 0, y: 0.1, z: 40 }, halfExtents: { x: 4, y: 0.6, z: 1.5 }, role: 'pool', flow: { x: -1, z: 0 } },
+        { id: 'f', center: { x: 3.5, y: 1.5, z: 40 }, halfExtents: { x: 0.6, y: 1, z: 0.8 }, role: 'fall' },
+        { id: 'v', center: { x: 3.5, y: 3.1, z: 40 }, halfExtents: { x: 0.9, y: 0.5, z: 0.9 }, role: 'source' },
+      ],
+      theme: THEME,
+    };
+    const library = makeTestLibrary();
+    return { view: new LevelView(loadLevel(def), library), library };
+  };
+  const countMeshes = (view: LevelView): number => {
+    let meshes = 0;
+    view.group.traverse((o) => {
+      if ((o as { isMesh?: boolean }).isMesh === true) meshes += 1;
+    });
+    return meshes;
+  };
+  const fullTransforms = (view: LevelView): number[] => {
+    const out: number[] = [];
+    view.group.traverse((o) => {
+      const m = o as unknown as {
+        isMesh?: boolean;
+        position: { x: number; y: number; z: number };
+        scale: { x: number; y: number; z: number };
+      };
+      if (m.isMesh !== true) return;
+      out.push(m.position.x, m.position.y, m.position.z, m.scale.x, m.scale.y, m.scale.z);
+    });
+    return out;
+  };
+
+  it('builds cores + pulse + lip-tied chimney within budget (18 meshes)', () => {
+    const { view, library } = fixture();
+    expect(countMeshes(view)).toBe(18);
+    view.dispose();
+    library.dispose();
+  });
+
+  it('flow cores travel downstream (net transport, not oscillation)', () => {
+    const { view, library } = fixture();
+    // Core build poses sit on the surface (topY + 0.08 = 0.78).
+    const coreX = (): number[] => {
+      const xs: number[] = [];
+      view.group.traverse((o) => {
+        const m = o as unknown as { isMesh?: boolean; position: { x: number; y: number } };
+        if (m.isMesh === true && Math.abs(m.position.y - 0.78) < 1e-9) xs.push(m.position.x);
+      });
+      return xs.sort((a, b) => a - b);
+    };
+    const x0 = coreX();
+    expect(x0.length).toBe(3);
+    view.updateLava(0.5);
+    const x1 = coreX();
+    view.updateLava(0.5);
+    const x2 = coreX();
+    // Westward current: every core strictly loses x across both half-
+    // seconds (0.55 u/s over a 6.5 u travel — no wrap inside this window).
+    for (let i = 0; i < 3; i++) {
+      expect((x1[i] as number)).toBeLessThan(x0[i] as number);
+      expect((x2[i] as number)).toBeLessThan(x1[i] as number);
+      expect((x0[i] as number) - (x1[i] as number)).toBeCloseTo(0.275, 5);
+    }
+    view.dispose();
+    library.dispose();
+  });
+
+  it('the pour pulse descends the fall and wraps inside it', () => {
+    const { view, library } = fixture();
+    const pulseY = (): number => {
+      let y = NaN;
+      view.group.traverse((o) => {
+        const m = o as unknown as {
+          isMesh?: boolean;
+          position: { x: number; y: number; z: number };
+          scale: { x: number; y: number };
+        };
+        // The pulse is the small hot block inside the fall footprint.
+        if (m.isMesh === true && Math.abs(m.position.x - 3.5) < 1e-9 && m.scale.y === 0.5) y = m.position.y;
+      });
+      return y;
+    };
+    const y0 = pulseY();
+    view.updateLava(1);
+    const y1 = pulseY();
+    // One traverse is 2.5 s over travel 1.7: 1 s descends 0.68.
+    expect(y0 - y1).toBeCloseTo(0.68, 5);
+    // After a full cycle it wraps back near the top (bounded, masked).
+    view.updateLava(1.5);
+    expect(pulseY()).toBeCloseTo(y0, 5);
+    view.dispose();
+    library.dispose();
+  });
+
+  it('conveyors resume the build pose (no first-frame jump)', () => {
+    const { view, library } = fixture();
+    const before = fullTransforms(view);
+    view.updateLava(1e-3);
+    const after = fullTransforms(view);
+    for (let i = 0; i < before.length; i++) {
+      expect(Math.abs((after[i] as number) - (before[i] as number))).toBeLessThan(0.01);
+    }
+    view.dispose();
+    library.dispose();
+  });
+
+  it('conveyors freeze exactly on dt = 0 (pause parity)', () => {
+    const { view, library } = fixture();
+    view.updateLava(1.25);
+    const frozen = fullTransforms(view);
+    view.updateLava(0);
+    expect(fullTransforms(view)).toEqual(frozen);
+    view.dispose();
+    library.dispose();
+  });
+
+  it('unhinted lava keeps the exact M8.2/M8.3 structure (13 meshes)', () => {
+    const def: LevelDefinition = {
+      id: 'lavaview-fixture',
+      displayName: 'LAVAVIEW',
+      start: { x: 0, y: 1.5, z: -4 },
+      startLaneIndex: 1,
+      laneCenters: [...LANES],
+      baseForwardSpeed: 14,
+      finishZ: 60,
+      deathY: -14,
+      solids: [],
+      hazards: [],
+      lava: [
+        { id: 'pool', center: { x: 0, y: -2.7, z: 40 }, halfExtents: { x: 1.2, y: 0.3, z: 1.2 }, role: 'pool' },
+        { id: 'drop', center: { x: 0, y: 0, z: 40 }, halfExtents: { x: 0.6, y: 2.6, z: 0.8 }, role: 'fall' },
+        { id: 'vent', center: { x: 0, y: 3.4, z: 40 }, halfExtents: { x: 0.9, y: 0.5, z: 0.9 }, role: 'source' },
+      ],
+      theme: THEME,
+    };
+    const library = makeTestLibrary();
+    const view = new LevelView(loadLevel(def), library);
+    view.updateLava(3);
+    expect(countMeshes(view)).toBe(13);
+    view.dispose();
+    library.dispose();
   });
 });
 

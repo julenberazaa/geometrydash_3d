@@ -54,6 +54,8 @@ export class MaterialLibrary {
    */
   public readonly lavaSurface: THREE.MeshStandardMaterial;
   public readonly lavaDeep: THREE.MeshStandardMaterial;
+  /** M8.4 small-area flow accents (traveling cores, pulses, lips). */
+  public readonly lavaCore: THREE.MeshBasicMaterial;
   /**
    * M8C mode-portal family: sky-cyan Ship rings + mint-green Spider rings
    * (distinct from yellow jump, blue gravity, violet teleport and tier
@@ -229,15 +231,22 @@ export class MaterialLibrary {
     // M8.3: saturated red-orange emissive that survives tone mapping as
     // ORANGE (never clipping to cream) yet stays above the bloom
     // threshold, plus a deeper pulse swing — living heat, not a slab.
+    // M8.4: base lifted slightly (1.7 -> 1.85, still cream-safe — the
+    // hotter read comes from the small-area lavaCore accents below).
     this.lavaSurface = track(
       new THREE.MeshStandardMaterial({
         color: 0xf15400,
         roughness: 0.55,
         metalness: 0,
         emissive: 0xff5000,
-        emissiveIntensity: 1.7,
+        emissiveIntensity: 1.85,
       }),
     );
+    // M8.4 flow core: small-area near-white-hot accents (traveling flow
+    // cores, pour pulses, spill lips). Unlit basic material — flat
+    // full-bright like the Chomper eye-white, so it survives ACES as
+    // HOT instead of washing out. NEVER large areas (cream-clip rule).
+    this.lavaCore = track(new THREE.MeshBasicMaterial({ color: 0xffb82e }));
     this.lavaDeep = track(
       new THREE.MeshStandardMaterial({
         color: 0x7a1e00,
@@ -385,8 +394,10 @@ export class MaterialLibrary {
    */
   public setLavaPulse(phase01: number): void {
     const wave = 0.5 + 0.5 * Math.sin(phase01 * Math.PI * 2);
-    this.lavaSurface.emissiveIntensity = 1.4 + wave * 0.6;
-    this.lavaDeep.emissiveIntensity = 0.6 + wave * 0.5;
+    // M8.4: brighter floor (1.55) with the same deep swing — glow lift
+    // without cream-clip (large areas stay saturated red-orange).
+    this.lavaSurface.emissiveIntensity = 1.55 + wave * 0.6;
+    this.lavaDeep.emissiveIntensity = 0.7 + wave * 0.5;
   }
 
   /** Live material count (QA/resource-guard observability). */
