@@ -6,9 +6,12 @@ import { TEST_LEVEL } from './testLevel01';
  *
  * Authored arc (base speed 14 u/s, finish z=1200 ≈ 86 s, medium-hard → hard):
  *   S1  z   0..150  Cube lava intro: two SOURCED gap-river jumps (twin
- *                     vent pillars + falls pouring into the basins) + an
- *                     at-grade lava river curb crossing the route at
- *                     z 128..131 (3 u hop) + a sourced side composition
+ *                     vent pillars + falls pouring into the basins) + a
+ *                     DIRECTED lava river crossing the route at z 128..131
+ *                     (3 u hop): east vent pillar pours in, the strip
+ *                     flows west across the lanes, spills down a rock-
+ *                     shelf channel and falls off the cliff (M8.4) +
+ *                     a sourced side composition
  *   S2  z 150..300  Maze run: three tall killFront walls with alternating
  *                     single-lane doors (readable, 30 u+ approaches)
  *   S3  z 300..540  Four-way gravity: floor → leftWall → ceiling →
@@ -141,15 +144,17 @@ export const MULTIMODE_GAUNTLET_01: LevelDefinition = {
     { id: 'mg-gap2-fall-l', center: { x: -4, y: -1.2, z: 93 }, halfExtents: { x: 0.7, y: 1.4, z: 0.9 }, role: 'fall' },
     { id: 'mg-gap2-src-r', center: { x: 4.2, y: 0.5, z: 93 }, halfExtents: { x: 1.3, y: 0.6, z: 1 }, role: 'source' },
     { id: 'mg-gap2-fall-r', center: { x: 4, y: -1.2, z: 93 }, halfExtents: { x: 0.7, y: 1.4, z: 0.9 }, role: 'fall' },
-    // S1 lava river crossing (M8.1): an at-grade lava curb (pool top 0.7,
-    // z 128..131) flows across the route and MUST be jumped (3 u hop).
-    // Twin rock pillars on the route edges carry vent mouths; blocky falls
-    // pour from the vents into the strip ends. Center jump line is clear.
-    { id: 'mg-river', center: { x: 0, y: 0.1, z: 129.5 }, halfExtents: { x: 4, y: 0.6, z: 1.5 }, role: 'pool' },
-    { id: 'mg-river-src-l', center: { x: -4.2, y: 2.9, z: 129.5 }, halfExtents: { x: 0.9, y: 0.5, z: 0.9 }, role: 'source' },
-    { id: 'mg-river-fall-l', center: { x: -4.2, y: 1.5, z: 129.5 }, halfExtents: { x: 0.6, y: 1, z: 0.8 }, role: 'fall' },
+    // S1 lava river crossing (M8.1 gate, M8.4 directed flow): the east
+    // vent pillar pours into the at-grade strip (pool top 0.7, z 128..131
+    // — the lethal crossing box is UNCHANGED, still a 3 u hop); the strip
+    // flows west across the lanes, spills over a lip into a rock-shelf
+    // channel (top 0.55) and falls off the cliff past deathY. Center jump
+    // line stays clear of every fall.
+    { id: 'mg-river', center: { x: 0, y: 0.1, z: 129.5 }, halfExtents: { x: 4, y: 0.6, z: 1.5 }, role: 'pool', flow: { x: -1, z: 0 } },
     { id: 'mg-river-src-r', center: { x: 4.2, y: 2.9, z: 129.5 }, halfExtents: { x: 0.9, y: 0.5, z: 0.9 }, role: 'source' },
     { id: 'mg-river-fall-r', center: { x: 4.2, y: 1.5, z: 129.5 }, halfExtents: { x: 0.6, y: 1, z: 0.8 }, role: 'fall' },
+    { id: 'mg-river-out', center: { x: -6.4, y: -0.05, z: 129.5 }, halfExtents: { x: 2.4, y: 0.6, z: 1.5 }, role: 'pool', flow: { x: -1, z: 0 } },
+    { id: 'mg-river-drop', center: { x: -8.6, y: -7.25, z: 129.5 }, halfExtents: { x: 0.6, y: 7.75, z: 0.9 }, role: 'fall' },
     // S1 side composition: vent on a rock pillar + dense fall into a
     // contained side pool (beside runway B, never on the route).
     { id: 'mg-side-source', center: { x: 10.2, y: 2.6, z: 68 }, halfExtents: { x: 0.6, y: 0.6, z: 1.2 }, role: 'source' },
@@ -193,11 +198,17 @@ export const MULTIMODE_GAUNTLET_01: LevelDefinition = {
     { center: { x: 6.5, y: -1, z: 43 }, halfExtents: { x: 1, y: 3, z: 1.5 } },
     { center: { x: -6.5, y: -1, z: 93 }, halfExtents: { x: 1, y: 3, z: 1.5 } },
     { center: { x: 6.5, y: -1, z: 93 }, halfExtents: { x: 1, y: 3, z: 1.5 } },
-    // S1 river-crossing pillars + strip curbs (at-grade lava gate, z 128..131).
-    { center: { x: -4.9, y: 1.75, z: 129.5 }, halfExtents: { x: 0.5, y: 1.75, z: 1 } },
+    // S1 river-crossing east pillar + strip curb (source gate, z 128..131).
+    // The west side is OPEN water: the strip spills over a lip into the
+    // shelf channel (no west curb/pillar — they stood in the flow path).
     { center: { x: 4.9, y: 1.75, z: 129.5 }, halfExtents: { x: 0.5, y: 1.75, z: 1 } },
-    { center: { x: -4.375, y: -0.1, z: 129.5 }, halfExtents: { x: 0.375, y: 0.75, z: 1.75 } },
     { center: { x: 4.375, y: -0.1, z: 129.5 }, halfExtents: { x: 0.375, y: 0.75, z: 1.75 } },
+    // S1 river channel containment (M8.4): rock shelf under the outflow
+    // (top −0.65 = channel bed) + low side rims lipping the flow (tops
+    // 0.75, just above the channel surface 0.55). Off-route, off-path.
+    { center: { x: -7.4, y: -1.15, z: 129.5 }, halfExtents: { x: 2, y: 0.5, z: 1.75 } },
+    { center: { x: -6.4, y: -0.1, z: 127.8 }, halfExtents: { x: 2.4, y: 0.85, z: 0.3 } },
+    { center: { x: -6.4, y: -0.1, z: 131.2 }, halfExtents: { x: 2.4, y: 0.85, z: 0.3 } },
 
     // --- S2 maze runway (decision walls live in `hazards` as killFront) ---
     { center: { x: 0, y: -0.5, z: 225 }, halfExtents: { x: 5.4, y: 0.5, z: 75 } },
