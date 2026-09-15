@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import * as THREE from 'three';
 import { GameSimulation } from '../src/game/GameSimulation';
 import { GameplayFrame } from '../src/player/gameplayFrame';
 import {
@@ -368,9 +369,11 @@ describe('M8B wall player + hazard presentation', () => {
       theme: THEME,
     };
     const view = new LevelView(loadLevel(def), library);
-    expect(view.group.children.length).toBe(2);
+    // M8.5: +1 merged edge-line LineSegments (2 spike meshes + 1 edge pass).
+    expect(view.group.children.length).toBe(3);
     const leftSpike = view.group.children[0];
     const rightSpike = view.group.children[1];
+    expect(view.group.children[2] instanceof THREE.LineSegments).toBe(true);
     expect(leftSpike?.rotation.z).toBeCloseTo(Math.PI / 2, 6);
     expect(rightSpike?.rotation.z).toBeCloseTo(-Math.PI / 2, 6);
     // Bases attach to the support faces (tip away from the wall).

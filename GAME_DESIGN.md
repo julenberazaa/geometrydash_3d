@@ -475,11 +475,15 @@ gameplay is real runtime 3D geometry. Never ship reference pixels.
 Deliberate production hierarchy (presentation-only; gameplay in §§1–6 is
 unaffected): player (cyan, highest priority) > hazards (warm orange,
 readable before contact, never bloom-hidden) > playable route (dark body +
-violet/blue edge language, obvious surface plane) > interactions (semantic
-accents: yellow = jump impulse, blue = gravity, per-tier speed colors) >
-environment (depth only, never competes). Dark surfaces stay dark; bloom
-reinforces edges instead of washing the scene. The Cube reads identically
-on Floor and Ceiling (free-face accents on both faces; §4 symmetry holds).
+section-colored edge language, obvious surface plane) > interactions
+(semantic accents: yellow = jump impulse, blue = gravity, per-tier speed
+colors) > environment (depth only, never competes). Dark surfaces stay
+dark; bloom reinforces edges instead of washing the scene. Since M8.5 every
+solid and spike carries a merged neon edge outline in the section accent
+(spikes additionally keep their warm hazard body), so each act reads in
+one hue the way neon-arcade references do — edge color never carries
+gameplay meaning. The Cube reads identically on Floor and Ceiling
+(free-face accents on both faces; §4 symmetry holds).
 
 ## 9.1 Motion language — CURRENT (M6B juice, presentation only)
 

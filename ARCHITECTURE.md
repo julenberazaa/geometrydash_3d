@@ -540,7 +540,13 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   `RendererHost.gpuIdentity()` cold probe reports the actual WebGL
   vendor/renderer (SwiftShader verdicts are software, never a GPU pass).
   Repeatable gate: `scripts/perf-gate.mjs` → `qa/perf/*.json`.
-- `LevelView` builds route/hazard/portal meshes from level data (M7.1:
+- `LevelView` builds route/hazard/portal meshes from level data (M8.5:
+  ONE merged edge-line `LineSegments` outlining every solid/killFront
+  box + spike pyramid on the shared vertex-colored `routeEdgeLine`
+  material — dark faces + luminous edges; solid vertices follow the
+  section accent via `setEdgeAccent` (change-guarded, cold), spike
+  vertices stay hazard-warm; view-owned buffer disposed with the view,
+  so the library geometry count never moves; M7.1:
   spike visuals orient relative to their declared `mount` surface — base
   attached, tip AWAY from the support (floor +Y, ceiling −Y); colliders
   untouched, no level-id branches, omitted mount = floor), (M7.3:
@@ -589,8 +595,10 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   lethal info, gravity mode/portal state, support id, speed multiplier +
   current forward speed + interaction counters/used-state (M4), camera
   up/eye/look, live-camera world→screen projection (`screenPoint`), renderer
-  stats, scene-child count, burst state, and the debug-only
-  `debugTeleport` placement aid for browser QA. M5 adds:
+  stats, scene-child count, burst state, player velocity
+  (`playerVelocity`, M8.5 — Ship PD regulation under headless
+  time-dilation), and the debug-only `debugTeleport` placement aid for
+  browser QA. M5 adds:
   `levelId`/`levelDisplayName`, `hasReplay`, `replayMode`, `replayTick`,
   `replayFrameCount`, `replayVerification` (kind + tick/reason),
   `replayLevelId`, `replayLevelFingerprint`, `replayBadge`,

@@ -178,7 +178,7 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
       id: 'ps-orb-gap',
       center: { x: 0, y: 1.6, z: 352.5 },
       halfExtents: { x: 0.9, y: 0.9, z: 0.9 },
-      impulse: 19,
+      impulse: 20,
     },
     // ACT 8 route A: required orb over the 10 u high gap.
     {
@@ -428,7 +428,7 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     { center: { x: 0, y: -0.5, z: 1345 }, halfExtents: { x: 5.4, y: 0.5, z: 15 } },
     // Route A (high orb line, x 1.3..3.9).
     { center: { x: 2.6, y: -0.5, z: 1415 }, halfExtents: { x: 1.3, y: 0.5, z: 5 } },
-    { center: { x: 2.6, y: -0.5, z: 1447.5 }, halfExtents: { x: 1.3, y: 0.5, z: 17.5 } },
+    { center: { x: 2.6, y: -0.5, z: 1447 }, halfExtents: { x: 1.3, y: 0.5, z: 18 } },
     // Route B (low pad line, x −3.9..−1.3).
     { center: { x: -2.6, y: -0.5, z: 1415 }, halfExtents: { x: 1.3, y: 0.5, z: 5 } },
     { center: { x: -2.6, y: -0.5, z: 1447.5 }, halfExtents: { x: 1.3, y: 0.5, z: 17.5 } },
@@ -527,7 +527,22 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
    */
   visualSequence: {
     sections: [
-      { id: 'ps-forge', startZ: -10, endZ: 210, blendIn: 1, overrides: {} },
+      // Forge: molten-gold edge identity (dark faces + gold outlines +
+      // white-hot lava) against the cyan player — hazards stay
+      // hazard-orange pyramids, never lines, so the hierarchy holds.
+      {
+        id: 'ps-forge',
+        startZ: -10,
+        endZ: 210,
+        blendIn: 1,
+        overrides: {
+          background: 0x120702,
+          fogColor: 0x351104,
+          routeAccent: 0xffc233,
+          environmentIntensity: 1.3,
+          vfxIntensity: 1.1,
+        },
+      },
       {
         id: 'ps-islands',
         startZ: 210,

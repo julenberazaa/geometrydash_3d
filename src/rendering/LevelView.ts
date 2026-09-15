@@ -389,6 +389,132 @@ export class LevelView {
     this.buildModePortals(level);
     this.buildLavaVolumes(level);
     this.buildSetpieces(level);
+    this.buildEdgeLines(level);
+  }
+
+  /**
+   * M8.5 neon edge-line pass: ONE merged LineSegments outlining every
+   * solid/killFront box (12 edges) and every spike pyramid (base square +
+   * 4 apex lines) — the reference look is dark faces + luminous edges.
+   * A single draw call, a single shared line material, one view-owned
+   * buffer (disposed with the view — never a library geometry, never
+   * per-frame allocation). Box lines ride 0.05 proud of the faces;
+   * pyramid lines 0.12 proud of the cone surface (no coplanar shimmer).
+   * Solid/wall vertices tint with the section accent (dynamic range);
+   * spike vertices stay hazard-warm forever (static range — the player /
+   * hazard / route hierarchy of GAME_DESIGN §9 is structural).
+   */
+  private edgeLineGeo: THREE.BufferGeometry | null = null;
+  private edgeDynamicVerts = 0;
+  private edgeAccentHex = 0;
+  private readonly edgeScratch = new THREE.Color();
+
+  private buildEdgeLines(level: LoadedLevel): void {
+    const solids = level.def.solids;
+    const walls = level.def.hazards.filter((h) => h.kind === 'killFront' || h.visual === 'block');
+    const spikes = level.def.hazards.filter((h) => !(h.kind === 'killFront' || h.visual === 'block'));
+    const boxEdges = (solids.length + walls.length) * 12;
+    const spikeEdges = spikes.length * 8;
+    const totalVerts = (boxEdges + spikeEdges) * 2;
+    if (totalVerts === 0) return;
+    const positions = new Float32Array(totalVerts * 3);
+    const colors = new Float32Array(totalVerts * 3);
+    let v = 0;
+    const BOX_OUT = 0.05;
+    const pushEdge = (
+      ax: number, ay: number, az: number,
+      bx: number, by: number, bz: number,
+    ): void => {
+      positions[v * 3] = ax; positions[v * 3 + 1] = ay; positions[v * 3 + 2] = az;
+      positions[v * 3 + 3] = bx; positions[v * 3 + 4] = by; positions[v * 3 + 5] = bz;
+      v += 2;
+    };
+    const pushBox = (cx: number, cy: number, cz: number, hx: number, hy: number, hz: number): void => {
+      const x0 = cx - hx - BOX_OUT; const x1 = cx + hx + BOX_OUT;
+      const y0 = cy - hy - BOX_OUT; const y1 = cy + hy + BOX_OUT;
+      const z0 = cz - hz - BOX_OUT; const z1 = cz + hz + BOX_OUT;
+      // Bottom square, top square, four verticals.
+      pushEdge(x0, y0, z0, x1, y0, z0); pushEdge(x1, y0, z0, x1, y0, z1);
+      pushEdge(x1, y0, z1, x0, y0, z1); pushEdge(x0, y0, z1, x0, y0, z0);
+      pushEdge(x0, y1, z0, x1, y1, z0); pushEdge(x1, y1, z0, x1, y1, z1);
+      pushEdge(x1, y1, z1, x0, y1, z1); pushEdge(x0, y1, z1, x0, y1, z0);
+      pushEdge(x0, y0, z0, x0, y1, z0); pushEdge(x1, y0, z0, x1, y1, z0);
+      pushEdge(x1, y0, z1, x1, y1, z1); pushEdge(x0, y0, z1, x0, y1, z1);
+    };
+    for (const s of solids) pushBox(s.center.x, s.center.y, s.center.z, s.halfExtents.x, s.halfExtents.y, s.halfExtents.z);
+    for (const w of walls) pushBox(w.center.x, w.center.y, w.center.z, w.halfExtents.x, w.halfExtents.y, w.halfExtents.z);
+    this.edgeDynamicVerts = v;
+    // Spike pyramids from the collider box + mount (mirrors the mesh
+    // seating above): base square on the support face, apex along the
+    // surface normal past the cone tip.
+    const SPIKE_OUT = 0.12;
+    for (const h of spikes) {
+      const mount = h.mount ?? 'floor';
+      const cx = h.center.x; const cy = h.center.y; const cz = h.center.z;
+      const hx = h.halfExtents.x + SPIKE_OUT;
+      const hy = h.halfExtents.y;
+      const hz = h.halfExtents.z + SPIKE_OUT;
+      const visualHeight = ((mount === 'leftWall' || mount === 'rightWall') ? h.halfExtents.x : h.halfExtents.y) * 3.4;
+      if (mount === 'leftWall' || mount === 'rightWall') {
+        const dir = mount === 'leftWall' ? -1 : 1;
+        const bx = mount === 'leftWall' ? cx + h.halfExtents.x + SPIKE_OUT : cx - h.halfExtents.x - SPIKE_OUT;
+        const ax = bx + dir * (visualHeight + SPIKE_OUT);
+        const y0 = cy - hy - SPIKE_OUT; const y1 = cy + hy + SPIKE_OUT;
+        const z0 = cz - hz; const z1 = cz + hz;
+        pushEdge(bx, y0, z0, bx, y0, z1); pushEdge(bx, y0, z1, bx, y1, z1);
+        pushEdge(bx, y1, z1, bx, y1, z0); pushEdge(bx, y1, z0, bx, y0, z0);
+        pushEdge(bx, y0, z0, ax, cy, cz); pushEdge(bx, y0, z1, ax, cy, cz);
+        pushEdge(bx, y1, z1, ax, cy, cz); pushEdge(bx, y1, z0, ax, cy, cz);
+      } else {
+        const dir = mount === 'ceiling' ? -1 : 1;
+        const by = mount === 'ceiling' ? cy + hy + SPIKE_OUT : cy - hy - SPIKE_OUT;
+        const ay = by + dir * (visualHeight + SPIKE_OUT);
+        const x0 = cx - hx; const x1 = cx + hx;
+        const z0 = cz - hz; const z1 = cz + hz;
+        pushEdge(x0, by, z0, x1, by, z0); pushEdge(x1, by, z0, x1, by, z1);
+        pushEdge(x1, by, z1, x0, by, z1); pushEdge(x0, by, z1, x0, by, z0);
+        pushEdge(x0, by, z0, cx, ay, cz); pushEdge(x1, by, z0, cx, ay, cz);
+        pushEdge(x1, by, z1, cx, ay, cz); pushEdge(x0, by, z1, cx, ay, cz);
+      }
+    }
+    // Paint: dynamic range follows the section accent, spike range stays
+    // hazard-warm (read once from the shared hazard material — the single
+    // global warm identity of GAME_DESIGN §9 / ARCHITECTURE M6D).
+    const accent = this.library.routeEdge.color;
+    const warm = this.library.hazard.color;
+    for (let i = 0; i < this.edgeDynamicVerts; i++) {
+      colors[i * 3] = accent.r; colors[i * 3 + 1] = accent.g; colors[i * 3 + 2] = accent.b;
+    }
+    for (let i = this.edgeDynamicVerts; i < v; i++) {
+      colors[i * 3] = warm.r; colors[i * 3 + 1] = warm.g; colors[i * 3 + 2] = warm.b;
+    }
+    this.edgeAccentHex = this.library.routeEdge.color.getHex();
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    this.edgeLineGeo = geo;
+    const lines = new THREE.LineSegments(geo, this.library.routeEdgeLine);
+    lines.frustumCulled = false;
+    this.group.add(lines);
+  }
+
+  /**
+   * Section-accent re-tint for the edge-line dynamic range (cold path —
+   * change-guarded, zero allocation). Called from the same
+   * RendererHost.applyVisualState hook as the route materials.
+   */
+  public setEdgeAccent(hex: number): void {
+    if (this.edgeLineGeo === null || hex === this.edgeAccentHex) return;
+    this.edgeAccentHex = hex;
+    this.edgeScratch.setHex(hex);
+    const attr = this.edgeLineGeo.getAttribute('color') as THREE.BufferAttribute;
+    const arr = attr.array as Float32Array;
+    for (let i = 0; i < this.edgeDynamicVerts; i++) {
+      arr[i * 3] = this.edgeScratch.r;
+      arr[i * 3 + 1] = this.edgeScratch.g;
+      arr[i * 3 + 2] = this.edgeScratch.b;
+    }
+    attr.needsUpdate = true;
   }
 
   /**
@@ -1059,5 +1185,11 @@ export class LevelView {
     // Meshes only — materials/geometries belong to the MaterialLibrary.
     this.group.clear();
     this.lavaAnim.length = 0;
+    // The merged edge-line buffer is view-owned (level-specific).
+    if (this.edgeLineGeo !== null) {
+      this.edgeLineGeo.dispose();
+      this.edgeLineGeo = null;
+    }
+    this.edgeDynamicVerts = 0;
   }
 }

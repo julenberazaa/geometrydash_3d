@@ -511,6 +511,7 @@ export class RendererHost {
       // approximation, no stale section state may remain.
       resetVisualState(this.theme, this.visualState);
       this.library.resetRouteToTheme();
+      this.levelView.setEdgeAccent(this.theme.routeEdge);
       this.environmentView.resetToTheme();
       this.post.resetBloomToTheme();
       this.renderer.toneMappingExposure = this.theme.exposure;
@@ -601,6 +602,7 @@ export class RendererHost {
   private applyVisualState(): void {
     const s = this.visualState;
     this.library.applyRouteState(s.routeBody, s.routeSurface, s.routeAccent);
+    this.levelView.setEdgeAccent(s.routeAccent);
     this.environmentView.applyVisualState(
       s.background,
       s.fogColor,

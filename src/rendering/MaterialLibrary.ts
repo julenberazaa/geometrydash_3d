@@ -34,6 +34,8 @@ export class MaterialLibrary {
   public readonly playerBody: THREE.MeshStandardMaterial;
   public readonly playerFace: THREE.MeshStandardMaterial;
   public readonly playerEdge: THREE.LineBasicMaterial;
+  /** M8.5 merged edge-line material (vertex-colored, view-owned geometry). */
+  public readonly routeEdgeLine: THREE.LineBasicMaterial;
   // --- Portals / interactions ---
   public readonly portalUp: THREE.MeshStandardMaterial;
   public readonly portalDown: THREE.MeshStandardMaterial;
@@ -168,6 +170,12 @@ export class MaterialLibrary {
       }),
     );
     this.playerEdge = track(new THREE.LineBasicMaterial({ color: theme.playerEdge }));
+    // M8.5 neon edge-line pass: ONE merged LineSegments per level (see
+    // LevelView.buildEdgeLines) shares this single vertex-colored line
+    // material — route solids tint with the section accent, spike pyramids
+    // stay hazard-warm. Bounded: +1 material, +1 draw call, zero per-frame
+    // allocation (re-tints are change-guarded in LevelView.setEdgeAccent).
+    this.routeEdgeLine = track(new THREE.LineBasicMaterial({ vertexColors: true }));
 
     const portalMat = (color: number): THREE.MeshStandardMaterial =>
       track(
