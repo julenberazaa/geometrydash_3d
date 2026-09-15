@@ -103,3 +103,21 @@ liquid enough, and the river reads as a static gate, not a flow.
   + zero console/page errors with `m84-*` evidence.
 - [x] Docs: this spec, ROADMAP, ARCHITECTURE, GAME_DESIGN §7.3 river
   paragraph, README. No human approval claimed.
+
+## Follow-up polish (same branch, post-human-playtest)
+
+Human verdict on the M8.4 build: reads as lava now, but (a) glows too
+weakly — the maze kill-walls out-glow it, which is backwards for the
+primary luminous hazard; (b) flows a touch too slowly. Root cause
+(measured, not guessed): maze walls emit amber `0xff9d00 @ 1.7`
+(luminance ≈ 1.1) over large camera-facing faces while the lava surface
+emitted deep red-orange `0xff5000 @ ~1.85` (≈ 0.67) — walls won by ~1.7×
+and bloomed harder past the 0.8 threshold; the only hotter lava elements
+(3 small cores) subpixel-blended into the surface at chase distance.
+Fix, presentation-only: surface emissive → hotter amber `0xff5a00`
+(blue stays 0 — ACES-safe) with band `1.9..2.6` (matches wall peak on
+the bright breath); cores `0xffd166` + lengthened 0.5 → 0.65 (hot bands
+survive 20 u); deep floor +0.15. Speed, still viscous: cores 0.55 → 0.8
+u/s, crust 0.32 → 0.45 u/s (shear preserved), pour traverse 2.5 → 1.8 s,
+fall wave +20%. No sim, no fingerprint, no budget change; unit rates
+re-pinned, slice 65/65 green, replay VERIFIED.
