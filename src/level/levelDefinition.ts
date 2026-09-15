@@ -228,6 +228,15 @@ export interface LavaVolumeDef {
   halfExtents: Vec3;
   /** Visual/physical role in the source → fall → pool chain. */
   role: 'pool' | 'fall' | 'source';
+  /**
+   * Presentation-only surface-flow hint (M8.4, optional): the direction
+   * lava visibly travels across this volume's surface, in world XZ.
+   * The renderer gates directional language (traveling cores,
+   * current-riding crust) on it; volumes without it keep the ambient
+   * convection read. Never gameplay, never fingerprinted (like
+   * `chainAnchor` — `writeLava` hashes id/center/halfExtents/role only).
+   */
+  flow?: { x: number; z: number };
 }
 
 /**

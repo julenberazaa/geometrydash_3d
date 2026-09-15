@@ -321,6 +321,67 @@ describe('M8.2 lava viscous-flow presentation (bounded structure)', () => {
   });
 });
 
+describe('M8.4 directed lava flow (hint + downstream continuation)', () => {
+  // Westward flow fixture: crossing pool -> channel pool -> cliff drop,
+  // mirroring the gauntlet river chain (rule-5 geometry in miniature).
+  const flowDef = (lava: LevelDefinition['lava']): LevelDefinition => ({
+    id: 'flow-fixture',
+    displayName: 'FLOW',
+    start: { x: 0, y: 1.5, z: -4 },
+    startLaneIndex: 1,
+    laneCenters: [...LANES],
+    baseForwardSpeed: 14,
+    finishZ: 60,
+    deathY: -14,
+    solids: [
+      { center: { x: 0, y: -0.5, z: 40 }, halfExtents: { x: 5.4, y: 0.5, z: 10 } },
+      { center: { x: -6.4, y: -1.15, z: 40 }, halfExtents: { x: 2, y: 0.5, z: 1.75 } },
+    ],
+    hazards: [],
+    lava,
+    theme: THEME,
+  });
+  const chain = (): LevelDefinition['lava'] => [
+    { id: 'cross', center: { x: 0, y: 0.1, z: 40 }, halfExtents: { x: 4, y: 0.6, z: 1.5 }, role: 'pool', flow: { x: -1, z: 0 } },
+    { id: 'channel', center: { x: -6.4, y: -0.05, z: 40 }, halfExtents: { x: 2.4, y: 0.6, z: 1.5 }, role: 'pool', flow: { x: -1, z: 0 } },
+    { id: 'drop', center: { x: -8.6, y: -7.25, z: 40 }, halfExtents: { x: 0.6, y: 7.75, z: 0.9 }, role: 'fall' },
+  ];
+
+  it('accepts a hinted pool handing off downstream (touch + downstream center)', () => {
+    expect(validateLavaAuthoring(flowDef(chain()))).toEqual([]);
+  });
+
+  it('rejects a hinted pool with no downstream lava (broken pour)', () => {
+    const lava = chain();
+    const withoutChannel = lava.filter((l) => l.id !== 'channel');
+    const errors = validateLavaAuthoring(flowDef(withoutChannel));
+    expect(errors.some((e) => e.includes("'cross'") && e.includes('downstream'))).toBe(true);
+  });
+
+  it('rejects a downstream touch on the wrong side (upstream is not onward)', () => {
+    // Channel sits EAST of the crossing: touching, but not downstream.
+    const lava: LevelDefinition['lava'] = [
+      { id: 'cross', center: { x: 0, y: 0.1, z: 40 }, halfExtents: { x: 4, y: 0.6, z: 1.5 }, role: 'pool', flow: { x: -1, z: 0 } },
+      { id: 'wrong-side', center: { x: 6.4, y: -0.05, z: 40 }, halfExtents: { x: 2.4, y: 0.6, z: 1.5 }, role: 'pool' },
+    ];
+    const errors = validateLavaAuthoring(flowDef(lava));
+    expect(errors.some((e) => e.includes("'cross'") && e.includes('downstream'))).toBe(true);
+  });
+
+  it('the flow hint is presentation-only (fingerprint-neutral)', () => {
+    const hinted = flowDef(chain());
+    const stripped: LevelDefinition = {
+      ...hinted,
+      lava: hinted.lava?.map((l) => ({ id: l.id, center: l.center, halfExtents: l.halfExtents, role: l.role })),
+    };
+    expect(computeLevelFingerprint(hinted)).toBe(computeLevelFingerprint(stripped));
+  });
+
+  it('the gauntlet river chain satisfies rule 5 (crossing -> channel -> drop)', () => {
+    expect(validateLavaAuthoring(MULTIMODE_GAUNTLET_01)).toEqual([]);
+  });
+});
+
 describe('M8.3 lava motion (alive, not a slab)', () => {
   const fixture = (): { view: LevelView; library: MaterialLibrary } => {
     const def: LevelDefinition = {

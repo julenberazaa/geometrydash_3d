@@ -9,14 +9,20 @@ import type { LevelDefinition, LavaVolumeDef } from './levelDefinition';
  *     rim wall — the pool is visibly contained, never floating).
  *  2. Every `source` touches or overlaps at least one solid (the vent is
  *     attached to rock, never floating).
- *  3. Every `fall` touches a `source` (or a solid) at/above its top AND
- *     (touches a `pool` (or a solid) at/below its bottom OR extends below
- *     the level's `deathY` — visibly continuing into the void).
+ *  3. Every `fall` touches a `source`, a `pool` (spillover lip), or a
+ *     solid at/above its top AND (touches a `pool` (or a solid)
+ *     at/below its bottom OR extends below the level's `deathY` —
+ *     visibly continuing into the void).
  *  4. Every `source` shows a working mouth (M8.2): the glowing mouth
  *     rendered on the vent's lower face must not be buried inside rock
  *     — a mouth glowing inside a pillar is invisible and the lava
  *     reads as sourceless. Vents sit proud of their rock with the
  *     mouth feeding air or the fall below.
+ *  5. Every `flow`-hinted `pool` continues downstream (M8.4): it must
+ *     touch or overlap another lava volume whose center lies strictly
+ *     downstream along the hint — a directed flow that dead-ends in
+ *     rock reads as a broken pour. (Upstream feeding stays covered by
+ *     rules 2–3 on the vent/fall side.)
  *
  * Pure function of level data (no sim, no THREE). Returns human-readable
  * error strings; empty = valid. Production levels must validate cleanly
@@ -89,6 +95,10 @@ const receivesBottom = (fall: Box, other: Box): boolean => {
   return other.maxY >= fall.minY - TOUCH_EPSILON && other.minY <= fall.minY + TOUCH_EPSILON;
 };
 
+/** True when the volume carries a non-zero presentation flow hint. */
+const hasFlow = (l: LavaVolumeDef): boolean =>
+  l.flow !== undefined && (l.flow.x !== 0 || l.flow.z !== 0);
+
 /** True when the point lies strictly inside the box (epsilon shrink). */
 const strictlyInside = (
   p: { x: number; y: number; z: number },
@@ -118,6 +128,27 @@ export const validateLavaAuthoring = (def: LevelDefinition): string[] => {
       if (!contained) {
         errors.push(`lava pool '${l.id}' touches no solid (floating slab — contain it in a basin)`);
       }
+      if (hasFlow(l)) {
+        // M8.4 directed flow: the pool must hand off to a downstream
+        // lava volume (the next link — channel, basin, or the fall that
+        // carries it over the edge). Touch/overlap keeps the pour
+        // continuous; the downstream-center test keeps it directed.
+        const f = l.flow as { x: number; z: number };
+        const downstream = lava.some((o) => {
+          if (o.id === l.id) return false;
+          const ob = lavaBoxes.get(o.id);
+          if (ob === undefined || box === undefined) return false;
+          const dx = o.center.x - l.center.x;
+          const dz = o.center.z - l.center.z;
+          if (dx * f.x + dz * f.z <= TOUCH_EPSILON) return false;
+          return touches(box, ob);
+        });
+        if (!downstream) {
+          errors.push(
+            `lava pool '${l.id}' carries a flow hint but touches no lava downstream (directed pour must continue — link a channel, basin, or drop)`,
+          );
+        }
+      }
     } else if (l.role === 'source') {
       const attached = solidBoxes.some((s) => touches(box, s));
       if (!attached) {
@@ -139,10 +170,12 @@ export const validateLavaAuthoring = (def: LevelDefinition): string[] => {
       }
     } else {
       // Fall: needs a feeder above and a receiver below (or the void).
+      // Feeders are sources, solids, AND pools (M8.4 spillover: a
+      // channel surface pouring over an edge feeds the drop below it).
       let fed = solidBoxes.some((s) => feedsTop(box, s));
       if (!fed) {
         for (const other of lava) {
-          if (other.id === l.id || other.role !== 'source') continue;
+          if (other.id === l.id || (other.role !== 'source' && other.role !== 'pool')) continue;
           const ob = lavaBoxes.get(other.id);
           if (ob !== undefined && feedsTop(box, ob)) {
             fed = true;
