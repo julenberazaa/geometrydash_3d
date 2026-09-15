@@ -761,6 +761,16 @@ convection, descending fall pulse, splash/drip/mouth breathing; zero
 alloc, pause freezes, mesh budget unchanged) + `sampleLavaMotion`
 checksum probe | `lava` motion/freeze/budget/pulse tests + browser QA
 m83 flow-advance + pause-freeze checks + two-phase portraits |
+| M8.4 directed lava flow: optional presentation-only `flow` hint on
+`LavaVolumeDef` (auto-excluded from the fingerprint — `writeLava` hashes
+geometry/role only); validator rule 5 (hinted pools hand off downstream)
++ rule-3 spillover (a pool surface feeds the fall below an edge);
+gauntlet river re-authored source → crossing (box-identical) → shelf
+channel → cliff drop; renderer conveyors (traveling `lavaCore` cores,
+current-riding crust with viscous shear, descending pour pulses, spill
+lips, vent chimneys; all kinds t = 0-continuous) | `lava` rule-5 /
+spillover / fingerprint-neutrality / conveyor-motion / freeze / budget
+tests + `multimodeGauntlet` run + browser QA m84 coherence/kill/portraits |
 | M8.1 lane-debt resync: laterally-blocked intent clamps to one lean step beyond the deepest reachable lane (all modes/surfaces); open-edge virtual lanes untouched; Y-clips count only when the lane axis is vertical | `laneDebt` tests (wall-bottom + floor side-wall + open-edge) + `death` lean-settle pin + golden fixture (bit-identical without lateral contacts) |
 | M8.1 death breakup: mode voxel palettes + ghost shell + held chunk size (same 78-tick hold); pooled 35, owned materials, render-only | `deathBurst` mode/lifecycle tests + browser QA m81 frozen-burst photo |
 | M8.2 chomper redesign: bright lava-orange blocky body, big square head,

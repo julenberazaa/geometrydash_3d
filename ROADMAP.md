@@ -527,6 +527,25 @@ same-day pristine-M8.2 control run failing the identical checks. Spec:
 Automation proves POSSIBLE, never FUN — do NOT mark PASS until the human
 plays the M8.3 branch.
 
+## M8.4 — Lava flow polish (source → crossing → cliff-fall): ENGINEERING COMPLETE / HUMAN POLISH GATE OPEN (feature/m8-4-lava-flow-polish, NOT merged)
+
+Third corrective follow-up (M8.3 verdict: everything good EXCEPT lava).
+Root causes, all audited: (a) bright lava area a thin grazing-angle slab
+with no white-hot accents; (b) all motion in-place oscillation, zero net
+transport; (c) the river content symmetric twin-feed with no exit — a
+gate, not a flow; (d) small vents. Fixes (mechanism untouched):
+presentation-only `flow` hint + validator rule 5 (downstream handoff) +
+rule-3 spillover; gauntlet river re-authored east-source → identical
+crossing box → shelf channel → cliff drop past deathY; renderer
+conveyors (traveling near-white-hot cores, shear-riding crust, pour
+pulses, spill lips, chimneys, all t = 0-continuous) + modest glow lift.
+523 automated tests, `npm run verify` green. Browser M8 slice: 65/65
+fully green, zero console/page errors, replay VERIFIED
+(`qa/screenshots/m84-*`; composition NDC-verified in one frame).
+Spec: `specs/milestones/M8_4_LAVA_FLOW_POLISH.md`. Automation proves
+POSSIBLE, never FUN — do NOT mark PASS until the human plays the M8.4
+branch.
+
 ## Ship mode — part of M8 (multimode expansion)
 
 Enclosed tunnels, multi-surface hazards, speed feel. Cube validation

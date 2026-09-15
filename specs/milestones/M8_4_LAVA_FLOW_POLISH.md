@@ -90,15 +90,16 @@ liquid enough, and the river reads as a static gate, not a flow.
 
 ## 5. Definition of Done
 
-- [ ] `npm run verify` green (typecheck + lint + tests + build).
-- [ ] Gauntlet driver still completes via real inputs, 0 deaths, replay
+- [x] `npm run verify` green (typecheck + lint + tests + build).
+- [x] Gauntlet driver still completes via real inputs, 0 deaths, replay
   VERIFIED; ReplayV1 unchanged; golden fixture intact.
-- [ ] River reads source → crossing → cliff-fall in screenshots AND in
-  motion (cores travel, pulses descend, crust rides downstream).
-- [ ] Glow reads hotter with no cream washout (small-area cores only).
-- [ ] M8.3 goods preserved (spider continuity, chomper, portal bounds,
+- [x] River reads source → crossing → cliff-fall in screenshots AND in
+  motion (cores travel, pulses descend, crust rides downstream;
+  composition NDC-verified in one frame).
+- [x] Glow reads hotter with no cream washout (small-area cores only).
+- [x] M8.3 goods preserved (spider continuity, chomper, portal bounds,
   ship tunnel, death, wall-lane — untouched paths, full slice green).
-- [ ] Browser M8 slice green + zero console/page errors with `m84-*`
-  evidence.
-- [ ] Docs: this spec, ROADMAP, ARCHITECTURE, GAME_DESIGN §7.3 river
+- [x] Browser M8 slice green (65/65, first fully-green run on this box)
+  + zero console/page errors with `m84-*` evidence.
+- [x] Docs: this spec, ROADMAP, ARCHITECTURE, GAME_DESIGN §7.3 river
   paragraph, README. No human approval claimed.

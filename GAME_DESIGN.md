@@ -292,11 +292,15 @@ attached to solid rock, an optional dense blocky downward `fall`, and a
 world bounds. Floating lava slabs are forbidden (enforced by
 `validateLavaAuthoring`; production levels pin it in-suite).
 
-**Lava rivers (M8.1):** lava crosses the track as sourced rivers that must
-be jumped — twin vent pillars feed blocky falls pouring into basin pools
-under gap jumps, and at-grade lava curbs flow across the route (3 u hop).
+**Lava rivers (M8.1, directed M8.4):** lava crosses the track as sourced
+rivers that must be jumped — twin vent pillars feed blocky falls pouring
+into basin pools under gap jumps, and the signature at-grade river flows
+ONE way across the route (3 u hop): a side vent pours into the strip,
+the strip visibly travels across the lanes, spills over a lip into a
+rock-shelf side channel, and falls off the cliff past the world bounds.
 Every river obeys the same sourced/contained contract: no floating slabs,
-no unsupported streams, the center jump line visibly clear of falls.
+no unsupported streams, no dead-end directed flows (a `flow`-hinted pool
+must hand off downstream), the center jump line visibly clear of falls.
 
 ## 7.1 Vertical slice product contract — CURRENT (M7.1)
 

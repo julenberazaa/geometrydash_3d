@@ -58,7 +58,12 @@ M8.3 corrective follow-up on `feature/m8-3-lava-motion-chomper-style-spider-came
 (living lava motion + tone-map-safe glow, reference-match voxel lava
 Chomper, Spider-swap pose-continuity fix — engineering complete, human
 gate OPEN; spec:
-`specs/milestones/M8_3_LAVA_MOTION_CHOMPER_STYLE_SPIDER_CAMERA.md`). M6A visual production foundation
+`specs/milestones/M8_3_LAVA_MOTION_CHOMPER_STYLE_SPIDER_CAMERA.md`).
+M8.4 (same corrective line, `feature/m8-4-lava-flow-polish` — engineering
+complete, human gate OPEN) makes the lava a directed flow: east source →
+identical crossing → shelf channel → cliff drop, with traveling flow
+cores, current-riding crust, pour pulses and hotter small-area glow
+(spec: `specs/milestones/M8_4_LAVA_FLOW_POLISH.md`). M6A visual production foundation
 engineering-complete (production theme + shared materials + controlled
 bloom/post, zero gameplay change, 182/182 tests, M6A browser QA 24/24
 green, golden replay intact) — HUMAN VISUAL GATE OPEN
