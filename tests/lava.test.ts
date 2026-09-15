@@ -12,6 +12,7 @@ import { idleInput, advance } from './helpers/simulation';
 import { LevelView } from '../src/rendering/LevelView';
 import type { MaterialLibrary } from '../src/rendering/MaterialLibrary';
 import { makeTestLibrary } from './helpers/visuals';
+import { PRODUCTION_THEME } from '../src/visuals/productionTheme';
 
 /**
  * M8A lethal-lava + death-hold contract:
@@ -612,20 +613,37 @@ describe('M8.3 lava motion (alive, not a slab)', () => {
     library.dispose();
   });
 
-  it('the shared glow is continuous (stable baseline, faint ripple)', () => {
+  it('the shared glow is continuous and clears the bloom threshold', () => {
     const library = makeTestLibrary();
     library.setLavaPulse(0.75);
     const lowSurface = library.lavaSurface.emissiveIntensity;
     const lowDeep = library.lavaDeep.emissiveIntensity;
     library.setLavaPulse(0.25);
     const highSurface = library.lavaSurface.emissiveIntensity;
-    const highDeep = library.lavaDeep.emissiveIntensity;
-    // No dim phase: the surface floor stays hot at all times and the
-    // ripple is a faint shimmer, not a breath.
-    expect(lowSurface).toBeGreaterThanOrEqual(2.3);
-    expect(highSurface - lowSurface).toBeLessThanOrEqual(0.2);
+    // No dim phase: hot floor at all times, faint ripple only.
+    expect(lowSurface).toBeGreaterThanOrEqual(3.4);
+    expect(highSurface - lowSurface).toBeLessThanOrEqual(0.25);
     expect(lowDeep).toBeGreaterThanOrEqual(0.95);
-    expect(highDeep - lowDeep).toBeLessThanOrEqual(0.2);
+    // HDR clearance: surface luma (emissive x intensity x exposure) must
+    // sit PAST the bloom threshold with margin at the dimmest ripple
+    // point — otherwise the lava renders matte on a real GPU (bloom-less
+    // SwiftShader stills can't catch that regression, so pin the math).
+    // NOTE: material colors are already linear working-space (three
+    // converts the hex at construction) — use components directly.
+    const e = library.lavaSurface.emissive;
+    const luma =
+      (0.2126 * e.r + 0.7152 * e.g + 0.0722 * e.b) * lowSurface * PRODUCTION_THEME.exposure;
+    expect(luma).toBeGreaterThan(PRODUCTION_THEME.bloomThreshold + 0.15);
+    // Hue safety: red-dominant, blue-free emissive — ACES renders hot
+    // orange, never white/cream, even past the bloom threshold.
+    expect(e.b).toBe(0);
+    expect(e.r).toBeGreaterThanOrEqual(2 * e.g);
+    // Traveling cores are HDR Naturals (values > 1): they bloom harder
+    // than the body — moving hot spots, not a pulsing slab.
+    const core = library.lavaCore.color;
+    const coreLuma =
+      (0.2126 * core.r + 0.7152 * core.g + 0.0722 * core.b) * PRODUCTION_THEME.exposure;
+    expect(coreLuma).toBeGreaterThan(luma);
     library.dispose();
   });
 });

@@ -233,27 +233,33 @@ export class MaterialLibrary {
     // threshold, plus a deeper pulse swing — living heat, not a slab.
     // M8.4: base lifted slightly (1.7 -> 1.85, still cream-safe — the
     // hotter read comes from the small-area lavaCore accents below).
-    // M8.4 follow-up: hotter amber emissive + brighter band (1.9..2.6).
-    // Why: maze kill-walls emit amber 0xff9d00 @ 1.7 (~1.7x the lava's
-    // luminance) over large camera-facing areas — the lava must match
-    // that peak to read as the primary hazard. Blue stays 0 so ACES
-    // keeps it orange-gold, never cream.
+    // M8.4 glow fix (human playtest on real GPU): the lava NEVER bloomed.
+    // HDR math: surface 0xff5a00 @ 2.4 x exposure 1.15 -> luma ~0.79,
+    // cores 0xffd166 flat -> luma ~0.78 — BOTH sat just UNDER the 0.8
+    // bloom threshold, so on a real GPU the lava rendered as flat matte
+    // plastic while trail/rails/portals carried halos (SwiftShader QA has
+    // no bloom, which is why the stills hid it). Fix: push lava HDR luma
+    // clearly PAST the threshold with margin, hue kept orange by holding
+    // the red channel dominant and blue at 0 (ACES can't go white
+    // without blue). No new meshes, no new draws.
     this.lavaSurface = track(
       new THREE.MeshStandardMaterial({
         color: 0xf15400,
         roughness: 0.55,
         metalness: 0,
-        emissive: 0xff5a00,
-        emissiveIntensity: 2.2,
+        emissive: 0xff4a00,
+        emissiveIntensity: 3.5,
       }),
     );
-    // M8.4 flow core: small-area near-white-hot accents (traveling flow
-    // cores, pour pulses, spill lips). Unlit basic material — flat
-    // full-bright like the Chomper eye-white, so it survives ACES as
-    // HOT instead of washing out. NEVER large areas (cream-clip rule).
+    // M8.4 flow core: small-area white-hot accents (traveling flow
+    // cores, pour pulses, spill lips). Unlit basic material with an HDR
+    // working-space color (values > 1): luma ~1.6 x exposure, so the
+    // traveling bands bloom HARD on a real GPU and tone-map to
+    // white-gold — genuine hot spots inside the orange body. NEVER large
+    // areas (cream-clip rule).
     // M8.4 follow-up: hotter gold (the old amber subpixel-blended into
     // the surface at chase distance instead of reading as hot spots).
-    this.lavaCore = track(new THREE.MeshBasicMaterial({ color: 0xffd166 }));
+    this.lavaCore = track(new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 1.25, 0.35) }));
     this.lavaDeep = track(
       new THREE.MeshStandardMaterial({
         color: 0x7a1e00,
@@ -398,19 +404,22 @@ export class MaterialLibrary {
    * other presentation clock). M8.4 follow-up: the old global breathing
    * swing (surface 1.9..2.6, deep 0.85..1.35, all meshes in lockstep)
    * read as the whole river flashing on/off, so it is gone — replaced by
-   * a continuous hot baseline (surface 2.35..2.47, deep 1.0..1.1) with
-   * only a faint ripple. Motion now comes from the traveling features
+   * a continuous hot baseline (surface 3.45..3.6 HDR, deep 1.0..1.1)
+   * with only a faint ripple. Surface HDR luma ~1.0, always past the
+   * 0.8 bloom threshold with margin — the lava genuinely blooms on a
+   * real GPU instead of rendering matte. Motion comes from the
    * in `LevelView.updateLava` (flow cores, shear crust, pour pulses,
    * fall waves), not from brightness. In-place emissive retune only:
    * zero allocation, zero new draws, fully reversible.
    */
   public setLavaPulse(phase01: number): void {
     const wave = 0.5 + 0.5 * Math.sin(phase01 * Math.PI * 2);
-    // Continuous-glow baselines: the lava NEVER has a dim phase — both
-    // materials stay above maze-wall luminance at all times, while the
-    // saturated amber emissive + ripple <= 0.12 keep large areas
-    // cream-safe under ACES (peak 2.47 stays inside shipped territory).
-    this.lavaSurface.emissiveIntensity = 2.35 + wave * 0.12;
+    // Continuous-glow baselines: the lava NEVER has a dim phase and
+    // NEVER sits under the bloom threshold — surface floor luma ~1.0
+    // (threshold 0.8) so the whole body carries a real halo at all
+    // times; the deeper red emissive (green/blue near 0) keeps ACES in
+    // hot-orange territory instead of cream.
+    this.lavaSurface.emissiveIntensity = 3.45 + wave * 0.15;
     this.lavaDeep.emissiveIntensity = 1.0 + wave * 0.1;
   }
 
