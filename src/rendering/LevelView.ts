@@ -677,13 +677,16 @@ export class LevelView {
           // M8.4 traveling flow cores: small near-white-hot blocks riding
           // the surface from the pour zone to the lip (the visible
           // current). Spaced thirds; t = 0 resumes the build pose.
+          // M8.4 follow-up: longer blocks (0.5 -> 0.65 along-flow) — the
+          // old cores subpixel-blended into the surface at chase distance
+          // instead of reading as traveling hot bands.
           const cross = Math.abs(conv.dz) * w + Math.abs(conv.dx) * d;
           for (let c = 0; c < 3; c++) {
             const block = new THREE.Mesh(unitBox, flowCore);
             block.scale.set(
-              Math.abs(conv.dx) * 0.5 + Math.abs(conv.dz) * Math.max(0.2, cross * 0.55),
+              Math.abs(conv.dx) * 0.65 + Math.abs(conv.dz) * Math.max(0.2, cross * 0.55),
               0.1,
-              Math.abs(conv.dz) * 0.5 + Math.abs(conv.dx) * Math.max(0.2, cross * 0.55),
+              Math.abs(conv.dz) * 0.65 + Math.abs(conv.dx) * Math.max(0.2, cross * 0.55),
             );
             const prog = (c + 0.5) / 3;
             block.position.set(
@@ -988,12 +991,14 @@ export class LevelView {
         case 'fall': {
           // A fattening wave travels top -> bottom (dense descent).
           // M8.4: oscillates around the build pose (t = 0 continuous).
-          const s = 1 + 0.13 * (Math.sin(t * 4.2 - n.slot * 1.1 + n.phase) - Math.sin(-n.slot * 1.1 + n.phase));
+          // M8.4 follow-up: +20% tempo (4.2 -> 5.0, sway 2.1 -> 2.5) —
+          // falls read more energetic, still dense, never frantic.
+          const s = 1 + 0.13 * (Math.sin(t * 5.0 - n.slot * 1.1 + n.phase) - Math.sin(-n.slot * 1.1 + n.phase));
           n.mesh.scale.x = n.baseSX * s;
           n.mesh.scale.z = n.baseSZ * s;
           // M8.4: lateral sway resumes the build pose at t = 0.
           n.mesh.position.x =
-            n.baseX + 0.05 * (Math.sin(t * 2.1 + n.slot + n.phase) - Math.sin(n.slot + n.phase));
+            n.baseX + 0.05 * (Math.sin(t * 2.5 + n.slot + n.phase) - Math.sin(n.slot + n.phase));
           break;
         }
         case 'splash': {
@@ -1015,9 +1020,10 @@ export class LevelView {
         }
         case 'core': {
           // The visible current: rigid blocky travel, pour zone -> lip.
-          // Viscous pace (0.55 u/s); phases space thirds at build.
+          // M8.4 follow-up: 0.55 -> 0.8 u/s (+45%) — a readable stream,
+          // still viscous (route scroll is an order of magnitude faster).
           // Delta-from-build form: t = 0 is the build pose, wrap recycles.
-          const prog = (((t * 0.55) / n.travel + n.phase) % 1 + 1) % 1;
+          const prog = (((t * 0.8) / n.travel + n.phase) % 1 + 1) % 1;
           const delta = (prog - n.phase) * n.travel;
           n.mesh.position.x = n.baseX + delta * n.dirX;
           n.mesh.position.z = n.baseZ + delta * n.dirZ;
@@ -1026,7 +1032,9 @@ export class LevelView {
         case 'crustFlow': {
           // Crust rides the same current SLOWER (viscous shear against
           // the bright flow) with a faint bob; wraps under the pour.
-          const prog = (((t * 0.32) / n.travel + n.phase) % 1 + 1) % 1;
+          // M8.4 follow-up: 0.32 -> 0.45 u/s — keeps the shear ratio
+          // against the faster cores.
+          const prog = (((t * 0.45) / n.travel + n.phase) % 1 + 1) % 1;
           const delta = (prog - n.phase) * n.travel;
           n.mesh.position.x = n.baseX + delta * n.dirX;
           n.mesh.position.z = n.baseZ + delta * n.dirZ;
@@ -1034,9 +1042,9 @@ export class LevelView {
           break;
         }
         case 'pulse': {
-          // A hot chunk descending the fall (one traverse ~2.5 s — dense,
+          // A hot chunk descending the fall (one traverse ~1.8 s — dense,
           // never frantic); fattens mid-fall like a surging pour.
-          const prog = (((t / 2.5) + n.phase) % 1 + 1) % 1;
+          const prog = (((t / 1.8) + n.phase) % 1 + 1) % 1;
           n.mesh.position.y = n.baseY - prog * n.travel;
           const s = 1 + 0.25 * Math.sin(prog * Math.PI);
           n.mesh.scale.x = n.baseSX * s;

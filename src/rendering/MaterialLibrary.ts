@@ -233,20 +233,27 @@ export class MaterialLibrary {
     // threshold, plus a deeper pulse swing — living heat, not a slab.
     // M8.4: base lifted slightly (1.7 -> 1.85, still cream-safe — the
     // hotter read comes from the small-area lavaCore accents below).
+    // M8.4 follow-up: hotter amber emissive + brighter band (1.9..2.6).
+    // Why: maze kill-walls emit amber 0xff9d00 @ 1.7 (~1.7x the lava's
+    // luminance) over large camera-facing areas — the lava must match
+    // that peak to read as the primary hazard. Blue stays 0 so ACES
+    // keeps it orange-gold, never cream.
     this.lavaSurface = track(
       new THREE.MeshStandardMaterial({
         color: 0xf15400,
         roughness: 0.55,
         metalness: 0,
-        emissive: 0xff5000,
-        emissiveIntensity: 1.85,
+        emissive: 0xff5a00,
+        emissiveIntensity: 2.2,
       }),
     );
     // M8.4 flow core: small-area near-white-hot accents (traveling flow
     // cores, pour pulses, spill lips). Unlit basic material — flat
     // full-bright like the Chomper eye-white, so it survives ACES as
     // HOT instead of washing out. NEVER large areas (cream-clip rule).
-    this.lavaCore = track(new THREE.MeshBasicMaterial({ color: 0xffb82e }));
+    // M8.4 follow-up: hotter gold (the old amber subpixel-blended into
+    // the surface at chase distance instead of reading as hot spots).
+    this.lavaCore = track(new THREE.MeshBasicMaterial({ color: 0xffd166 }));
     this.lavaDeep = track(
       new THREE.MeshStandardMaterial({
         color: 0x7a1e00,
@@ -394,10 +401,11 @@ export class MaterialLibrary {
    */
   public setLavaPulse(phase01: number): void {
     const wave = 0.5 + 0.5 * Math.sin(phase01 * Math.PI * 2);
-    // M8.4: brighter floor (1.55) with the same deep swing — glow lift
-    // without cream-clip (large areas stay saturated red-orange).
-    this.lavaSurface.emissiveIntensity = 1.55 + wave * 0.6;
-    this.lavaDeep.emissiveIntensity = 0.7 + wave * 0.5;
+    // M8.4 follow-up: brighter band (1.9..2.6) with the same deep swing
+    // — matches maze-wall peak luminance on the bright phase while the
+    // saturated amber emissive keeps large areas cream-safe.
+    this.lavaSurface.emissiveIntensity = 1.9 + wave * 0.7;
+    this.lavaDeep.emissiveIntensity = 0.85 + wave * 0.5;
   }
 
   /** Live material count (QA/resource-guard observability). */

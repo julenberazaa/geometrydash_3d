@@ -454,11 +454,11 @@ describe('M8.4 directed lava flow presentation (conveyors)', () => {
     view.updateLava(0.5);
     const x2 = coreX();
     // Westward current: every core strictly loses x across both half-
-    // seconds (0.55 u/s over a 6.5 u travel — no wrap inside this window).
+    // seconds (0.8 u/s over a 6.5 u travel — no wrap inside this window).
     for (let i = 0; i < 3; i++) {
       expect((x1[i] as number)).toBeLessThan(x0[i] as number);
       expect((x2[i] as number)).toBeLessThan(x1[i] as number);
-      expect((x0[i] as number) - (x1[i] as number)).toBeCloseTo(0.275, 5);
+      expect((x0[i] as number) - (x1[i] as number)).toBeCloseTo(0.4, 5);
     }
     view.dispose();
     library.dispose();
@@ -482,10 +482,10 @@ describe('M8.4 directed lava flow presentation (conveyors)', () => {
     const y0 = pulseY();
     view.updateLava(1);
     const y1 = pulseY();
-    // One traverse is 2.5 s over travel 1.7: 1 s descends 0.68.
-    expect(y0 - y1).toBeCloseTo(0.68, 5);
+    // One traverse is 1.8 s over travel 1.7: 1 s descends ~0.944.
+    expect(y0 - y1).toBeCloseTo(0.9444, 4);
     // After a full cycle it wraps back near the top (bounded, masked).
-    view.updateLava(1.5);
+    view.updateLava(0.8);
     expect(pulseY()).toBeCloseTo(y0, 5);
     view.dispose();
     library.dispose();
