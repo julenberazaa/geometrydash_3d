@@ -6215,6 +6215,102 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   const m82replayOk = results.some((r) => r.name === 'm8 replay VERIFIED' && r.ok === true);
   log('m82 replay still VERIFIED after content changes', m82replayOk === true,
     m82replayOk ? 'full-run tape verified' : 'M8 full-run replay did not verify');
+
+  // --- 24e. M8.3 LAVA MOTION / CHOMPER STYLE / SPIDER CONTINUITY GATE ---
+  await m8freeze(0, 0.55, 118);
+  const m83lavaA = await page.evaluate(() => window.__gd3d.lavaMotion());
+  await m8setPaused(false);
+  await page.waitForTimeout(800);
+  await m8freeze(0, 0.55, 118);
+  const m83lavaB = await page.evaluate(() => window.__gd3d.lavaMotion());
+  log('m83 lava flow advances live in-page', m83lavaA !== '' && m83lavaB !== '' && m83lavaA !== m83lavaB,
+    `a=${m83lavaA} b=${m83lavaB}`);
+  const m83lavaC = await page.evaluate(() => window.__gd3d.lavaMotion());
+  await page.waitForTimeout(300);
+  const m83lavaD = await page.evaluate(() => window.__gd3d.lavaMotion());
+  log('m83 lava freezes exactly on pause', m83lavaC !== '' && m83lavaC === m83lavaD,
+    `c=${m83lavaC} d=${m83lavaD}`);
+  await m8live();
+
+  await m8freeze(0, 0.55, 30);
+  await capture('m83-01a-lava-flow');
+  await m8setPaused(false);
+  await page.waitForTimeout(450);
+  await m8freeze(0, 0.55, 30);
+  await capture('m83-01b-lava-flow');
+  await m8live();
+
+  await m8freeze(5, 1.8, 598);
+  await capture('m83-02-chomper');
+  await m8live();
+  await m8freeze(5, 1.5, 602);
+  await capture('m83-02b-chomper-maw');
+  await m8live();
+
+  await m8stage(0, 0.55, 850);
+  let m83swapped = null;
+  let m83maxStep = Infinity;
+  let m83polls = 0;
+  let m83glideDelta = false;
+  for (let attempt = 0; attempt < 3 && m83swapped === null; attempt++) {
+    await m8stage(0, 0.55, 850);
+    const spider = await m8roll((s) => s.pMode === 'spider', 15000);
+    if (spider === null) continue;
+    const glidesBefore = await page.evaluate(() => window.__gd3d.swapGlideCount());
+    let pressed = false;
+    let track = [];
+    const t0 = Date.now();
+    for (;;) {
+      const s = await page.evaluate(() => ({
+        eye: window.__gd3d.cameraEye(),
+        z: window.__gd3d.playerPosition().z,
+        grav: window.__gd3d.gravityMode(),
+        status: window.__gd3d.status(),
+      }));
+      s.t = Date.now();
+      track.push(s);
+      if (s.status !== 'running') break;
+      if (s.grav === 'ceiling') { m83swapped = s; break; }
+      if (!pressed && s.z > 882) {
+        await page.keyboard.down('Space');
+        await page.waitForTimeout(150);
+        await page.keyboard.up('Space');
+        pressed = true;
+      }
+      if (Date.now() - t0 > 12000) break;
+      await page.waitForTimeout(25);
+    }
+    if (m83swapped !== null) {
+      const glidesAfter = await page.evaluate(() => window.__gd3d.swapGlideCount());
+      m83glideDelta = glidesAfter > glidesBefore;
+      m83polls = track.length;
+      // Stall-proof cut metric: lateral/vertical eye VELOCITY between
+      // polls (the cut is a Y transition — forward Z tracking is
+      // excluded). A snap covers ~2.8 u in one frame (>100 u/s); the
+      // glide peaks ~9.5 u/s mid-travel; poll stalls can't fake a cut.
+      let peakV = 0;
+      for (let i = 1; i < track.length; i++) {
+        const a = track[i - 1];
+        const b = track[i];
+        if (Math.abs(b.z - a.z) > 5) continue; // sanctioned snap, not the swap
+        const dt = Math.max(1, b.t - a.t) / 1000;
+        peakV = Math.max(peakV,
+          Math.hypot(b.eye.x - a.eye.x, b.eye.y - a.eye.y) / dt);
+      }
+      m83maxStep = peakV;
+    }
+  }
+  log('m83 staged spider mode engages', m83polls > 0, `polls=${m83polls}`);
+  log('m83 spider swap arms the glide (no snap cut)', m83swapped !== null && m83glideDelta,
+    m83swapped ? `grav=${m83swapped.grav} glideArmed=${m83glideDelta}` : 'no swap');
+  log('m83 spider swap has no camera cut (peak eye velocity < 25 u/s)', m83swapped !== null && m83maxStep < 25,
+    `peakV=${m83maxStep.toFixed(1)}u/s over ${m83polls} polls`);
+  await capture('m83-03-spider-continuity');
+  await m8live();
+
+  const m83replayOk = results.some((r) => r.name === 'm8 replay VERIFIED' && r.ok === true);
+  log('m83 replay still VERIFIED after M8.3 changes', m83replayOk === true,
+    m83replayOk ? 'full-run tape verified' : 'M8 full-run replay did not verify');
 }
 
 // --- 25. Console audit ---

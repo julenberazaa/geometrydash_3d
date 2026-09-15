@@ -8,18 +8,20 @@ import type { MaterialLibrary } from './MaterialLibrary';
  * Owned by `RendererHost`; observes `GameSimulation.chomperStates` and the
  * level's `chompers` defs. Never writes gameplay state.
  *
- * M8.2 lava-chomper language (no licensed geometry — the M8.1 round dark
- * body read as a mouse): a BRIGHT molten-orange BLOCKY body (emissive
- * glow, square silhouette) with dark cooling-crust plates, a BIG square
- * head (wider/taller than the body) with a wide hot maw, FOUR large
- * upper fangs + three jaw teeth, brow-shaded ignition eyes (aggression,
- * not ears), dorsal heat-spikes, dark crust bands, and a chomping lower
- * jaw (chews while telegraphing, gapes while lunging) + a 5-link energy
- * chain stretching back to the authored anchor.
+ * M8.3 voxel lava chain-chomp language (human reference: bright
+ * lava-orange voxel ball whose front IS a huge dark mouth): ONE mottled
+ * magma head-ball (molten-glow body + hot-yellow voxel mottle cubes +
+ * dark cooling-crust plates, square silhouette) with a LARGE dark mouth
+ * cavity across the lunge face, FOUR chunky upper block-teeth + three jaw
+ * block-teeth, white-hot SQUARE eyes with dark pupils flanking the mouth
+ * (side read, never ears-on-top), a chunky lava-hot chain stretching back
+ * to the authored anchor, and a lava cube weight riding the anchor end.
+ * The lower jaw chews while telegraphing and gapes while lunging.
  *
- * Bounded: at most MAX_CHOMPERS groups × 26 meshes (body + 2 crust +
- * head + brow + maw + 4 fangs + jaw + 3 teeth + 2 eyes + 3 spikes +
- * 2 bands + 5 links), all shared library geometries/materials. Zero
+ * Bounded: at most MAX_CHOMPERS groups × 26 meshes (head + 4 mottle +
+ * 2 crust + mouth + 4 upper teeth + jaw + 3 lower teeth + 2 eyes +
+ * 2 pupils + 5 links + 1 weight), all shared library geometries/materials
+ * (one new shared eye-white material; geometry count unchanged). Zero
  * per-frame allocation (one scratch Vector3); render-dt driven so pause
  * freezes the menace with everything else.
  */
@@ -33,6 +35,9 @@ interface ChomperNodes {
   mouthBaseY: number;
   eyeL: THREE.Mesh;
   eyeR: THREE.Mesh;
+  /** Base (unflared) eye scales — the telegraph flare multiplies these. */
+  eyeBaseL: THREE.Vector3;
+  eyeBaseR: THREE.Vector3;
   mouth: THREE.Mesh;
   lowerTeeth: THREE.Mesh[];
   lowerTeethBaseY: number[];
@@ -57,128 +62,114 @@ export class ChomperView {
       if (def === undefined) continue;
       const h = def.halfExtents;
       const g = new THREE.Group();
+      const dir = def.lungeDirection;
 
-      // Body: BRIGHT molten block (emissive glow) bound to the gameplay
-      // hitbox — the heat is the body now, not the trim. Square read.
-      const body = new THREE.Mesh(library.unitBox, library.chomperGlow);
-      body.scale.set(h.x * 1.4, h.y * 1.1, h.z * 1.3);
-      body.position.set(-def.lungeDirection * h.x * 0.3, 0, 0);
-      g.add(body);
-
-      // Cooling-crust plates: dark shell slabs on the molten body (top +
-      // back) — lava cooling into rock, not a rodent pelt.
-      const crustT = new THREE.Mesh(library.unitBox, library.chomperShell);
-      crustT.scale.set(h.x * 1.0, h.y * 0.22, h.z * 0.9);
-      crustT.position.set(-def.lungeDirection * h.x * 0.4, h.y * 0.62, 0);
-      g.add(crustT);
-      const crustB = new THREE.Mesh(library.unitBox, library.chomperShell);
-      crustB.scale.set(h.x * 0.35, h.y * 0.9, h.z * 1.1);
-      crustB.position.set(-def.lungeDirection * h.x * 1.0, 0, 0);
-      g.add(crustB);
-
-      // HEAD: big square molten skull at the lunge front — wider and
-      // taller than the body, the dominant silhouette from every angle.
+      // Head-ball: ONE mottled magma mass (the face AND the body — the
+      // reference reads as a single voxel ball, not a body + head).
+      // Slightly larger than the gameplay hitbox so the threat reads.
       const head = new THREE.Mesh(library.unitBox, library.chomperGlow);
-      head.scale.set(h.x * 1.0, h.y * 1.35, h.z * 1.55);
-      head.position.set(def.lungeDirection * h.x * 0.85, h.y * 0.12, 0);
+      head.scale.set(h.x * 1.7, h.y * 1.7, h.z * 1.7);
+      head.position.set(dir * h.x * 0.15, h.y * 0.1, 0);
       g.add(head);
+      const faceX = dir * h.x * (0.15 + 0.85);
 
-      // Brow plate: dark armor slab over the eyes — aggression read.
-      const brow = new THREE.Mesh(library.unitBox, library.chomperShell);
-      brow.scale.set(h.x * 0.8, h.y * 0.25, h.z * 1.6);
-      brow.position.set(def.lungeDirection * h.x * 0.9, h.y * 0.78, 0);
-      g.add(brow);
-
-      // Dorsal heat-spikes: three large glowing cones along the spine
-      // (shared chevron geometry — bigger, hotter than M8.1).
-      for (let s = 0; s < 3; s++) {
-        const spike = new THREE.Mesh(library.chevron, library.chomperGlow);
-        spike.scale.setScalar(0.7 + (s === 1 ? 0.25 : 0));
-        spike.position.set(
-          -def.lungeDirection * h.x * (0.1 + s * 0.4),
-          h.y * (1.0 + (s === 1 ? 0.2 : 0)),
-          0,
-        );
-        spike.rotation.z = def.lungeDirection * 0.25;
-        g.add(spike);
+      // Voxel mottle: hot-yellow cubes proud of the magma surface (the
+      // reference's mottled yellow-orange read, zero textures).
+      const mottle: Array<[number, number, number]> = [
+        [dir * h.x * 0.1, h.y * 1.0, 0],
+        [dir * h.x * -0.4, h.y * 0.45, h.z * 0.75],
+        [dir * h.x * -0.4, h.y * 0.45, -h.z * 0.75],
+        [dir * h.x * -0.75, h.y * 0.1, 0],
+      ];
+      for (const [mx, my, mz] of mottle) {
+        const cube = new THREE.Mesh(library.unitBox, library.chomperCore);
+        cube.scale.setScalar(Math.max(0.2, h.y * 0.55));
+        cube.position.set(mx, my, mz);
+        g.add(cube);
       }
 
-      // Crust bands: TWO dark shell rings wrapping the bright body (the
-      // M8.1 glow bands inverted — cooling cracks on magma, readable
-      // from every camera angle).
-      const bandR = Math.max(h.x, h.y, 1) * 1.02;
-      const band = new THREE.Mesh(library.orbHalo, library.chomperShell);
-      band.scale.set(bandR / 0.62, bandR / 0.62, bandR / 0.62);
-      band.rotation.y = Math.PI / 2; // ring plane ⊥ X (the lunge axis)
-      band.position.x = -def.lungeDirection * h.x * 0.3;
-      g.add(band);
-      const bandV = new THREE.Mesh(library.orbHalo, library.chomperShell);
-      bandV.scale.set(bandR / 0.62, bandR / 0.62, bandR / 0.62);
-      bandV.position.x = -def.lungeDirection * h.x * 0.3;
-      g.add(bandV);
+      // Cooling-crust plates: dark slabs on the magma (top + back) —
+      // lava cooling into rock.
+      const crustT = new THREE.Mesh(library.unitBox, library.chomperShell);
+      crustT.scale.set(h.x * 1.1, h.y * 0.22, h.z * 1.0);
+      crustT.position.set(dir * h.x * -0.1, h.y * 1.0, 0);
+      g.add(crustT);
+      const crustB = new THREE.Mesh(library.unitBox, library.chomperShell);
+      crustB.scale.set(h.x * 0.35, h.y * 1.1, h.z * 1.2);
+      crustB.position.set(dir * h.x * -0.75, h.y * 0.1, 0);
+      g.add(crustB);
 
-      // Maw: a WIDE hot mouth box across the head's leading face.
-      const mouth = new THREE.Mesh(library.unitBox, library.chomperCore);
-      mouth.scale.set(h.x * 0.35, h.y * 0.55, h.z * 1.15);
-      mouth.position.set(def.lungeDirection * h.x * 1.38, -h.y * 0.28, 0);
+      // Mouth cavity: a LARGE dark maw across the lunge face (the front
+      // IS the mouth — ~60% of the face height, wider than tall).
+      const mouth = new THREE.Mesh(library.unitBox, library.chomperShell);
+      mouth.scale.set(h.x * 0.4, h.y * 1.05, h.z * 1.25);
+      mouth.position.set(faceX, -h.y * 0.18, 0);
       g.add(mouth);
+      const mouthTopY = -h.y * 0.18 + h.y * 0.525;
 
-      // Upper fangs: FOUR large heat-bright teeth across the maw
-      // (shared cone geometry + mouth-core material — hot teeth).
+      // Upper block-teeth: FOUR chunky hot boxes hanging from the mouth's
+      // top edge (reference teeth are blocks, never cones).
       for (let f = 0; f < 4; f++) {
-        const fang = new THREE.Mesh(library.chevron, library.chomperCore);
-        fang.scale.setScalar(0.62);
-        fang.rotation.x = Math.PI; // cone tip -> down
-        fang.position.set(
-          def.lungeDirection * h.x * (1.3 + (f % 2 === 0 ? 0.18 : -0.05)),
-          -h.y * 0.5,
-          (f - 1.5) * h.z * 0.34,
+        const tooth = new THREE.Mesh(library.unitBox, library.chomperCore);
+        tooth.scale.set(h.x * 0.34, h.y * 0.34, h.z * 0.24);
+        tooth.position.set(
+          faceX + dir * h.x * 0.08,
+          mouthTopY - h.y * 0.12,
+          (f - 1.5) * h.z * 0.3,
         );
-        g.add(fang);
+        g.add(tooth);
       }
 
       // Lower jaw: a square molten slab under the maw, drops open while
-      // lunging (glow jaw — the bite glows, not just the upper teeth).
+      // lunging (the bite glows, not just the upper teeth).
       const jaw = new THREE.Mesh(library.unitBox, library.chomperGlow);
       jaw.scale.set(h.x * 1.1, h.y * 0.3, h.z * 1.35);
-      const jawBaseY = -h.y * 0.9;
+      const jawBaseY = -h.y * 0.95;
       jaw.position.set(
-        def.lungeDirection * h.x * 0.95,
+        dir * h.x * 0.95,
         jawBaseY,
         0,
       );
       g.add(jaw);
 
-      // Lower teeth: three cones riding the jaw (group children, NOT jaw
-      // children — jaw scale would squash them; the update loop drops
-      // them with the chomp instead).
+      // Lower block-teeth: three chunky boxes riding the jaw (group
+      // children, NOT jaw children — jaw scale would squash them; the
+      // update loop drops them with the chomp instead).
       const lowerTeeth: THREE.Mesh[] = [];
       const lowerTeethBaseY: number[] = [];
       for (let f = 0; f < 3; f++) {
-        const tooth = new THREE.Mesh(library.chevron, library.chomperCore);
-        tooth.scale.setScalar(0.5);
+        const tooth = new THREE.Mesh(library.unitBox, library.chomperCore);
+        tooth.scale.set(h.x * 0.32, h.y * 0.34, h.z * 0.24);
         const baseY = -h.y * 0.62;
         tooth.position.set(
-          def.lungeDirection * h.x * (0.8 + f * 0.28),
+          dir * h.x * (0.8 + f * 0.28),
           baseY,
-          (f - 1) * h.z * 0.36,
+          (f - 1) * h.z * 0.32,
         );
         g.add(tooth);
         lowerTeeth.push(tooth);
         lowerTeethBaseY.push(baseY);
       }
 
-      // Twin ignition eyes tucked UNDER the brow plate (hooded aggression
-      // read — never ears-on-top). Bigger and hotter than M8.1.
-      const eyeL = new THREE.Mesh(library.orbSphere, library.chomperCore);
-      eyeL.scale.setScalar(0.42);
-      eyeL.position.set(def.lungeDirection * h.x * 0.95, h.y * 0.52, h.z * 0.5);
-      const eyeR = new THREE.Mesh(library.orbSphere, library.chomperCore);
-      eyeR.scale.setScalar(0.42);
-      eyeR.position.set(def.lungeDirection * h.x * 0.95, h.y * 0.52, -h.z * 0.5);
+      // Reference eyes: white-hot SQUARES on the face flanking the mouth
+      // with dark pupils (side read — never ears-on-top). Pupils are eye
+      // children so the telegraph flare carries them for free.
+      const mkEye = (zSide: number): THREE.Mesh => {
+        const eye = new THREE.Mesh(library.unitBox, library.chomperEyeWhite);
+        eye.scale.set(h.x * 0.25, h.y * 0.52, h.z * 0.4);
+        eye.position.set(faceX + dir * h.x * 0.05, h.y * 0.52, zSide * h.z * 0.78);
+        const pupil = new THREE.Mesh(library.unitBox, library.chomperShell);
+        pupil.scale.setScalar(0.45);
+        pupil.position.set(dir * 0.6, 0, 0);
+        eye.add(pupil);
+        return eye;
+      };
+      const eyeL = mkEye(1);
+      const eyeR = mkEye(-1);
       g.add(eyeL, eyeR);
 
-      // Energy chain: fixed links from the anchor to the body.
+      // Lava chain: chunky hot links from the anchor to the body + a
+      // lava cube weight riding the anchor end (reference ball-and-chain).
       const anchor = new THREE.Vector3(
         def.chainAnchor?.x ?? def.dormant.x,
         def.chainAnchor?.y ?? def.dormant.y,
@@ -187,17 +178,22 @@ export class ChomperView {
       const links: THREE.Mesh[] = [];
       for (let l = 0; l < CHOMPER_CHAIN_LINKS; l++) {
         const link = new THREE.Mesh(library.unitBox, library.chomperChain);
-        link.scale.set(0.28, 0.28, 0.28);
+        link.scale.set(0.4, 0.4, 0.4);
         g.add(link);
         links.push(link);
         this.group.add(link);
       }
-      // NOTE: links live in view space (not the Chomper group) so the
-      // telegraph pulse scale never stretches the chain.
+      const weight = new THREE.Mesh(library.unitBox, library.chomperGlow);
+      weight.scale.setScalar(0.55);
+      weight.position.copy(anchor);
+      this.group.add(weight);
+      // NOTE: links + weight live in view space (not the Chomper group)
+      // so the telegraph pulse scale never stretches the chain.
       this.group.add(g);
       this.nodes.push({
-        group: g, jaw, jawBaseY, mouthBaseY: h.y * 0.55, eyeL, eyeR, mouth,
-        lowerTeeth, lowerTeethBaseY, links,
+        group: g, jaw, jawBaseY, mouthBaseY: h.y * 1.05, eyeL, eyeR,
+        eyeBaseL: eyeL.scale.clone(), eyeBaseR: eyeR.scale.clone(),
+        mouth, lowerTeeth, lowerTeethBaseY, links,
         anchor, lungeDir: def.lungeDirection,
       });
     }
@@ -215,18 +211,23 @@ export class ChomperView {
       const st = states[i];
       if (node === undefined || st === undefined) continue;
       node.group.position.set(st.x, st.y, st.z);
-      // Telegraph: rapid anticipation pulse (scale shiver + eye flare via
-      // scale — shared materials can never change per-instance).
+      // Telegraph: rapid anticipation pulse (scale shiver + eye flare —
+      // the flare multiplies the stored base scales so the square eyes
+      // stay square; shared materials can never change per-instance).
+      const flare = (k: number, base: THREE.Vector3, eye: THREE.Mesh): void => {
+        eye.scale.set(base.x * k, base.y * k, base.z * k);
+      };
       if (st.phase === 'telegraph') {
         const pulse = 1 + 0.09 * Math.sin(this.time * 22 + i * 1.7);
         node.group.scale.setScalar(pulse);
-        const eye = 0.42 * (1 + 0.5 * Math.sin(this.time * 22));
-        node.eyeL.scale.setScalar(Math.max(0.26, eye));
-        node.eyeR.scale.setScalar(Math.max(0.26, eye));
+        const eye = 1 + 0.5 * Math.sin(this.time * 22);
+        flare(Math.max(0.6, eye), node.eyeBaseL, node.eyeL);
+        flare(Math.max(0.6, eye), node.eyeBaseR, node.eyeR);
       } else {
         node.group.scale.setScalar(1);
-        node.eyeL.scale.setScalar(st.phase === 'dormant' ? 0.3 : 0.42);
-        node.eyeR.scale.setScalar(st.phase === 'dormant' ? 0.3 : 0.42);
+        const rest = st.phase === 'dormant' ? 0.75 : 1;
+        flare(rest, node.eyeBaseL, node.eyeL);
+        flare(rest, node.eyeBaseR, node.eyeR);
       }
       // Chomp cycle: the jaw chews while telegraphing (fast, shallow)
       // and gapes while lunging (slow, wide); dormant/spent rest closed.

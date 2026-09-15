@@ -115,6 +115,8 @@ declare global {
       burstActive: () => boolean;
       /** QA-only: Spider-swap camera glides armed (M8.2 smoothing proof). */
       swapGlideCount: () => number;
+      /** QA-only: lava-motion checksum (M8.3 flow proof). */
+      lavaMotion: () => string;
       // M6C1 visual-trigger observability (presentation only).
       visualSectionId: () => string;
       visualSectionProgress: () => number;
@@ -249,6 +251,7 @@ window.__gd3d = {
   fxResets: () => game['rendererHost'].fxResets,
   burstActive: () => game['rendererHost'].deathBurstActive,
   swapGlideCount: () => game['rendererHost'].swapGlideCount,
+  lavaMotion: () => game['rendererHost'].lavaMotionSample,
   // M6C1 probes: trigger state + resolved presentation (cold path).
   visualSectionId: () => game['rendererHost'].visualSectionId,
   visualSectionProgress: () => game['rendererHost'].visualSectionProgress,

@@ -808,6 +808,28 @@ export class LevelView {
   }
 
   /**
+   * M8.3 QA observability: rounded checksum of the animated lava node
+   * transforms (presentation only — proves the flow actually advances
+   * in-page and freezes on pause). Empty string when no lava animates.
+   */
+  public sampleLavaMotion(): string {
+    if (this.lavaAnim.length === 0) return '';
+    let hash = 0;
+    for (let i = 0; i < this.lavaAnim.length; i++) {
+      const n = this.lavaAnim[i];
+      if (n === undefined) continue;
+      const p = n.mesh.position;
+      const s = n.mesh.scale;
+      const parts = [p.x, p.y, s.x, s.y, s.z];
+      for (let k = 0; k < parts.length; k++) {
+        const q = Math.round((parts[k] as number) * 1000);
+        hash = (hash * 31 + q) | 0;
+      }
+    }
+    return `${this.lavaAnim.length}:${(hash >>> 0).toString(16)}`;
+  }
+
+  /**
    * M8.3 lava motion: convect the crust plates, descend a width pulse
    * down each fall, breathe the splash/drip/mouth — viscous blocky flow
    * with zero simulation and zero per-frame allocation (in-place

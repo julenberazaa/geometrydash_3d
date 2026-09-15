@@ -936,6 +936,112 @@ await page.waitForTimeout(2000);
   log('m82 replay still VERIFIED after content changes', m82replayOk === true,
     m82replayOk ? 'full-run tape verified' : 'M8 full-run replay did not verify');
 
+// --- M8.3 LAVA MOTION / CHOMPER STYLE / SPIDER CONTINUITY GATE ---
+  // Lava flows in-page: frozen checksum stable, live checksum advances.
+  await m8freeze(0, 0.55, 118);
+  const m83lavaA = await safeEval(() => window.__gd3d.lavaMotion());
+  await m8setPaused(false);
+  await page.waitForTimeout(800);
+  await m8freeze(0, 0.55, 118);
+  const m83lavaB = await safeEval(() => window.__gd3d.lavaMotion());
+  log('m83 lava flow advances live in-page', m83lavaA !== '' && m83lavaB !== '' && m83lavaA !== m83lavaB,
+    `a=${m83lavaA} b=${m83lavaB}`);
+  const m83lavaC = await safeEval(() => window.__gd3d.lavaMotion());
+  await page.waitForTimeout(300);
+  const m83lavaD = await safeEval(() => window.__gd3d.lavaMotion());
+  log('m83 lava freezes exactly on pause', m83lavaC !== '' && m83lavaC === m83lavaD,
+    `c=${m83lavaC} d=${m83lavaD}`);
+  await m8live();
+
+  // Two-phase flow portrait: same anchor, ~0.45 s of flow apart.
+  await m8freeze(0, 0.55, 30);
+  await capture('m83-01a-lava-flow');
+  await m8setPaused(false);
+  await page.waitForTimeout(450);
+  await m8freeze(0, 0.55, 30);
+  await capture('m83-01b-lava-flow');
+  await m8live();
+
+  // Chomper reference portraits: dormant magma-ball + telegraph maw.
+  // Dormant sits close (z 598, still short of triggerZ 600) so the
+  // voxel anatomy fills the frame; telegraph crosses 600 to latch.
+  await m8freeze(5, 1.8, 598);
+  await capture('m83-02-chomper');
+  await m8live();
+  await m8freeze(5, 1.5, 602);
+  await capture('m83-02b-chomper-maw');
+  await m8live();
+
+  // Spider continuity: sample the camera eye across the swap — a cut
+  // would move several units in one poll; the glide peaks ~0.25 u.
+  // The section is dangerous (dodge wall), so retry the stage on death
+  // and gate the max-step on player-Z continuity (respawn/teleport
+  // snaps are sanctioned cuts — the swap itself barely moves Z).
+  let m83swapped = null;
+  let m83maxStep = Infinity;
+  let m83polls = 0;
+  let m83glideDelta = false;
+  for (let attempt = 0; attempt < 3 && m83swapped === null; attempt++) {
+    await m8stage(0, 0.55, 850);
+    const spider = await m8roll((s) => s.pMode === 'spider', 15000);
+    if (spider === null) continue;
+    const glidesBefore = await safeEval(() => window.__gd3d.swapGlideCount());
+    let pressed = false;
+    let track = [];
+    const t0 = Date.now();
+    for (;;) {
+      const s = await safeEval(() => ({
+        eye: window.__gd3d.cameraEye(),
+        z: window.__gd3d.playerPosition().z,
+        grav: window.__gd3d.gravityMode(),
+        status: window.__gd3d.status(),
+      }));
+      s.t = Date.now();
+      track.push(s);
+      if (s.status !== 'running') break;
+      if (s.grav === 'ceiling') { m83swapped = s; break; }
+      if (!pressed && s.z > 882) {
+        await page.keyboard.down('Space');
+        await page.waitForTimeout(150);
+        await page.keyboard.up('Space');
+        pressed = true;
+      }
+      if (Date.now() - t0 > 12000) break;
+      await page.waitForTimeout(25);
+    }
+    if (m83swapped !== null) {
+      const glidesAfter = await safeEval(() => window.__gd3d.swapGlideCount());
+      m83glideDelta = glidesAfter > glidesBefore;
+      m83polls = track.length;
+      // Stall-proof cut metric: lateral/vertical eye VELOCITY between
+      // polls (the cut is a Y transition — forward Z tracking is
+      // excluded). A snap covers ~2.8 u in one frame (>100 u/s); the
+      // glide peaks ~9.5 u/s mid-travel; poll stalls can't fake a cut.
+      let peakV = 0;
+      for (let i = 1; i < track.length; i++) {
+        const a = track[i - 1];
+        const b = track[i];
+        if (Math.abs(b.z - a.z) > 5) continue; // sanctioned snap, not the swap
+        const dt = Math.max(1, b.t - a.t) / 1000;
+        peakV = Math.max(peakV,
+          Math.hypot(b.eye.x - a.eye.x, b.eye.y - a.eye.y) / dt);
+      }
+      m83maxStep = peakV;
+    }
+  }
+  log('m83 staged spider mode engages', m83polls > 0, `polls=${m83polls}`);
+  log('m83 spider swap arms the glide (no snap cut)', m83swapped !== null && m83glideDelta,
+    m83swapped ? `grav=${m83swapped.grav} glideArmed=${m83glideDelta}` : 'no swap');
+  log('m83 spider swap has no camera cut (peak eye velocity < 25 u/s)', m83swapped !== null && m83maxStep < 25,
+    `peakV=${m83maxStep.toFixed(1)}u/s over ${m83polls} polls`);
+  await capture('m83-03-spider-continuity');
+  await m8live();
+
+  // Replay still verifies after the M8.3 changes (same page session).
+  const m83replayOk = results.some((r) => r.name === 'm8 replay VERIFIED' && r.ok === true);
+  log('m83 replay still VERIFIED after M8.3 changes', m83replayOk === true,
+    m83replayOk ? 'full-run tape verified' : 'M8 full-run replay did not verify');
+
 // --- Console audit (M8 slice) ---
 log('no console errors', consoleErrors.length === 0, JSON.stringify(consoleErrors.slice(0, 3)));
 log('no page errors', pageErrors.length === 0, JSON.stringify(pageErrors.slice(0, 3)));

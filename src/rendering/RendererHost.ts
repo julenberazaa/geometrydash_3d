@@ -401,6 +401,13 @@ export class RendererHost {
   }
 
   /**
+   * M8.3 QA observability: lava-motion checksum (presentation only).
+   */
+  public get lavaMotionSample(): string {
+    return this.levelView.sampleLavaMotion();
+  }
+
+  /**
    * M8.2: last gravity mode observed by the camera wiring (Spider-swap
    * edge detection; null before the first presented frame).
    */

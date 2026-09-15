@@ -10,6 +10,7 @@ import { computeLevelFingerprint } from '../src/replay/levelFingerprint';
 import { computeStateFingerprint } from '../src/replay/stateFingerprint';
 import { idleInput, advance } from './helpers/simulation';
 import { LevelView } from '../src/rendering/LevelView';
+import type { MaterialLibrary } from '../src/rendering/MaterialLibrary';
 import { makeTestLibrary } from './helpers/visuals';
 
 /**
@@ -397,9 +398,9 @@ describe('M8.3 lava motion (alive, not a slab)', () => {
     const lowSurface = library.lavaSurface.emissiveIntensity;
     library.setLavaPulse(0.25);
     const highSurface = library.lavaSurface.emissiveIntensity;
-    // Swing >= 0.6 (was 0.35) with a brighter floor.
-    expect(highSurface - lowSurface).toBeGreaterThanOrEqual(0.6);
-    expect(lowSurface).toBeGreaterThanOrEqual(1.6);
+    // Swing >= 0.5 (was 0.35) with a brighter floor.
+    expect(highSurface - lowSurface).toBeGreaterThanOrEqual(0.5);
+    expect(lowSurface).toBeGreaterThanOrEqual(1.3);
     library.dispose();
   });
 });

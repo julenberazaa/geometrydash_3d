@@ -1,17 +1,19 @@
 import { describe, it, expect } from 'vitest';
+import type * as THREE from 'three';
 import { ChomperView, MAX_CHOMPERS } from '../src/rendering/ChomperView';
 import { createChomperState } from '../src/game/chomperSystem';
 import type { ChomperDef } from '../src/level/levelDefinition';
 import { makeTestLibrary } from './helpers/visuals';
 
 /**
- * M8.2 Chomper lava-chomper redesign (the M8.1 round dark body read as a
- * mouse): bright molten-orange BLOCKY body + cooling-crust plates, a BIG
- * square head, wide hot maw, 4 large upper fangs + 3 jaw teeth,
- * brow-hooded eyes, bigger heat-spikes, dark crust bands — chomp cycle
- * preserved.
- * - bounded mesh budget (26 per chomper, shared library geo/mats);
- * - gameplay untouched (sim contract lives in tests/chomper.test.ts).
+ * M8.3 Chomper reference match (human: bright lava-orange voxel
+ * chain-chomp — huge mouth, block teeth, square eyes, lava chain + cube):
+ * ONE mottled magma head-ball, LARGE dark mouth cavity on the lunge face,
+ * 4 chunky upper block-teeth + 3 jaw block-teeth, white-hot SQUARE eyes
+ * with dark pupils flanking the mouth, chunky lava-hot chain + weight
+ * cube at the anchor. Sim untouched (tests/chomper.test.ts owns it).
+ * - same bounded mesh budget (26 per chomper, shared library geo/mats);
+ * - chomp cycle preserved (jaw chews telegraph / gapes lunge).
  */
 
 const DEF: ChomperDef = {
@@ -25,18 +27,52 @@ const DEF: ChomperDef = {
   halfExtents: { x: 0.8, y: 0.45, z: 0.8 },
 };
 
-describe('M8.1 chomper lava-creature presentation', () => {
-  it('builds the full head/mouth/tooth anatomy within budget', () => {
+const meshesOf = (view: ChomperView): THREE.Mesh[] => {
+  const out: THREE.Mesh[] = [];
+  view.group.traverse((o) => {
+    if ((o as { isMesh?: boolean }).isMesh === true) out.push(o as THREE.Mesh);
+  });
+  return out;
+};
+
+describe('M8.3 chomper reference presentation', () => {
+  it('builds the magma-ball / cavity-maw / block-teeth / square-eye anatomy within budget', () => {
     const library = makeTestLibrary();
     const view = new ChomperView([DEF], library);
-    // Per chomper: body + 2 crust + head + brow + maw + 4 fangs + jaw +
-    // 3 teeth + 2 eyes + 3 spikes + 2 bands (21 in-group) + 5 chain links.
-    let meshes = 0;
-    view.group.traverse((o) => {
-      if ((o as { isMesh?: boolean }).isMesh === true) meshes += 1;
-    });
-    expect(meshes).toBe(26);
-    expect(view.group.children.length).toBeLessThanOrEqual(29);
+    // Per chomper: head + 4 mottle + 2 crust + mouth + 4 upper teeth +
+    // jaw + 3 lower teeth + 2 eyes (+ 2 pupil children) + 5 links +
+    // 1 weight = 26 meshes.
+    const meshes = meshesOf(view);
+    expect(meshes.length).toBe(26);
+    // Two white-hot square eyes, each carrying exactly one dark pupil.
+    const eyes = meshes.filter((m) => m.material === library.chomperEyeWhite);
+    expect(eyes.length).toBe(2);
+    for (const eye of eyes) {
+      const pupils = eye.children.filter(
+        (c) => (c as { isMesh?: boolean }).isMesh === true,
+      );
+      expect(pupils.length).toBe(1);
+    }
+    // The mouth is a LARGE dark cavity (taller than half the hitbox —
+    // the front IS the mouth, not a trim slab): the one tall shell box
+    // on the lunge-face half that is not an eye pupil.
+    const cavities = meshes.filter(
+      (m) =>
+        m.material === library.chomperShell &&
+        m.scale.y > DEF.halfExtents.y * 0.8 &&
+        (m.parent as THREE.Mesh | null)?.material !== library.chomperEyeWhite &&
+        m.position.x * DEF.lungeDirection > 0,
+    );
+    expect(cavities.length).toBe(1);
+    // Seven chunky block teeth (4 upper + 3 lower), all boxes.
+    const teeth = meshes.filter(
+      (m) =>
+        m.material === library.chomperCore &&
+        m.geometry === library.unitBox &&
+        m.scale.y < DEF.halfExtents.y * 0.5 &&
+        m.scale.y > 0.05,
+    );
+    expect(teeth.length).toBe(7);
     view.dispose();
     library.dispose();
   });
@@ -68,14 +104,7 @@ describe('M8.1 chomper lava-creature presentation', () => {
       triggerZ: 590 + i * 10,
     }));
     const view = new ChomperView(defs, library);
-    let groups = 0;
-    // Chain links live in view space: 5 per built chomper.
-    let meshes = 0;
-    view.group.traverse((o) => {
-      if ((o as { isMesh?: boolean }).isMesh === true) meshes += 1;
-    });
-    groups = meshes / 26;
-    expect(groups).toBe(MAX_CHOMPERS);
+    expect(meshesOf(view).length / 26).toBe(MAX_CHOMPERS);
     view.dispose();
     library.dispose();
   });
@@ -83,12 +112,10 @@ describe('M8.1 chomper lava-creature presentation', () => {
 
 /**
  * World Y of the jaw mesh: the jaw is the flattened slab (scale.y ≈
- * h.y * 0.28) — locate the flattest box in the first chomper group.
+ * h.y * 0.3) — locate the flattest wide box in the first chomper group
+ * and take the lowest match (the crust plate rides high).
  */
 const jawWorldY = (view: ChomperView): number => {
-  // Jaw: the wide flattened slab (scale.x ≈ h.x * 0.9, scale.y ≈ 0.126).
-  // Chain links share the view space, so match dimensions, not order —
-  // and take the lowest match (the brow is flat but rides high).
   let best: number | undefined;
   view.group.traverse((o) => {
     const m = o as unknown as {
@@ -98,7 +125,6 @@ const jawWorldY = (view: ChomperView): number => {
     };
     if (m.isMesh !== true) return;
     if (m.scale.y < 0.2 && m.scale.x > 0.5) {
-      // Group-local Y (jaw hangs below the body center).
       if (best === undefined || m.position.y < best) best = m.position.y;
     }
   });

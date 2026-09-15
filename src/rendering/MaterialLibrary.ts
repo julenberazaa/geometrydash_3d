@@ -62,14 +62,15 @@ export class MaterialLibrary {
   public readonly modeShip: THREE.MeshStandardMaterial;
   public readonly modeSpider: THREE.MeshStandardMaterial;
   /**
-   * M8D Chomper family (shared, bounded): dark basalt shell, molten
-   * crack glow, bright mouth core, dark chain links. Original lava-predator
+   * M8D Chomper family (shared, bounded): molten-glow body, hot mouth
+   * core, lava-hot chain, white-hot eye squares. M8.3 reference match —
    * language — no licensed geometry.
    */
   public readonly chomperShell: THREE.MeshStandardMaterial;
   public readonly chomperGlow: THREE.MeshStandardMaterial;
   public readonly chomperCore: THREE.MeshBasicMaterial;
   public readonly chomperChain: THREE.MeshStandardMaterial;
+  public readonly chomperEyeWhite: THREE.MeshBasicMaterial;
   public readonly interactionDim: THREE.MeshBasicMaterial;
   public readonly finishGate: THREE.MeshBasicMaterial;
 
@@ -225,15 +226,16 @@ export class MaterialLibrary {
     // M8A lava: hot orange/red core with a strong emissive (the brightest
     // warm surface in the scene besides the hazard identity it shares the
     // family with) + a darker crusted flow tone for falls/pool bodies.
-    // M8.3: brighter still (human: lava reads dull) + a deeper pulse
-    // swing so the shimmer reads as living heat, not a static slab.
+    // M8.3: saturated red-orange emissive that survives tone mapping as
+    // ORANGE (never clipping to cream) yet stays above the bloom
+    // threshold, plus a deeper pulse swing — living heat, not a slab.
     this.lavaSurface = track(
       new THREE.MeshStandardMaterial({
-        color: 0xff6a00,
+        color: 0xf15400,
         roughness: 0.55,
         metalness: 0,
-        emissive: 0xff5a00,
-        emissiveIntensity: 2.0,
+        emissive: 0xff5000,
+        emissiveIntensity: 1.7,
       }),
     );
     this.lavaDeep = track(
@@ -241,8 +243,8 @@ export class MaterialLibrary {
         color: 0x7a1e00,
         roughness: 0.8,
         metalness: 0,
-        emissive: 0xb92e00,
-        emissiveIntensity: 1.0,
+        emissive: 0xc22a00,
+        emissiveIntensity: 0.9,
       }),
     );
     // M8C mode portals: sky-cyan Ship + mint-green Spider (crisp under
@@ -262,6 +264,8 @@ export class MaterialLibrary {
     // M8D Chomper: near-black crust + orange crack glow + hot core.
     // M8.2: the glow is the BODY now (brighter, more emissive molten
     // orange); the shell survives only as cooling-crust plates/bands.
+    // M8.3 (reference match): the chain glows like poured lava and the
+    // eyes are white-hot squares with dark pupils — shared, bounded.
     this.chomperShell = track(
       new THREE.MeshStandardMaterial({
         color: 0x1a0d08,
@@ -285,12 +289,17 @@ export class MaterialLibrary {
     );
     this.chomperChain = track(
       new THREE.MeshStandardMaterial({
-        color: 0x2a2a30,
-        roughness: 0.45,
-        metalness: 0.8,
-        emissive: 0xff4400,
-        emissiveIntensity: 0.25,
+        color: 0xff7a1a,
+        roughness: 0.5,
+        metalness: 0.1,
+        emissive: 0xff5a00,
+        emissiveIntensity: 1.4,
       }),
+    );
+    // M8.3 reference eyes: white-hot square (MeshBasic — always full
+    // bright, never shaded into the body); pupils reuse chomperShell.
+    this.chomperEyeWhite = track(
+      new THREE.MeshBasicMaterial({ color: 0xfff6e8 }),
     );
     this.interactionDim = track(new THREE.MeshBasicMaterial({ color: theme.interactionDim }));
     this.finishGate = track(
@@ -370,14 +379,14 @@ export class MaterialLibrary {
   /**
    * M8A lava pulse: dense-liquid shimmer on the SHARED lava materials
    * (phase in [0,1), driven by sim time — pausing freezes it like every
-   * other presentation clock). M8.3: deeper swing (surface 1.7..2.5,
-   * deep 0.8..1.4) so the heat visibly breathes. In-place emissive
+   * other presentation clock). M8.3: deeper swing (surface 1.4..2.0,
+   * deep 0.6..1.1) so the heat visibly breathes. In-place emissive
    * retune only: zero allocation, zero new draws, fully reversible.
    */
   public setLavaPulse(phase01: number): void {
     const wave = 0.5 + 0.5 * Math.sin(phase01 * Math.PI * 2);
-    this.lavaSurface.emissiveIntensity = 1.7 + wave * 0.8;
-    this.lavaDeep.emissiveIntensity = 0.8 + wave * 0.6;
+    this.lavaSurface.emissiveIntensity = 1.4 + wave * 0.6;
+    this.lavaDeep.emissiveIntensity = 0.6 + wave * 0.5;
   }
 
   /** Live material count (QA/resource-guard observability). */
