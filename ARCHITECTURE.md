@@ -204,6 +204,13 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   two-Chomper biome, Ship corridor, Spider snaps, trap islands; scripted
   real-input playthrough finishes at tick 10321 (86.0 s), 0 deaths, replay
   VERIFIED (`tests/helpers/multimodeGauntletScript.ts`).
+- `productionShowcase01.ts` (M8.5, `production-showcase-01`, "THE DESCENT"):
+  the DEFAULT level — a ~2-minute superproduction arc (forge, islands,
+  two-door labyrinth, four-way cathedral, Chomper canyon, Ship reactor
+  with a sustained inverted segment, Spider temple with wall snaps,
+  teleport-choice void, final gauntlet); scripted real-input playthroughs
+  finish at tick 13955 (116.29 s), 0 deaths, replay VERIFIED, on BOTH the
+  primary and alternate routes (`tests/helpers/showcaseScript.ts`).
 
 ## 7. Simulation (`src/game/`)
 

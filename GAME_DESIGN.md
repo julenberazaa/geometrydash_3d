@@ -171,8 +171,13 @@ is a new data file plus zero engine changes. A level declares: geometry
 (solids/hazards), lanes, speeds, `finishZ`, void bounds (`deathY`, optional
 `deathYMax`), start gravity mode (default Floor), and gravity portals.
 
-Two levels ship (selected via `?level=<id>`, default Test Level):
+Several levels ship (selected via `?level=<id>`, default THE DESCENT
+since M8.5):
 
+- **THE DESCENT** (`production-showcase-01`, M8.5, DEFAULT): the first
+  superproduction level — ~116 s, HARD/EXPERT, multi-route (islands +
+  two-door labyrinth + teleport choice), all modes/gravities, inverted
+  Ship, wall Spider, Chompers, directed lava, full 9-act arc.
 - **Test Level 01** (`controller-test-01`): the controller/gravity/
   interaction demo track with the M3 gravity section and the M4
   interaction section.

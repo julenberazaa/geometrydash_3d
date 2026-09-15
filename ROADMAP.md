@@ -550,3 +550,21 @@ branch.
 
 Enclosed tunnels, multi-surface hazards, speed feel. Cube validation
 (M7.1 + M7.3 approvals) is complete, so Ship ships inside M8.
+
+## M8.5 — Production showcase level (THE DESCENT): ENGINEERING COMPLETE / HUMAN SHOWCASE GATE OPEN (feature/m8-5-production-showcase-level, NOT merged)
+
+First superproduction level (`production-showcase-01`, now the DEFAULT
+level — legacy levels stay on explicit `?level=`): ~2-minute HARD/EXPERT
+arc (forge, fractured islands, two-door labyrinth, four-way gravity
+cathedral, Chomper canyon, Ship reactor with a sustained INVERTED Ship
+segment, Spider temple with wall snaps, teleport-choice void, final
+gauntlet), 3 real branch sections, 9 visual scenes, 10 bounded gravity
+portals + 4 mode + 2 speed + 3 teleports + 2 pads + 2 required orbs +
+4 Chompers + directed lava rivers. Reference AND alternate scripted
+routes finish at tick 13955 (116.29 s) with 0 deaths and replay VERIFIED
+(`tests/helpers/showcaseScript.ts`, `tests/showcase.test.ts` — 12 tests;
+`npm run verify` green; browser M8.5 section incl. a full in-page
+real-input finish + REPLAY VERIFIED with `qa/screenshots/showcase-*`
+evidence). Spec: `specs/milestones/M8_5_PRODUCTION_SHOWCASE_LEVEL.md`.
+Automation proves POSSIBLE, never FUN — do NOT mark PASS until the human
+plays the showcase branch end to end.

@@ -1727,9 +1727,12 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     }
   };
 
-  // M5a: default level still loads; a live death attempt becomes a replay.
+  // M5a: default level is the M8.5 showcase; legacy geometry pins explicitly.
   const m5Level = await page.evaluate(() => window.__gd3d.levelId());
-  log('m5 default level loads (controller-test-01)', m5Level === 'controller-test-01', m5Level);
+  log('m5 default level loads (production-showcase-01)', m5Level === 'production-showcase-01', m5Level);
+  await safeGoto(`${URL}?level=controller-test-01`);
+  await waitReady();
+  await page.waitForTimeout(2000);
   for (let i = 0; i < 3; i++) {
     await page.keyboard.press('KeyR');
     await page.waitForTimeout(300);
@@ -1972,7 +1975,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   await waitReady();
   await page.waitForTimeout(2000);
   const m5Fallback = await page.evaluate(() => window.__gd3d.levelId());
-  log('m5 unknown level id falls back to the default level', m5Fallback === 'controller-test-01',
+  log('m5 unknown level id falls back to the default level', m5Fallback === 'production-showcase-01',
     `id=${m5Fallback}`);
 }
 
@@ -6362,6 +6365,198 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   const m84replayOk = results.some((r) => r.name === 'm8 replay VERIFIED' && r.ok === true);
   log('m84 replay still VERIFIED after M8.4 changes', m84replayOk === true,
     m84replayOk ? 'full-run tape verified' : 'M8 full-run replay did not verify');
+}
+
+// --- 24g. M8.5 PRODUCTION SHOWCASE GATE ---
+{
+  // Default load (no ?level=) is THE DESCENT.
+  await m8fresh(URL);
+  const m85boot = await m8probe();
+  log('m85 default level is the showcase', m85boot.id === 'production-showcase-01' && m85boot.name === 'THE DESCENT',
+    `id=${m85boot.id} name=${m85boot.name}`);
+  // Legacy explicit routes still resolve.
+  await m8fresh(`${URL}?level=multimode-gauntlet-01`);
+  const m85legacy = await m8probe();
+  log('m85 explicit ?level= override still works', m85legacy.id === 'multimode-gauntlet-01',
+    `id=${m85legacy.id}`);
+  await m8fresh(URL);
+
+  // Staged environment frames (one identity per act).
+  await m8freeze(0, 1.5, 10);
+  await capture('showcase-01-forge');
+  await m8live();
+  await m8freeze(0, 1.5, 250);
+  await capture('showcase-02-islands');
+  await m8live();
+  await m8freeze(0, 1.5, 392);
+  await capture('showcase-03-maze');
+  await m8live();
+  await m8freeze(0, 1.5, 532);
+  await capture('showcase-04-cathedral');
+  await m8live();
+  await m8freeze(0, 1.5, 800);
+  await capture('showcase-05-canyon');
+  await m8live();
+  await m8freeze(0, 2.5, 940);
+  await capture('showcase-06-reactor');
+  await m8live();
+  await m8freeze(0, 1.5, 1180);
+  await capture('showcase-08-temple');
+  await m8live();
+  await m8freeze(0, 1.5, 1345);
+  await capture('showcase-09-void');
+  await m8live();
+
+  // Forge river reads as one source-to-fall composition (NDC-verified).
+  await m8freeze(0, 1.5, 184);
+  const m85src = await page.evaluate(() => window.__gd3d.screenPoint(4.2, 2.9, 196));
+  const m85cross = await page.evaluate(() => window.__gd3d.screenPoint(0, 0.7, 196));
+  const m85chan = await page.evaluate(() => window.__gd3d.screenPoint(-6.4, 0, 196));
+  const m85drop = await page.evaluate(() => window.__gd3d.screenPoint(-8.6, -2, 196));
+  const m85in = (p) => !p.behind && Math.abs(p.ndcX) < 1.2 && Math.abs(p.ndcY) < 1.2;
+  log('m85 forge river reads as one source-to-fall composition',
+    m85in(m85src) && m85in(m85cross) && m85in(m85chan) && m85in(m85drop),
+    `src=(${m85src.ndcX.toFixed(2)},${m85src.ndcY.toFixed(2)}) cross=(${m85cross.ndcX.toFixed(2)},${m85cross.ndcY.toFixed(2)})`);
+  await m8live();
+
+  // Chomper telegraph: staged ahead of the first trigger, the lunge arms.
+  await m8stage(0, 0.55, 800);
+  const m85chomp = await m8roll((s) => (s.chompers ?? []).some((c) => c.phase !== 'dormant'), 60000);
+  log('m85 chomper telegraphs on approach', m85chomp !== null,
+    m85chomp ? `phases=${(m85chomp.chompers ?? []).map((c) => c.phase).join(',')}` : 'stayed dormant');
+
+  // Full real-input reference run: in-page driver (real KeyboardEvents
+  // through the real InputSystem; CDP only observes), mirroring the
+  // automated ShowcaseDriver primary policy. Deaths re-arm the plan.
+  await m8fresh(`${URL}?level=production-showcase-01&post=off&fx=off&triggers=off`);
+  await page.setViewportSize({ width: 960, height: 540 });
+  await page.evaluate(() => {
+    if (window.__m85driver) clearInterval(window.__m85driver);
+    window.__m85done = null;
+    const down = (code) => window.dispatchEvent(new KeyboardEvent('keydown', { code }));
+    const up = (code) => window.dispatchEvent(new KeyboardEvent('keyup', { code }));
+    const tap = (code) => { down(code); setTimeout(() => up(code), 70); };
+    const reset = () => ({
+      jumps: [37.5, 93.5, 172.5, 192.0, 235.5, 251.5, 267.5, 291.5, 352.0, 909.5, 1418.0, 1712.5],
+      taps: [
+        { z: 150, c: 'ArrowLeft' }, { z: 162, c: 'ArrowRight' },
+        { z: 395, c: 'ArrowLeft' }, { z: 430, c: 'ArrowRight' },
+        { z: 630, c: 'ArrowLeft' }, { z: 648, c: 'ArrowRight' },
+        { z: 1202, c: 'ArrowLeft' }, { z: 1225, c: 'ArrowRight' },
+        { z: 1350, c: 'ArrowLeft' }, { z: 1466, c: 'ArrowRight' },
+        { z: 1530, c: 'ArrowLeft' }, { z: 1562, c: 'ArrowRight' },
+      ],
+      presses: [1180, 1215, 1222, 1245, 1273, 1291],
+      jumpedCh: [false, false, false, false],
+    });
+    let plan = reset();
+    let release = false;
+    let attempts = window.__gd3d.attempts();
+    let shipHeld = false;
+    let orbTaps = 0;
+    let lastOrbTap = 0;
+    window.__m85driver = setInterval(() => {
+      const g = window.__gd3d;
+      if (g.attempts() !== attempts) {
+        attempts = g.attempts();
+        plan = reset();
+        release = false;
+        orbTaps = 0;
+        if (shipHeld) { up('Space'); shipHeld = false; }
+      }
+      if (g.status() !== 'running') {
+        if (g.status() === 'finished') window.__m85done = { attempts: g.attempts() };
+        else if (g.status() === 'dead') window.__m85done = { dead: `${g.deathCause()}@${g.playerPosition().z.toFixed(1)}`, attempts: g.attempts() };
+        return;
+      }
+      window.__m85done = null;
+      const z = g.playerPosition().z;
+      const y = g.playerPosition().y;
+      if (g.playerMode() === 'ship') {
+        let wantHold;
+        if (z < 984) wantHold = true;
+        else if (z < 1000) wantHold = false;
+        else if (z < 1030) wantHold = y < 2.6;
+        else if (z < 1090) wantHold = y > 3.5;
+        else wantHold = y < 2.6;
+        if (wantHold && !shipHeld) { down('Space'); shipHeld = true; }
+        if (!wantHold && shipHeld) { up('Space'); shipHeld = false; }
+        return;
+      }
+      if (shipHeld) { up('Space'); shipHeld = false; }
+      const ch = g.chompers();
+      for (let i = 0; i < ch.length; i++) {
+        if (ch[i]?.phase === 'lunging' && !plan.jumpedCh[i]) { plan.jumpedCh[i] = true; tap('Space'); release = true; return; }
+      }
+      if (release) { release = false; return; }
+      // Required orbs: repeated discrete presses across the window until
+      // the sim confirms activation (robust to single-edge timing).
+      const now = performance.now();
+      if (!g.isInteractionUsed('ps-orb-gap') && z >= 350 && z <= 354.5 && now - lastOrbTap > 60 && orbTaps < 12) {
+        lastOrbTap = now; orbTaps += 1; tap('Space'); return;
+      }
+      if (!g.isInteractionUsed('ps-orb-high') && z >= 1416 && z <= 1420 && now - lastOrbTap > 60 && orbTaps < 24) {
+        lastOrbTap = now; orbTaps += 1; tap('Space'); return;
+      }
+      if (plan.presses.length > 0 && z >= (plan.presses[0] ?? 1e9)) { plan.presses.shift(); tap('Space'); release = true; return; }
+      if (plan.jumps.length > 0 && z >= (plan.jumps[0] ?? 1e9)) {
+        const j = plan.jumps[0] ?? 1e9;
+        // Orb windows are press-serviced above — never double-fire there.
+        if ((j === 352.0 && !g.isInteractionUsed('ps-orb-gap')) || (j === 1418.0 && !g.isInteractionUsed('ps-orb-high'))) return;
+        plan.jumps.shift(); tap('Space'); release = true; return;
+      }
+      if (plan.taps.length > 0 && z >= ((plan.taps[0]?.z) ?? 1e9)) { const t = plan.taps.shift(); if (t) tap(t.c); }
+    }, 10);
+  });
+  const m85shots = { ship: false, inverted: false, spiderWall: false, tele: false, core: false };
+  const m85run = await (async () => {
+    const t0 = Date.now();
+    for (;;) {
+      const s = await page.evaluate(() => ({
+        done: window.__m85done,
+        status: window.__gd3d.status(),
+        z: window.__gd3d.playerPosition().z,
+        mode: window.__gd3d.playerMode(),
+        grav: window.__gd3d.gravityMode(),
+        teleports: window.__gd3d.teleportEventCount(),
+      }));
+      const snap = async (flag, name) => {
+        if (m85shots[flag]) return;
+        m85shots[flag] = true;
+        await page.keyboard.press('KeyP');
+        await page.waitForTimeout(400);
+        await capture(name);
+        await page.keyboard.press('KeyP');
+        await page.waitForTimeout(200);
+      };
+      if (s.mode === 'ship' && s.z > 950) await snap('ship', 'showcase-07-ship');
+      if (s.mode === 'ship' && s.grav === 'ceiling') await snap('inverted', 'showcase-08-inverted');
+      if (s.mode === 'spider' && (s.grav === 'leftWall' || s.grav === 'rightWall')) await snap('spiderWall', 'showcase-09-spider-wall');
+      if (s.z > 1420 && s.z < 1460) await snap('tele', 'showcase-10-teleport');
+      if (s.z > 1700) await snap('core', 'showcase-11-core');
+      if (s.done !== null) return s.done;
+      if (Date.now() - t0 > 1200000) {
+        await page.evaluate(() => {
+          if (window.__m85driver) clearInterval(window.__m85driver);
+          window.__m85driver = null;
+        });
+        return 'timeout';
+      }
+      await page.waitForTimeout(250);
+    }
+  })();
+  log('m85 full real-input reference run finishes', m85run !== 'timeout' && m85run?.attempts === 1 && !m85run?.dead,
+    typeof m85run === 'string' ? m85run : `attempts=${m85run?.attempts} dead=${m85run?.dead ?? 'no'}`);
+  const m85final = await m8probe();
+  log('m85 reference run covers all modes and gravities',
+    m85final.status === 'finished',
+    `status=${m85final.status} mode=${m85final.pMode} grav=${m85final.grav}`);
+  await capture('showcase-12-finish');
+  // F4 replays the showcase tape to VERIFIED in-page.
+  await page.keyboard.press('F4');
+  await page.waitForTimeout(1500);
+  const m85verify = await page.evaluate(() => window.__gd3d.replayVerification());
+  log('m85 showcase replay VERIFIED in-page', m85verify.kind === 'pass', `verify=${m85verify.kind}`);
 }
 
 // --- 25. Console audit ---

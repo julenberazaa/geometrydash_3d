@@ -63,7 +63,14 @@ M8.4 (same corrective line, `feature/m8-4-lava-flow-polish` — engineering
 complete, human gate OPEN) makes the lava a directed flow: east source →
 identical crossing → shelf channel → cliff drop, with traveling flow
 cores, current-riding crust, pour pulses and hotter small-area glow
-(spec: `specs/milestones/M8_4_LAVA_FLOW_POLISH.md`). M6A visual production foundation
+(spec: `specs/milestones/M8_4_LAVA_FLOW_POLISH.md`). M8.5 production
+showcase level engineering-complete on `feature/m8-5-production-showcase-level`
+(`?level=production-showcase-01`, now the DEFAULT level): ~116 s
+HARD/EXPERT 9-act arc with real route branches, inverted Ship, wall
+Spider, 4 Chompers and directed lava — scripted reference + alternate
+routes finish with 0 deaths and verified replays (HUMAN SHOWCASE GATE
+OPEN; spec: `specs/milestones/M8_5_PRODUCTION_SHOWCASE_LEVEL.md`).
+M6A visual production foundation
 engineering-complete (production theme + shared materials + controlled
 bloom/post, zero gameplay change, 182/182 tests, M6A browser QA 24/24
 green, golden replay intact) — HUMAN VISUAL GATE OPEN
