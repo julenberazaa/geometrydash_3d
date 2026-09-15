@@ -95,16 +95,16 @@ export const CAMERA_TUNING: CameraTuning = {
 };
 
 /**
- * M8.2 Spider-swap glide: how long (render seconds) the camera eases
- * after a Spider surface swap, and the slower smoothing lambdas used
- * while the envelope is open. Endpoints are identical to the legacy
- * path — only the rate changes (95% converged at ~0.67 s instead of a
- * 0.33 s look-whip). Gravity-portal/Cube/Ship framing never enters
- * this envelope (their lambdas are byte-untouched).
+ * M8.2 Spider-swap glide: how long (render seconds) the camera takes to
+ * travel from the pre-swap framing to the post-swap framing. M8.3: this
+ * is a POSE-CAPTURE blend, not a rate change — arming snapshots the live
+ * eye/look pose and the envelope eases it onto the (moving) desired
+ * framing with a smootherstep profile (zero velocity at both ends, so no
+ * cut and no whip). Endpoints are identical to the legacy path by
+ * construction. Gravity-portal/Cube/Ship framing never enters this
+ * envelope (their lambdas are byte-untouched).
  */
 export const SPIDER_SWAP_GLIDE_SECONDS = 0.55;
-export const SPIDER_SWAP_POSITION_LAMBDA = 4.5;
-export const SPIDER_SWAP_LOOK_LAMBDA = 4.5;
 
 export class ChaseCamera {
   private readonly tuning: CameraTuning;
@@ -113,10 +113,14 @@ export class ChaseCamera {
   private initialized = false;
   /**
    * M8.2 Spider-swap envelope clock (render seconds since the last
-   * Spider-context gravity swap; Infinity at rest). While open, update()
-   * eases with the slower swap lambdas instead of the tuning defaults.
+   * Spider-context gravity swap; Infinity at rest). M8.3: arming also
+   * snapshots the live eye/look pose (`glideFromPos/Look`) — while open,
+   * update() blends that snapshot onto the moving desired framing with
+   * a smootherstep profile instead of exponential damping.
    */
   private swapEnvelope = Infinity;
+  private readonly glideFromPos: Vec3 = vec3(0, 0, 0);
+  private readonly glideFromLook: Vec3 = vec3(0, 0, 0);
 
   constructor(tuning: CameraTuning = CAMERA_TUNING) {
     this.tuning = tuning;
@@ -131,12 +135,21 @@ export class ChaseCamera {
    * the desired-height change at a gravity flip a short glide, never a cut.
    */
   /**
-   * M8.2: arm the Spider-swap glide (called by the rendering host when
-   * the simulation's gravity flips inside Spider mode). Pure presentation
+   * M8.3: arm the Spider-swap glide (called by the rendering host when
+   * the simulation's gravity flips inside Spider mode INSTEAD of
+   * snapping — the swap displacement is a sanctioned transition, not a
+   * teleport). Captures the live pose so the envelope can blend it onto
+   * the post-swap framing with zero initial velocity. Pure presentation
    * state — gameplay never reads it. Gravity-portal flips never call
    * this, so their approved feel is numerically untouched.
    */
   public noteSpiderSwap(): void {
+    this.glideFromPos.x = this.position.x;
+    this.glideFromPos.y = this.position.y;
+    this.glideFromPos.z = this.position.z;
+    this.glideFromLook.x = this.lookTarget.x;
+    this.glideFromLook.y = this.lookTarget.y;
+    this.glideFromLook.z = this.lookTarget.z;
     this.swapEnvelope = 0;
   }
 
@@ -195,19 +208,28 @@ export class ChaseCamera {
       return;
     }
 
-    // M8.2 Spider-swap glide: while the envelope is open, ease with the
-    // slower swap lambdas (same endpoints, controlled rate — no whip).
+    // M8.3 Spider-swap glide: while the envelope is open, blend the
+    // captured pre-swap pose onto the (moving) desired framing with a
+    // smootherstep profile — zero velocity at both ends, so the
+    // transition reads as one continuous move, never a cut or a whip.
     // The clock advances on render dt, so pause freezes the glide too.
+    // At s = 1 the pose EQUALS the desired framing exactly, and the
+    // profile arrives with the target's own velocity, so handing back
+    // to exponential damping is seamless.
     this.swapEnvelope += renderDtSeconds;
-    const gliding = this.swapEnvelope < SPIDER_SWAP_GLIDE_SECONDS;
-    const posK = dampFactor(
-      gliding ? SPIDER_SWAP_POSITION_LAMBDA : t.positionSmoothing,
-      renderDtSeconds,
-    );
-    const lookK = dampFactor(
-      gliding ? SPIDER_SWAP_LOOK_LAMBDA : t.lookSmoothing,
-      renderDtSeconds,
-    );
+    const glideT = Math.min(1, this.swapEnvelope / SPIDER_SWAP_GLIDE_SECONDS);
+    if (glideT < 1) {
+      const s = glideT * glideT * glideT * (glideT * (glideT * 6 - 15) + 10);
+      this.position.x = this.glideFromPos.x + (desiredX - this.glideFromPos.x) * s;
+      this.position.y = this.glideFromPos.y + (desiredY - this.glideFromPos.y) * s;
+      this.position.z = this.glideFromPos.z + (desiredZ - this.glideFromPos.z) * s;
+      this.lookTarget.x = this.glideFromLook.x + (desiredLookX - this.glideFromLook.x) * s;
+      this.lookTarget.y = this.glideFromLook.y + (desiredLookY - this.glideFromLook.y) * s;
+      this.lookTarget.z = this.glideFromLook.z + (desiredLookZ - this.glideFromLook.z) * s;
+      return;
+    }
+    const posK = dampFactor(t.positionSmoothing, renderDtSeconds);
+    const lookK = dampFactor(t.lookSmoothing, renderDtSeconds);
     this.position.x += (desiredX - this.position.x) * posK;
     this.position.y += (desiredY - this.position.y) * posK;
     this.position.z += (desiredZ - this.position.z) * posK;

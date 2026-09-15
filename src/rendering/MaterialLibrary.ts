@@ -47,8 +47,10 @@ export class MaterialLibrary {
   public readonly teleportPane: THREE.MeshBasicMaterial;
   /**
    * M8A lava family (shared, bounded): bright molten core + darker deep
-   * flow. Pulsed subtly in place by `setLavaPulse` (dense-liquid read —
-   * no fluid simulation, no per-frame geometry).
+   * flow. Pulsed in place by `setLavaPulse` (M8.3 deeper swing — living
+   * heat read) while `LevelView.updateLava` convects the crust plates
+   * and descends the fall segments (no fluid simulation, no per-frame
+   * allocation).
    */
   public readonly lavaSurface: THREE.MeshStandardMaterial;
   public readonly lavaDeep: THREE.MeshStandardMaterial;
@@ -223,13 +225,15 @@ export class MaterialLibrary {
     // M8A lava: hot orange/red core with a strong emissive (the brightest
     // warm surface in the scene besides the hazard identity it shares the
     // family with) + a darker crusted flow tone for falls/pool bodies.
+    // M8.3: brighter still (human: lava reads dull) + a deeper pulse
+    // swing so the shimmer reads as living heat, not a static slab.
     this.lavaSurface = track(
       new THREE.MeshStandardMaterial({
         color: 0xff6a00,
         roughness: 0.55,
         metalness: 0,
         emissive: 0xff5a00,
-        emissiveIntensity: 1.6,
+        emissiveIntensity: 2.0,
       }),
     );
     this.lavaDeep = track(
@@ -238,7 +242,7 @@ export class MaterialLibrary {
         roughness: 0.8,
         metalness: 0,
         emissive: 0xb92e00,
-        emissiveIntensity: 0.8,
+        emissiveIntensity: 1.0,
       }),
     );
     // M8C mode portals: sky-cyan Ship + mint-green Spider (crisp under
@@ -366,13 +370,14 @@ export class MaterialLibrary {
   /**
    * M8A lava pulse: dense-liquid shimmer on the SHARED lava materials
    * (phase in [0,1), driven by sim time — pausing freezes it like every
-   * other presentation clock). In-place emissive retune only: zero
-   * allocation, zero new draws, fully reversible.
+   * other presentation clock). M8.3: deeper swing (surface 1.7..2.5,
+   * deep 0.8..1.4) so the heat visibly breathes. In-place emissive
+   * retune only: zero allocation, zero new draws, fully reversible.
    */
   public setLavaPulse(phase01: number): void {
     const wave = 0.5 + 0.5 * Math.sin(phase01 * Math.PI * 2);
-    this.lavaSurface.emissiveIntensity = 1.45 + wave * 0.35;
-    this.lavaDeep.emissiveIntensity = 0.7 + wave * 0.25;
+    this.lavaSurface.emissiveIntensity = 1.7 + wave * 0.8;
+    this.lavaDeep.emissiveIntensity = 0.8 + wave * 0.6;
   }
 
   /** Live material count (QA/resource-guard observability). */

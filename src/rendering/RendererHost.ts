@@ -264,12 +264,30 @@ export class RendererHost {
     }
     // Respawn edge (dead -> running) or manual-teleport (R while running):
     // snap the camera to the start frame — no backward swoosh, no stale kick.
+    // M8.3: a Spider-context gravity swap ALSO displaces the player >5 u
+    // in one tick, but that is a sanctioned transition, NOT a teleport —
+    // snapping here was the reload-like cut (the M8.2 glide armed after
+    // the cut and could only ease residual error). The gravity edge is
+    // resolved BEFORE this check so swaps glide instead of cutting;
+    // teleport portals (no gravity flip) still snap.
+    const grav = sim.gravityMode;
+    let spiderSwap = false;
+    if (this.lastCamGravity === null) {
+      this.lastCamGravity = grav;
+    } else if (grav !== this.lastCamGravity) {
+      if (sim.playerMode === 'spider') {
+        spiderSwap = true;
+        this.chaseCamera.noteSpiderSwap();
+        this.swapGlideCount += 1;
+      }
+      this.lastCamGravity = grav;
+    }
     const teleported =
       Math.abs(p.x - this.lastAppliedPos.x) +
         Math.abs(p.y - this.lastAppliedPos.y) +
         Math.abs(p.z - this.lastAppliedPos.z) >
       5;
-    if ((this.prevStatus === 'dead' && sim.status === 'running') || (sim.status === 'running' && teleported)) {
+    if ((this.prevStatus === 'dead' && sim.status === 'running') || (sim.status === 'running' && teleported && !spiderSwap)) {
       this.chaseCamera.snapTo(p, 0, this.focusSide());
       this.fovKick = 0;
       this.heightKick = 0;
@@ -306,6 +324,9 @@ export class RendererHost {
     this.deathBurst.update(renderDtSeconds);
     this.interactionView.update(renderDtSeconds);
     this.chomperView.update(sim.chomperStates, renderDtSeconds);
+    // M8.3 lava motion: convect crust + descend falls (render-dt driven;
+    // pause freezes the flow like every other presentation clock).
+    this.levelView.updateLava(renderDtSeconds);
     // M8A lava shimmer: slow dense pulse on the shared lava materials
     // (sim-time driven so pause freezes it; zero geometry per frame).
     this.library.setLavaPulse((sim.elapsedSimTime * 0.5) % 1);
@@ -322,19 +343,6 @@ export class RendererHost {
     // M6D: no updateProjectionMatrix here — render() applies the fov kick
     // and updates the projection once per presented frame (this method ran
     // it redundantly every frame, doubling a matrix recompute).
-    // M8.2 Spider-swap glide: arm the camera envelope when gravity flips
-    // inside Spider mode. Gravity-portal flips never arm it (approved
-    // feel untouched); respawn/teleport snaps cut it (see snapTo).
-    const grav = sim.gravityMode;
-    if (this.lastCamGravity === null) {
-      this.lastCamGravity = grav;
-    } else if (grav !== this.lastCamGravity) {
-      if (sim.playerMode === 'spider') {
-        this.chaseCamera.noteSpiderSwap();
-        this.swapGlideCount += 1;
-      }
-      this.lastCamGravity = grav;
-    }
     this.chaseCamera.update(p, 0, renderDtSeconds, this.focusSide());
   }
 

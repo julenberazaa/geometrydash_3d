@@ -25,6 +25,26 @@ const UNDER_RAIL_MIN_BOTTOM_Y = 2.0;
 // Fully embedded trims are invisible inside the opaque solid (M1.2 lesson).
 
 /**
+ * M8.3 lava motion node: a build-time lava mesh animated per frame by
+ * `LevelView.updateLava` (convection drift on crust plates, descending
+ * width pulse on fall segments, breathing on splash/drip/mouth). Base
+ * transform + deterministic phase are captured at build; the update
+ * mutates position/scale in place — zero per-frame allocation.
+ */
+interface LavaAnimNode {
+  mesh: THREE.Mesh;
+  kind: 'crust' | 'fall' | 'splash' | 'drip' | 'mouth';
+  baseX: number;
+  baseY: number;
+  baseSX: number;
+  baseSY: number;
+  baseSZ: number;
+  /** Segment index down the fall (fall) or pattern slot (crust). */
+  slot: number;
+  phase: number;
+}
+
+/**
  * Level view: builds Three.js representations from level data.
  * Shared library geometries + shared library materials (M6A material
  * ownership: this view creates Meshes only — never materials/geometries).
@@ -32,6 +52,10 @@ const UNDER_RAIL_MIN_BOTTOM_Y = 2.0;
  */
 export class LevelView {
   public readonly group: THREE.Group;
+  /** M8.3 lava motion registry (cleared on dispose). */
+  private readonly lavaAnim: LavaAnimNode[] = [];
+  /** M8.3 lava clock (render seconds; pause freezes the flow). */
+  private lavaTime = 0;
 
   constructor(
     level: LoadedLevel,
@@ -585,6 +609,13 @@ export class LevelView {
             l.center.z + fz * d,
           );
           this.group.add(plate);
+          // M8.3 convection: plates drift + bob on the bright surface.
+          this.lavaAnim.push({
+            mesh: plate, kind: 'crust',
+            baseX: plate.position.x, baseY: plate.position.y,
+            baseSX: plate.scale.x, baseSY: plate.scale.y, baseSZ: plate.scale.z,
+            slot: c, phase: pi * 2.1 + c * 1.3,
+          });
         }
         continue;
       }
@@ -604,6 +635,13 @@ export class LevelView {
             l.center.z + (i % 2 === 0 ? -1 : 1) * d * 0.07,
           );
           this.group.add(seg);
+          // M8.3 descent: segments fatten in sequence top -> bottom.
+          this.lavaAnim.push({
+            mesh: seg, kind: 'fall',
+            baseX: seg.position.x, baseY: seg.position.y,
+            baseSX: seg.scale.x, baseSY: seg.scale.y, baseSZ: seg.scale.z,
+            slot: i, phase: l.center.z * 0.35 + l.center.x * 0.21,
+          });
         }
         // Impact splash: bright spread disc where the stream meets its
         // pool surface (skipped for void-continuing falls — no pool).
@@ -619,6 +657,13 @@ export class LevelView {
           splash.scale.set(Math.max(0.2, w * 1.15), 0.08, Math.max(0.2, d * 1.15));
           splash.position.set(l.center.x, pool.topY + 0.12, l.center.z);
           this.group.add(splash);
+          // M8.3 impact breathing (fed by the descending pulse above).
+          this.lavaAnim.push({
+            mesh: splash, kind: 'splash',
+            baseX: splash.position.x, baseY: splash.position.y,
+            baseSX: splash.scale.x, baseSY: splash.scale.y, baseSZ: splash.scale.z,
+            slot: 0, phase: l.center.z * 0.35,
+          });
         }
         continue;
       }
@@ -632,6 +677,13 @@ export class LevelView {
       mouth.scale.set(Math.max(0.1, w * 0.7), 0.08, Math.max(0.1, d * 0.7));
       mouth.position.set(l.center.x, mouthY, l.center.z);
       this.group.add(mouth);
+      // M8.3 vent breathing (the pour source visibly works).
+      this.lavaAnim.push({
+        mesh: mouth, kind: 'mouth',
+        baseX: mouth.position.x, baseY: mouth.position.y,
+        baseSX: mouth.scale.x, baseSY: mouth.scale.y, baseSZ: mouth.scale.z,
+        slot: 0, phase: l.center.x * 0.53 + l.center.z * 0.29,
+      });
       // M8.2 vent drip: a short bright lip joining the mouth to the fed
       // fall below (one continuous pour instead of vent + separate jet).
       const fed = lava.some(
@@ -649,6 +701,13 @@ export class LevelView {
         drip.scale.set(0.34, 0.7, 0.34);
         drip.position.set(l.center.x, mouthY - 0.2, l.center.z);
         this.group.add(drip);
+        // M8.3 pour stretch (joins the mouth to the falling pulse).
+        this.lavaAnim.push({
+          mesh: drip, kind: 'drip',
+          baseX: drip.position.x, baseY: drip.position.y,
+          baseSX: drip.scale.x, baseSY: drip.scale.y, baseSZ: drip.scale.z,
+          slot: 0, phase: l.center.x * 0.53 + l.center.z * 0.29,
+        });
       }
     }
   }
@@ -748,8 +807,58 @@ export class LevelView {
     }
   }
 
+  /**
+   * M8.3 lava motion: convect the crust plates, descend a width pulse
+   * down each fall, breathe the splash/drip/mouth — viscous blocky flow
+   * with zero simulation and zero per-frame allocation (in-place
+   * position/scale retunes from build-time bases). Render-dt driven so
+   * pause freezes the flow with everything else; dt = 0 is a no-op.
+   */
+  public updateLava(renderDtSeconds: number): void {
+    if (renderDtSeconds <= 0 || this.lavaAnim.length === 0) return;
+    this.lavaTime += renderDtSeconds;
+    const t = this.lavaTime;
+    for (let i = 0; i < this.lavaAnim.length; i++) {
+      const n = this.lavaAnim[i];
+      if (n === undefined) continue;
+      switch (n.kind) {
+        case 'crust': {
+          // Slow convection drift + bob (never leaves the bright surface).
+          n.mesh.position.x = n.baseX + 0.12 * Math.sin(t * 0.9 + n.phase);
+          n.mesh.position.y = n.baseY + 0.03 * Math.sin(t * 1.7 + n.phase * 1.6);
+          break;
+        }
+        case 'fall': {
+          // A fattening wave travels top -> bottom (dense descent).
+          const s = 1 + 0.13 * Math.sin(t * 4.2 - n.slot * 1.1 + n.phase);
+          n.mesh.scale.x = n.baseSX * s;
+          n.mesh.scale.z = n.baseSZ * s;
+          n.mesh.position.x = n.baseX + 0.05 * Math.sin(t * 2.1 + n.slot + n.phase);
+          break;
+        }
+        case 'splash': {
+          const s = 1 + 0.16 * Math.sin(t * 5 + n.phase);
+          n.mesh.scale.x = n.baseSX * s;
+          n.mesh.scale.z = n.baseSZ * s;
+          break;
+        }
+        case 'drip': {
+          n.mesh.scale.y = n.baseSY * (1 + 0.2 * Math.sin(t * 3.4 + n.phase));
+          break;
+        }
+        case 'mouth': {
+          const s = 1 + 0.1 * Math.sin(t * 3.4 + n.phase);
+          n.mesh.scale.x = n.baseSX * s;
+          n.mesh.scale.z = n.baseSZ * s;
+          break;
+        }
+      }
+    }
+  }
+
   public dispose(): void {
     // Meshes only — materials/geometries belong to the MaterialLibrary.
     this.group.clear();
+    this.lavaAnim.length = 0;
   }
 }

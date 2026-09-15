@@ -319,3 +319,87 @@ describe('M8.2 lava viscous-flow presentation (bounded structure)', () => {
     library.dispose();
   });
 });
+
+describe('M8.3 lava motion (alive, not a slab)', () => {
+  const fixture = (): { view: LevelView; library: MaterialLibrary } => {
+    const def: LevelDefinition = {
+      id: 'lavamotion-fixture',
+      displayName: 'LAVAMOTION',
+      start: { x: 0, y: 1.5, z: -4 },
+      startLaneIndex: 1,
+      laneCenters: [...LANES],
+      baseForwardSpeed: 14,
+      finishZ: 60,
+      deathY: -14,
+      solids: [],
+      hazards: [],
+      lava: [
+        { id: 'pool', center: { x: 0, y: -2.7, z: 40 }, halfExtents: { x: 1.2, y: 0.3, z: 1.2 }, role: 'pool' },
+        { id: 'drop', center: { x: 0, y: 0, z: 40 }, halfExtents: { x: 0.6, y: 2.6, z: 0.8 }, role: 'fall' },
+        { id: 'vent', center: { x: 0, y: 3.4, z: 40 }, halfExtents: { x: 0.9, y: 0.5, z: 0.9 }, role: 'source' },
+      ],
+      theme: THEME,
+    };
+    const library = makeTestLibrary();
+    return { view: new LevelView(loadLevel(def), library), library };
+  };
+  const meshTransforms = (view: LevelView): number[] => {
+    const out: number[] = [];
+    view.group.traverse((o) => {
+      const m = o as unknown as { isMesh?: boolean; position: { x: number; y: number }; scale: { x: number; y: number } };
+      if (m.isMesh !== true) return;
+      out.push(m.position.x, m.position.y, m.scale.x, m.scale.y);
+    });
+    return out;
+  };
+
+  it('updateLava visibly moves the lava (crust/fall/splash/drip/mouth)', () => {
+    const { view, library } = fixture();
+    const before = meshTransforms(view);
+    view.updateLava(0.5);
+    const after = meshTransforms(view);
+    expect(after.length).toBe(before.length);
+    let moved = 0;
+    for (let i = 0; i < before.length; i++) {
+      if (Math.abs((after[i] as number) - (before[i] as number)) > 1e-6) moved++;
+    }
+    // At least the 3 crust plates + 4 fall segments + splash respond.
+    expect(moved).toBeGreaterThan(8);
+    view.dispose();
+    library.dispose();
+  });
+
+  it('dt = 0 freezes the flow exactly (pause parity)', () => {
+    const { view, library } = fixture();
+    view.updateLava(1.25);
+    const frozen = meshTransforms(view);
+    view.updateLava(0);
+    expect(meshTransforms(view)).toEqual(frozen);
+    view.dispose();
+    library.dispose();
+  });
+
+  it('motion adds no meshes (budget still 13)', () => {
+    const { view, library } = fixture();
+    view.updateLava(3);
+    let meshes = 0;
+    view.group.traverse((o) => {
+      if ((o as { isMesh?: boolean }).isMesh === true) meshes += 1;
+    });
+    expect(meshes).toBe(13);
+    view.dispose();
+    library.dispose();
+  });
+
+  it('the shared pulse breathes deeper (living heat, reversible)', () => {
+    const library = makeTestLibrary();
+    library.setLavaPulse(0.75);
+    const lowSurface = library.lavaSurface.emissiveIntensity;
+    library.setLavaPulse(0.25);
+    const highSurface = library.lavaSurface.emissiveIntensity;
+    // Swing >= 0.6 (was 0.35) with a brighter floor.
+    expect(highSurface - lowSurface).toBeGreaterThanOrEqual(0.6);
+    expect(lowSurface).toBeGreaterThanOrEqual(1.6);
+    library.dispose();
+  });
+});

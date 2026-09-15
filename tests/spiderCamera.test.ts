@@ -6,27 +6,38 @@ import {
 import { vec3 } from '../src/core/math';
 
 /**
- * M8.2 Spider-camera smoothing (human playtest: Spider swaps whip harder
- * than gravity flips).
+ * M8.3 Spider-camera continuity (human playtest: the swap still feels like
+ * a teleport/reload).
  *
- * Root cause: the Spider snap teleports the player (up to 14 u) AND flips
- * the framing side in one tick, while gravity portals move the player
- * continuously. The camera endpoints were always correct — the RATE was
- * the bug (look λ=9/s over a ~6 u desired jump). Fix: a 0.55 s
- * presentation-only glide envelope, armed ONLY by Spider-context swaps
- * (gravity-portal/Cube/Ship paths never arm it — pinned by the existing
- * cameraFraming suite running unarmed).
+ * Root cause (audited): the M8.2 glide only slowed the exponential RATE,
+ * but `RendererHost` hard-CUT the camera on every swap — a Spider
+ * floor↔ceiling swap displaces the player >5 u in one tick, tripping the
+ * teleport detector and calling `snapTo` BEFORE the glide armed. The fix:
+ * Spider-context gravity swaps skip the snap; `noteSpiderSwap` captures
+ * the pre-swap pose and the envelope blends it onto the moving desired
+ * framing with a smootherstep profile (zero velocity at both ends).
+ * Teleport portals / respawn / R-teleport still snap (pinned below).
  */
 
 const DT = 1 / 60;
 
 /** A Spider-swap-like discontinuity: floor run pose -> ceiling pose. */
-const runSwap = (cam: ChaseCamera, armed: boolean): { peakEye: number; peakLook: number; endEye: number; endLook: number } => {
+const runSwap = (cam: ChaseCamera, armed: boolean): {
+  firstEye: number;
+  firstLook: number;
+  peakEye: number;
+  peakLook: number;
+  endEye: number;
+  endLook: number;
+} => {
   const floor = vec3(0, 0.55, 100);
   const ceil = vec3(0, 5.45, 100);
   cam.snapTo(floor, 0, 'aboveFocus');
   if (armed) cam.noteSpiderSwap();
-  // The snap teleports the player; the framing side flips next frame.
+  // The swap teleports the player; the framing side flips next frame.
+  // (M8.3: the host no longer snapTo-cuts here — the glide blends.)
+  let firstEye = -1;
+  let firstLook = -1;
   let peakEye = 0;
   let peakLook = 0;
   let px = cam.currentPosition.x;
@@ -37,16 +48,24 @@ const runSwap = (cam: ChaseCamera, armed: boolean): { peakEye: number; peakLook:
     cam.update(ceil, 0, DT, 'belowFocus');
     const dx = cam.currentPosition.x - px;
     const dy = cam.currentPosition.y - py;
-    peakEye = Math.max(peakEye, Math.hypot(dx, dy));
+    const eyeStep = Math.hypot(dx, dy);
+    peakEye = Math.max(peakEye, eyeStep);
     px = cam.currentPosition.x;
     py = cam.currentPosition.y;
     const qx = cam.currentLookTarget.x - lx;
     const qy = cam.currentLookTarget.y - ly;
-    peakLook = Math.max(peakLook, Math.hypot(qx, qy));
+    const lookStep = Math.hypot(qx, qy);
+    peakLook = Math.max(peakLook, lookStep);
     lx = cam.currentLookTarget.x;
     ly = cam.currentLookTarget.y;
+    if (i === 0) {
+      firstEye = eyeStep;
+      firstLook = lookStep;
+    }
   }
   return {
+    firstEye,
+    firstLook,
     peakEye,
     peakLook,
     endEye: cam.currentPosition.y,
@@ -54,13 +73,21 @@ const runSwap = (cam: ChaseCamera, armed: boolean): { peakEye: number; peakLook:
   };
 };
 
-describe('M8.2 spider-swap camera glide', () => {
-  it('the armed glide whips less than the legacy path (eye and look)', () => {
+describe('M8.3 spider-swap camera continuity', () => {
+  it('the armed glide starts with ~zero velocity (no cut on frame one)', () => {
     const legacy = runSwap(new ChaseCamera(), false);
     const glided = runSwap(new ChaseCamera(), true);
-    // The envelope meaningfully slows the violent first frames (≥25%).
-    expect(glided.peakEye).toBeLessThan(legacy.peakEye * 0.75);
-    expect(glided.peakLook).toBeLessThan(legacy.peakLook * 0.75);
+    // Smootherstep starts flat: the first frame must cover a negligible
+    // fraction of what the legacy exponential path covers immediately.
+    expect(glided.firstEye).toBeLessThan(legacy.firstEye * 0.05);
+    expect(glided.firstLook).toBeLessThan(legacy.firstLook * 0.05);
+  });
+
+  it('the armed glide peaks far below the legacy whip (eye and look)', () => {
+    const legacy = runSwap(new ChaseCamera(), false);
+    const glided = runSwap(new ChaseCamera(), true);
+    expect(glided.peakEye).toBeLessThan(legacy.peakEye * 0.5);
+    expect(glided.peakLook).toBeLessThan(legacy.peakLook * 0.5);
   });
 
   it('the glide converges to the exact same endpoints', () => {
@@ -70,7 +97,7 @@ describe('M8.2 spider-swap camera glide', () => {
     expect(glided.endLook).toBeCloseTo(legacy.endLook, 6);
   });
 
-  it('snapTo cuts the envelope (teleports never glide)', () => {
+  it('snapTo cuts the envelope (teleports/respawn never glide)', () => {
     const cam = new ChaseCamera();
     cam.snapTo(vec3(0, 0.55, 100), 0, 'aboveFocus');
     cam.noteSpiderSwap();
@@ -88,7 +115,7 @@ describe('M8.2 spider-swap camera glide', () => {
     cam.snapTo(vec3(0, 0.55, 100), 0, 'aboveFocus');
     cam.noteSpiderSwap();
     // Exhaust the envelope with tiny steps (player static — only the
-    // clock advances; displacement purely from prior state is nil).
+    // clock advances; the blend holds the pose on its target).
     const steps = Math.ceil(SPIDER_SWAP_GLIDE_SECONDS / DT) + 5;
     for (let i = 0; i < steps; i++) cam.update(vec3(0, 0.55, 100), 0, DT, 'aboveFocus');
     // After the window, a fresh swap-sized error corrects at legacy rate:
