@@ -35,6 +35,13 @@ import {
   stepChomper,
   type ChomperState,
 } from './chomperSystem';
+import {
+  createMovingPlatformState,
+  resetMovingPlatformState,
+  stepMovingPlatform,
+  type MovingPlatformState,
+} from './movingPlatformSystem';
+import { MAX_MOVING_PLATFORMS } from '../level/movingPlatformAuthoring';
 
 /**
  * Headless gameplay orchestration: the ENTIRE game simulates here.
@@ -213,6 +220,29 @@ export class GameSimulation {
   public readonly chomperStates: ChomperState[] = [];
   /** Previous-step chomper centers (swept lethal test scratch). */
   private readonly chomperPrev: { x: number; y: number; z: number }[] = [];
+  /**
+   * Deterministic moving-platform states (M8.6), parallel to
+   * `level.movingPlatforms` (definition order). Preallocated at
+   * construction; `respawn()` resets every entry to its tick-0 pose.
+   * Empty for levels without platforms (zero behavior change).
+   * The renderer + state fingerprint observe; replays stay input-only
+   * (poses are a pure function of the sim-owned tick counter).
+   */
+  public readonly platformStates: MovingPlatformState[] = [];
+  /**
+   * Preallocated dynamic-solid pseudo-colliders (`platform-<id>`, kind
+   * `solid`, centers mutated per step — never reallocated). Passed as the
+   * appended `extraBlockers` to the move + probe paths; the static
+   * spatial hash is never touched by moving geometry.
+   */
+  private readonly platformColliders: Collider[] = [];
+  /**
+   * Sim-owned platform clock (M8.6): +1 per running step BEFORE the
+   * controller, reset to 0 by `respawn()`. Poses derive from it —
+   * deterministic given the input tape (same argument as Chomper
+   * `ticksInPhase`). Frozen while dead/paused (no updates run).
+   */
+  private platformTickValue = 0;
   /** Monotonic count of teleport activations this session (VFX/punch edge). */
   public teleportEventCount = 0;
   /** Id of the most recent teleport activation THIS attempt (debug/QA). */
@@ -305,6 +335,21 @@ export class GameSimulation {
       this.chomperStates.push(createChomperState(c));
       this.chomperPrev.push({ x: c.dormant.x, y: c.dormant.y, z: c.dormant.z });
     }
+    if (this.level.movingPlatforms.length > MAX_MOVING_PLATFORMS) {
+      throw new Error(
+        `level '${levelDef.id}' declares ${String(this.level.movingPlatforms.length)} moving platforms (cap ${String(MAX_MOVING_PLATFORMS)} — bounded dynamic-solid count)`,
+      );
+    }
+    for (const p of this.level.movingPlatforms) {
+      this.platformStates.push(createMovingPlatformState(p));
+      const st = this.platformStates[this.platformStates.length - 1];
+      this.platformColliders.push({
+        id: `platform-${p.id}`,
+        kind: 'solid',
+        center: vec3(st?.x ?? 0, st?.y ?? 0, st?.z ?? 0),
+        halfExtents: vec3(p.halfExtents.x, p.halfExtents.y, p.halfExtents.z),
+      });
+    }
     this.prevPosition = vec3(levelDef.start.x, levelDef.start.y, levelDef.start.z);
     this.events = events;
     this.laneCenters = levelDef.laneCenters;
@@ -326,6 +371,18 @@ export class GameSimulation {
   /** Current authoritative player mode (M8C). */
   public get playerMode(): PlayerMode {
     return this.modeValue;
+  }
+
+  /** Current moving-platform clock (M8.6 determinism observability). */
+  public get platformTick(): number {
+    return this.platformTickValue;
+  }
+
+  /** Whether a platform support id belongs to this level's platforms. */
+  public platformIndexForSupportId(supportId: string | null): number {
+    if (supportId === null || !supportId.startsWith('platform-')) return -1;
+    const id = supportId.slice('platform-'.length);
+    return this.level.movingPlatforms.findIndex((p) => p.id === id);
   }
 
   /** Whether a mode portal id has already fired this attempt. */
@@ -406,6 +463,16 @@ export class GameSimulation {
     // forward-crossing detection).
     copyVec3(this.prevPosition, this.player.position);
 
+    // 0. Moving platforms (M8.6): advance the deterministic clock + poses
+    //    BEFORE the controller (platforms affect this step's movement),
+    //    carry platform-supported riders by the exact displacement, and
+    //    resolve any embed a platform's own motion created (elevators
+    //    rising into a standing player). Dynamic chompers still step
+    //    AFTER collision (they are hazards, not support).
+    this.stepPlatforms();
+    this.carryPlatformRider();
+    this.resolvePlatformEmbed();
+
     // 1. Mode controllers: physical input interpreted through the CURRENT
     //    gravity mode (pre-mutation), then intent + kinematics. The
     //    per-step forward speed comes from the authoritative level speed ×
@@ -458,6 +525,7 @@ export class GameSimulation {
       this.halfExtentsVec,
       this.stepDelta,
       this.moveResult,
+      this.platformColliders.length > 0 ? this.platformColliders : undefined,
     );
 
     // Frontal kill rule (M2, generalized to the frame in M3): a wall contact
@@ -525,6 +593,7 @@ export class GameSimulation {
       this.halfExtentsVec,
       SUPPORT_PROBE_DISTANCE,
       g,
+      this.platformColliders.length > 0 ? this.platformColliders : undefined,
     );
     if (support !== null && velAlongG >= -REST_SPEED_EPSILON) {
       this.player.grounded = true;
@@ -637,6 +706,20 @@ export class GameSimulation {
           prev.x = def.dormant.x;
           prev.y = def.dormant.y;
           prev.z = def.dormant.z;
+        }
+      }
+    }
+    this.platformTickValue = 0;
+    for (let i = 0; i < this.platformStates.length; i++) {
+      const def = this.level.movingPlatforms[i];
+      const st = this.platformStates[i];
+      const col = this.platformColliders[i];
+      if (def !== undefined && st !== undefined) {
+        resetMovingPlatformState(st, def);
+        if (col !== undefined) {
+          col.center.x = st.x;
+          col.center.y = st.y;
+          col.center.z = st.z;
         }
       }
     }
@@ -1247,6 +1330,88 @@ export class GameSimulation {
       }
     }
     return null;
+  }
+
+  /**
+   * Advance every moving platform one fixed step (M8.6): tick the clock,
+   * write tick poses into states + preallocated colliders. Runs BEFORE
+   * the controller so this step's movement collides against current poses.
+   */
+  private stepPlatforms(): void {
+    const defs = this.level.movingPlatforms;
+    if (defs.length === 0) return;
+    this.platformTickValue += 1;
+    for (let i = 0; i < this.platformStates.length; i++) {
+      const st = this.platformStates[i];
+      const def = defs[i];
+      const col = this.platformColliders[i];
+      if (st === undefined || def === undefined) continue;
+      stepMovingPlatform(st, def, this.platformTickValue);
+      if (col !== undefined) {
+        col.center.x = st.x;
+        col.center.y = st.y;
+        col.center.z = st.z;
+      }
+    }
+  }
+
+  /**
+   * Platform carriage (M8.6): a player supported by a platform last step
+   * (`supportColliderId === 'platform-<id>'`) translates by the
+   * platform's exact step displacement BEFORE the controller runs — no
+   * one-tick slipping, no launch velocity (velocity untouched), no lane
+   * debt (intent untouched). `prevPosition` keeps the pre-carry snapshot
+   * so render interpolation + swept hazard tests cover the carried span.
+   */
+  private carryPlatformRider(): void {
+    if (this.platformStates.length === 0) return;
+    const index = this.platformIndexForSupportId(this.player.supportColliderId);
+    if (index < 0) return;
+    const st = this.platformStates[index];
+    if (st === undefined) return;
+    this.player.position.x += st.x - st.px;
+    this.player.position.y += st.y - st.py;
+    this.player.position.z += st.z - st.pz;
+  }
+
+  /**
+   * Embed backstop (M8.6): a platform's own motion can interpenetrate a
+   * player it did NOT carry (an elevator rising into a standing player —
+   * the Y sweep only runs on player motion). Push out along the smallest
+   * penetration axis (deterministic tie-break Y > X > Z) and zero the
+   * into-platform velocity component so the next step does not re-embed.
+   * Push-out is positional only and moves along ±X/±Y in practice, so it
+   * can never fabricate a frontal kill (forward approach + −Z contact).
+   */
+  private resolvePlatformEmbed(): void {
+    const defs = this.level.movingPlatforms;
+    if (defs.length === 0) return;
+    const p = this.player.position;
+    const half = this.halfExtentsVec;
+    for (let i = 0; i < this.platformStates.length; i++) {
+      const st = this.platformStates[i];
+      const def = defs[i];
+      if (st === undefined || def === undefined) continue;
+      const h = def.halfExtents;
+      const penX = Math.min(p.x + half.x - (st.x - h.x), st.x + h.x - (p.x - half.x));
+      const penY = Math.min(p.y + half.y - (st.y - h.y), st.y + h.y - (p.y - half.y));
+      const penZ = Math.min(p.z + half.z - (st.z - h.z), st.z + h.z - (p.z - half.z));
+      if (penX <= 0 || penY <= 0 || penZ <= 0) continue;
+      const v = this.player.velocity;
+      if (penY <= penX && penY <= penZ) {
+        const push = p.y >= st.y ? penY : -penY;
+        p.y += push;
+        if (Math.sign(v.y) === -Math.sign(push)) v.y = 0;
+      } else if (penX <= penZ) {
+        const push = p.x >= st.x ? penX : -penX;
+        p.x += push;
+        if (Math.sign(v.x) === -Math.sign(push)) v.x = 0;
+      } else {
+        const push = p.z >= st.z ? penZ : -penZ;
+        p.z += push;
+        if (Math.sign(v.z) === -Math.sign(push)) v.z = 0;
+      }
+    }
   }
 
   /**

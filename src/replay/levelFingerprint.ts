@@ -25,6 +25,7 @@ import { DeterministicHasher } from './hash';
 import type { GravityMode } from '../player/playerState';
 import type {
   ChomperDef,
+  MovingPlatformDef,
   GravityOrbDef,
   GravityPortalDef,
   JumpOrbDef,
@@ -128,6 +129,16 @@ const writeLava = (h: DeterministicHasher, l: LavaVolumeDef): void => {
   writeVec3(h, l.center);
   writeVec3(h, l.halfExtents);
   h.writeInt32(l.role === 'pool' ? 0 : l.role === 'fall' ? 1 : 2);
+};
+
+const writeMovingPlatform = (h: DeterministicHasher, p: MovingPlatformDef): void => {
+  h.writeString(p.id);
+  writeVec3(h, p.base);
+  writeVec3(h, p.halfExtents);
+  h.writeInt32(p.axis === 'y' ? 1 : 0);
+  h.writeFloat64(p.amplitude);
+  h.writeInt32(p.periodTicks);
+  h.writeInt32(p.phaseTicks);
 };
 
 const writeChomper = (h: DeterministicHasher, c: ChomperDef): void => {
@@ -252,6 +263,15 @@ export const computeLevelFingerprint = (def: LevelDefinition): string => {
     h.writeString('chompers:v1');
     h.writeInt32(chompers.length);
     for (const c of chompers) writeChomper(h, c);
+  }
+  // M8.6 moving platforms: gameplay solids. Same conditional pattern:
+  // levels without platforms hash byte-identically to before, so every
+  // pre-M8.6 replay stays compatible (golden fixture pinned).
+  const platforms = def.movingPlatforms ?? [];
+  if (platforms.length > 0) {
+    h.writeString('platforms:v1');
+    h.writeInt32(platforms.length);
+    for (const p of platforms) writeMovingPlatform(h, p);
   }
   // visualSetpieces: presentation-only, never fingerprinted (like theme /
   // visualSequence / rhythmCues / hazard visual+mount / teleport style).

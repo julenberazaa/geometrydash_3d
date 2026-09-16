@@ -64,6 +64,7 @@ declare global {
       playerMode: () => PlayerMode;
       modeTransitionCount: () => number;
       chompers: () => { phase: string; x: number; y: number; z: number; aimX: number }[];
+      platforms: () => { id: string; x: number; y: number; z: number }[];
       lastPortalId: () => string | null;
       portalTransitionCount: () => number;
       speedMultiplier: () => number;
@@ -192,6 +193,13 @@ window.__gd3d = {
       y: s.y,
       z: s.z,
       aimX: s.aimX,
+    })),
+  platforms: () =>
+    game['simulation'].platformStates.map((s, i) => ({
+      id: game['simulation'].level.movingPlatforms[i]?.id ?? `platform-${String(i)}`,
+      x: s.x,
+      y: s.y,
+      z: s.z,
     })),
   lastPortalId: () => game['simulation'].lastPortalId,
   portalTransitionCount: () => game['simulation'].portalTransitionCount,

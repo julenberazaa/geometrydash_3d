@@ -113,7 +113,10 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   deterministic, no iteration). Visual geometry is NEVER the collider.
 - `CollisionWorld`: spatial-hash (X/Z) broadphase, level-load registration,
   caller-owned output arrays for queries.
-- `moveAabb.ts`: axis-separated swept movement in Y → Z → X order; per-step
+- `moveAabb.ts`: axis-separated swept movement in Y → Z → X order (M8.6:
+  optional appended `extraBlockers` — preallocated moving-platform
+  pseudo-colliders tested AFTER the static candidates without touching
+  the spatial hash; order deterministic per level); per-step
   `MoveResult` (floor/ceiling/wall contacts — named for the WORLD direction of
   the block, the simulation interprets them against gravity) plus the
   post-Y/post-Z clip positions that record the authoritative swept path for
@@ -149,7 +152,11 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   (trigger volume + mount surface + explicit impulse), `jumpOrbs` /
   `gravityOrbs` (activation window AABBs, orbs add an impulse),
   `teleportPortals?` (M7.2: id + entry Z + exit + exit lane; `style` is
-  presentation-only, never fingerprinted), `visualSetpieces?` (M7.2
+  presentation-only, never fingerprinted), `movingPlatforms?` (M8.6: id +
+  base + halfExtents + axis x|y + amplitude + periodTicks + phaseTicks;
+  pingpong tick-derived poses — see `movingPlatformSystem.ts` +
+  `movingPlatformAuthoring.ts` + the dynamic-solid contract in §5/§7),
+  `visualSetpieces?` (M7.2
   guardian + M7.3 lava: presentation-only decorative kind/center/extents —
   never gameplay, never fingerprinted),
   solids, hazards (each with presentation-only `visual` + `mount`
@@ -163,7 +170,8 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   from real forward distance. `LoadedLevel` also exposes the indexed
   interaction lists (`jumpPads`, `jumpOrbs`, `gravityOrbs`, Z-sorted
   `speedPortals`, entryZ-sorted `teleportPortals`) that `GameSimulation`
-  processes. M8A lethal lava volumes register as `lava-<id>` hazard-kind
+  processes. `movingPlatforms` rides in definition order (no trigger
+  sorting — poses are pure tick functions). M8A lethal lava volumes register as `lava-<id>` hazard-kind
   colliders through the SAME hazard pathway (no second lethal engine;
   the `lava-` prefix tags the `lava` death cause) — see
   `lavaAuthoring.ts` for the sourced/contained authoring contract. M8B
@@ -214,8 +222,12 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
 
 ## 7. Simulation (`src/game/`)
 
-- `GameSimulation`: headless orchestration per fixed step — controller →
-  integrate+collide → frontal kill → grounding → lethal checks (void bounds,
+- `GameSimulation`: headless orchestration per fixed step — platforms
+  (M8.6: tick + poses + rider carriage + embed backstop, BEFORE the
+  controller) → controller →
+  integrate+collide (vs static world + appended platform colliders) →
+  frontal kill → grounding (probe sees platforms; `platform-<id>` support)
+  → lethal checks (void bounds,
   hazard CCD, M8D dynamic chompers) → teleport portals → mode portals →
   jump pads → jump orbs → gravity orbs → speed portals →
   gravity portals → finish. Owns the AUTHORITATIVE gravity mode
@@ -285,6 +297,20 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   chunky block teeth, white-hot square eyes + dark pupils, lava-hot
   chain + anchor weight cube, chomp cycle), 26 meshes per Chomper, sim
   byte-identical.
+- `movingPlatformSystem.ts` (M8.6): the ONE owner of platform pose math —
+  pure pingpong triangular-wave `platformPose(def, tick)` (no state, no
+  clocks). The SIMULATION owns the integer `platformTick` (+1 per running
+  step before the controller, reset by `respawn()` — deterministic given
+  the input tape), the preallocated state array + `platform-<id>` solid
+  colliders (centers mutated per step, never reallocated), exact-
+  displacement rider carriage (position only — no launch velocity, no
+  lane-debt: intent untouched, the lane servo's pull-back is genuine
+  counter-steer gameplay), and the smallest-axis embed push-out backstop
+  (elevators surfacing into riders; positional, ±X/±Y — never a frontal
+  kill). Static geometry wins support ties structurally (appended after
+  static candidates) → ferry→ground handoff. Cap ≤ 8 (constructor throws).
+  `MovingPlatformView` (owned by `RendererHost`) observes sim poses —
+  shared route body + top plate, zero new materials/geometries.
   **Teleport portals (M7.2):** deterministic forward entry-crossing
   (`prevZ < entryZ ≤ currentZ`, furthest unused entry wins), processed
   AFTER the lethal checks (death wins the step) and BEFORE pads/orbs/
@@ -327,6 +353,9 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   order is authoritative). Renderer-only `displayName`/`theme`/hazard-
   `visual`+`mount`/teleport-`style`/setpieces/`visualSequence`/`rhythmCues`
   excluded, so restyling keeps old replays compatible.
+  `platforms:v1` conditional block (M8.6: id/base/extents/axis/
+  amplitude/period/phase; zero bytes when absent) + platform poses +
+  clock in the state hash (M8.6, Chomper-state precedent).
 - `stateFingerprint.ts`: per-tick authoritative-state hash (status,
   deathCause, player position/velocity, grounded, lane intent/count,
   support id, gravity mode, speed multiplier, elapsed time, death-hold
@@ -597,7 +626,8 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   up/eye/look, live-camera world→screen projection (`screenPoint`), renderer
   stats, scene-child count, burst state, player velocity
   (`playerVelocity`, M8.5 — Ship PD regulation under headless
-  time-dilation), and the debug-only `debugTeleport` placement aid for
+  time-dilation), platform poses (`platforms`, M8.6), and the debug-only
+  `debugTeleport` placement aid for
   browser QA. M5 adds:
   `levelId`/`levelDisplayName`, `hasReplay`, `replayMode`, `replayTick`,
   `replayFrameCount`, `replayVerification` (kind + tick/reason),

@@ -97,12 +97,21 @@ function clipAxis(
   return { toi: bestToi, collider: bestCollider };
 }
 
+/**
+ * M8.6 dynamic-solid path: preallocated moving-platform pseudo-colliders
+ * (`platform-<id>`, kind `solid`) appended AFTER the static candidates.
+ * The static spatial hash is never touched by moving geometry — platforms
+ * are few (≤ 8) and bounded, like the Chomper dynamic path. Order is
+ * deterministic per level (static query order, then definition order),
+ * so collision tie-breaks stay pinned.
+ */
 export function moveAabbThroughWorld(
   world: CollisionWorld,
   position: Vec3,
   halfExtents: Readonly<Vec3>,
   delta: Readonly<Vec3>,
   result: MoveResult,
+  extraBlockers?: readonly Collider[],
 ): void {
   result.hitFloor = false;
   result.hitCeiling = false;
@@ -111,6 +120,9 @@ export function moveAabbThroughWorld(
   result.wallContacts.length = 0;
 
   world.queryBox(buildProbeBox(position, halfExtents, delta), scratchCandidates);
+  if (extraBlockers !== undefined) {
+    for (const b of extraBlockers) scratchCandidates.push(b);
+  }
 
   // --- Y axis (gravity / landing) ---
   if (delta.y !== 0) {
@@ -176,6 +188,7 @@ export function probeGroundSupport(
   halfExtents: Readonly<Vec3>,
   probeDistance: number,
   gravity: Readonly<Vec3>,
+  extraBlockers?: readonly Collider[],
 ): ContactSurface | null {
   // Support face = the box face gravity pushes into the support
   // (face = position + gravity * halfExtent: feet on Floor, head on
@@ -224,6 +237,24 @@ export function probeGroundSupport(
         };
   const candidates: Collider[] = [];
   world.queryBox(probeBox, candidates);
+  // M8.6: moving-platform support (same appended-candidate contract as
+  // the move path above — the probe box already bounds the platform
+  // neighborhood; overlap/footprint tests below apply uniformly).
+  if (extraBlockers !== undefined) {
+    for (const b of extraBlockers) {
+      const box = colliderToAabb(b);
+      if (
+        probeBox.minX < box.maxX &&
+        probeBox.maxX > box.minX &&
+        probeBox.minY < box.maxY &&
+        probeBox.maxY > box.minY &&
+        probeBox.minZ < box.maxZ &&
+        probeBox.maxZ > box.minZ
+      ) {
+        candidates.push(b);
+      }
+    }
+  }
   let closest: ContactSurface | null = null;
   let closestDepth = Infinity;
   for (const c of candidates) {

@@ -115,6 +115,18 @@ export const computeStateFingerprint = (sim: GameSimulation): string => {
       h.writeFloat64(st.aimX);
     }
   }
+  // M8.6 moving-platform dynamic state — conditional (levels without
+  // platforms write zero bytes; pre-M8.6 state hashes are unchanged).
+  // Tick-derived poses, but hashed explicitly (Chomper-state precedent)
+  // so a divergent platform clock fails verification at the exact tick.
+  if (sim.level.movingPlatforms.length > 0) {
+    h.writeInt32(sim.platformTick);
+    for (const st of sim.platformStates) {
+      h.writeFloat64(st.x);
+      h.writeFloat64(st.y);
+      h.writeFloat64(st.z);
+    }
+  }
 
   return h.digest();
 };

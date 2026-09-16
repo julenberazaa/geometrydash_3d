@@ -1,6 +1,7 @@
 import type { Collider } from '../collision/collider';
 import type {
   ChomperDef,
+  MovingPlatformDef,
   GravityOrbDef,
   GravityPortalDef,
   JumpOrbDef,
@@ -49,6 +50,12 @@ export interface LoadedLevel {
   modePortals: readonly PlayerModePortalDef[];
   /** Dynamic chompers sorted by ascending triggerZ (M8D activation order). */
   chompers: readonly ChomperDef[];
+  /**
+   * Deterministic moving platforms in level definition order (M8.6).
+   * No trigger sorting: poses are pure tick functions, and definition
+   * order is the collision tie-break + fingerprint order.
+   */
+  movingPlatforms: readonly MovingPlatformDef[];
 }
 
 /** Build runtime collision data from a declarative level. Pure: no THREE, no DOM. */
@@ -91,6 +98,7 @@ export const loadLevel = (def: LevelDefinition): LoadedLevel => {
   const teleportPortals = [...(def.teleportPortals ?? [])].sort((a, b) => a.entryZ - b.entryZ);
   const modePortals = [...(def.modePortals ?? [])].sort((a, b) => a.z - b.z);
   const chompers = [...(def.chompers ?? [])].sort((a, b) => a.triggerZ - b.triggerZ);
+  const movingPlatforms = [...(def.movingPlatforms ?? [])];
 
   const wallLaneCenters =
     def.wallLaneCenters !== undefined ? def.wallLaneCenters : def.laneCenters.map((c) => 3 - c);
@@ -112,6 +120,7 @@ export const loadLevel = (def: LevelDefinition): LoadedLevel => {
     teleportPortals: teleportPortals,
     modePortals,
     chompers,
+    movingPlatforms,
   };
 };
 

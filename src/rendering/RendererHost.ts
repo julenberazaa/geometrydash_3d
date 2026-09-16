@@ -8,6 +8,7 @@ import { PlayerView } from './PlayerView';
 import { DeathBurstView } from './DeathBurstView';
 import { InteractionView } from './InteractionView';
 import { ChomperView } from './ChomperView';
+import { MovingPlatformView } from './MovingPlatformView';
 import { EnvironmentView } from './EnvironmentView';
 import { MaterialLibrary } from './MaterialLibrary';
 import { PostPipeline } from './PostPipeline';
@@ -110,6 +111,8 @@ export class RendererHost {
   private readonly interactionView: InteractionView;
   /** M8D Chomper presentation (observes sim Chomper states). */
   private readonly chomperView: ChomperView;
+  /** M8.6 moving-platform presentation (observes sim platform states). */
+  private readonly platformView: MovingPlatformView;
   public get playerView(): Readonly<PlayerView> {
     return this.playerViewInternal;
   }
@@ -198,6 +201,9 @@ export class RendererHost {
     // No empty groups in the scene: levels without Chompers add zero
     // children (resource pins stay level-comparable).
     if (simulation.level.chompers.length > 0) this.scene.add(this.chomperView.group);
+    this.platformView = new MovingPlatformView(simulation.level.movingPlatforms, this.library);
+    // Same empty-group rule: levels without platforms add zero children.
+    if (simulation.level.movingPlatforms.length > 0) this.scene.add(this.platformView.group);
 
     this.playerViewInternal = new PlayerView(this.library);
     this.scene.add(this.playerViewInternal.group);
@@ -324,6 +330,7 @@ export class RendererHost {
     this.deathBurst.update(renderDtSeconds);
     this.interactionView.update(renderDtSeconds);
     this.chomperView.update(sim.chomperStates, renderDtSeconds);
+    this.platformView.update(sim.platformStates, alpha);
     // M8.3 lava motion: convect crust + descend falls (render-dt driven;
     // pause freezes the flow like every other presentation clock).
     this.levelView.updateLava(renderDtSeconds);
@@ -812,6 +819,7 @@ export class RendererHost {
     this.levelView.dispose();
     this.interactionView.dispose();
     this.chomperView.dispose();
+    this.platformView.dispose();
     this.playerViewInternal.dispose();
     this.deathBurst.dispose();
     this.vfx.dispose();

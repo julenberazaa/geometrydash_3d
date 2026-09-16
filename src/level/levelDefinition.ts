@@ -240,6 +240,40 @@ export interface LavaVolumeDef {
 }
 
 /**
+ * Deterministic moving platform (M8.6): a solid ferry/elevator island
+ * whose pose is a pure function of the simulation tick. Pingpong
+ * triangular wave along ONE lateral/vertical axis — continuous, no
+ * randomness, no clocks:
+ *   phase = ((tick + phaseTicks) mod periodTicks) / periodTicks ∈ [0,1)
+ *   tri = phase < 0.5 ? phase*2 : 2-phase*2  (0 → 1 → 0)
+ *   offset = (tri*2 − 1) * amplitude         (−amp → +amp → −amp)
+ * The simulation advances poses BEFORE the controller step, carries
+ * platform-supported players by the exact displacement, and collides the
+ * player against the current poses through the standard swept path (see
+ * `movingPlatformSystem.ts`, `GameSimulation`). `axis` is 'x' | 'y' ONLY:
+ * forward-axis platforms would fight auto-forward motion and the one-shot
+ * portal logic. Cap: ≤ 8 per level (Chomper bound precedent).
+ * Fingerprinted conditionally (levels without platforms hash
+ * byte-identically to before).
+ */
+export interface MovingPlatformDef {
+  /** Stable identifier (debug/QA; support id becomes `platform-<id>`). */
+  id: string;
+  /** Pose center at tick 0 offset −amplitude (the wave starts at one end). */
+  base: Vec3;
+  /** Gameplay box half extents (landable surface + blocking volume). */
+  halfExtents: Vec3;
+  /** Motion axis: lateral ferry ('x') or elevator ('y'). */
+  axis: 'x' | 'y';
+  /** Half-travel: the center oscillates base ± amplitude along `axis`. */
+  amplitude: number;
+  /** Full pingpong cycle in fixed ticks (out-and-back). */
+  periodTicks: number;
+  /** Phase offset in ticks (staggers opposite-phase pairs). */
+  phaseTicks: number;
+}
+
+/**
  * Presentation-only decorative setpiece (M7.2, e.g. a monster-like guardian
  * silhouette around a teleport gate; M7.3 adds lava). NEVER gameplay: no
  * collision, no AI, no movement, no trigger. Renderer-only: excluded from
@@ -474,6 +508,11 @@ export interface LevelDefinition {
    * exactly as before. See `ChomperDef`.
    */
   chompers?: ChomperDef[];
+  /**
+   * Deterministic moving platforms (M8.6). Optional; levels without
+   * platforms behave exactly as before. See `MovingPlatformDef`.
+   */
+  movingPlatforms?: MovingPlatformDef[];
   /**
    * Presentation-only decorative setpieces (M7.2). Renderer-only: never
    * read by simulation, collision, replay, or the level fingerprint.
