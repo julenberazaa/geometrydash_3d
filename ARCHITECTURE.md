@@ -126,7 +126,17 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   semantics). The probe tests the full support footprint (minus a 0.02 skin):
   partial overlap still grounds (edge teeter), only full exit ungrounds →
   airborne → gravity → void bounds. No tunneling at high speed (tested incl.
-  4× forward speed vs thin walls).
+  4× forward speed vs thin walls). Parallel-rest rule (M8.6): Z straddles
+  (toi 0 — already overlapping on the motion axis) are parallel rest on a
+  slab whose z-range contains the player, never an approached face, so the
+  Z clip skips them for both movement and contacts; support faces are
+  parallel to forward by construction and can never genuinely block it.
+  Without this, ±1 ulp rest-height dust from the landing clip flips the
+  strict perpendicular test and phantom-kills/stalls step-top runs, while
+  any tolerance skin instead swallows load-bearing slab-lip overhangs
+  (proven both ways by the gravity-lip + showcase-stair pins). Genuine
+  frontal impacts always approach with toi > 0. X keeps straddles (side
+  blocking + lane-debt) and Y keeps them (landings).
 - Blocking kinds are `solid` AND `killFront` (identical clipping + support;
   `hazard` never blocks). The frontal-kill DECISION lives in `GameSimulation`
   (dot(contactNormal, forwardAxis) opposing forward + dot(preImpactVelocity,

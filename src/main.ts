@@ -65,6 +65,8 @@ declare global {
       modeTransitionCount: () => number;
       chompers: () => { phase: string; x: number; y: number; z: number; aimX: number }[];
       platforms: () => { id: string; x: number; y: number; z: number }[];
+      /** QA-only: deterministic moving-platform clock (ticks since respawn). */
+      platformTick: () => number;
       lastPortalId: () => string | null;
       portalTransitionCount: () => number;
       speedMultiplier: () => number;
@@ -201,6 +203,7 @@ window.__gd3d = {
       y: s.y,
       z: s.z,
     })),
+  platformTick: () => game['simulation'].platformTick,
   lastPortalId: () => game['simulation'].lastPortalId,
   portalTransitionCount: () => game['simulation'].portalTransitionCount,
   speedMultiplier: () => game['simulation'].speedMultiplier,

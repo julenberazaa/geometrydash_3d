@@ -83,13 +83,17 @@ function clipAxis(
   half: Readonly<Vec3>,
   axis: 'x' | 'y' | 'z',
   amount: number,
+  ignoreStraddle = false,
 ): { toi: number; collider: Collider | null } {
   let bestToi = 1;
   let bestCollider: Collider | null = null;
   for (const c of candidates) {
     if (c.kind !== 'solid' && c.kind !== 'killFront') continue;
     const hit = sweepAxis(position, half, axis, amount, colliderToAabb(c));
-    if (hit && hit.toi < bestToi) {
+    // Straddle (toi 0: already overlapping on the motion axis) is parallel
+    // rest, never an approached face — the Z caller passes true (see the
+    // Z block below); X/Y keep straddles (side blocking, landings).
+    if (hit && (hit.toi > 0 || !ignoreStraddle) && hit.toi < bestToi) {
       bestToi = hit.toi;
       bestCollider = c;
     }
@@ -141,8 +145,23 @@ export function moveAabbThroughWorld(
   copyVec3(result.positionAfterY, position);
 
   // --- Z axis (auto-forward) ---
+  // Parallel-rest rule (M8.6): a toi-0 Z hit means the box already overlaps
+  // the collider on the motion axis at step start — rest on (or under) a
+  // slab whose z-range contains the player (step tops, slab lips, wall /
+  // ceiling runs, ferry decks), NOT an approached face. Support faces are
+  // parallel to forward by construction (axis-aligned slabs; forward is
+  // perpendicular to gravity), so the supporting slab can never genuinely
+  // block forward motion — but float-level (±1 ulp) rest-height dust from
+  // the landing clip flips the strict perpendicular test and reports a
+  // phantom toi-0 "wall" hit every step (standstill, and a phantom frontal
+  // kill through the sim rule). Ignoring Z straddles fixes rest motion AND
+  // rest killing at the root: genuine frontal impacts always approach a
+  // face with toi > 0, so every real wall/riser/divider still blocks and
+  // kills exactly as before. X keeps straddles (side blocking + lane-debt
+  // resync need them; side contacts never kill) and Y keeps them
+  // (landings/head-bumps).
   if (delta.z !== 0) {
-    const z = clipAxis(scratchCandidates, position, halfExtents, 'z', delta.z);
+    const z = clipAxis(scratchCandidates, position, halfExtents, 'z', delta.z, true);
     position.z += delta.z * z.toi;
     if (z.collider !== null) {
       result.wallContacts.push({
