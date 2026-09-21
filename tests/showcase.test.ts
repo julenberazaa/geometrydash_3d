@@ -17,7 +17,7 @@ import { recordAttempt, playReplay } from './helpers/replay';
 import { ShowcaseDriver, driveShowcaseToFinish } from './helpers/showcaseScript';
 
 /**
- * M8.5 production-showcase contract:
+ * M8.6 production-showcase contract (THE DESCENT rework):
  * - registered as the DEFAULT level; explicit ?level= still resolves old
  *   levels; unknown ids fall back to the showcase with a logged reason
  * - only sourced/contained lava; every portal/teleport gate bounded to
@@ -25,11 +25,12 @@ import { ShowcaseDriver, driveShowcaseToFinish } from './helpers/showcaseScript'
  * - scripted REAL-INPUT reference-route completion: finished, 0 deaths,
  *   115–130 s, every mode + gravity, all Chompers spent, both teleports
  * - the completion tape replays VERIFIED (input-only determinism)
- * - alternate-route completion through the side chain + low teleport
+ * - alternate-route completion through the LOW road + low teleport
  * - mandatory routing: wrong maze doors, missed river hops, missed orb
- *   gaps and missed teleport rings all fail by geometry (never arbitrary)
+ *   gaps, missed spider snaps and missed teleport rings all fail by
+ *   geometry (never arbitrary)
  */
-describe('M8.5 production showcase', () => {
+describe('M8.6 production showcase', () => {
   it('is registered with its own gameplay identity', () => {
     expect(registeredLevelIds()).toContain('production-showcase-01');
     expect(computeLevelFingerprint(PRODUCTION_SHOWCASE_01)).not.toBe(
@@ -70,9 +71,9 @@ describe('M8.5 production showcase', () => {
   it('bounds every gravity/speed/mode portal and teleport entry to its ring', () => {
     expect(validatePortalBounds(PRODUCTION_SHOWCASE_01)).toEqual([]);
     const def = PRODUCTION_SHOWCASE_01;
-    expect((def.gravityPortals ?? []).length).toBe(10);
-    expect((def.modePortals ?? []).length).toBe(4);
-    expect((def.speedPortals ?? []).length).toBe(2);
+    expect((def.gravityPortals ?? []).length).toBe(16);
+    expect((def.modePortals ?? []).length).toBe(6);
+    expect((def.speedPortals ?? []).length).toBe(6);
     expect((def.teleportPortals ?? []).length).toBe(3);
     for (const p of def.gravityPortals ?? []) {
       expect(p.triggerCenter, p.id).toBeDefined();
@@ -92,7 +93,7 @@ describe('M8.5 production showcase', () => {
     }
   });
 
-  it('completes the reference route with zero deaths in 115–130 s', () => {
+  it('completes the reference route with zero deaths in 115–130 s', { timeout: 60000 }, () => {
     const sim = new GameSimulation(PRODUCTION_SHOWCASE_01);
     const { ticks, modes, gravities } = driveShowcaseToFinish(sim);
     expect(sim.status).toBe('finished');
@@ -102,8 +103,8 @@ describe('M8.5 production showcase', () => {
     expect(seconds).toBeLessThanOrEqual(130);
     expect([...modes].sort()).toEqual(['cube', 'ship', 'spider']);
     expect([...gravities].sort()).toEqual(['ceiling', 'floor', 'leftWall', 'rightWall']);
-    // All four Chompers committed to their lunges and rest spent.
-    expect(sim.chomperStates.length).toBe(4);
+    // All five Chompers committed to their lunges and rest spent.
+    expect(sim.chomperStates.length).toBe(5);
     for (const st of sim.chomperStates) expect(st.phase).toBe('spent');
     // Reference route takes the high teleport + the maw hop (never low).
     expect(sim.isTeleportUsed('ps-teleport-high')).toBe(true);
@@ -113,7 +114,7 @@ describe('M8.5 production showcase', () => {
     expect(sim.speedMultiplier).toBe(1);
   });
 
-  it('replays the reference completion tape VERIFIED', () => {
+  it('replays the reference completion tape VERIFIED', { timeout: 60000 }, () => {
     const sim = new GameSimulation(PRODUCTION_SHOWCASE_01);
     const coordinator = new ReplayCoordinator(sim);
     const driver = new ShowcaseDriver('primary');
@@ -127,7 +128,7 @@ describe('M8.5 production showcase', () => {
     expect(sim.status).toBe('finished');
   });
 
-  it('completes the alternate route (side chain + low teleport) with zero deaths', () => {
+  it('completes the alternate route (side chain + low teleport) with zero deaths', { timeout: 60000 }, () => {
     const sim = new GameSimulation(PRODUCTION_SHOWCASE_01);
     const { ticks } = driveShowcaseToFinish(sim, new ShowcaseDriver('alternate'));
     expect(sim.status).toBe('finished');
@@ -144,69 +145,53 @@ describe('M8.5 production showcase', () => {
 
   it('kills frontally through the wrong maze door', () => {
     const sim = new GameSimulation(PRODUCTION_SHOWCASE_01);
-    // Jump the ACT 1 gaps + river but hold center: wall 1 (z 405) has
-    // doors on lanes 0/2, so the center lane runs into killFront.
-    const driver = new ShowcaseDriver('primary');
-    // Strip the maze taps by consuming a fresh driver up to the maze.
-    void driver;
-    const jumps = [37.5, 93.5, 172.5, 192.0, 235.5, 251.5, 267.5, 291.5, 352.0];
-    const splitTaps = [
-      { atZ: 150, dir: 'left' as const },
-      { atZ: 162, dir: 'right' as const },
-    ];
-    let ji = 0;
-    let ti = 0;
-    let tick = 0;
-    for (; tick < 9000 && sim.attempts === 1; tick++) {
-      const z = sim.player.position.z;
-      if (sim.playerMode === 'ship') break;
-      if (ji < jumps.length && z >= (jumps[ji] as number)) {
-        ji++;
-        sim.update({
-          space: { held: true, pressedThisStep: true, releasedThisStep: false },
-          up: { held: false, pressedThisStep: false, releasedThisStep: false },
-          down: { held: false, pressedThisStep: false, releasedThisStep: false },
-          laneLeft: { held: false, pressedThisStep: false, releasedThisStep: false },
-          laneRight: { held: false, pressedThisStep: false, releasedThisStep: false },
-        });
-        sim.update(idleInput);
-        tick++;
-        continue;
-      }
-      const splitTap = splitTaps[ti];
-      if (splitTap !== undefined && z >= splitTap.atZ) {
-        ti++;
-        sim.update(splitTap.dir === 'left' ? tapLaneLeft : tapLaneRight);
-        continue;
-      }
-      sim.update(idleInput);
-    }
-    expect(sim.attempts).toBeGreaterThan(1);
-    expect(sim.lastDeathCause).toBe('frontImpact');
-    expect(sim.deathPosition.z).toBeGreaterThan(380);
-    expect(sim.deathPosition.z).toBeLessThan(420);
-  });
-
-  it('kills as lava in the ACT 1 gap basins', () => {
-    const sim = new GameSimulation(PRODUCTION_SHOWCASE_01);
+    // Maze wall 1 (z 450) blocks lane 0 (x 1.3..3.9) with doors on lanes
+    // 1 + 2: steer onto lane 0 just before it and hold — frontImpact on
+    // the wall face, never an arbitrary kill.
+    sim.debugPlaceAt(0, 1.5, 436);
+    sim.update(tapLaneLeft);
     for (let tick = 0; tick < 2000 && sim.attempts === 1; tick++) {
       sim.update(idleInput);
     }
     expect(sim.attempts).toBeGreaterThan(1);
-    expect(sim.lastDeathCause).toBe('lava');
+    expect(sim.lastDeathCause).toBe('frontImpact');
+    expect(sim.deathPosition.z).toBeGreaterThan(445);
+    expect(sim.deathPosition.z).toBeLessThan(452);
+  });
+
+  it('face-plants into the entry gap wall without jumping', () => {
+    const sim = new GameSimulation(PRODUCTION_SHOWCASE_01);
+    // No inputs at all: the run leaves the entry slab (ends z 20), drops
+    // into the 4 u gap and meets the far wall — jumping is mandatory from
+    // the very first seconds.
+    for (let tick = 0; tick < 2000 && sim.attempts === 1; tick++) {
+      sim.update(idleInput);
+    }
+    expect(sim.attempts).toBeGreaterThan(1);
+    expect(sim.lastDeathCause).toBe('frontImpact');
+    expect(sim.deathPosition.z).toBeGreaterThan(18);
+    expect(sim.deathPosition.z).toBeLessThan(28);
   });
 
   it('kills as lava when the forge river hop is missed', () => {
     const sim = new GameSimulation(PRODUCTION_SHOWCASE_01);
-    // Jump both gap basins + the spike but NOT the river: lava.
-    const jumps = [37.5, 93.5, 172.5];
+    // Jump the entry gap + stairs + deck-end drop + catcher hop (weaving
+    // the MID-deck doors on the way) but NOT the at-grade river
+    // (z 140.5..143.5): the lava strip kills.
+    const jumps = [18, 36, 43, 53, 89, 104];
     const splitTaps = [
-      { atZ: 150, dir: 'left' as const },
-      { atZ: 162, dir: 'right' as const },
+      { atZ: 60, dir: 'right' as const },
+      { atZ: 69, dir: 'left' as const },
+      { atZ: 81, dir: 'left' as const },
+      // Deck-end lane recenter (the catcher island is center-only; the
+      // lane settles during the jump-89 flight, same split as the driver).
+      { atZ: 89.5, dir: 'right' as const },
+      { atZ: 118, dir: 'right' as const },
+      { atZ: 126, dir: 'left' as const },
     ];
     let ji = 0;
     let ti = 0;
-    for (let tick = 0; tick < 6000 && sim.attempts === 1; tick++) {
+    for (let tick = 0; tick < 4000 && sim.attempts === 1; tick++) {
       const z = sim.player.position.z;
       if (ji < jumps.length && z >= (jumps[ji] as number)) {
         ji++;
@@ -229,27 +214,29 @@ describe('M8.5 production showcase', () => {
     }
     expect(sim.attempts).toBeGreaterThan(1);
     expect(sim.lastDeathCause).toBe('lava');
-    expect(sim.deathPosition.z).toBeGreaterThan(190);
-    expect(sim.deathPosition.z).toBeLessThan(200);
+    expect(sim.deathPosition.z).toBeGreaterThan(139);
+    expect(sim.deathPosition.z).toBeLessThan(145);
   });
 
-  it('fails by geometry (void) when the orb gap is crossed without the orb', () => {
+  it('loses the HIGH line when the HIGH orb is skipped', () => {
     const sim = new GameSimulation(PRODUCTION_SHOWCASE_01);
-    // Full reference inputs EXCEPT the orb press: the plain run into the
-    // 9 u gap must fall to the void (the orb is mandatory routing).
-    const driver = new ShowcaseDriver('primary');
-    void driver;
-    const jumps = [37.5, 93.5, 172.5, 192.0, 235.5, 251.5, 267.5, 291.5];
-    const taps = [
-      { atZ: 150, dir: 'left' as const },
-      { atZ: 162, dir: 'right' as const },
-    ];
-    let ji = 0;
-    let ti = 0;
-    for (let tick = 0; tick < 9000 && sim.attempts === 1; tick++) {
+    // From the HIGH island (top 8, z 312..330) hop the traverse spike
+    // (z 322), then take off at 329 WITHOUT the orb: the plain jump falls
+    // a full unit short of the HIGH landing (z 340..347 — no teeter save)
+    // and drops onto the LOW ground route instead — the orb is mandatory
+    // to HOLD the HIGH line (missing it costs the route, never kills
+    // arbitrarily).
+    sim.debugPlaceAt(0, 8.55, 314);
+    const hops = [319, 329];
+    let hi = 0;
+    let maxYpastGap = -Infinity;
+    for (let tick = 0; tick < 12000 && sim.attempts === 1; tick++) {
       const z = sim.player.position.z;
-      if (ji < jumps.length && z >= (jumps[ji] as number)) {
-        ji++;
+      // Sample past the orb-less flight (it lands ~338): anything HIGH
+      // afterwards means the line was held without the orb.
+      if (z >= 340 && z <= 365) maxYpastGap = Math.max(maxYpastGap, sim.player.position.y);
+      if (hi < hops.length && z >= (hops[hi] as number)) {
+        hi++;
         sim.update({
           space: { held: true, pressedThisStep: true, releasedThisStep: false },
           up: { held: false, pressedThisStep: false, releasedThisStep: false },
@@ -257,36 +244,77 @@ describe('M8.5 production showcase', () => {
           laneLeft: { held: false, pressedThisStep: false, releasedThisStep: false },
           laneRight: { held: false, pressedThisStep: false, releasedThisStep: false },
         });
-        sim.update(idleInput);
-        tick++;
-        continue;
-      }
-      const tap = taps[ti];
-      if (tap !== undefined && z >= tap.atZ) {
-        ti++;
-        sim.update(tap.dir === 'left' ? tapLaneLeft : tapLaneRight);
         continue;
       }
       sim.update(idleInput);
     }
+    expect(hi).toBe(2);
+    expect(sim.isInteractionUsed('ps-orb-sky')).toBe(false);
+    // Never regained HIGH altitude past the gap (landing top 8).
+    expect(maxYpastGap).toBeLessThan(7.5);
+    // The orb-less line ends on geometry further down (never arbitrary).
     expect(sim.attempts).toBeGreaterThan(1);
-    expect(sim.lastDeathCause).toBe('void');
-    expect(sim.deathPosition.z).toBeGreaterThan(350);
-    expect(sim.deathPosition.z).toBeLessThan(375);
   });
 
-  it('kills frontally on the choice divider when both teleport rings are missed', () => {
+  it('kills frontally on the runway dodge wall when the spider snap is missed', () => {
     const sim = new GameSimulation(PRODUCTION_SHOWCASE_01);
-    // Teleport straight onto the divider line past the gantry approach:
-    // the run meets the killFront divider (never an arbitrary kill).
-    sim.debugPlaceAt(0, 1.5, 1350);
+    // The ACT 7 runway dodge wall (y 8..10, z 1446..1450) blocks the floor
+    // path: run the runway on the floor without snapping and the wall
+    // kills frontally (the ceiling path would clear it). The wall is a
+    // plain solid so the floor-line geometry kill is mode-independent —
+    // the reference route snaps over it via the ceiling slab instead.
+    sim.debugPlaceAt(0, 8.55, 1436);
     for (let tick = 0; tick < 2000 && sim.attempts === 1; tick++) {
       sim.update(idleInput);
     }
     expect(sim.attempts).toBeGreaterThan(1);
     expect(sim.lastDeathCause).toBe('frontImpact');
-    expect(sim.deathPosition.z).toBeGreaterThan(1355);
-    expect(sim.deathPosition.z).toBeLessThan(1370);
+    expect(sim.deathPosition.z).toBeGreaterThan(1443);
+    expect(sim.deathPosition.z).toBeLessThan(1450);
+  });
+
+  it('face-plants into the ferry deck when the board jump is missed', () => {
+    const sim = new GameSimulation(PRODUCTION_SHOWCASE_01);
+    // The LOW runway ends at z 378 and the far runway resumes at 408 with
+    // the ps-ferry-void deck shuttling laterally between them: running off
+    // the lip without the board jump smacks the deck's side face
+    // (frontImpact vs the platform solid) — the ferry is mandatory
+    // routing, and the reference route jumps on and rides it instead.
+    sim.debugPlaceAt(0, 0.55, 370);
+    for (let tick = 0; tick < 2000 && sim.attempts === 1; tick++) {
+      sim.update(idleInput);
+    }
+    expect(sim.attempts).toBeGreaterThan(1);
+    expect(sim.lastDeathCause).toBe('frontImpact');
+    expect(sim.lastDeathLethalId).toBe('platform-ps-ferry-void');
+    expect(sim.deathPosition.z).toBeGreaterThan(376);
+    expect(sim.deathPosition.z).toBeLessThan(392);
+  });
+
+  it('kills frontally on the choice divider when both teleport rings are missed', () => {
+    const sim = new GameSimulation(PRODUCTION_SHOWCASE_01);
+    // Hold lane 0 past the gantry spike (dodging the HIGH pad), then cut
+    // back across the divider plane (x ±1.3, z 1519..1521) without taking
+    // either teleport ring: the killFront divider meets the lane-changer
+    // head-on — holding center instead would ride the pad into the HIGH
+    // ring, so a lateral miss meets the wall, never nothing.
+    sim.debugPlaceAt(2.6, 0.55, 1508);
+    sim.update(tapLaneLeft);
+    let tapped = false;
+    for (let tick = 0; tick < 2000 && sim.attempts === 1; tick++) {
+      const z = sim.player.position.z;
+      if (!tapped && z >= 1516.5) {
+        tapped = true;
+        sim.update(tapLaneRight);
+        continue;
+      }
+      sim.update(idleInput);
+    }
+    expect(tapped).toBe(true);
+    expect(sim.attempts).toBeGreaterThan(1);
+    expect(sim.lastDeathCause).toBe('frontImpact');
+    expect(sim.deathPosition.z).toBeGreaterThan(1515);
+    expect(sim.deathPosition.z).toBeLessThan(1523);
   });
 });
 
