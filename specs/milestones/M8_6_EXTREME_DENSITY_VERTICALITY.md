@@ -50,10 +50,15 @@ FLOOR/CEILING/WALL/ISLAND/PORTAL/DROP/JUMP/FLY/SNAP continuously.
 | Σ\|Δy\| / Σ\|Δx\| | 206.6 / 89.4 u |
 | Y range / X range | 10.9 / 9.7 u |
 
-M8.6 thresholds (test-pinned in `tests/showcaseDensity.test.ts`): jump
-edges ≥ 90, lane edges ≥ 36, fast-fall held > 0, max action gap ≤ 1.5 s
-outside designated recovery windows, supports ≥ 2×, Σ|Δy| and Σ|Δx|
-substantially up, bands ≥ 10 with transitions ≥ 3×, X reversals ≥ 3×.
+M8.6 thresholds (test-pinned in `tests/showcaseDensity.test.ts`, both
+routes, no recovery-window exemptions): skill jump edges ≥ 85
+(measured 97/93), lane edges ≥ 50 (62/70, logical incl. wall-gravity
+Up/Down taps), fast-fall held > 0 (144/35 ticks), max action gap ≤ 1.5 s
+(1.47/1.43 s), supports ≥ 64 (79/76), Σ|Δy| ≥ 400 (561.7/505 u),
+Σ|Δx| ≥ 150 (197.8/209.5 u), 2 u bands ≥ 8 (9/8) with transitions
+≥ 150 (237/205), X range ≥ 8 (11.64/11.99 u) with reversals ≥ 20
+(44/45), platform riding on both routes (5/4 decks, 200+ ticks),
+gravity transitions ≥ 10, mode transitions ≥ 5, Spider presses ≥ 10.
 Human feel remains authority — metrics detect emptiness, never certify fun.
 
 ## 5. Moving-platform contract (new scoped engine capability)
