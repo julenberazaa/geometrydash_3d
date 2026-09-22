@@ -69,7 +69,15 @@ showcase level engineering-complete on `feature/m8-5-production-showcase-level`
 HARD/EXPERT 9-act arc with real route branches, inverted Ship, wall
 Spider, 4 Chompers and directed lava — scripted reference + alternate
 routes finish with 0 deaths and verified replays (HUMAN SHOWCASE GATE
-OPEN; spec: `specs/milestones/M8_5_PRODUCTION_SHOWCASE_LEVEL.md`).
+OPEN; spec: `specs/milestones/M8_5_PRODUCTION_SHOWCASE_LEVEL.md`). M8.6
+extreme-density rework of the showcase on
+`feature/m8-6-extreme-density-verticality` (engineering complete, human
+gate OPEN): VERY HARD/EXPERT ~123 s gauntlet inside the same duration —
+multi-deck islands, stairs/shafts, two-deck maze, 4-way gravity spire,
+Chomper combos, hard + inverted Ship, hard wall Spider, teleport network,
+5 deterministic moving ferry/elevator islands, everything-remix finale —
+reference + alternate routes finish with 0 deaths and verified replays
+(spec: `specs/milestones/M8_6_EXTREME_DENSITY_VERTICALITY.md`).
 M6A visual production foundation
 engineering-complete (production theme + shared materials + controlled
 bloom/post, zero gameplay change, 182/182 tests, M6A browser QA 24/24

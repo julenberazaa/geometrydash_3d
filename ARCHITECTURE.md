@@ -222,13 +222,19 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   two-Chomper biome, Ship corridor, Spider snaps, trap islands; scripted
   real-input playthrough finishes at tick 10321 (86.0 s), 0 deaths, replay
   VERIFIED (`tests/helpers/multimodeGauntletScript.ts`).
-- `productionShowcase01.ts` (M8.5, `production-showcase-01`, "THE DESCENT"):
-  the DEFAULT level — a ~2-minute superproduction arc (forge, islands,
-  two-door labyrinth, four-way cathedral, Chomper canyon, Ship reactor
-  with a sustained inverted segment, Spider temple with wall snaps,
-  teleport-choice void, final gauntlet); scripted real-input playthroughs
-  finish at tick 13955 (116.29 s), 0 deaths, replay VERIFIED, on BOTH the
-  primary and alternate routes (`tests/helpers/showcaseScript.ts`).
+- `productionShowcase01.ts` (M8.5 level, M8.6 gameplay rework,
+  `production-showcase-01`, "THE DESCENT"): the DEFAULT level — a ~2-minute
+  superproduction arc (forge ascent, multi-deck skybridge islands with a
+  lateral ferry + elevator branch, two-deck maze-runner with a ferry pair,
+  compact four-way gravity spire, Chomper foundry, extreme Ship abyss with
+  a sustained inverted segment, hard Spider spire with wall snaps,
+  teleport-choice void terminal, everything-remix core finale, 5 moving
+  platforms); scripted real-input playthroughs finish at tick 14797
+  (123.31 s), 0 deaths, replay VERIFIED, on BOTH the primary and alternate
+  routes (`tests/helpers/showcaseScript.ts`, metrics in
+  `tests/helpers/routeMetrics.ts`, contracts in `tests/showcase.test.ts` +
+  `tests/showcaseDensity.test.ts`, in-page gate in
+  `scripts/browser-qa-m86.mjs`).
 
 ## 7. Simulation (`src/game/`)
 
@@ -636,8 +642,9 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   up/eye/look, live-camera world→screen projection (`screenPoint`), renderer
   stats, scene-child count, burst state, player velocity
   (`playerVelocity`, M8.5 — Ship PD regulation under headless
-  time-dilation), platform poses (`platforms`, M8.6), and the debug-only
-  `debugTeleport` placement aid for
+  time-dilation), platform poses (`platforms`, M8.6) + the deterministic
+  platform clock (`platformTick`, M8.6 — pose-read ferry boarding in QA),
+  and the debug-only `debugTeleport` placement aid for
   browser QA. M5 adds:
   `levelId`/`levelDisplayName`, `hasReplay`, `replayMode`, `replayTick`,
   `replayFrameCount`, `replayVerification` (kind + tick/reason),

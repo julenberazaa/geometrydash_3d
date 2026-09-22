@@ -174,10 +174,11 @@ is a new data file plus zero engine changes. A level declares: geometry
 Several levels ship (selected via `?level=<id>`, default THE DESCENT
 since M8.5):
 
-- **THE DESCENT** (`production-showcase-01`, M8.5, DEFAULT): the first
-  superproduction level — ~116 s, HARD/EXPERT, multi-route (islands +
-  two-door labyrinth + teleport choice), all modes/gravities, inverted
-  Ship, wall Spider, Chompers, directed lava, full 9-act arc.
+- **THE DESCENT** (`production-showcase-01`, M8.5 level / M8.6 gameplay
+  rework, DEFAULT): the superproduction level — ~123 s, VERY HARD/EXPERT,
+  multi-route (multi-deck islands + two-deck labyrinth + teleport choice),
+  all modes/gravities, inverted Ship, wall Spider, Chompers, directed lava,
+  deterministic moving ferry/elevator islands, full 9-act arc.
 - **Test Level 01** (`controller-test-01`): the controller/gravity/
   interaction demo track with the M3 gravity section and the M4
   interaction section.
@@ -458,7 +459,20 @@ gameplay hazard with a readable attack contract:
   maze and traps into one authored arc with mandatory portal routing
   (missing a transition naturally kills via wall / spike / lava / void).
 
-## 7.7 Out of scope for the current foundation
+## 7.7 Moving islands — CURRENT (M8.6)
+
+Deterministic moving support geometry (small ferry/elevator islands, never
+free-flying chaos): authored per level (base center, half extents, one
+lateral or vertical axis, amplitude, period, phase; pingpong loop; bounded
+count). Motion derives purely from the fixed simulation tick — no clocks,
+no randomness — so replays reproduce it exactly. A ridden island carries
+the standing player with it (no slip, no launch); landing on, jumping off,
+blocking and frontal-kill semantics match static solids. Missing a ferry
+fails by geometry (gap / wall / void), never arbitrarily. Visual motion
+mirrors the simulation pose; decorative background motion stays
+renderer-owned and gameplay-free.
+
+## 7.8 Out of scope for the current foundation
 
 Music/BPM sync, public editor, backend, persistence. See `ROADMAP.md`.
 (Pads, orbs, speed portals and the trigger infrastructure shipped in M4 —

@@ -1,10 +1,14 @@
 # M8.6 — Extreme Density, Verticality & Moving-World Overhaul ("THE DESCENT" rework)
 
-> Status: IN PROGRESS (branch `feature/m8-6-extreme-density-verticality`,
-> NOT merged to `main`).
-> Automation proves completable, deterministic, replay-safe and denser.
-> Automation CANNOT prove fun, fairness feel, or real difficulty — do NOT
-> mark PASS until the human plays it end to end.
+> Status: ENGINEERING COMPLETE / HUMAN EXTREME-GAMEPLAY GATE OPEN
+> (branch `feature/m8-6-extreme-density-verticality`, NOT merged to `main`).
+> `npm run verify` green (567 tests); `scripts/browser-qa-m86.mjs` 26/26
+> green on back-to-back runs (16 staged captures, live platform motion,
+> Chomper telegraph, full real-input in-page reference finish with 0 deaths
+> at tick 14797 / 123.31 s, in-page REPLAY VERIFIED, flat resources, zero
+> console/page errors). Automation proves completable, deterministic,
+> replay-safe and denser. Automation CANNOT prove fun, fairness feel, or
+> real difficulty — do NOT mark PASS until the human plays it end to end.
 
 ## 1. Human M8.5 verdict (entry context)
 
@@ -21,7 +25,8 @@ spatial variation and mechanical combinations — NOT literally 5× objects.
 ## 2. Difficulty / duration targets
 
 VERY HARD / EXPERT (Demon-style density philosophy, fair in 3D — every
-death explainable, mastery rewarded). Reference scripted route: 115–130 s,
+death explainable, mastery rewarded). Reference scripted route: 115–130 s
+(measured tick 14797 = 123.31 s on BOTH primary and alternate routes),
 0 deaths, replay VERIFIED, on primary AND alternate routes. Density goes
 UP inside the same duration: shorter passive travel, more content per
 meter, more speed variation — NOT a longer level.

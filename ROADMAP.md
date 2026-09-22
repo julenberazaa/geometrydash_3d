@@ -568,3 +568,30 @@ real-input finish + REPLAY VERIFIED with `qa/screenshots/showcase-*`
 evidence). Spec: `specs/milestones/M8_5_PRODUCTION_SHOWCASE_LEVEL.md`.
 Automation proves POSSIBLE, never FUN — do NOT mark PASS until the human
 plays the showcase branch end to end.
+
+## M8.6 — Extreme density, verticality & moving-world overhaul: ENGINEERING COMPLETE / HUMAN EXTREME-GAMEPLAY GATE OPEN (feature/m8-6-extreme-density-verticality, NOT merged)
+
+Human M8.5 verdict: visuals/lava/monsters/modes liked; gameplay rejected
+as too easy, flat, sparse and slow ("a nice 3D obstacle course"). M8.6
+buffs gameplay INSIDE the preserved production: THE DESCENT reworked to
+VERY HARD/EXPERT density (5× decisions/elevation/interactions, not objects)
+in the same ~2-minute duration (reference 14797 ticks = 123.31 s both
+routes, inside the 115–130 s band). New scoped engine capability:
+deterministic moving platforms (`MovingPlatformDef` data + pure
+tick-derived pingpong poses + sim-owned clock/riding + dynamic-solid
+collision path appended after the static hash + fingerprints extended;
+≤ 8 per level; 5 ship in the showcase: void ferry, maze pair, chomp ferry,
+void lift) plus a parallel-rest Z-straddle fix in `moveAabb` (support faces
+can never block forward). Level: multi-deck islands, stair ascents/drops,
+two-deck maze with pose-read ferry transfer, compact 4-way gravity spire,
+Chomper × moving-island/weave/gravity/lava combos, hard + inverted Ship
+tunnel, hard multi-surface Spider incl. walls, teleport network, everything-
+remix finale. Proof: `npm run verify` green (567 tests incl. moving-platform
+units, density/height/lateral contracts pinning the M8.5 baseline far
+below, both-route completion + replay VERIFIED, routing-death pins);
+`scripts/browser-qa-m86.mjs` 26/26 green twice in a row (16 staged captures,
+live platform motion, Chomper telegraph, full real-input in-page finish
+with 0 deaths, in-page REPLAY VERIFIED, flat resources, zero errors).
+Spec: `specs/milestones/M8_6_EXTREME_DENSITY_VERTICALITY.md`. Automation
+proves completable, deterministic and denser — never fun, fair-feeling or
+really hard: do NOT mark PASS until the human plays it end to end.
