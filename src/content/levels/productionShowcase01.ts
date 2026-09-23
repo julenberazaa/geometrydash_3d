@@ -642,13 +642,14 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     // lateral offsets — jump + steer from the first seconds).
     { center: { x: 0, y: -0.5, z: 12 }, halfExtents: { x: 1.6, y: 0.5, z: 3 } },
     { center: { x: -2.6, y: -0.5, z: 23 }, halfExtents: { x: 1.6, y: 0.5, z: 3 } },
-    { center: { x: 2.6, y: -0.5, z: 33 }, halfExtents: { x: 1.6, y: 0.5, z: 3 } },
-    // Landing funnel (narrowed 1-lane catch, z 41..45), hop gap (45..48),
+    { center: { x: 2.6, y: -0.5, z: 33 }, halfExtents: { x: 2.6, y: 0.5, z: 3 } },
+    // Landing funnel (wide catch, z 41..45 — the offset transfer lands
+    // here mid-transit), hop gap (45..48),
     // riser (z 48..54) with a REQUIRED mid-flight orb: hop from the funnel,
     // press the orb airborne, ride the reshaped arc onto tread 1 (missing
     // the orb lands short at the riser face — fair, telegraphed).
-    { center: { x: 0, y: -0.5, z: 43 }, halfExtents: { x: 1.6, y: 0.5, z: 2 } },
-    { center: { x: 0, y: -0.5, z: 51 }, halfExtents: { x: 1.6, y: 0.5, z: 3 } },
+    { center: { x: 0, y: -0.5, z: 43 }, halfExtents: { x: 5.4, y: 0.5, z: 2 } },
+    { center: { x: 0, y: -0.5, z: 50.5 }, halfExtents: { x: 1.6, y: 0.5, z: 3.5 } },
     // Broken offset stairs (risers 1.5; tread 1 meets the funnel so the
     // apex-on-face takeoff comes 5 u after the funnel landing).
     { center: { x: 1.3, y: 0.75, z: 59 }, halfExtents: { x: 1.3, y: 0.75, z: 5 } },
@@ -1088,6 +1089,8 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     // Maze approach hop (the far-ruin flight clears 430 high; land, hop,
     // orb-hop over the teeth jog, hop again — door 1 passed running).
     // Approach teeth (lanes 0+2 — the center line holds for the gate).
+    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 439 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 439 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 432 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 432 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 436 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },

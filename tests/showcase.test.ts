@@ -150,10 +150,11 @@ describe('M8.6 production showcase', () => {
 
   it('kills frontally through the wrong maze door', () => {
     const sim = new GameSimulation(PRODUCTION_SHOWCASE_01);
-    // Maze wall 1 (z 450) blocks lane 0 (x 1.3..3.9) with doors on lanes
-    // 1 + 2: steer onto lane 0 just before it and hold — frontImpact on
-    // the wall face, never an arbitrary kill.
-    sim.debugPlaceAt(0, 1.5, 436);
+    // Door 1 (z 452) is a single lane-1 opening (killFront blocks cover
+    // lanes 0 + 2): place past the approach teeth (z 432/436/439),
+    // steer onto lane 0 and hold — frontImpact on the wall face,
+    // never an arbitrary kill.
+    sim.debugPlaceAt(0, 1.5, 444);
     sim.update(tapLaneLeft);
     for (let tick = 0; tick < 2000 && sim.attempts === 1; tick++) {
       sim.update(idleInput);
@@ -298,12 +299,26 @@ describe('M8.6 production showcase', () => {
   it('face-plants into the ferry deck when the board jump is missed', () => {
     const sim = new GameSimulation(PRODUCTION_SHOWCASE_01);
     // The LOW runway ends at z 378 and the far runway resumes at 408 with
-    // the ps-ferry-void deck shuttling laterally between them: running off
-    // the lip without the board jump smacks the deck's side face
-    // (frontImpact vs the platform solid) — the ferry is mandatory
-    // routing, and the reference route jumps on and rides it instead.
-    sim.debugPlaceAt(0, 0.55, 370);
+    // the ps-ferry-void deck shuttling laterally between them: hopping
+    // the approach spike (M9.1) but running off the lip without the board
+    // jump smacks the deck's side face (frontImpact vs the platform
+    // solid) — the ferry is mandatory routing, and the reference route
+    // jumps on and rides it instead.
+    sim.debugPlaceAt(0, 0.55, 366);
+    let jumped = false;
     for (let tick = 0; tick < 2000 && sim.attempts === 1; tick++) {
+      const z = sim.player.position.z;
+      if (!jumped && z >= 368) {
+        jumped = true;
+        sim.update({
+          space: { held: true, pressedThisStep: true, releasedThisStep: false },
+          up: { held: false, pressedThisStep: false, releasedThisStep: false },
+          down: { held: false, pressedThisStep: false, releasedThisStep: false },
+          laneLeft: { held: false, pressedThisStep: false, releasedThisStep: false },
+          laneRight: { held: false, pressedThisStep: false, releasedThisStep: false },
+        });
+        continue;
+      }
       sim.update(idleInput);
     }
     expect(sim.attempts).toBeGreaterThan(1);

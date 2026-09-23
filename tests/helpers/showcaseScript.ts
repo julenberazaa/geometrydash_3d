@@ -110,7 +110,7 @@ export class ShowcaseDriver {
     const trunkJumps = [
       // M9.1 ACT 1 tight transfer rhythm (takeoffs 0.7–2 u post-landing;
       // the 50 is the required funnel-orb press, fired mid-flight).
-      2.5, 12, 22.5, 33, 43.5, 50, 76, 86.3, 127.5, 138.5,
+      2.5, 13, 23.5, 34, 44.5, 50, 76, 86.3, 127.5, 138.5,
       // M9 post-river double (lane-1 spikes 160 + 164 — two takeoffs).
       147, 157.5, 172.3,
       // M9.1 ACT 2 shared: island chain (takeoffs ≥ 0.7 u post-landing)
@@ -152,7 +152,6 @@ export class ShowcaseDriver {
       368, // ferry-approach hop (primary HIGH-drop line, spike 370)
       377.5, // late ferry board (primary, past the hop landing)
       401, // ferry exit jump
-      412, // far-runway spike
       // M9.1 ACT 3 upper hole-chain (narrowed 1-lane + two joint holes;
       // the exit gap uses the shared 620 takeoff, never a duplicate).
       550, 559.5, 570, 583.5, 599.5, 610,
@@ -173,7 +172,6 @@ export class ShowcaseDriver {
       529, 542, 600,
       376, // ferry board jump
       401, // ferry exit jump
-      412, // far-runway spike
       1507, // gantry approach spike (lane 2)
       1516.5, // teleport-flight hop (lane-2 spike 1519, fires the low ring)
       // M9.1 LOW deck (hop + hole + hop + hole + exit hop + reconnect hop).
@@ -183,10 +181,10 @@ export class ShowcaseDriver {
     const trunkTaps: TapAction[] = [
       // M9.1 A1 island/stair/pier/shaft transfers (jump + steer combined —
       // the plain-jump list above carries no lateral edge for these).
-      { atZ: 12, dir: 'right', withJump: true }, // B → C (lane 2)
-      { atZ: 22.5, dir: 'left', withJump: true }, // C → D (lane 0, first)
-      { atZ: 23.5, dir: 'left' }, // C → D (second edge)
-      { atZ: 33, dir: 'right', withJump: true }, // D → funnel (center)
+      { atZ: 13, dir: 'right', withJump: true }, // B → C (lane 2)
+      { atZ: 22.5, dir: 'left' }, // C → D pre-steer (lane 1, grounded)
+      { atZ: 23, dir: 'left' }, // C → D (lane 0, grounded)
+      { atZ: 34, dir: 'right', withJump: true }, // D → funnel (center)
       { atZ: 54, dir: 'left' }, // tread-1 landing align (orb flight, center it)
       { atZ: 63.5, dir: 'right', withJump: true }, // tread 1 → tread 2 (first)
       { atZ: 64.5, dir: 'right' }, // tread 2 (second edge, mid-flight)
