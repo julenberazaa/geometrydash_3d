@@ -43,7 +43,8 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
   startLaneIndex: 1,
   laneCenters: [2.6, 0, -2.6],
   baseForwardSpeed: 14,
-  finishZ: 1790,
+  // M9: the finish sits ~0.2 s past the river air — beat-230 aligned.
+  finishZ: 1788,
   deathY: -14,
   deathYMax: 14,
   // Runaway catcher (M8.2 precedent): legit play never exceeds |x| 8;
@@ -174,6 +175,47 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     {
       id: 'ps-speed-remix2', z: 1754, multiplier: 2,
       triggerCenter: { x: 0, y: 1.5, z: 1754 },
+      triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
+    },
+    // M9 musical arrangement: Drop-B energy carries a 2× foundry slalom
+    // (single-door weave walls at 2× lane-change spacing) from the lava
+    // jump through the ship approach — then 1× restores for the Ship gate.
+    {
+      id: 'ps-speed-foundry', z: 1038, multiplier: 2,
+      triggerCenter: { x: 0, y: 1.5, z: 1038 },
+      triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
+    },
+    {
+      id: 'ps-speed-approach', z: 1110, multiplier: 1,
+      triggerCenter: { x: 0, y: 1.5, z: 1110 },
+      triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
+    },
+    // M9 musical arrangement: the climax (beats 184–224) runs the Spider
+    // spire at 2× (fast snap chains on beat subdivisions) — the snaps are
+    // instant surface switches, so doubling forward speed doubles musical
+    // density without changing the authored press positions.
+    {
+      id: 'ps-speed-spider', z: 1312, multiplier: 2,
+      triggerCenter: { x: 0, y: 1.5, z: 1312 },
+      triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
+    },
+    {
+      id: 'ps-speed-void', z: 1502, multiplier: 1,
+      triggerCenter: { x: 0, y: 1.5, z: 1502 },
+      triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
+    },
+    // M9: the wall-entry fall takes the same TIME at any speed but covers
+    // 2× the distance at 2× — the authored wall choreography (landing +
+    // UP-tap + snap before the 1480 spike) only fits at 1×. Precision
+    // window through the wall slabs, back to 2× for the floor return.
+    {
+      id: 'ps-speed-wall-calm', z: 1458, multiplier: 1,
+      triggerCenter: { x: 0, y: 8.5, z: 1458 },
+      triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
+    },
+    {
+      id: 'ps-speed-wall-burst', z: 1492, multiplier: 2,
+      triggerCenter: { x: 0, y: 1.5, z: 1492 },
       triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
     },
     {
@@ -361,10 +403,13 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     },
     // ACT 5 #4: low-ceiling lane dodge (short lunge 8 → 0 — the side
     // lane is statically safe, no jump under the head-bump ceiling).
+    // M9: trigger 6 u upstream — at 2× the fixed-tick telegraph+lunge
+    // covers ~14 u of player travel, so the lunge lands on the same
+    // choreography (dodge at 1048, return after 1061).
     {
       id: 'ps-chomp-low',
       dormant: { x: 8, y: 0.75, z: 1052 },
-      triggerZ: 1042,
+      triggerZ: 1036,
       lungeDirection: -1,
       lungeDistance: 8,
       telegraphTicks: 48,
@@ -623,8 +668,10 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     { center: { x: 0, y: -0.5, z: 982.5 }, halfExtents: { x: 5.4, y: 0.5, z: 17.5 } },
     // Ceiling slab for the #3 swap (underside y=10, z 1000..1030).
     { center: { x: 0, y: 10.5, z: 1015 }, halfExtents: { x: 5.4, y: 0.5, z: 15 } },
-    // Low-ceiling block for the #4 lane dodge (bottom y=2.2, z 1052..1060).
-    { center: { x: 0, y: 3.6, z: 1056 }, halfExtents: { x: 5.4, y: 1.4, z: 4 } },
+    // Low-ceiling block for the #4 lane dodge (bottom y=2.2, z 1058..1064
+    // — M9: shifted downstream so the 2× lava-jump flight clears its face;
+    // the lengthened 2× lunge tail still runs under it).
+    { center: { x: 0, y: 3.6, z: 1061 }, halfExtents: { x: 5.4, y: 1.4, z: 3 } },
     // Foundry pools containment.
     { center: { x: -8.5, y: -4.5, z: 1000 }, halfExtents: { x: 3.5, y: 0.5, z: 50.5 } },
     { center: { x: -11.625, y: -2.25, z: 1000 }, halfExtents: { x: 0.375, y: 0.75, z: 50.5 } },
@@ -871,13 +918,16 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     { kind: 'killFront', visual: 'block', center: { x: -3.35, y: 1.5, z: 989 }, halfExtents: { x: 2.05, y: 1.5, z: 0.5 } },
     // Ceiling spike on the #3 traverse.
     { kind: 'hazard', visual: 'spike', mount: 'ceiling', center: { x: -2.6, y: 9.75, z: 1022 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    // Post-#4 spikes.
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 1070 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 1080 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 1080 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    // Ship-approach rhythm hops (both routes run center here).
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 1090 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 1100 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // M9 foundry slalom (2× weave walls, single-door commitment each —
+    // the maze-wall precedent at 2× lane-change spacing: 10 u lead per
+    // tap). Doors: lane 2 through 1080, lane 1 through 1096. The old 1×
+    // spike triple + approach spikes are replaced — the doors force the
+    // line, and the 1096–1110 runout is the last breath before the Ship.
+    { kind: 'killFront', visual: 'block', center: { x: 2.6, y: 1.5, z: 1080 }, halfExtents: { x: 3.9, y: 1.5, z: 0.5 } },
+    { kind: 'killFront', visual: 'block', center: { x: 2.6, y: 1.5, z: 1096 }, halfExtents: { x: 1.3, y: 1.5, z: 0.5 } },
+    { kind: 'killFront', visual: 'block', center: { x: -2.6, y: 1.5, z: 1096 }, halfExtents: { x: 1.3, y: 1.5, z: 0.5 } },
+    // M9: approach spikes removed for the 2× slalom (the 1080/1096 doors
+    // + the lengthened #4 lunge carry this stretch; 1096–1110 breathes).
 
     // ================= ACT 7 =================
     // Temple ceiling spike (forces a lane move on the ceiling run).
@@ -1095,7 +1145,7 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     { id: 'ps-cue-release-speed', z: 1778, role: 'sectionChange' },
     { id: 'ps-cue-chomp-final', z: 1748, role: 'accent' },
     { id: 'ps-cue-release', z: 1776, role: 'release' },
-    { id: 'ps-cue-finish', z: 1790, role: 'finish' },
+    { id: 'ps-cue-finish', z: 1788, role: 'finish' },
   ],
   theme: TEST_LEVEL.theme,
 };

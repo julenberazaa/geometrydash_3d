@@ -73,7 +73,9 @@ describe('M8.6 production showcase', () => {
     const def = PRODUCTION_SHOWCASE_01;
     expect((def.gravityPortals ?? []).length).toBe(16);
     expect((def.modePortals ?? []).length).toBe(6);
-    expect((def.speedPortals ?? []).length).toBe(6);
+    // M9 musical arrangement: maze/spire/foundry/spider/wall/void/remix
+    // tiers (12) — every one bounded to its ring (checked below).
+    expect((def.speedPortals ?? []).length).toBe(12);
     expect((def.teleportPortals ?? []).length).toBe(3);
     for (const p of def.gravityPortals ?? []) {
       expect(p.triggerCenter, p.id).toBeDefined();
@@ -93,14 +95,16 @@ describe('M8.6 production showcase', () => {
     }
   });
 
-  it('completes the reference route with zero deaths in 115–130 s', { timeout: 60000 }, () => {
+  it('completes the reference route with zero deaths on the musical finish', { timeout: 60000 }, () => {
     const sim = new GameSimulation(PRODUCTION_SHOWCASE_01);
     const { ticks, modes, gravities } = driveShowcaseToFinish(sim);
     expect(sim.status).toBe('finished');
     expect(sim.attempts).toBe(1);
     const seconds = ticks / 120;
-    expect(seconds).toBeGreaterThanOrEqual(115);
-    expect(seconds).toBeLessThanOrEqual(130);
+    // M9: the finish lands on the Gravity Lessons final impact (beat 230
+    // at 115.06 s) — the musical-finish band replaces the old 115–130 s.
+    expect(seconds).toBeGreaterThanOrEqual(114);
+    expect(seconds).toBeLessThanOrEqual(117);
     expect([...modes].sort()).toEqual(['cube', 'ship', 'spider']);
     expect([...gravities].sort()).toEqual(['ceiling', 'floor', 'leftWall', 'rightWall']);
     // All five Chompers committed to their lunges and rest spent.
@@ -134,8 +138,9 @@ describe('M8.6 production showcase', () => {
     expect(sim.status).toBe('finished');
     expect(sim.attempts).toBe(1);
     const seconds = ticks / 120;
-    expect(seconds).toBeGreaterThanOrEqual(115);
-    expect(seconds).toBeLessThanOrEqual(130);
+    // M9: same musical-finish band as the primary route.
+    expect(seconds).toBeGreaterThanOrEqual(114);
+    expect(seconds).toBeLessThanOrEqual(117);
     // Alternate route takes the low teleport + the maw hop (never high).
     expect(sim.isTeleportUsed('ps-teleport-low')).toBe(true);
     expect(sim.isTeleportUsed('ps-teleport-maw')).toBe(true);

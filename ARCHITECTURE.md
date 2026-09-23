@@ -292,7 +292,9 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   without a new edge is inert; jump orbs replace the along-surface-normal
   velocity with their impulse; gravity orbs call the shared gravity
   transition). Speed portals are forward-crossing planes that set the
-  authoritative `speedMultiplier` (ascending Z, furthest wins). Lifecycle:
+  authoritative `speedMultiplier` (ascending Z, furthest wins; M9 one-shot
+  per attempt via `usedSpeedPortals` — bounded volumes are consumed on
+  first overlap instead of re-firing every tick inside). Lifecycle:
   one-shot per interaction id per attempt (`usedInteractions` set, cleared by
   `respawn()`). Observability: monotonic `interactionEventCount` +
   `lastInteraction {kind,id,position}` (VFX edge), per-kind counters

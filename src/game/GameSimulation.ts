@@ -207,6 +207,15 @@ export class GameSimulation {
    * consumed this attempt. Pre-allocated once; cleared by respawn().
    */
   private readonly usedModePortals = new Set<string>();
+  /**
+   * One-shot speed-portal lifecycle state (M9): portal ids already
+   * consumed this attempt. Pre-allocated once; cleared by respawn().
+   * Legacy plane crossings fire once by construction, but M8.1 bounded
+   * volumes overlap the swept path for several ticks — without this set
+   * the multiplier re-set (benign) AND the count/interaction event
+   * (observability + punch edges) re-fired every tick inside the volume.
+   */
+  private readonly usedSpeedPortals = new Set<string>();
   /** Monotonic count of mode transitions this session (VFX edge). */
   public modeTransitionCount = 0;
   /** Id of the most recent mode portal crossed THIS attempt (debug/QA). */
@@ -696,6 +705,7 @@ export class GameSimulation {
     this.usedInteractions.clear();
     this.usedTeleports.clear();
     this.usedModePortals.clear();
+    this.usedSpeedPortals.clear();
     for (let i = 0; i < this.chomperStates.length; i++) {
       const def = this.level.chompers[i];
       const st = this.chomperStates[i];
@@ -1083,14 +1093,17 @@ export class GameSimulation {
   /**
    * Speed portal processing (M4): deterministic forward crossings on the
    * swept step path, ascending Z (furthest crossed wins). Pure multiplier
-   * mutation — no position jump, no impulse. One-shot per attempt by
-   * construction (forward motion never revisits a plane).
+   * mutation — no position jump, no impulse. ONE-SHOT per attempt
+   * (respawn re-arms): legacy planes fire once by construction AND bounded
+   * volumes are consumed on first overlap (M9 usedSpeedPortals — the
+   * volume would otherwise re-fire every tick inside it).
    */
   private processSpeedPortals(): void {
     if (this.level.speedPortals.length === 0) return;
     const prevZ = this.prevPosition.z;
     const currentZ = this.player.position.z;
     for (const portal of this.level.speedPortals) {
+      if (this.usedSpeedPortals.has(portal.id)) continue;
       // M8.1 bounded trigger volumes (same contract as gravity portals).
       const tc = portal.triggerCenter;
       const th = portal.triggerHalfExtents;
@@ -1099,6 +1112,7 @@ export class GameSimulation {
           ? this.sweptWindowOverlap(tc, th)
           : prevZ < portal.z && currentZ >= portal.z;
       if (crossed) {
+        this.usedSpeedPortals.add(portal.id);
         this.lastSpeedPortalId = portal.id;
         this.speedMultiplierValue = portal.multiplier;
         this.registerInteraction('speedPortal', portal.id, 0, 0, portal.z);

@@ -168,7 +168,7 @@ const sweepRoute = (route: 'primary' | 'alternate'): {
 describe('M8.6 THE DESCENT camera visibility sweep', () => {
   it('keeps the resolved eye out of solids with a clear sight line on the primary route', { timeout: 120000 }, () => {
     const r = sweepRoute('primary');
-    expect(r.ticks, 'route must finish').toBeGreaterThan(14000);
+    expect(r.ticks, 'route must finish').toBeGreaterThan(13680); // M9 musical-finish band floor (114 s)
     expect(r.worst).toBe('');
     expect(r.penetrations).toBe(0);
     // Every blocked post-resolution segment is explicitly fade-covered
@@ -179,7 +179,7 @@ describe('M8.6 THE DESCENT camera visibility sweep', () => {
 
   it('keeps the resolved eye out of solids with a clear sight line on the alternate route', { timeout: 120000 }, () => {
     const r = sweepRoute('alternate');
-    expect(r.ticks, 'route must finish').toBeGreaterThan(14000);
+    expect(r.ticks, 'route must finish').toBeGreaterThan(13680); // M9 musical-finish band floor (114 s)
     expect(r.worst).toBe('');
     expect(r.penetrations).toBe(0);
     expect(r.uncoveredBlocked).toBe(0);

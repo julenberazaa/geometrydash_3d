@@ -91,8 +91,16 @@ export class ShowcaseDriver {
   private recentering = false;
   private recenterUntilZ = 0;
   private recenterTarget = 1;
+  /**
+   * M9 lane-lazy probe: drops every authored lane tap AND the reactive
+   * ferry-follow/recenter steering (jump edges from combined tap+jumps are
+   * preserved as plain jumps). If this variant still finishes, the route
+   * does not force lane discipline there — the openness audit uses it to
+   * prove funnels work (lazy must die where routing is precise).
+   */
+  private readonly laneLazy: boolean;
 
-  constructor(variant: 'primary' | 'alternate' = 'primary') {
+  constructor(variant: 'primary' | 'alternate' = 'primary', opts: { laneLazy?: boolean } = {}) {
     // Shared trunk jumps (acts 1/4/5/6-exit/7-run/9).
     const trunkJumps = [
       18, // A1 entry gap
@@ -110,10 +118,7 @@ export class ShowcaseDriver {
       913.5, // A4 shaft-exit spike
       933, // A5 ferry board
       957, // A5 ferry exit
-      1042.5, // A5 lava strip
-      1066, // A5 post spike
-      1077, // foundry-exit rhythm hop (open center lane)
-      1087.5, 1097.5, // ship-approach rhythm hops
+      1042.5, // A5 lava strip (2× flight clears the strip + lunge head)
       869.5, 879.5, // spire-entry rhythm hops
       427, 439, // maze-approach rhythm hops
       520, 534, 548, // lower-deck rhythm hops (open road / upper flight)
@@ -185,7 +190,11 @@ export class ShowcaseDriver {
       { atZ: 1018, dir: 'left' },
       { atZ: 1025, dir: 'right' },
       { atZ: 1048, dir: 'right' },
-      { atZ: 1056, dir: 'left' },
+      // M9 slalom returns: dodge through the lengthened lunge, back to
+      // center after it, then the two single-door weaves (10 u leads).
+      { atZ: 1063, dir: 'left' },
+      { atZ: 1070, dir: 'right' },
+      { atZ: 1086, dir: 'left' },
       // A6 pillar slalom + S-weave pillar + recenter for the gates.
       { atZ: 1172, dir: 'right' },
       { atZ: 1186, dir: 'left' },
@@ -269,7 +278,18 @@ export class ShowcaseDriver {
     ];
     this.jumps = [...(variant === 'primary' ? primaryJumps : alternateJumps)].sort((a, b) => a - b);
     const taps = variant === 'primary' ? primaryTaps : alternateTaps;
-    this.taps = taps.map((t) => ({ ...t })).sort((a, b) => a.atZ - b.atZ);
+    this.laneLazy = opts.laneLazy ?? false;
+    if (this.laneLazy) {
+      // Preserve jump edges hidden inside combined tap+jumps as plain
+      // jumps; drop every pure lane-steering tap.
+      for (const t of taps) {
+        if (t.withJump === true) this.jumps.push(t.atZ);
+      }
+      this.jumps.sort((a, b) => a - b);
+      this.taps = [];
+    } else {
+      this.taps = taps.map((t) => ({ ...t })).sort((a, b) => a.atZ - b.atZ);
+    }
     this.spiderPresses = [...presses];
     // Fast-fall ranges (z windows where ArrowDown stays held airborne).
     // NOTE: the A1 drop chamber needs NO fast-fall (the natural fall
@@ -318,11 +338,14 @@ export class ShowcaseDriver {
     const support = sim.player.supportColliderId;
     const ridingFerry =
       support !== null && support.startsWith('platform-ps-ferry-') && sim.playerMode === 'cube';
+    // M9 lane-lazy: no reactive steering either (ride wherever the deck
+    // takes the Cube — the openness audit wants the unsteered outcome).
     // Air-follow: while airborne over a lateral ferry just ridden (e.g.
     // a Chomper-dodge jump off the deck), keep steering toward the deck
     // so the landing is solid, not a corner graze. The lane servo would
     // otherwise recenter mid-flight and dump the rider off the edge.
     if (
+      !this.laneLazy &&
       !ridingFerry && this.wasRidingFerry && sim.playerMode === 'cube' &&
       sim.gravityMode === 'floor' && this.tick - this.lastFerryTapTick > 15
     ) {
@@ -349,7 +372,7 @@ export class ShowcaseDriver {
       this.recenterTarget = z > 900 ? 0 : 1;
     }
     this.wasRidingFerry = ridingFerry;
-    if (this.recentering && sim.playerMode === 'cube' && sim.gravityMode === 'floor') {
+    if (!this.laneLazy && this.recentering && sim.playerMode === 'cube' && sim.gravityMode === 'floor') {
       const t = sim.player.targetLaneIndex;
       if (t === this.recenterTarget || z > this.recenterUntilZ) {
         this.recentering = false;
@@ -358,7 +381,7 @@ export class ShowcaseDriver {
         return t < this.recenterTarget ? tapLaneRight : tapLaneLeft;
       }
     }
-    if (ridingFerry) {
+    if (!this.laneLazy && ridingFerry) {
       this.lastFerryId = support;
       const idx = sim.platformIndexForSupportId(support);
       const st = sim.platformStates[idx];
