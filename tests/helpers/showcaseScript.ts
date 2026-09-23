@@ -108,7 +108,9 @@ export class ShowcaseDriver {
     // Pop-over takeoffs keep ≥ 2 u lead before the spike face — the rise
     // needs ~0.6 u to clear a 0.5 top.)
     const trunkJumps = [
-      2.5, 76, 86.3, 127.5, 138.5,
+      // M9.1 ACT 1 tight transfer rhythm (takeoffs 0.7–2 u post-landing;
+      // the 50 is the required funnel-orb press, fired mid-flight).
+      2.5, 12, 22.5, 33, 43.5, 50, 76, 86.3, 127.5, 138.5,
       // M9 post-river double (lane-1 spikes 160 + 164 — two takeoffs).
       147, 157.5, 172.3,
       // M9.1 ACT 2 shared: island chain (takeoffs ≥ 0.7 u post-landing)
@@ -126,10 +128,11 @@ export class ShowcaseDriver {
       957, // A5 ferry exit
       1042.5, // A5 lava strip (2× flight clears the strip + lunge head)
       869.5, 879.5, // spire-entry rhythm hops
-      427, 439, // maze-approach rhythm hops
-      520, 534, 548, // lower-deck rhythm hops (open road / upper flight)
+      // M9.1 ACT 3 maze: approach hop + teeth jog (door 1 passed running,
+      // centered) + door-line hops + door orbs (incl. the mid-flight
+      // orb-chain link) + pre-steers (one shared line; gaps ≤ 90 ticks).
+      433.5, 456, 467, 474, 485, 491, 498, 505, 519,
       346, 354, 364, // HIGH-drop rhythm (open slabs, lane-neutral)
-      572, // upper-deck hole rhythm hop
       640, // maze-exit slab rhythm hop
       1318, // ship-exit rhythm hop (open runway)
     ];
@@ -143,10 +146,8 @@ export class ShowcaseDriver {
       376, // ferry board jump
       401, // ferry exit jump
       412, // far-runway spike
-      // ACT 3 maze rhythm hops + upper deck holes + exit gap.
-      459.5, 469.5, 489.5, 499.5, 559, 583, 623,
-      // ACT 3 upper rhythm hops.
-      597, 609,
+      // M9.1 ACT 3 upper hole-chain (narrowed 1-lane + two joint holes).
+      550, 559.5, 570, 583.5, 599.5, 610, 623,
       // ACT 8 HIGH deck (approach hop + two orb gaps + lift exit — orb
       // presses track their windows: A mid-window, B mid-window).
       1503.5, 1542, 1545.8, 1558, 1560.5, 1577.5, 1587,
@@ -159,11 +160,13 @@ export class ShowcaseDriver {
       254.5, // lane-0 hop (spike 257)
       269.5, // side-strip hop (lane-0 spike 272)
       313, 326, 338.5, // LOW ground-route spike rhythm (lane-neutral hops)
+      // M9.1 ACT 3 transition hops (lane-0 hop + lane-2 strip hop) +
+      // lower exit hop (carries the weave to the exit gap).
+      529, 542, 600,
       376, // ferry board jump
       401, // ferry exit jump
       412, // far-runway spike
-      460, 485, // maze spike rhythm (lane-neutral, preserves weave lanes)
-      559, 583, 594, 604.5, 621, // lower-deck spike + exit gap (take off!)
+      621, // exit gap (take off!)
       1507, // gantry approach spike (lane 2)
       1543, 1553, 1565, // LOW deck holes + spike
       1587, // reconnect hop spike (shared runway)
@@ -172,13 +175,11 @@ export class ShowcaseDriver {
     const trunkTaps: TapAction[] = [
       // M9.1 A1 island/stair/pier/shaft transfers (jump + steer combined —
       // the plain-jump list above carries no lateral edge for these).
-      { atZ: 13.5, dir: 'right', withJump: true }, // B → C (lane 2)
-      { atZ: 24.5, dir: 'left', withJump: true }, // C → D (lane 0, first)
-      { atZ: 25.5, dir: 'left' }, // C → D (second edge)
-      { atZ: 35.5, dir: 'right', withJump: true }, // D → funnel (center)
-      { atZ: 49.5, dir: 'left', withJump: true }, // funnel → tread 1 (apex on the face)
-      { atZ: 63.5, dir: 'right', withJump: true }, // tread 1 → tread 2
-      { atZ: 64.5, dir: 'right' }, // tread 2 (second edge, mid-flight)
+      { atZ: 12, dir: 'right', withJump: true }, // B → C (lane 2)
+      { atZ: 22.5, dir: 'left', withJump: true }, // C → D (lane 0, first)
+      { atZ: 23.5, dir: 'left' }, // C → D (second edge)
+      { atZ: 33, dir: 'right', withJump: true }, // D → funnel (center)
+      { atZ: 63.5, dir: 'right', withJump: true }, // tread 1 → tread 2 (single edge)
       { atZ: 70, dir: 'left' }, // bridge prep (mid-flight recenter)
       { atZ: 95.5, dir: 'right' }, // pier tooth → drop-side lane (no jump)
       { atZ: 107.5, dir: 'left', withJump: true }, // catcher A → B
@@ -195,6 +196,15 @@ export class ShowcaseDriver {
       // M9.1 shared stair-1 climb (both variants ascend; primary continues
       // to stair 2, alternate drops off the end to the LOW weave).
       { atZ: 234.5, dir: 'left', withJump: true }, // landing → stair 1
+      // M9.1 ACT 3 shared door line (single doors + split door 6; one line
+      // for both variants until the pad split; gaps all ≤ 90 ticks).
+      { atZ: 443, dir: 'right' }, // teeth-448 dodge (lane 2)
+      { atZ: 448, dir: 'left' }, // door-1 return (lane 1, fits 0.45)
+      { atZ: 459, dir: 'right' }, // door-2 steer (lane 2, mid-flight)
+      { atZ: 478, dir: 'left' }, // door-3 landing align (lane 1, hop-2 flight)
+      { atZ: 506, dir: 'left' }, // door-5 pre-steer (lane 0, hop-4 flight)
+      { atZ: 510, dir: 'right' }, // teeth-515 dodge (lane 1, hop-4 flight)
+      { atZ: 513, dir: 'left' }, // door-5/hop-5 return (lane 0, mid-flight)
       // A4 ceiling spike weaves (lane 2, then lane 1 for the last).
       { atZ: 750, dir: 'right' },
       { atZ: 782, dir: 'left' },
@@ -254,11 +264,9 @@ export class ShowcaseDriver {
       // A2 MID deck spikes.
       { atZ: 286, dir: 'right' },
       { atZ: 296, dir: 'left' },
-      // A3 maze doors + rhythm spikes (lane 1, lane 1, lane 0, lane 2).
-      { atZ: 468, dir: 'left' },
-      { atZ: 476, dir: 'right' },
-      { atZ: 498, dir: 'right' },
-      { atZ: 520, dir: 'left' },
+      // Door 6 + pad (primary only — from lane 0 back to lane 1 for the
+      // pad trigger; the alternate holds lane 0 around it).
+      { atZ: 522, dir: 'right' },
       // A3 2× weave (lane 1 through 700, lane 0 through 708 + 712),
       // then recenter for the speed/gravity gates.
       { atZ: 700, dir: 'left' },
@@ -277,12 +285,18 @@ export class ShowcaseDriver {
       // A2 LOW road weave (open road, lane-neutral pair).
       { atZ: 285, dir: 'left' },
       { atZ: 297, dir: 'right' },
-      // A3 maze doors (lane 2, lane 0, lane 2).
-      { atZ: 445, dir: 'right' },
-      { atZ: 475, dir: 'left' },
-      { atZ: 477, dir: 'left' },
-      { atZ: 502, dir: 'right' },
-      { atZ: 504, dir: 'right' },
+      // M9.1 A3 transition steer (mid-flight of the lane-0 hop — align
+      // the lanes-1+2 strip for the lower weave).
+      { atZ: 536, dir: 'right' },
+      { atZ: 537, dir: 'right' },
+      // M9.1 A3 lower weave (lanes 1+2 strip — alternating dodge).
+      { atZ: 551, dir: 'left' }, // dodge teeth 556 (lane 1)
+      { atZ: 561, dir: 'right' }, // dodge teeth 566 (lane 2)
+      { atZ: 571, dir: 'left' }, // dodge teeth 576 (lane 1)
+      { atZ: 581, dir: 'right' }, // dodge teeth 586 (lane 2)
+      { atZ: 591, dir: 'left' }, // dodge teeth 596 (lane 1)
+      { atZ: 606, dir: 'right' }, // dodge teeth 612 (lane 2, mid-flight)
+      { atZ: 613.5, dir: 'left' }, // exit recenter (lane 1)
       // A3 2× weave (lane 1 through 700, lane 0 through 708 + 712),
       // then recenter for the speed/gravity gates.
       { atZ: 700, dir: 'left' },

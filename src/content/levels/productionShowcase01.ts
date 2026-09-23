@@ -326,6 +326,35 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     // Required orbs: z-half 1.5 (3 u flight-direction windows) — required
     // mid-flight presses must stay reliably hittable (never frame-perfect)
     // while x/y stay precise; unit press edges sit mid-window.
+    // ACT 1 funnel: required mid-flight orb reshaping the hop arc onto
+    // tread 1 (impulse 12; missing it lands short at the riser face).
+    {
+      id: 'ps-orb-forge',
+      center: { x: 0, y: 1.5, z: 50 },
+      halfExtents: { x: 0.9, y: 0.9, z: 1.5 },
+      impulse: 12,
+    },
+    // ACT 3 door orbs (impulse 8): (a) lane-2 hop-assist through door 2
+    // (pressed grounded), (b) lane-1 grounded launch through door 4,
+    // (c) lane-1 mid-flight reshaper on the hop-3 arc.
+    {
+      id: 'ps-orb-maze-a',
+      center: { x: -2.6, y: 1.5, z: 468 },
+      halfExtents: { x: 0.9, y: 0.9, z: 1.5 },
+      impulse: 8,
+    },
+    {
+      id: 'ps-orb-maze-b',
+      center: { x: 0, y: 1.5, z: 499 },
+      halfExtents: { x: 0.9, y: 0.9, z: 1.5 },
+      impulse: 8,
+    },
+    {
+      id: 'ps-orb-maze-c',
+      center: { x: 0, y: 2.35, z: 491 },
+      halfExtents: { x: 0.9, y: 0.9, z: 1.5 },
+      impulse: 8,
+    },
     // ACT 2 upper: required orb over the 8 u HIGH gap.
     {
       id: 'ps-orb-sky',
@@ -560,10 +589,13 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     // lateral offsets — jump + steer from the first seconds).
     { center: { x: 0, y: -0.5, z: 12 }, halfExtents: { x: 1.6, y: 0.5, z: 3 } },
     { center: { x: -2.6, y: -0.5, z: 23 }, halfExtents: { x: 1.6, y: 0.5, z: 3 } },
-    { center: { x: 2.6, y: -0.5, z: 34 }, halfExtents: { x: 1.6, y: 0.5, z: 3 } },
-    // Landing funnel (wide catch, z 42..46) into the narrow riser (z 46..54).
-    { center: { x: 0, y: -0.5, z: 44 }, halfExtents: { x: 5.4, y: 0.5, z: 2 } },
-    { center: { x: 0, y: -0.5, z: 50 }, halfExtents: { x: 1.6, y: 0.5, z: 4 } },
+    { center: { x: 2.6, y: -0.5, z: 33 }, halfExtents: { x: 1.6, y: 0.5, z: 3 } },
+    // Landing funnel (wide catch, z 41..45), hop gap (45..48), narrow
+    // riser (z 48..54) with a REQUIRED mid-flight orb: hop from the funnel,
+    // press the orb airborne, ride the reshaped arc onto tread 1 (missing
+    // the orb lands short at the riser face — fair, telegraphed).
+    { center: { x: 0, y: -0.5, z: 43 }, halfExtents: { x: 5.4, y: 0.5, z: 2 } },
+    { center: { x: 0, y: -0.5, z: 51 }, halfExtents: { x: 1.6, y: 0.5, z: 3 } },
     // Broken offset stairs (risers 1.5; tread 1 meets the funnel so the
     // apex-on-face takeoff comes 5 u after the funnel landing).
     { center: { x: 1.3, y: 0.75, z: 59 }, halfExtents: { x: 1.3, y: 0.75, z: 5 } },
@@ -665,23 +697,32 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     { center: { x: 5, y: -4, z: 196 }, halfExtents: { x: 1, y: 4, z: 1.5 } },
     { center: { x: -5, y: -4, z: 250 }, halfExtents: { x: 1, y: 4, z: 1.5 } },
 
-    // ================= ACT 3 MAZE RUNNER (430..720) =================
-    // Lower runway (top 0, z 430..540).
+    // ================= ACT 3 MAZE RUNNER (430..720, M9.1) =================
+    // M9.1 REBUILD: the 3 two-door walls become 5 SINGLE doors + 1 double
+    // split-door with hop spikes + teeth jogs between (one shared line,
+    // both variants); the upper deck narrows to a 1-lane hole-chain with
+    // hop rhythm; the lower deck narrows to a lanes-1+2 weave strip fed by
+    // a transition runway (alternate). Ferry pair + 2× exit untouched.
+    // Lower runway (top 0, z 430..540 — doors sculpt the single line).
     { center: { x: 0, y: -0.5, z: 485 }, halfExtents: { x: 5.4, y: 0.5, z: 55 } },
-    // Upper deck (top 4.5, z 540..622) FLOATING over the lower corridor:
-    // slab spans y 3.5..4.5, lower headroom 3.5 fits the jump envelope.
-    { center: { x: 0, y: 4, z: 550 }, halfExtents: { x: 5.4, y: 0.5, z: 10 } },
-    { center: { x: 0, y: 4, z: 574 }, halfExtents: { x: 5.4, y: 0.5, z: 10 } },
-    { center: { x: 0, y: 4, z: 605 }, halfExtents: { x: 5.4, y: 0.5, z: 17 } },
+    // Upper deck (top 4.5) NARROWED to a 1-lane hole-chain (joints at
+    // 560..564 + 584..588 are the precision jumps): slab spans y 3.5..4.5
+    // so the alternate weave + exit jump fit underneath (jump envelope).
+    { center: { x: 0, y: 4, z: 550 }, halfExtents: { x: 1.6, y: 0.5, z: 10 } },
+    { center: { x: 0, y: 4, z: 574 }, halfExtents: { x: 1.6, y: 0.5, z: 10 } },
+    { center: { x: 0, y: 4, z: 605 }, halfExtents: { x: 1.6, y: 0.5, z: 17 } },
     // Deck support pillars (off-route, x=±6.5).
     { center: { x: 6.5, y: 1.75, z: 560 }, halfExtents: { x: 1, y: 1.75, z: 1 } },
     { center: { x: -6.5, y: 1.75, z: 584 }, halfExtents: { x: 1, y: 1.75, z: 1 } },
     { center: { x: 6.5, y: 1.75, z: 605 }, halfExtents: { x: 1, y: 1.75, z: 1 } },
-    // Lower deck under the upper (top 0, z 540..622, spike timing).
-    { center: { x: 0, y: -0.5, z: 581 }, halfExtents: { x: 5.4, y: 0.5, z: 41 } },
-    // Exit slab (top 0, z 628..660).
-    { center: { x: 0, y: -0.5, z: 644 }, halfExtents: { x: 5.4, y: 0.5, z: 16 } },
-    // Post-ferry slab (top 0, z 688..720).
+    // Lower weave strip (top 0, z 548..622, lanes 1+2) + transition runway
+    // (full, z 534..548 — the alternate crosses from lane 0 to lane 2).
+    { center: { x: 0, y: -0.5, z: 541 }, halfExtents: { x: 5.4, y: 0.5, z: 7 } },
+    { center: { x: -1.3, y: -0.5, z: 585 }, halfExtents: { x: 2.6, y: 0.5, z: 37 } },
+    // Exit slab (top 0, z 628..660) NARROWED with a hop spike.
+    { center: { x: 0, y: -0.5, z: 644 }, halfExtents: { x: 1.6, y: 0.5, z: 16 } },
+    // Post-ferry slab (top 0, z 688..720 — kept full: the 2× gates need
+    // every lane for the one-tap line).
     { center: { x: 0, y: -0.5, z: 704 }, halfExtents: { x: 5.4, y: 0.5, z: 16 } },
     // Maze chamber containment + lava pool rim (east pool z 465..505).
     { center: { x: 9, y: -4.5, z: 485 }, halfExtents: { x: 3.5, y: 0.5, z: 40.5 } },
@@ -956,98 +997,71 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 376 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     // HIGH landing narrowed (1-lane) — no teeth needed, support holds it.
 
-    // ================= ACT 3 =================
-    // Maze walls (single blocking slab each — fast reads at speed).
-    // Maze-approach rhythm hops (both routes run center here).
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 430 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 442 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    // M9 funnel: lower-runway discipline (primary lane 1 pre-pad, the
-    // alternate lane 2 — lane 0 carries teeth both lines clear laterally).
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 524 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 534 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 544 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 552 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    // M9 funnel: approach discipline (both lines center 432–440 between
-    // the rhythm hops) — lanes 0+2 carry teeth.
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 436 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 436 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    // Wall 1 (z 450): blocks lane 0, doors lanes 1 + 2.
-    { kind: 'killFront', visual: 'block', center: { x: 2.6, y: 3.5, z: 450 }, halfExtents: { x: 1.3, y: 3.5, z: 0.5 } },
-    // Wall 2 (z 480): blocks lane 2, doors lanes 0 + 1.
-    { kind: 'killFront', visual: 'block', center: { x: -2.6, y: 3.5, z: 480 }, halfExtents: { x: 1.3, y: 3.5, z: 0.5 } },
-    // Wall 3 (z 510): blocks lane 1, doors lanes 0 + 2.
-    { kind: 'killFront', visual: 'block', center: { x: 0, y: 3.5, z: 510 }, halfExtents: { x: 1.3, y: 3.5, z: 0.5 } },
-    // Maze-run rhythm spikes (hop between the door reads) + M9 funnel
-    // teeth on lanes free on BOTH reference lines (primary doors 1/0/1/2
-    // vs alternate doors 2/0/2 — only unshared lanes carry teeth; the 496
-    // single sits under the primary flight and beside the alternate line).
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 462 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 472 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 492 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 502 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 456 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 474 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 484 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 496 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 508 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 508 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 516 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 516 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    // Upper-deck spikes (center rhythm hops for the elevated line) + M9
-    // funnel teeth (primary holds lane 1 high above the deck — bottoms
-    // 5.35+ clear the 5.0 tops; the alternate LOW line runs underneath).
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 4.75, z: 552 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 4.75, z: 600 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // ================= ACT 3 (M9.1 rebuild) =================
+    // Maze approach hop (the far-ruin flight clears 430 high; land and hop).
+    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 436 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Approach teeth jog (dodge + return for door 1 — door passed
+    // RUNNING, centered; the first hop comes after it).
+    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 448 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Door 1 (z 452): single lane-1 opening (one shared line from here).
+    { kind: 'killFront', visual: 'block', center: { x: 3.35, y: 1.5, z: 452 }, halfExtents: { x: 2.05, y: 1.5, z: 0.5 } },
+    { kind: 'killFront', visual: 'block', center: { x: -3.35, y: 1.5, z: 452 }, halfExtents: { x: 2.05, y: 1.5, z: 0.5 } },
+    // Hop spike (lane 1) + door-2 steer.
+    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 458 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Door 2 (z 470): single lane-2 opening (orb-assisted hop through it).
+    // Door 2 (z 470): single lane-2 opening.
+    { kind: 'killFront', visual: 'block', center: { x: 0, y: 1.5, z: 470 }, halfExtents: { x: 1.3, y: 1.5, z: 0.5 } },
+    { kind: 'killFront', visual: 'block', center: { x: 3.35, y: 1.5, z: 470 }, halfExtents: { x: 2.05, y: 1.5, z: 0.5 } },
+    // Hop spike (lane 2) + door-3 landing align (single-step swing).
+    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 476 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Door 3 (z 486): single lane-1 opening.
+    { kind: 'killFront', visual: 'block', center: { x: 3.35, y: 1.5, z: 486 }, halfExtents: { x: 2.05, y: 1.5, z: 0.5 } },
+    { kind: 'killFront', visual: 'block', center: { x: -3.35, y: 1.5, z: 486 }, halfExtents: { x: 2.05, y: 1.5, z: 0.5 } },
+    // Hop spike (lane 1) + door-4 ride (hold the line).
+    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 487 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Door 4 (z 502): single lane-1 opening.
+    { kind: 'killFront', visual: 'block', center: { x: 3.35, y: 1.5, z: 502 }, halfExtents: { x: 2.05, y: 1.5, z: 0.5 } },
+    { kind: 'killFront', visual: 'block', center: { x: -3.35, y: 1.5, z: 502 }, halfExtents: { x: 2.05, y: 1.5, z: 0.5 } },
+    // Hop spike (lane 2) + door-5 pre-steer (mid-flight).
+    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 508 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Teeth dodge (lane 0 — both variants swerve to lane 1 and back).
+    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 515 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Door 5 (z 518): double lane-0+lane-1 opening (split-zone language —
+    // the teeth-dodge return passes here without a pixel-centering demand).
+    { kind: 'killFront', visual: 'block', center: { x: -3.35, y: 1.5, z: 518 }, halfExtents: { x: 2.05, y: 1.5, z: 0.5 } },
+    // Hop spike (lane 0) + door-6/pad pre-steer.
+    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 523 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Alternate transition hop (lane 0, over the door-6 approach).
+    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 532 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Door 6 (z 534): double lane-0+lane-1 opening (the split — primary
+    // takes lane 1 into the pad, alternate lane 0 around it).
+    { kind: 'killFront', visual: 'block', center: { x: -3.35, y: 1.5, z: 534 }, halfExtents: { x: 2.05, y: 1.5, z: 0.5 } },
+    // Upper hole-chain (narrowed 1-lane — hop rhythm + two joint holes;
+    // the narrow support holds the single band, spikes time the hops).
+    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 4.75, z: 552 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 4.75, z: 572 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 4.75, z: 602 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: 0, y: 4.75, z: 612 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    // M9 funnel: upper-deck exit discipline (driver lands center 617.8
-    // for the 623 gap jump) — lanes 0+2 carry teeth.
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 4.75, z: 618 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 4.75, z: 618 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 4.75, z: 546 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 4.75, z: 546 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 4.75, z: 556 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 4.75, z: 556 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 4.75, z: 566 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 4.75, z: 566 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 4.75, z: 576 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 4.75, z: 576 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 4.75, z: 584 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 4.75, z: 584 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 4.75, z: 592 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 4.75, z: 592 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 4.75, z: 604 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 4.75, z: 604 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    // Lower-deck spike timing (under the upper deck) + M9 funnel teeth
-    // (alternate holds lane 2 down here — lanes 0+1 carry teeth while the
-    // primary line flies overhead).
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 570 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 594 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 560 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 560 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 580 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 580 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 600 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 600 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 586 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Transition hop spike (lane 2 — the alternate lands the strip moving).
+    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 544 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Lower weave strip (narrowed lanes 1+2 — alternating teeth force the
+    // weave; the narrow support caps the bands at two).
+    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 556 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 566 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 576 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 586 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 590 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 590 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 606 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 606 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 610 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 610 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 616 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 616 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 596 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Lower exit hop (carries the weave to the exit-gap takeoff) + teeth
+    // jog (dodge + return for the centered exit takeoff).
+    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 602 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 612 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Exit-slab hop spike (narrowed strip).
+    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 642 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     // 2× exit weave gates (single-lane blocks, one-tap line at speed:
     // lane 1 through 700, lane 0 through 706 + 712).
     { kind: 'killFront', visual: 'block', center: { x: 2.6, y: 1.5, z: 700 }, halfExtents: { x: 1.3, y: 1.5, z: 0.5 } },
     { kind: 'killFront', visual: 'block', center: { x: 0, y: 1.5, z: 708 }, halfExtents: { x: 1.3, y: 1.5, z: 0.5 } },
     { kind: 'killFront', visual: 'block', center: { x: -2.6, y: 1.5, z: 712 }, halfExtents: { x: 1.3, y: 1.5, z: 0.5 } },
-    // M9 funnel: maze-exit slab discipline (primary lane 1, alternate
-    // lane 2 — lane 0 carries teeth both lines clear laterally).
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 636 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 644 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 652 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     // M9 funnel: spire-entry discipline (both lines transit 0→1 through
     // 716–724 — lane 2 carries teeth the transit clears laterally).
     { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 720 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },

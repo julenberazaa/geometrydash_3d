@@ -180,18 +180,16 @@ describe('M8.6 production showcase', () => {
 
     it('kills as lava when the forge river hop is missed', () => {
       const sim = new GameSimulation(PRODUCTION_SHOWCASE_01);
-      // Navigate the M9.1 island chain + offset stairs + pier + shaft +
-      // jog road (same edges as the reference driver) but NOT the at-grade
-      // river (z 140.5..143.5): the lava strip kills.
-      const jumps = [2.5, 13.5, 24.5, 35.5, 49.5, 63.5, 76, 86.3, 107.5, 116.8, 127.5];
+      // Navigate the M9.1 island chain + funnel orb + offset stairs + pier
+      // + shaft + jog road (same edges as the reference driver) but NOT
+      // the at-grade river (z 140.5..143.5): the lava strip kills.
+      const jumps = [2.5, 12, 22.5, 33, 43.5, 50, 63.5, 76, 86.3, 107.5, 116.8, 127.5];
       const splitTaps = [
-        { atZ: 13.5, dir: 'right' as const },
-        { atZ: 24.5, dir: 'left' as const },
-        { atZ: 25.5, dir: 'left' as const },
-        { atZ: 35.5, dir: 'right' as const },
-        { atZ: 49.5, dir: 'left' as const },
+        { atZ: 12, dir: 'right' as const },
+        { atZ: 22.5, dir: 'left' as const },
+        { atZ: 23.5, dir: 'left' as const },
+        { atZ: 33, dir: 'right' as const },
         { atZ: 63.5, dir: 'right' as const },
-        { atZ: 64.5, dir: 'right' as const },
         { atZ: 70, dir: 'left' as const },
         { atZ: 95.5, dir: 'right' as const },
         { atZ: 107.5, dir: 'left' as const },
@@ -219,6 +217,19 @@ describe('M8.6 production showcase', () => {
       if (splitTap !== undefined && z >= splitTap.atZ) {
         ti++;
         sim.update(splitTap.dir === 'left' ? tapLaneLeft : tapLaneRight);
+        continue;
+      }
+      // Pier-end shaft drop (same fast-fall as the driver — without it the
+      // natural fall lands past the A-transfer takeoff and the script never
+      // reaches the river).
+      if (z >= 102 && z <= 105) {
+        sim.update({
+          space: { held: false, pressedThisStep: false, releasedThisStep: false },
+          up: { held: false, pressedThisStep: false, releasedThisStep: false },
+          down: { held: true, pressedThisStep: false, releasedThisStep: false },
+          laneLeft: { held: false, pressedThisStep: false, releasedThisStep: false },
+          laneRight: { held: false, pressedThisStep: false, releasedThisStep: false },
+        });
         continue;
       }
       sim.update(idleInput);
