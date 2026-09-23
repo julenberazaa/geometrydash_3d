@@ -118,9 +118,9 @@ export class ShowcaseDriver {
       // alternate would waste it mid-air over its own later hop.)
       186, 224, 424,
       728, // A4 floor spike
-      756.5, 766.5, // A4 ceiling spikes
-      769, // A4 ceiling gap
-      786.5, // A4 ceiling spike
+      738, // A4 entry hop (portal fires mid-flight → ceiling up-fall)
+      // M9.1 A4 ceiling dive-hops (narrowed 1-lane + joint hole) + wall hops.
+      752.5, 762, 771.5, 782, 792, 812.5, 826.5,
       // M9 beat-127/129 orb windows (track the shifted orbs).
       901.5, 915, // A4 gravity-orb presses (pad flight + ceiling return)
       913.5, // A4 shaft-exit spike
@@ -133,8 +133,9 @@ export class ShowcaseDriver {
       // orb-chain link) + pre-steers (one shared line; gaps ≤ 90 ticks).
       433.5, 456, 467, 474, 485, 491, 498, 505, 519,
       346, 354, 364, // HIGH-drop rhythm (open slabs, lane-neutral)
-      640, // maze-exit slab rhythm hop
-      1318, // ship-exit rhythm hop (open runway)
+      // Exit-gap takeoff (the 4.5 u upper→slab drop extends the flight to
+      // 12.2 u — a documented exit-gap breath) + slab hop pair.
+      620, 633, 644,
     ];
     const primaryJumps = [
       ...trunkJumps,
@@ -146,8 +147,9 @@ export class ShowcaseDriver {
       376, // ferry board jump
       401, // ferry exit jump
       412, // far-runway spike
-      // M9.1 ACT 3 upper hole-chain (narrowed 1-lane + two joint holes).
-      550, 559.5, 570, 583.5, 599.5, 610, 623,
+      // M9.1 ACT 3 upper hole-chain (narrowed 1-lane + two joint holes;
+      // the exit gap uses the shared 620 takeoff, never a duplicate).
+      550, 559.5, 570, 583.5, 599.5, 610,
       // ACT 8 HIGH deck (approach hop + two orb gaps + lift exit — orb
       // presses track their windows: A mid-window, B mid-window).
       1503.5, 1542, 1545.8, 1558, 1560.5, 1577.5, 1587,
@@ -159,14 +161,13 @@ export class ShowcaseDriver {
       244, // drop-jump off stair 1 (lands LOW road)
       254.5, // lane-0 hop (spike 257)
       269.5, // side-strip hop (lane-0 spike 272)
-      313, 326, 338.5, // LOW ground-route spike rhythm (lane-neutral hops)
+      313, 317, 326, 338.5, // LOW-ground hops + mid-flight orb reshaper
       // M9.1 ACT 3 transition hops (lane-0 hop + lane-2 strip hop) +
       // lower exit hop (carries the weave to the exit gap).
       529, 542, 600,
       376, // ferry board jump
       401, // ferry exit jump
       412, // far-runway spike
-      621, // exit gap (take off!)
       1507, // gantry approach spike (lane 2)
       1543, 1553, 1565, // LOW deck holes + spike
       1587, // reconnect hop spike (shared runway)
@@ -179,8 +180,12 @@ export class ShowcaseDriver {
       { atZ: 22.5, dir: 'left', withJump: true }, // C → D (lane 0, first)
       { atZ: 23.5, dir: 'left' }, // C → D (second edge)
       { atZ: 33, dir: 'right', withJump: true }, // D → funnel (center)
-      { atZ: 63.5, dir: 'right', withJump: true }, // tread 1 → tread 2 (single edge)
+      { atZ: 54, dir: 'left' }, // tread-1 landing align (orb flight, center it)
+      { atZ: 63.5, dir: 'right', withJump: true }, // tread 1 → tread 2 (first)
+      { atZ: 64.5, dir: 'right' }, // tread 2 (second edge, mid-flight)
       { atZ: 70, dir: 'left' }, // bridge prep (mid-flight recenter)
+      { atZ: 174, dir: 'right' }, // handover teeth dodge (lane 2)
+      { atZ: 180, dir: 'left' }, // island-1 return (lane 1)
       { atZ: 95.5, dir: 'right' }, // pier tooth → drop-side lane (no jump)
       { atZ: 107.5, dir: 'left', withJump: true }, // catcher A → B
       { atZ: 108.5, dir: 'left' }, // catcher B (second edge)
@@ -205,16 +210,15 @@ export class ShowcaseDriver {
       { atZ: 506, dir: 'left' }, // door-5 pre-steer (lane 0, hop-4 flight)
       { atZ: 510, dir: 'right' }, // teeth-515 dodge (lane 1, hop-4 flight)
       { atZ: 513, dir: 'left' }, // door-5/hop-5 return (lane 0, mid-flight)
-      // A4 ceiling spike weaves (lane 2, then lane 1 for the last).
-      { atZ: 750, dir: 'right' },
-      { atZ: 782, dir: 'left' },
+      // (A4 entry holds center on the narrowed runway — hop + portal-flight,
+      // no lateral taps.)
       // A4 left-wall rhythm (vertical lane taps on the open wall — the
       // UP tap follows the beat-112 wall landing).
       { atZ: 806, dir: 'up' },
       { atZ: 822, dir: 'down' },
-      // A4 wall staircase (UP around y-3, DOWN before y-5.6).
+      // A4 wall staircase (UP around y-3, DOWN before y-5.6 — earlier).
       { atZ: 844, dir: 'up' },
-      { atZ: 856, dir: 'down' },
+      { atZ: 852, dir: 'down' },
       // A5 weave (recentered to lane 0): double-right to lane 2, left back.
       { atZ: 975, dir: 'right' },
       { atZ: 977, dir: 'right' },
@@ -282,9 +286,13 @@ export class ShowcaseDriver {
       // the side-strip hop (the shared center hop spike threatens lane 1).
       { atZ: 255.5, dir: 'right' }, // dodge teeth 260 (lane 1)
       { atZ: 262, dir: 'left' }, // return lane 0 (spike 266 threatens center)
-      // A2 LOW road weave (open road, lane-neutral pair).
-      { atZ: 285, dir: 'left' },
-      { atZ: 297, dir: 'right' },
+      // M9.1 A2 side-strip teeth jog + LOW weave jog (dodge + returns).
+      { atZ: 280, dir: 'right' },
+      { atZ: 284, dir: 'left' },
+      { atZ: 286, dir: 'right' },
+      { atZ: 293, dir: 'left' },
+      { atZ: 300, dir: 'right' },
+      { atZ: 307, dir: 'left' },
       // M9.1 A3 transition steer (mid-flight of the lane-0 hop — align
       // the lanes-1+2 strip for the lower weave).
       { atZ: 536, dir: 'right' },
@@ -339,7 +347,7 @@ export class ShowcaseDriver {
     // lands the catcher; holding down drives into its face).
     // The maw-exit dive is shared trunk (both variants fall 1614 → slab).
     // M9.1 A1: pier-end shaft drop + exit-strip drop (deliberate falling).
-    const trunkFF: Array<[number, number]> = [[102, 105], [168, 170.5], [257.5, 260], [1613, 1618]];
+    const trunkFF: Array<[number, number]> = [[102, 105], [168, 170.5], [257.5, 260], [890, 893], [1613, 1618]];
     this.fastFallRanges = variant === 'primary'
       ? [...trunkFF, [359, 364], [1572, 1580]]
       : [...trunkFF];

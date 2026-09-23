@@ -355,6 +355,13 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
       halfExtents: { x: 0.9, y: 0.9, z: 1.5 },
       impulse: 8,
     },
+    // ACT 2 LOW-ground orb (lane 0 — mid-flight reshaper before door 324).
+    {
+      id: 'ps-orb-low-a',
+      center: { x: 2.6, y: 2.0, z: 317 },
+      halfExtents: { x: 0.9, y: 0.9, z: 1.5 },
+      impulse: 8,
+    },
     // ACT 2 upper: required orb over the 8 u HIGH gap.
     {
       id: 'ps-orb-sky',
@@ -629,6 +636,8 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     // Exit drop island (top −1.5, z 170..174): fast-fall off the strip,
     // immediate jump back up to the handover road.
     { center: { x: 0, y: -2, z: 172 }, halfExtents: { x: 1.6, y: 0.5, z: 2 } },
+    // Handover teeth jog (dodge + return for the island takeoff).
+    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 179 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     // Handover road (wide recovery, z 176..184).
     { center: { x: 0, y: -0.5, z: 180 }, halfExtents: { x: 5.4, y: 0.5, z: 4 } },
     // Forge flanking towers (off-route silhouettes).
@@ -661,9 +670,10 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     // pad run) + lane-0 side strip (alternate weave) — lane-2 side is void.
     { center: { x: 0, y: -0.5, z: 271 }, halfExtents: { x: 1.6, y: 0.5, z: 9 } },
     { center: { x: 2.6, y: -0.5, z: 271 }, halfExtents: { x: 2, y: 0.5, z: 9 } },
-    // Pad-split floor (top 0, z 280..312): the alternate LOW spike weave
-    // runs here while the primary pad flight passes overhead.
-    { center: { x: 0, y: -0.5, z: 296 }, halfExtents: { x: 5.4, y: 0.5, z: 16 } },
+    // Pad-split floor (top 0, z 280..312) NARROWED to lanes 0+1: the
+    // alternate LOW weave runs lane 0 here while the primary pad flight
+    // passes overhead (the narrowed support caps the bands at two).
+    { center: { x: 2.05, y: -0.5, z: 296 }, halfExtents: { x: 3.35, y: 0.5, z: 16 } },
     // MID deck after the pad (top 4.5, z 280..312) NARROWED to lanes 1+2
     // over the LOW branch: slab spans y 2..4.5, 2 u run-under corridor.
     { center: { x: -1, y: 3.25, z: 296 }, halfExtents: { x: 2.2, y: 1.25, z: 16 } },
@@ -735,20 +745,22 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     // lava source vent — off-route).
     { center: { x: 10.4, y: -0.5, z: 470 }, halfExtents: { x: 0.5, y: 3.5, z: 1 } },
 
-    // ================= ACT 4 GRAVITY SPIRE (720..920) =================
-    { center: { x: 0, y: -0.5, z: 732.5 }, halfExtents: { x: 5.4, y: 0.5, z: 12.5 } },
-    // Ceiling run slabs (underside y=10, z 745..770 + 775..795).
-    { center: { x: 0, y: 10.5, z: 757.5 }, halfExtents: { x: 5.4, y: 0.5, z: 12.5 } },
-    { center: { x: 0, y: 10.5, z: 785 }, halfExtents: { x: 5.4, y: 0.5, z: 10 } },
+    // ================= ACT 4 GRAVITY SPIRE (720..920, M9.1) =================
+    // M9.1 REBUILD (portals/orbs/pad/lava on their musical Z): narrowed
+    // entry + ceiling hole-chain (dive-hop rhythm), wall hop, shaft ff-drop.
+    { center: { x: 0, y: -0.5, z: 732.5 }, halfExtents: { x: 1.6, y: 0.5, z: 12.5 } },
+    // Ceiling run slabs (underside y=10, z 745..776 + 779..795, 1-lane).
+    { center: { x: 0, y: 10.5, z: 760.5 }, halfExtents: { x: 1.6, y: 0.5, z: 15.5 } },
+    { center: { x: 0, y: 10.5, z: 787 }, halfExtents: { x: 1.6, y: 0.5, z: 8 } },
     // Left-wall slab (face x=5.4, y −1..11, z 795..835).
     { center: { x: 5.9, y: 5, z: 815 }, halfExtents: { x: 0.5, y: 6, z: 20 } },
     // Right-wall slab (face x=−5.4, y −1..7, z 835..865).
     { center: { x: -5.9, y: 3, z: 850 }, halfExtents: { x: 0.5, y: 4, z: 15 } },
-    // Floor runway (starts 858, under the wall exit) + fall shaft
-    // (hole z 890..896, lower floor top −6, pad catches the fall).
-    { center: { x: 0, y: -0.5, z: 874 }, halfExtents: { x: 5.4, y: 0.5, z: 16 } },
-    { center: { x: 0, y: -6.5, z: 894 }, halfExtents: { x: 5.4, y: 0.5, z: 4 } },
-    { center: { x: 0, y: -0.5, z: 911 }, halfExtents: { x: 5.4, y: 0.5, z: 9 } },
+    // Floor runway (starts 858, under the wall exit, narrowed) + fall
+    // shaft (hole z 890..896, lower floor top −6, pad catches the fall).
+    { center: { x: 0, y: -0.5, z: 874 }, halfExtents: { x: 1.6, y: 0.5, z: 16 } },
+    { center: { x: 0, y: -6.5, z: 894 }, halfExtents: { x: 1.6, y: 0.5, z: 4 } },
+    { center: { x: 0, y: -0.5, z: 911 }, halfExtents: { x: 1.6, y: 0.5, z: 9 } },
     // Orb-traverse ceiling slab (underside y=10, z 900..918).
     { center: { x: 0, y: 10.5, z: 909 }, halfExtents: { x: 5.4, y: 0.5, z: 9 } },
     // Spire lava-strip containment (basin floor + rims, z 908..915).
@@ -950,17 +962,12 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     // primary pad flight passes overhead, y 4.7+).
     { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 274 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 274 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 282 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 282 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    // M9 funnel: the LOW road holds lane 0 past the weave (alternate
-    // data) — lanes 1+2 carry teeth through the MID-deck run (the primary
-    // line flies the pad arc overhead).
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 290 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 290 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 298 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 298 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 306 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 306 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Side-strip teeth jog (lane 0 — dodge + return before the weave).
+    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 285 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // M9.1 LOW weave jog (narrowed lanes-0+1 floor — dodge + return pairs;
+    // the narrowed support caps the bands at two).
+    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 292 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 306 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     // MID deck spikes (narrowed deck serves lanes 1+2 — off-deck M9 teeth
     // removed; on-deck timing kept. Driver: lane 1 at 284, lane 2 at 294).
     { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 4.75, z: 284 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
@@ -1055,8 +1062,13 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     // jog (dodge + return for the centered exit takeoff).
     { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 602 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 612 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    // Exit-slab hop spike (narrowed strip).
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 642 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Exit-slab hop pair (narrowed strip; the ferry-boarding run after
+    // the second hop is a documented boarding breath).
+    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 636 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 646 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Left-wall hop spike (high line — dive out and back; fills the
+    // wall-portal run).
+    { kind: 'hazard', visual: 'spike', mount: 'leftWall', center: { x: 5.15, y: 9, z: 829 }, halfExtents: { x: 0.25, y: 0.25, z: 0.9 } },
     // 2× exit weave gates (single-lane blocks, one-tap line at speed:
     // lane 1 through 700, lane 0 through 706 + 712).
     { kind: 'killFront', visual: 'block', center: { x: 2.6, y: 1.5, z: 700 }, halfExtents: { x: 1.3, y: 1.5, z: 0.5 } },
@@ -1067,16 +1079,22 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 720 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 726 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
 
-    // ================= ACT 4 =================
+    // ================= ACT 4 (M9.1 rebuild) =================
     { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 730 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 738 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 738 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    // Ceiling spike weaves (mounted on the run surface).
-    { kind: 'hazard', visual: 'spike', mount: 'ceiling', center: { x: 0, y: 9.75, z: 758 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', mount: 'ceiling', center: { x: 2.6, y: 9.75, z: 768 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', mount: 'ceiling', center: { x: -2.6, y: 9.75, z: 788 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Entry hop spike (the narrowed runway holds center — hop it and let
+    // the ceiling portal fire mid-flight into the up-fall landing).
+    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 740 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Ceiling dive-hop rhythm (narrowed 1-lane + joint hole 776..779).
+    { kind: 'hazard', visual: 'spike', mount: 'ceiling', center: { x: 0, y: 9.75, z: 755 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', mount: 'ceiling', center: { x: 0, y: 9.75, z: 764 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', mount: 'ceiling', center: { x: 0, y: 9.75, z: 784 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', mount: 'ceiling', center: { x: 0, y: 9.75, z: 788 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', mount: 'ceiling', center: { x: 0, y: 9.75, z: 794 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     // Left-wall low spike (forces the high wall line).
     { kind: 'hazard', visual: 'spike', mount: 'leftWall', center: { x: 5.15, y: 1, z: 815 }, halfExtents: { x: 0.25, y: 0.25, z: 0.9 } },
+    // Left-wall hop spike (dive out and back on the high line).
+    { kind: 'hazard', visual: 'spike', mount: 'leftWall', center: { x: 5.15, y: 9, z: 815 }, halfExtents: { x: 0.25, y: 0.25, z: 0.9 } },
     // Right-wall staircase spikes (up around y-3, down before y-5.6).
     { kind: 'hazard', visual: 'spike', mount: 'rightWall', center: { x: -5.15, y: 3, z: 848 }, halfExtents: { x: 0.25, y: 0.25, z: 0.9 } },
     { kind: 'hazard', visual: 'spike', mount: 'rightWall', center: { x: -5.15, y: 5.6, z: 860 }, halfExtents: { x: 0.25, y: 0.25, z: 0.9 } },
