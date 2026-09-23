@@ -1,5 +1,6 @@
 import type { Collider } from '../collision/collider';
 import type {
+  CheckpointDef,
   ChomperDef,
   MovingPlatformDef,
   GravityOrbDef,
@@ -56,6 +57,12 @@ export interface LoadedLevel {
    * order is the collision tie-break + fingerprint order.
    */
   movingPlatforms: readonly MovingPlatformDef[];
+  /**
+   * Practice checkpoints in level definition order (M9.2). Definition
+   * order is the HUD progress order + fingerprint order. Empty for
+   * levels without checkpoints (zero behavior change).
+   */
+  checkpoints: readonly CheckpointDef[];
 }
 
 /** Build runtime collision data from a declarative level. Pure: no THREE, no DOM. */
@@ -121,6 +128,7 @@ export const loadLevel = (def: LevelDefinition): LoadedLevel => {
     modePortals,
     chompers,
     movingPlatforms,
+    checkpoints: def.checkpoints ?? [],
   };
 };
 

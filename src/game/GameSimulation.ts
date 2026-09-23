@@ -37,6 +37,7 @@ import {
 } from './chomperSystem';
 import {
   createMovingPlatformState,
+  platformPose,
   resetMovingPlatformState,
   stepMovingPlatform,
   type MovingPlatformState,
@@ -79,6 +80,65 @@ export type DeathCause = 'hazard' | 'frontImpact' | 'void' | 'lava';
 
 /** Kind of the most recent interaction activation (debug/QA/VFX routing). */
 export type InteractionKind = 'pad' | 'jumpOrb' | 'gravityOrb' | 'speedPortal';
+
+/**
+ * Deterministic checkpoint snapshot (M9.2) — EVERYTHING required to resume
+ * a run mid-level exactly as if the player had arrived there by continuous
+ * play. Captured ONLY at checkpoint activation; restored atomically.
+ *
+ * Audited contents (the complete mutable gameplay state):
+ * - player transform + render-interpolation anchor (position/prev/velocity)
+ * - grounded + support id + lane intent (laneCount is level-static)
+ * - authoritative gravity + player mode (mirrors included)
+ * - authoritative speed multiplier
+ * - one-shot lifecycle sets (interactions/teleports/mode/speed portals)
+ * - Chomper phase machines + swept-test prev centers
+ * - moving-platform clock (poses + carriage prevs + colliders RECOMPUTE
+ *   from it — pure tick functions, never stored)
+ * - deterministic elapsed sim time (music + timeline + rhythm anchor)
+ * - debug/VFX continuity records (last portal/mode/speed/interaction/
+ *   teleport ids, teleport anchor, interaction record, all counters)
+ *
+ * Deliberately EXCLUDED: attempts (session counter, +1 per restore like
+ * respawn), death records (restore always yields `running`), checkpoint
+ * progress itself (run-scoped, never recursive).
+ */
+export interface SimulationCheckpointSnapshot {
+  checkpointId: string;
+  position: { x: number; y: number; z: number };
+  prevPosition: { x: number; y: number; z: number };
+  velocity: { x: number; y: number; z: number };
+  grounded: boolean;
+  supportColliderId: string | null;
+  targetLaneIndex: number;
+  gravityMode: GravityMode;
+  playerMode: PlayerMode;
+  speedMultiplier: number;
+  usedInteractions: string[];
+  usedTeleports: string[];
+  usedModePortals: string[];
+  usedSpeedPortals: string[];
+  chomperStates: ChomperState[];
+  chomperPrev: { x: number; y: number; z: number }[];
+  platformTick: number;
+  elapsedSimTime: number;
+  lastPortalId: string | null;
+  lastModePortalId: string | null;
+  lastSpeedPortalId: string | null;
+  lastInteractionId: string | null;
+  lastTeleportId: string | null;
+  lastTeleport: { x: number; y: number; z: number };
+  hasTeleportEvent: boolean;
+  lastInteraction: InteractionEvent;
+  hasInteractionEvent: boolean;
+  portalTransitionCount: number;
+  modeTransitionCount: number;
+  interactionEventCount: number;
+  padActivationCount: number;
+  orbActivationCount: number;
+  speedPortalCount: number;
+  teleportEventCount: number;
+}
 
 /** Stable record of the most recent interaction activation (VFX anchor). */
 export interface InteractionEvent {
@@ -252,6 +312,28 @@ export class GameSimulation {
    * `ticksInPhase`). Frozen while dead/paused (no updates run).
    */
   private platformTickValue = 0;
+  /**
+   * Practice-checkpoint mode (M9.2), armed by the composition root when a
+   * CHECKPOINT RUN starts. While false (CLASSIC), checkpoint detection
+   * never runs — classic physics, trajectories and replays are
+   * bit-identical with or without authored checkpoints.
+   */
+  private checkpointRespawnEnabled = false;
+  /**
+   * Run-scoped checkpoint progress (M9.2, session only — never persisted,
+   * never replayed): activated ids in activation order, the latest id, and
+   * one snapshot per activation. Survives checkpoint restores; cleared
+   * ONLY by `restartRun()` (full restart). Classic runs never populate it.
+   */
+  private readonly activatedCheckpointIds: string[] = [];
+  private readonly checkpointSnapshots = new Map<string, SimulationCheckpointSnapshot>();
+  private activeCheckpointIdValue: string | null = null;
+  /** Monotonic count of checkpoint activations this session (VFX/HUD edge). */
+  public checkpointEventCount = 0;
+  /** Id of the most recent checkpoint activation (VFX/HUD anchor). */
+  public lastCheckpointId: string | null = null;
+  /** True once a checkpoint has fired at least once this session. */
+  public hasCheckpointEvent = false;
   /** Monotonic count of teleport activations this session (VFX/punch edge). */
   public teleportEventCount = 0;
   /** Id of the most recent teleport activation THIS attempt (debug/QA). */
@@ -683,14 +765,31 @@ export class GameSimulation {
     this.processGravityPortals();
 
     this.elapsedSimTime += SIMULATION_DT;
+    // 9. Practice checkpoints (M9.2): swept-volume activation AFTER every
+    //    gameplay mutation (death wins the step — update already returned),
+    //    capturing the exact post-step state incl. the incremented sim time.
+    this.processCheckpoints();
     if (this.player.position.z >= this.def.finishZ) {
       this.status = 'finished';
       this.events.onFinish?.();
     }
   }
 
-  /** Deterministic reset to start; increments attempts exactly once. */
+  /**
+   * Deterministic reset; increments attempts exactly once. In a CHECKPOINT
+   * RUN with an activated checkpoint this restores the latest snapshot
+   * (atomic — see `restoreCheckpointState`) instead of the level origin;
+   * with no checkpoint (or in CLASSIC) it resets to the origin below.
+   */
   public respawn(): void {
+    if (this.checkpointRespawnEnabled && this.activeCheckpointIdValue !== null) {
+      const snap = this.checkpointSnapshots.get(this.activeCheckpointIdValue);
+      if (snap !== undefined) {
+        this.restoreCheckpointState(snap);
+        this.attempts += 1;
+        return;
+      }
+    }
     resetPlayerState(this.player, {
       position: this.def.start,
       laneIndex: this.def.startLaneIndex,
@@ -748,9 +847,228 @@ export class GameSimulation {
   }
 
   /** Immediate manual restart (R key / UI) from any status. NOT death:
-   *  no death cause, no onDeath — exactly one attempt via respawn(). */
+   *  no death cause, no onDeath — exactly one attempt via respawn(). In a
+   *  CHECKPOINT RUN this restarts from the latest checkpoint (R semantics);
+   *  use `restartRun()` for a full origin restart (Shift+R semantics). */
   public restart(): void {
     this.respawn();
+  }
+
+  /**
+   * Full run restart (M9.2 Shift+R / mode-start): clears ALL checkpoint
+   * progress, then resets to the level origin. Checkpoint snapshots can
+   * never leak across runs — progress is strictly session/run scoped.
+   */
+  public restartRun(): void {
+    this.activatedCheckpointIds.length = 0;
+    this.checkpointSnapshots.clear();
+    this.activeCheckpointIdValue = null;
+    this.checkpointRespawnEnabled = false;
+    this.respawn();
+  }
+
+  /** Arm/disarm checkpoint auto-respawn (composition root owns run mode). */
+  public setCheckpointRespawnEnabled(enabled: boolean): void {
+    this.checkpointRespawnEnabled = enabled;
+  }
+
+  /** Whether checkpoint auto-respawn is armed (run-mode observability). */
+  public get isCheckpointRespawnEnabled(): boolean {
+    return this.checkpointRespawnEnabled;
+  }
+
+  /** Latest activated checkpoint id, or null before the first activation. */
+  public get activeCheckpointId(): string | null {
+    return this.activeCheckpointIdValue;
+  }
+
+  /** Checkpoint progress in level order (HUD: "CHECKPOINT i/N — NAME"). */
+  public checkpointProgress(): { activeIndex: number; total: number } {
+    const total = this.level.checkpoints.length;
+    if (this.activeCheckpointIdValue === null) return { activeIndex: 0, total };
+    const index = this.level.checkpoints.findIndex((c) => c.id === this.activeCheckpointIdValue);
+    return { activeIndex: index < 0 ? 0 : index + 1, total };
+  }
+
+  /** Whether a checkpoint id has activated this run (VFX dim state). */
+  public isCheckpointActivated(id: string): boolean {
+    return this.activatedCheckpointIds.includes(id);
+  }
+
+  /**
+   * Capture the exact current deterministic state as this checkpoint's
+   * resume snapshot (M9.2). Public so tests + the activation path share
+   * ONE implementation; presentation never constructs snapshots.
+   */
+  public captureCheckpointState(checkpointId: string): SimulationCheckpointSnapshot {
+    const p = this.player;
+    return {
+      checkpointId,
+      position: { x: p.position.x, y: p.position.y, z: p.position.z },
+      prevPosition: { x: this.prevPosition.x, y: this.prevPosition.y, z: this.prevPosition.z },
+      velocity: { x: p.velocity.x, y: p.velocity.y, z: p.velocity.z },
+      grounded: p.grounded,
+      supportColliderId: p.supportColliderId,
+      targetLaneIndex: p.targetLaneIndex,
+      gravityMode: this.gravityModeValue,
+      playerMode: this.modeValue,
+      speedMultiplier: this.speedMultiplierValue,
+      usedInteractions: [...this.usedInteractions],
+      usedTeleports: [...this.usedTeleports],
+      usedModePortals: [...this.usedModePortals],
+      usedSpeedPortals: [...this.usedSpeedPortals],
+      chomperStates: this.chomperStates.map((s) => ({ ...s })),
+      chomperPrev: this.chomperPrev.map((c) => ({ x: c.x, y: c.y, z: c.z })),
+      platformTick: this.platformTickValue,
+      elapsedSimTime: this.elapsedSimTime,
+      lastPortalId: this.lastPortalId,
+      lastModePortalId: this.lastModePortalId,
+      lastSpeedPortalId: this.lastSpeedPortalId,
+      lastInteractionId: this.lastInteractionId,
+      lastTeleportId: this.lastTeleportId,
+      lastTeleport: { x: this.lastTeleport.x, y: this.lastTeleport.y, z: this.lastTeleport.z },
+      hasTeleportEvent: this.hasTeleportEvent,
+      lastInteraction: { ...this.lastInteraction },
+      hasInteractionEvent: this.hasInteractionEvent,
+      portalTransitionCount: this.portalTransitionCount,
+      modeTransitionCount: this.modeTransitionCount,
+      interactionEventCount: this.interactionEventCount,
+      padActivationCount: this.padActivationCount,
+      orbActivationCount: this.orbActivationCount,
+      speedPortalCount: this.speedPortalCount,
+      teleportEventCount: this.teleportEventCount,
+    };
+  }
+
+  /**
+   * Atomic deterministic restore (M9.2): every captured field is written
+   * back, moving-platform poses/carriage/colliders RECOMPUTE from the
+   * restored tick (poses are pure tick functions — a checkpoint never
+   * respawns the player above an island that has moved elsewhere), status
+   * returns to `running`, and the render-interpolation anchor re-seats on
+   * the restored position (same convention as teleports). Attempts are
+   * NOT touched here (the caller adds exactly one, like respawn).
+   */
+  public restoreCheckpointState(snap: SimulationCheckpointSnapshot): void {
+    const p = this.player;
+    p.position.x = snap.position.x;
+    p.position.y = snap.position.y;
+    p.position.z = snap.position.z;
+    p.velocity.x = snap.velocity.x;
+    p.velocity.y = snap.velocity.y;
+    p.velocity.z = snap.velocity.z;
+    p.grounded = snap.grounded;
+    p.supportColliderId = snap.supportColliderId;
+    p.targetLaneIndex = snap.targetLaneIndex;
+    p.gravityMode = snap.gravityMode;
+    p.playerMode = snap.playerMode;
+    this.gravityModeValue = snap.gravityMode;
+    this.modeValue = snap.playerMode;
+    this.shipThrusting = false;
+    this.speedMultiplierValue = snap.speedMultiplier;
+    this.usedInteractions.clear();
+    for (const id of snap.usedInteractions) this.usedInteractions.add(id);
+    this.usedTeleports.clear();
+    for (const id of snap.usedTeleports) this.usedTeleports.add(id);
+    this.usedModePortals.clear();
+    for (const id of snap.usedModePortals) this.usedModePortals.add(id);
+    this.usedSpeedPortals.clear();
+    for (const id of snap.usedSpeedPortals) this.usedSpeedPortals.add(id);
+    for (let i = 0; i < this.chomperStates.length; i++) {
+      const st = this.chomperStates[i];
+      const saved = snap.chomperStates[i];
+      if (st !== undefined && saved !== undefined) {
+        st.phase = saved.phase;
+        st.ticksInPhase = saved.ticksInPhase;
+        st.x = saved.x;
+        st.y = saved.y;
+        st.z = saved.z;
+        st.aimX = saved.aimX;
+      }
+      const prev = this.chomperPrev[i];
+      const savedPrev = snap.chomperPrev[i];
+      if (prev !== undefined && savedPrev !== undefined) {
+        prev.x = savedPrev.x;
+        prev.y = savedPrev.y;
+        prev.z = savedPrev.z;
+      }
+    }
+    // Platform poses derive from the tick: recompute current + carriage
+    // prev (pose at tick-1, or tick-0 pose when restoring tick 0) and
+    // re-sync the preallocated colliders — never stored, never stale.
+    this.platformTickValue = snap.platformTick;
+    const poseNow = { x: 0, y: 0, z: 0 };
+    const posePrev = { x: 0, y: 0, z: 0 };
+    for (let i = 0; i < this.platformStates.length; i++) {
+      const st = this.platformStates[i];
+      const def = this.level.movingPlatforms[i];
+      const col = this.platformColliders[i];
+      if (st === undefined || def === undefined) continue;
+      platformPose(def, snap.platformTick, poseNow);
+      platformPose(def, Math.max(0, snap.platformTick - 1), posePrev);
+      st.x = poseNow.x;
+      st.y = poseNow.y;
+      st.z = poseNow.z;
+      st.px = posePrev.x;
+      st.py = posePrev.y;
+      st.pz = posePrev.z;
+      if (col !== undefined) {
+        col.center.x = st.x;
+        col.center.y = st.y;
+        col.center.z = st.z;
+      }
+    }
+    this.elapsedSimTime = snap.elapsedSimTime;
+    this.lastPortalId = snap.lastPortalId;
+    this.lastModePortalId = snap.lastModePortalId;
+    this.lastSpeedPortalId = snap.lastSpeedPortalId;
+    this.lastInteractionId = snap.lastInteractionId;
+    this.lastTeleportId = snap.lastTeleportId;
+    this.lastTeleport.x = snap.lastTeleport.x;
+    this.lastTeleport.y = snap.lastTeleport.y;
+    this.lastTeleport.z = snap.lastTeleport.z;
+    this.hasTeleportEvent = snap.hasTeleportEvent;
+    this.lastInteraction.kind = snap.lastInteraction.kind;
+    this.lastInteraction.id = snap.lastInteraction.id;
+    this.lastInteraction.x = snap.lastInteraction.x;
+    this.lastInteraction.y = snap.lastInteraction.y;
+    this.lastInteraction.z = snap.lastInteraction.z;
+    this.hasInteractionEvent = snap.hasInteractionEvent;
+    this.portalTransitionCount = snap.portalTransitionCount;
+    this.modeTransitionCount = snap.modeTransitionCount;
+    this.interactionEventCount = snap.interactionEventCount;
+    this.padActivationCount = snap.padActivationCount;
+    this.orbActivationCount = snap.orbActivationCount;
+    this.speedPortalCount = snap.speedPortalCount;
+    this.teleportEventCount = snap.teleportEventCount;
+    copyVec3(this.prevPosition, this.player.position);
+    this.deathHoldTicksLeft = 0;
+    this.deathCause = null;
+    this.lastLethalColliderId = null;
+    this.status = 'running';
+  }
+
+  /**
+   * Checkpoint activation scan (M9.2): runs ONLY in checkpoint mode, AFTER
+   * every gameplay mutation (a lethal step already returned). Each
+   * checkpoint fires at most once per run; the latest activation replaces
+   * the earlier one. Capture is allocation-cold (once per activation —
+   * never per step).
+   */
+  private processCheckpoints(): void {
+    if (!this.checkpointRespawnEnabled) return;
+    const checkpoints = this.level.checkpoints;
+    if (checkpoints.length === 0) return;
+    for (const cp of checkpoints) {
+      if (this.activatedCheckpointIds.includes(cp.id)) continue;
+      if (!this.sweptWindowOverlap(cp.center, cp.halfExtents)) continue;
+      this.activatedCheckpointIds.push(cp.id);
+      this.checkpointSnapshots.set(cp.id, this.captureCheckpointState(cp.id));
+      this.activeCheckpointIdValue = cp.id;
+      this.lastCheckpointId = cp.id;
+      this.hasCheckpointEvent = true;
+      this.checkpointEventCount += 1;
+    }
   }
 
   /**

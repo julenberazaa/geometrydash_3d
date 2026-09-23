@@ -12,6 +12,7 @@
  *   lava (M8A, only when present — absent writes zero bytes),
  *   modePortals (M8C, only when present — absent writes zero bytes),
  *   chompers (M8D, only when present — absent writes zero bytes),
+ *   checkpoints (M9.2, only when present — absent writes zero bytes),
  *   solids, hazards, id.
  *
  * Explicitly EXCLUDED (not gameplay-relevant):
@@ -25,6 +26,7 @@
 import { DeterministicHasher } from './hash';
 import type { GravityMode } from '../player/playerState';
 import type {
+  CheckpointDef,
   ChomperDef,
   MovingPlatformDef,
   GravityOrbDef,
@@ -140,6 +142,15 @@ const writeMovingPlatform = (h: DeterministicHasher, p: MovingPlatformDef): void
   h.writeFloat64(p.amplitude);
   h.writeInt32(p.periodTicks);
   h.writeInt32(p.phaseTicks);
+};
+
+const writeCheckpoint = (h: DeterministicHasher, c: CheckpointDef): void => {
+  // Checkpoint-mode behavior gate: id + trigger gameplay (center/extents).
+  // The HUD displayName is presentation-only and excluded (same pattern as
+  // teleport style / hazard visual+mount).
+  h.writeString(c.id);
+  writeVec3(h, c.center);
+  writeVec3(h, c.halfExtents);
 };
 
 const writeChomper = (h: DeterministicHasher, c: ChomperDef): void => {
@@ -273,6 +284,17 @@ export const computeLevelFingerprint = (def: LevelDefinition): string => {
     h.writeString('platforms:v1');
     h.writeInt32(platforms.length);
     for (const p of platforms) writeMovingPlatform(h, p);
+  }
+  // M9.2 practice checkpoints: checkpoint-mode behavior gates. Same
+  // conditional pattern — levels without checkpoints hash byte-identically
+  // to before (golden fixture + every pre-M9.2 replay pinned). Classic
+  // ReplayV1 semantics are unchanged: checkpoint PROGRESS is session
+  // state, never hashed into per-tick state (see stateFingerprint.ts).
+  const checkpoints = def.checkpoints ?? [];
+  if (checkpoints.length > 0) {
+    h.writeString('checkpoints:v1');
+    h.writeInt32(checkpoints.length);
+    for (const c of checkpoints) writeCheckpoint(h, c);
   }
   // visualSetpieces: presentation-only, never fingerprinted (like theme /
   // visualSequence / rhythmCues / hazard visual+mount / teleport style).

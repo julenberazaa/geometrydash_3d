@@ -596,6 +596,32 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
       phaseTicks: 339,
     },
   ],
+  // M9.2 practice checkpoints (CHECKPOINT RUNS only — classic ignores
+  // them): one per major segment / biome transition, all sampled from the
+  // reference driver (BOTH primary + alternate variants pass through every
+  // volume; see scripts/tmp-sample-checkpoints.ts evidence). Every center
+  // is a grounded stable state on the intended route (cube, floor) —
+  // never mid-air over void, never inside a hazard, never one frame
+  // before a mandatory precision input:
+  //   FORGE 168 — post-ascent runway (solid-20), pre-islands.
+  //   SKYBRIDGE 395 — riding the void ferry (platform-ps-ferry-void),
+  //     both variants converged on the same deck.
+  //   LABYRINTH 705 — maze-exit 2× runway (solid-68), pre-spire.
+  //   CATHEDRAL 920 — post-spire floor runway (solid-82), pre-foundry.
+  //   FOUNDRY 1100 — pre-ship 2× runway (solid-101), cube, pre-ship-on.
+  //   REACTOR 1325 — post-ship runway (solid-139), cube, pre-spider-on.
+  //   TEMPLE 1500 — post-spider runway (solid-156), cube, pre-teleports.
+  //   CORE 1620 — post-teleport runway (solid-171), pre-finale.
+  checkpoints: [
+    { id: 'cp-forge', displayName: 'FORGE', center: { x: 0, y: 0.55, z: 170 }, halfExtents: { x: 2, y: 1.2, z: 2.5 } },
+    { id: 'cp-skybridge', displayName: 'SKYBRIDGE', center: { x: 3.7, y: 0.55, z: 395 }, halfExtents: { x: 1.6, y: 1.2, z: 3 } },
+    { id: 'cp-labyrinth', displayName: 'LABYRINTH', center: { x: 1.3, y: 0.55, z: 705 }, halfExtents: { x: 2.2, y: 1.2, z: 3 } },
+    { id: 'cp-cathedral', displayName: 'CATHEDRAL', center: { x: 0, y: 0.55, z: 921.5 }, halfExtents: { x: 2, y: 1.2, z: 1.5 } },
+    { id: 'cp-foundry', displayName: 'FOUNDRY', center: { x: 0, y: 0.55, z: 1100 }, halfExtents: { x: 2, y: 1.2, z: 3 } },
+    { id: 'cp-reactor', displayName: 'REACTOR', center: { x: 0, y: 0.55, z: 1325 }, halfExtents: { x: 2, y: 1.2, z: 3 } },
+    { id: 'cp-temple', displayName: 'TEMPLE', center: { x: 0, y: 0.55, z: 1502 }, halfExtents: { x: 2, y: 1.2, z: 2 } },
+    { id: 'cp-core', displayName: 'CORE', center: { x: 0, y: 0.55, z: 1620 }, halfExtents: { x: 2, y: 1.2, z: 3 } },
+  ],
   lava: [
     // ACT 1 directed river (at-grade 3 u hop, z 140.5..143.5).
     { id: 'ps-river', center: { x: 0, y: 0.1, z: 142 }, halfExtents: { x: 4, y: 0.6, z: 1.5 }, role: 'pool', flow: { x: -1, z: 0 } },

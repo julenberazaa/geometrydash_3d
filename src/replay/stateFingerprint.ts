@@ -30,6 +30,13 @@
  *     deathPosition, lastContactNormal, lastPreImpactVelocity: stable death
  *     records + VFX anchors; no future gameplay effect
  *   - progress: derived from position
+ *   - M9.2 checkpoint progress (activated ids, active id, snapshots):
+ *     run-scoped practice state, never part of the authoritative
+ *     trajectory — checkpoint-mode runs are NOT official ReplayV1
+ *     completions (F4 stays classic-only), and classic verification
+ *     must never observe practice metadata. Restored gameplay fields
+ *     (position, velocity, used sets, Chomper/platform state, elapsed
+ *     time) hash through their normal entries like continuous play.
  */
 
 import { DeterministicHasher } from './hash';

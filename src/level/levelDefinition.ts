@@ -274,6 +274,32 @@ export interface MovingPlatformDef {
 }
 
 /**
+ * Practice checkpoint (M9.2): a gem/crystal gate that saves deterministic
+ * progress in CHECKPOINT RUNS only. When the swept step path overlaps the
+ * trigger volume, the simulation captures a full deterministic snapshot
+ * (see `SimulationCheckpointSnapshot`); the next death auto-respawns from
+ * the latest activated checkpoint instead of the level origin. Classic
+ * runs ignore checkpoint data entirely (detection never runs there), so
+ * classic physics, fingerprints of checkpoint-less levels, and ReplayV1
+ * semantics are untouched. Fingerprinted conditionally (id + center +
+ * halfExtents — levels without checkpoints hash byte-identically).
+ */
+export interface CheckpointDef {
+  /** Stable identifier (debug/QA/HUD; snapshot key). */
+  id: string;
+  /** Short human label for the HUD progress readout (e.g. 'REACTOR'). */
+  displayName: string;
+  /** Trigger volume center in world space (on the intended route). */
+  center: Vec3;
+  /**
+   * Trigger volume half extents. Author generously along the route line
+   * (hard to miss) but tight laterally/vertically (off-route flybys must
+   * not activate it).
+   */
+  halfExtents: Vec3;
+}
+
+/**
  * Presentation-only decorative setpiece (M7.2, e.g. a monster-like guardian
  * silhouette around a teleport gate; M7.3 adds lava). NEVER gameplay: no
  * collision, no AI, no movement, no trigger. Renderer-only: excluded from
@@ -533,6 +559,11 @@ export interface LevelDefinition {
    * platforms behave exactly as before. See `MovingPlatformDef`.
    */
   movingPlatforms?: MovingPlatformDef[];
+  /**
+   * Practice checkpoints (M9.2). Optional; levels without checkpoints
+   * behave exactly as before. See `CheckpointDef`.
+   */
+  checkpoints?: CheckpointDef[];
   /**
    * Presentation-only decorative setpieces (M7.2). Renderer-only: never
    * read by simulation, collision, replay, or the level fingerprint.
