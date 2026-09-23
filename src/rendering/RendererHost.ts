@@ -9,6 +9,7 @@ import { LevelView } from './LevelView';
 import { PlayerView } from './PlayerView';
 import { DeathBurstView } from './DeathBurstView';
 import { InteractionView } from './InteractionView';
+import { CheckpointView } from './CheckpointView';
 import { ChomperView } from './ChomperView';
 import { MovingPlatformView } from './MovingPlatformView';
 import { EnvironmentView } from './EnvironmentView';
@@ -134,6 +135,8 @@ export class RendererHost {
   private readonly environmentView: EnvironmentView;
   /** M4 interaction visuals + activation VFX (presentation only). */
   private readonly interactionView: InteractionView;
+  /** M9.2 checkpoint crystals (absent group when the level has none). */
+  private readonly checkpointView: CheckpointView;
   /** M8D Chomper presentation (observes sim Chomper states). */
   private readonly chomperView: ChomperView;
   /** M8.6 moving-platform presentation (observes sim platform states). */
@@ -260,6 +263,23 @@ export class RendererHost {
 
     this.interactionView = new InteractionView(simulation.level, simulation, this.library, this.theme);
     this.scene.add(this.interactionView.group);
+
+    // M9.2 checkpoint crystals: built from level data (same precedent as
+    // the interaction view); burst rings inherit the live section accent
+    // at the checkpoint z (biome identity without per-crystal materials).
+    const accentScratch = makeVisualState();
+    this.checkpointView = new CheckpointView(
+      simulation.level,
+      simulation,
+      this.library,
+      (z: number): number => {
+        evaluateVisualSequence(this.theme, this.timelineSections, z, accentScratch);
+        return accentScratch.routeAccent;
+      },
+    );
+    // Same empty-group rule as Chompers/platforms: checkpoint-less levels
+    // add zero children (resource pins stay level-comparable).
+    if (simulation.level.checkpoints.length > 0) this.scene.add(this.checkpointView.group);
 
     this.chomperView = new ChomperView(simulation.level.chompers, this.library);
     // No empty groups in the scene: levels without Chompers add zero
@@ -448,6 +468,7 @@ export class RendererHost {
     this.debugView.updatePlayerBox(p, sim.halfExtents);
     this.deathBurst.update(renderDtSeconds);
     this.interactionView.update(renderDtSeconds);
+    this.checkpointView.update(renderDtSeconds);
     this.chomperView.update(sim.chomperStates, renderDtSeconds);
     this.platformView.update(sim.platformStates, alpha);
     // M8.3 lava motion: convect crust + descend falls (render-dt driven;
@@ -1012,6 +1033,21 @@ export class RendererHost {
     return this.interactionView.activeRingCount;
   }
 
+  /** Active M9.2 checkpoint burst rings (QA leak-guard observability). */
+  public get checkpointBurstsActive(): number {
+    return this.checkpointView.activeBurstCount;
+  }
+
+  /**
+   * M9.2 checkpoint-crystal visibility (run-mode presentation): classic
+   * runs hide the gates entirely (clean classic look, zero confusion);
+   * checkpoint runs show them. The simulation gate is independent —
+   * this is presentation only.
+   */
+  public setCheckpointsVisible(visible: boolean): void {
+    this.checkpointView.group.visible = visible;
+  }
+
   /**
    * Debug-only burst replay (QA photography aid). Re-fires the REAL pooled
    * burst at the recorded death position without touching simulation state.
@@ -1088,6 +1124,7 @@ export class RendererHost {
     this.renderer.dispose();
     this.levelView.dispose();
     this.interactionView.dispose();
+    this.checkpointView.dispose();
     this.chomperView.dispose();
     this.platformView.dispose();
     this.playerViewInternal.dispose();

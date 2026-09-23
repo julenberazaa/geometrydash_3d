@@ -22,6 +22,7 @@ export class MaterialLibrary {
   private readonly geometries: THREE.BufferGeometry[] = [];
   private readonly tierMaterials = new Map<number, THREE.MeshStandardMaterial>();
   private readonly ringPool: THREE.MeshBasicMaterial[] = [];
+  private readonly checkpointBurstPool: THREE.MeshBasicMaterial[] = [];
 
   // --- Route ---
   public readonly routeBody: THREE.MeshStandardMaterial;
@@ -77,12 +78,25 @@ export class MaterialLibrary {
   public readonly chomperEyeWhite: THREE.MeshBasicMaterial;
   public readonly interactionDim: THREE.MeshBasicMaterial;
   public readonly finishGate: THREE.MeshBasicMaterial;
+  /**
+   * M9.2 checkpoint-crystal family (shared, bounded): one translucent
+   * idle gem + one bright activated core + one halo material for ALL
+   * crystals (biome identity arrives through the burst tint + surrounding
+   * section, never per-crystal materials). Activation bursts reuse the
+   * pooled-ring pattern with their own fixed 4-material set (the
+   * interaction pool's materials animate opacity individually and cannot
+   * be shared across views).
+   */
+  public readonly checkpointIdle: THREE.MeshStandardMaterial;
+  public readonly checkpointActive: THREE.MeshStandardMaterial;
+  public readonly checkpointHalo: THREE.MeshBasicMaterial;
 
   // --- Shared geometries (unit shapes, scaled per-instance by views) ---
   public readonly unitBox: THREE.BoxGeometry;
   public readonly spikeCone: THREE.ConeGeometry;
   public readonly orbSphere: THREE.SphereGeometry;
   public readonly orbHalo: THREE.TorusGeometry;
+  public readonly checkpointGem: THREE.OctahedronGeometry;
   public readonly chevron: THREE.ConeGeometry;
   public readonly playerBox: THREE.BoxGeometry;
   public readonly playerFacePlane: THREE.PlaneGeometry;
@@ -332,6 +346,38 @@ export class MaterialLibrary {
       new THREE.MeshBasicMaterial({ color: 0xfff6e8 }),
     );
     this.interactionDim = track(new THREE.MeshBasicMaterial({ color: theme.interactionDim }));
+    // M9.2 checkpoint crystals: pale diamond idle (translucent, gentle
+    // emissive — reads as glass, never as a portal/orb/hazard family) +
+    // hot bright core once activated (instant CHECKPOINT SAVED read).
+    // Halo: unlit white-cyan ring, distinct from every portal language.
+    this.checkpointIdle = track(
+      new THREE.MeshStandardMaterial({
+        color: 0x9fd8e8,
+        roughness: 0.15,
+        metalness: 0.1,
+        emissive: 0x3d9db8,
+        emissiveIntensity: 0.7,
+        transparent: true,
+        opacity: 0.62,
+      }),
+    );
+    this.checkpointActive = track(
+      new THREE.MeshStandardMaterial({
+        color: 0xeaffff,
+        roughness: 0.2,
+        metalness: 0,
+        emissive: 0x54f0ff,
+        emissiveIntensity: 2.4,
+      }),
+    );
+    this.checkpointHalo = track(
+      new THREE.MeshBasicMaterial({
+        color: 0xbdf3ff,
+        transparent: true,
+        opacity: 0.75,
+        side: THREE.DoubleSide,
+      }),
+    );
     this.finishGate = track(
       new THREE.MeshBasicMaterial({
         color: theme.finishGate,
@@ -345,6 +391,7 @@ export class MaterialLibrary {
     this.spikeCone = trackGeo(new THREE.ConeGeometry(0.5, 1, 4));
     this.orbSphere = trackGeo(new THREE.SphereGeometry(0.42, 18, 14));
     this.orbHalo = trackGeo(new THREE.TorusGeometry(0.62, 0.045, 8, 36));
+    this.checkpointGem = trackGeo(new THREE.OctahedronGeometry(0.55));
     this.chevron = trackGeo(new THREE.ConeGeometry(0.26, 0.55, 4));
     const playerSize = 1.24; // visual edge; gameplay collider stays 1.1
     this.playerBox = trackGeo(new THREE.BoxGeometry(playerSize, playerSize, playerSize));
@@ -355,6 +402,15 @@ export class MaterialLibrary {
     // individually; allocated once here, never per-frame).
     for (let i = 0; i < 8; i++) {
       this.ringPool.push(
+        track(
+          new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 }),
+        ),
+      );
+    }
+    // M9.2 checkpoint-burst pool (same pattern, separate set — the
+    // interaction pool is owned by InteractionView's animation).
+    for (let i = 0; i < 4; i++) {
+      this.checkpointBurstPool.push(
         track(
           new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 }),
         ),
@@ -382,6 +438,11 @@ export class MaterialLibrary {
   /** Pooled ring materials for the activation VFX (fixed set, reused). */
   public ringMaterials(): readonly THREE.MeshBasicMaterial[] {
     return this.ringPool;
+  }
+
+  /** Pooled ring materials for checkpoint bursts (fixed set, reused). */
+  public checkpointBurstMaterials(): readonly THREE.MeshBasicMaterial[] {
+    return this.checkpointBurstPool;
   }
 
   /**

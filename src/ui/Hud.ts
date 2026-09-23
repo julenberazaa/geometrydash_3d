@@ -11,11 +11,21 @@ export interface HudElements {
   message: HTMLElement;
 }
 
+/** M9.2 run-mode selection (presentation only — Game owns the semantics). */
+export type RunModeSelect = 'classic' | 'checkpoint';
+
 export class Hud {
   public readonly els: HudElements;
   private readonly replayBadge: HTMLElement;
   /** M9 press-to-start gate overlay (music levels only). */
   private readonly startGate: HTMLElement;
+  /** M9.2 mode badge (checkpoint runs) + checkpoint progress line. */
+  private readonly modeBadge: HTMLElement;
+  private readonly checkpointLine: HTMLElement;
+  /** M9.2 mode selector buttons (built once, shown only at the gate). */
+  private readonly modeButtons: HTMLElement;
+  /** Wired by Game: button clicks select the run mode (audio gesture). */
+  public onModeSelect: ((mode: RunModeSelect) => void) | null = null;
 
   constructor(container: HTMLElement) {
     const root = document.createElement('div');
@@ -68,16 +78,54 @@ export class Hud {
     startGate.className = 'hud-start-gate';
     startGate.style.display = 'none';
 
+    // M9.2 mode badge + checkpoint progress (checkpoint runs only).
+    const modeBadge = document.createElement('div');
+    modeBadge.className = 'hud-mode-badge';
+    modeBadge.style.display = 'none';
+    const checkpointLine = document.createElement('div');
+    checkpointLine.className = 'hud-checkpoint-line';
+    checkpointLine.style.display = 'none';
+
+    // M9.2 mode selector: two buttons inside the start gate (one click =
+    // mode select + audio unlock + run start, same gesture).
+    const modeButtons = document.createElement('div');
+    modeButtons.className = 'hud-mode-buttons';
+    modeButtons.style.display = 'none';
+    const classicButton = document.createElement('button');
+    classicButton.className = 'hud-mode-button';
+    classicButton.textContent = 'CLASSIC RUN';
+    classicButton.title = 'Start from the beginning after every death.';
+    const checkpointButton = document.createElement('button');
+    checkpointButton.className = 'hud-mode-button hud-mode-button-checkpoint';
+    checkpointButton.textContent = 'CHECKPOINT RUN';
+    checkpointButton.title = 'Activated crystals save your progress.';
+    classicButton.addEventListener('click', (event) => {
+      event.stopPropagation();
+      this.onModeSelect?.('classic');
+    });
+    checkpointButton.addEventListener('click', (event) => {
+      event.stopPropagation();
+      this.onModeSelect?.('checkpoint');
+    });
+    modeButtons.appendChild(classicButton);
+    modeButtons.appendChild(checkpointButton);
+
     root.appendChild(top);
     root.appendChild(message);
     root.appendChild(replayBadge);
+    root.appendChild(modeBadge);
+    root.appendChild(checkpointLine);
     root.appendChild(help);
     root.appendChild(startGate);
+    startGate.appendChild(modeButtons);
     container.appendChild(root);
 
     this.els = { root, name, progressFill: fill, progressText, attempts, message };
     this.replayBadge = replayBadge;
     this.startGate = startGate;
+    this.modeBadge = modeBadge;
+    this.checkpointLine = checkpointLine;
+    this.modeButtons = modeButtons;
   }
 
   public update(opts: {
@@ -113,7 +161,45 @@ export class Hud {
       return;
     }
     this.startGate.style.display = 'block';
-    if (this.startGate.textContent !== text) this.startGate.textContent = text;
+    // The mode buttons live INSIDE the gate: update only the leading text
+    // node (never clobber the buttons via textContent).
+    const first = this.startGate.firstChild;
+    if (first !== null && first.nodeType === 3) first.textContent = text;
+    else this.startGate.insertBefore(document.createTextNode(text), this.startGate.firstChild);
+  }
+
+  /**
+   * M9.2 mode selector (null hides the buttons). Shown only when the
+   * level authors checkpoints — classic-only levels keep the legacy
+   * single-line gate.
+   */
+  public setModeSelector(title: string | null): void {
+    if (title === null) {
+      this.modeButtons.style.display = 'none';
+      return;
+    }
+    this.modeButtons.style.display = 'flex';
+    this.setStartGate(title);
+  }
+
+  /** M9.2 run-mode badge (null hides it). Checkpoint runs only. */
+  public setModeBadge(text: string | null): void {
+    if (text === null) {
+      this.modeBadge.style.display = 'none';
+      return;
+    }
+    this.modeBadge.style.display = 'block';
+    if (this.modeBadge.textContent !== text) this.modeBadge.textContent = text;
+  }
+
+  /** M9.2 checkpoint progress line (null hides it). Checkpoint runs only. */
+  public setCheckpointProgress(text: string | null): void {
+    if (text === null) {
+      this.checkpointLine.style.display = 'none';
+      return;
+    }
+    this.checkpointLine.style.display = 'block';
+    if (this.checkpointLine.textContent !== text) this.checkpointLine.textContent = text;
   }
 
   public setVisible(visible: boolean): void {

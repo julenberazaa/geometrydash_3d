@@ -596,7 +596,9 @@ describe('advanced cube 01 teleport + setpiece presentation structure', () => {
     const view = new LevelView(loadLevel(ADVANCED_CUBE_01), library);
     // Views create Meshes only: building gates + guardian adds nothing.
     expect(library.materialCount).toBe(before);
-    expect(library.geometryCount).toBe(8);
+    // M9.2: 8 → 9 shared geometries (the checkpoint-crystal octahedron —
+    // one geometry for all crystals, views still allocate nothing).
+    expect(library.geometryCount).toBe(9);
     view.dispose();
     library.dispose();
   });

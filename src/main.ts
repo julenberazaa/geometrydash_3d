@@ -221,6 +221,20 @@ declare global {
       musicGainConnected: () => boolean;
       musicEffectiveGain: () => number;
       musicGraphReady: () => boolean;
+      /** M9.2 checkpoint practice-mode probes (presentation only). */
+      runMode: () => string;
+      checkpointCount: () => number;
+      activeCheckpointId: () => string | null;
+      checkpointProgress: () => { activeIndex: number; total: number };
+      hasCheckpointEvent: () => boolean;
+      checkpointEventCount: () => number;
+      lastCheckpointId: () => string | null;
+      isCheckpointActivated: (id: string) => boolean;
+      checkpointBurstsActive: () => number;
+      /** M9.2 QA-only: arm/disarm checkpoint auto-respawn without the gate. */
+      setCheckpointRespawnEnabled: (enabled: boolean) => void;
+      /** M9.2 QA-only: full origin restart (Shift+R path). */
+      restartRun: () => void;
     };
   }
 }
@@ -422,6 +436,22 @@ window.__gd3d = {
   musicGainConnected: (): boolean => game.musicDirector?.probe().gainConnected ?? false,
   musicEffectiveGain: (): number => game.musicDirector?.probe().effectiveGain ?? -1,
   musicGraphReady: (): boolean => game.musicDirector?.graphReady() ?? false,
+  runMode: (): string => game.activeRunMode,
+  checkpointCount: (): number => game.gameSimulation.level.checkpoints.length,
+  activeCheckpointId: (): string | null => game.gameSimulation.activeCheckpointId,
+  checkpointProgress: (): { activeIndex: number; total: number } => game.gameSimulation.checkpointProgress(),
+  hasCheckpointEvent: (): boolean => game.gameSimulation.hasCheckpointEvent,
+  checkpointEventCount: (): number => game.gameSimulation.checkpointEventCount,
+  lastCheckpointId: (): string | null => game.gameSimulation.lastCheckpointId,
+  isCheckpointActivated: (id: string): boolean => game.gameSimulation.isCheckpointActivated(id),
+  checkpointBurstsActive: (): number => game['rendererHost'].checkpointBurstsActive,
+  setCheckpointRespawnEnabled: (enabled: boolean): void => {
+    game.gameSimulation.setCheckpointRespawnEnabled(enabled);
+    game['rendererHost'].setCheckpointsVisible(enabled);
+  },
+  restartRun: (): void => {
+    game.gameSimulation.restartRun();
+  },
 };
 
 // Hot Module Acceptance for Vite dev server.
