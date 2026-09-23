@@ -299,16 +299,16 @@ describe('M8.6 production showcase', () => {
   it('kills frontally on the choice divider when both teleport rings are missed', () => {
     const sim = new GameSimulation(PRODUCTION_SHOWCASE_01);
     // Hold lane 0 past the gantry spike (dodging the HIGH pad), then cut
-    // back across the divider plane (x ±1.3, z 1519..1521) without taking
-    // either teleport ring: the killFront divider meets the lane-changer
-    // head-on — holding center instead would ride the pad into the HIGH
-    // ring, so a lateral miss meets the wall, never nothing.
-    sim.debugPlaceAt(2.6, 0.55, 1508);
+    // back across the divider plane (x ±1.3, z 1521.2..1523.2) without
+    // taking either teleport ring: the killFront divider meets the
+    // lane-changer head-on — holding center instead would ride the pad
+    // into the HIGH ring, so a lateral miss meets the wall, never nothing.
+    sim.debugPlaceAt(2.6, 0.55, 1510.2);
     sim.update(tapLaneLeft);
     let tapped = false;
     for (let tick = 0; tick < 2000 && sim.attempts === 1; tick++) {
       const z = sim.player.position.z;
-      if (!tapped && z >= 1516.5) {
+      if (!tapped && z >= 1518.7) {
         tapped = true;
         sim.update(tapLaneRight);
         continue;
@@ -318,8 +318,8 @@ describe('M8.6 production showcase', () => {
     expect(tapped).toBe(true);
     expect(sim.attempts).toBeGreaterThan(1);
     expect(sim.lastDeathCause).toBe('frontImpact');
-    expect(sim.deathPosition.z).toBeGreaterThan(1515);
-    expect(sim.deathPosition.z).toBeLessThan(1523);
+    expect(sim.deathPosition.z).toBeGreaterThan(1517.2);
+    expect(sim.deathPosition.z).toBeLessThan(1525.2);
   });
 });
 
