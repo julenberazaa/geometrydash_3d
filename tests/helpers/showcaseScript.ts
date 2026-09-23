@@ -109,7 +109,8 @@ export class ShowcaseDriver {
       // ~3 u of run-up per riser)
       104, // A1 catcher hop (spike 108)
       138, // A1 river
-      147, 153, 161, // A1 spikes
+      // M9 post-river double (lane-1 spikes 160 + 164 — two takeoffs).
+      147, 157.5,
       728, // A4 floor spike
       756.5, 766.5, // A4 ceiling spikes
       769, // A4 ceiling gap

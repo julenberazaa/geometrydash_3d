@@ -111,30 +111,39 @@ export const analyzeRouteOpenness = (
     if (ref === undefined || Math.abs(ref.z - z) > step) continue;
     const y = ref.y;
     const laneSafe = lanes.map((lx) => {
-      // (a) supported: a solid top just under the run height with a
-      // footprint overlap and z-span covering the sample.
-      const supported = solids.some(
-        (s) =>
+      // (a) supported: the deck under the run — highest solid top in the
+      // band below the rider (stacked decks resolve to the ridden one).
+      // The deck top T anchors the surface/frontal tests below (NOT the
+      // rider height — an airborne rider still constrains the ground line
+      // they just left and will rejoin).
+      let deckTop = -Infinity;
+      for (const s of solids) {
+        if (
           s.maxY >= y - 3.2 && s.maxY <= y - 0.4 &&
           s.minX < lx + 0.55 && s.maxX > lx - 0.55 &&
-          s.minZ < z + 1.5 && s.maxZ > z - 1.5,
-      );
-      if (!supported) return false;
-      // (b) surface hazard-free: no hazard/lava box touching the lane body.
+          s.minZ < z + 1.5 && s.maxZ > z - 1.5
+        ) {
+          if (s.maxY > deckTop) deckTop = s.maxY;
+        }
+      }
+      if (deckTop === -Infinity) return false;
+      // (b) surface hazard-free at deck level: a spike/lava on the lane
+      // forces a jump or a lane change — never a free band.
       const hazarded = hazards.some(
         (hb) =>
           hb.minX < lx + 0.6 && hb.maxX > lx - 0.6 &&
-          hb.minY < y + 0.7 && hb.maxY > y - 0.7 &&
+          hb.minY < deckTop + 1.2 && hb.maxY > deckTop - 0.1 &&
           hb.minZ < z + 1 && hb.maxZ > z - 1,
       );
       if (hazarded) return false;
-      // (c) no frontal block inside the decision window (a face the lane
-      // would meet at body height — jumping/veering would be required).
+      // (c) no frontal block inside the decision window above the deck (a
+      // face the lane would meet at body height — jumping/veering would
+      // be required; flat continuations never overlap and stay free).
       const blocked = blockers.some(
         (b) =>
           b.minZ > z + 0.5 && b.minZ <= z + 9 &&
           b.minX < lx + 0.6 && b.maxX > lx - 0.6 &&
-          b.minY < y + 0.55 && b.maxY > y - 0.55,
+          b.minY < deckTop + 2.2 && b.maxY > deckTop,
       );
       return !blocked;
     });

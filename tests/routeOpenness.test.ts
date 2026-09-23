@@ -37,6 +37,12 @@ describe('M9 route openness audit', () => {
     const lazyTraj = collectTrajectory(PRODUCTION_SHOWCASE_01, (z, sim) => lazy.nextInput(z, sim));
     console.log(`lane-lazy: status=${lazyTraj.status} ticks=${lazyTraj.ticks}`);
     expect(lazyTraj.status).not.toBe('finished');
+    // M9 precision-routing contract (pins sit below the measured funneled
+    // values with margin — human feel remains authority; the metric
+    // detects permissive multi-line travel, never certifies fun):
+    // demanding gameplay is mostly ONE safe band (occasionally two).
+    expect(report.openFraction).toBeLessThanOrEqual(0.5);
+    expect(report.oneBandFraction).toBeGreaterThanOrEqual(0.38);
   });
 
   it('alternate route: openness report', { timeout: 120000 }, () => {
@@ -48,6 +54,8 @@ describe('M9 route openness audit', () => {
       `openness-alt: samples=${report.coverage} open(3+)b=${(report.openFraction * 100).toFixed(1)}% ` +
         `one=${(report.oneBandFraction * 100).toFixed(1)}% two=${(report.twoBandFraction * 100).toFixed(1)}%`,
     );
+    expect(report.openFraction).toBeLessThanOrEqual(0.5);
+    expect(report.oneBandFraction).toBeGreaterThanOrEqual(0.38);
     for (const s of report.openStretches.slice(0, 12)) {
       console.log(`  open stretch z ${s.z0}..${s.z1} (len ${s.length})`);
     }
