@@ -522,6 +522,16 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   sharing one geometry + one additive material (bounded, renderer-only, no
   collision), driven by section energy with punch-envelope bursts in the
   event tint; silenced by the same reset path (triggers-off === silent).
+  M9.1 overdrive: (a) ONE `InstancedMesh` architecture layer (~250 seeded
+  towers, focal gate-arches at portal/orb/teleport/chomper/door positions,
+  flanking walls, overhead canopies, bridges, columns — 1 draw, shared box
+  geometry, per-instance biome colors baked by z at build, static forever;
+  everything off-route |x| ≥ 8 or y ≥ 13, fogged, never colliders); (b) ONE
+  pooled `LineSegments` lightning field (10 jagged bolts, 1 draw, shared
+  additive material flashed by strong rhythm levels only — thresholded, no
+  strobe); (c) ray peak 0.28 → 0.38 (still subordinate). The view reads
+  `LevelDefinition` at build ONLY (focal z + section accents — LevelView /
+  rhythmCues precedent); nothing per-frame, nothing in replays.
 - `rhythmCues.ts` (`src/visuals/`, M7.1) — deterministic beat-ready cue
   resolution (prepared z-sorted copy + `cueAtZ`/`cueIdAtZ`, pure positional
   — no clocks). Level data owns the cues; `RendererHost` exposes the active

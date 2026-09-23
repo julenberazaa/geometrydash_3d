@@ -36,12 +36,12 @@ describe('background energy rays (M7.1)', () => {
     const view = new EnvironmentView(700, PRODUCTION_THEME);
     expect(view.liveRayOpacity()).toBe(0);
     view.setEnergyRays(0.5, 0xff0000);
-    expect(view.liveRayOpacity()).toBeCloseTo(0.14, 6);
+    expect(view.liveRayOpacity()).toBeCloseTo(0.19, 6);
     view.setEnergyRays(1, 0xff0000);
-    expect(view.liveRayOpacity()).toBeCloseTo(0.28, 6);
-    // Peak stays subordinate (never a wash): hard cap 0.28.
+    expect(view.liveRayOpacity()).toBeCloseTo(0.38, 6);
+    // Peak stays subordinate (never a wash): hard cap 0.38 (M9.1 overdrive � thin additive beams).
     view.setEnergyRays(5, 0xff0000);
-    expect(view.liveRayOpacity()).toBeCloseTo(0.28, 6);
+    expect(view.liveRayOpacity()).toBeCloseTo(0.38, 6);
     view.setEnergyRays(-1, 0xff0000);
     expect(view.liveRayOpacity()).toBe(0);
     view.dispose();
@@ -56,3 +56,4 @@ describe('background energy rays (M7.1)', () => {
     view.dispose();
   });
 });
+

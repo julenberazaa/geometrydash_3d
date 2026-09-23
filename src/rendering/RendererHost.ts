@@ -224,7 +224,14 @@ export class RendererHost {
       400,
     );
 
-    this.environmentView = new EnvironmentView(simulation.level.def.finishZ + 20, this.theme);
+    // M9.1: the environment reads level data at build ONLY (focal gate
+    // positions + section accents for the architecture layer) — the same
+    // precedent as LevelView/rhythmCues; never gameplay, never per-frame.
+    this.environmentView = new EnvironmentView(
+      simulation.level.def.finishZ + 20,
+      this.theme,
+      simulation.level.def,
+    );
     this.scene = this.environmentView.scene;
     // M6C1 timeline: prepared once per level (cold path); the state
     // scratch starts at the exact base so probes read baseline pre-frame.
@@ -842,9 +849,11 @@ export class RendererHost {
     // (≤2). At rest (pulse 0) every leg resolves the exact section look.
     const pulse = this.rhythmPulse;
     const impact = this.rhythmImpact.energy;
-    const pulseBloom = pulse.beat * 0.06 + pulse.downbeat * 0.1 + impact * 0.12;
-    const pulseExposure = pulse.beat * 0.03 + pulse.downbeat * 0.05 + impact * 0.06;
-    const pulseEnv = pulse.beat * 0.15 + pulse.drop * 0.25 + impact * 0.3;
+    // M9.1 overdrive: hotter pulse legs (still re-clamped in-contract;
+    // smooth decays preserved, no strobe — see rhythmPulse.ts).
+    const pulseBloom = pulse.beat * 0.09 + pulse.downbeat * 0.15 + impact * 0.18;
+    const pulseExposure = pulse.beat * 0.045 + pulse.downbeat * 0.075 + impact * 0.09;
+    const pulseEnv = pulse.beat * 0.22 + pulse.drop * 0.38 + impact * 0.45;
     this.environmentView.applyVisualState(
       s.background,
       s.fogColor,
@@ -854,16 +863,16 @@ export class RendererHost {
     );
     // Section ray bed + beat/downbeat/impact ray bursts in the section
     // accent (clamped — beams stay subordinate by construction).
-    const bed = Math.min(0.45, Math.max(0, (s.environmentIntensity - 1) * 0.7));
+    const bed = Math.min(0.55, Math.max(0, (s.environmentIntensity - 1) * 0.8));
     this.environmentView.setEnergyRays(
-      Math.min(1, bed + pulse.beat * 0.25 + pulse.downbeat * 0.35 + impact * 0.5),
+      Math.min(1, bed + pulse.beat * 0.35 + pulse.downbeat * 0.5 + impact * 0.7),
       s.routeAccent,
     );
     this.post.setBloomParams(s.bloomStrength + pulseBloom, s.bloomRadius, s.bloomThreshold);
     this.renderer.toneMappingExposure = Math.min(2, Math.max(0.5, s.exposure + pulseExposure));
     this.vfx.setIntensity(
-      Math.min(2, s.vfxIntensity * (1 + pulse.beat * 0.2 + pulse.drop * 0.3)),
-      Math.min(2, s.streakIntensity * (1 + pulse.downbeat * 0.2 + impact * 0.2)),
+      Math.min(2, s.vfxIntensity * (1 + pulse.beat * 0.3 + pulse.drop * 0.45)),
+      Math.min(2, s.streakIntensity * (1 + pulse.downbeat * 0.3 + impact * 0.3)),
     );
   }
 

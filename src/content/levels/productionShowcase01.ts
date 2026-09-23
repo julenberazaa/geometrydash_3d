@@ -1362,6 +1362,14 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
    * Nine-scene visual arc — one identity per act (fingerprint-excluded).
    * Same M8.5 hues; boundaries follow the redesigned acts.
    */
+  /**
+   * M9.1 visual-overdrive arc — one unmistakable palette + energy per act
+   * (PRIMARY route accent / SECONDARY fog / ACCENT background /
+   * IMPACT environment + VFX surge). Energy follows the music: groove →
+   * loud → break → loud → build → climax → quiet breakdown → climax.
+   * Values stay in-contract (bloom ⇒ BLOOM_CONTRACT, exposure 0.5..2);
+   * saturation is local color, never a global wash (see §59 principles).
+   */
   visualSequence: {
     sections: [
       {
@@ -1370,11 +1378,12 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
         endZ: 170,
         blendIn: 1,
         overrides: {
-          background: 0x120702,
-          fogColor: 0x351104,
+          background: 0x1a0a02,
+          fogColor: 0x4d1a05,
           routeAccent: 0xffc233,
-          environmentIntensity: 1.3,
-          vfxIntensity: 1.1,
+          environmentIntensity: 1.5,
+          exposure: 1.1,
+          vfxIntensity: 1.2,
         },
       },
       {
@@ -1383,11 +1392,11 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
         endZ: 430,
         blendIn: 20,
         overrides: {
-          background: 0x06231c,
-          fogColor: 0x0d4a3a,
+          background: 0x073325,
+          fogColor: 0x0f6b52,
           routeAccent: 0x2dffc4,
-          environmentIntensity: 1.2,
-          vfxIntensity: 1.1,
+          environmentIntensity: 1.45,
+          vfxIntensity: 1.2,
         },
       },
       {
@@ -1396,11 +1405,11 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
         endZ: 720,
         blendIn: 20,
         overrides: {
-          background: 0x170b2e,
-          fogColor: 0x3a1560,
+          background: 0x200e40,
+          fogColor: 0x521e86,
           routeAccent: 0xb44dff,
-          environmentIntensity: 1.25,
-          vfxIntensity: 1.15,
+          environmentIntensity: 1.55,
+          vfxIntensity: 1.25,
         },
       },
       {
@@ -1409,12 +1418,12 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
         endZ: 920,
         blendIn: 20,
         overrides: {
-          background: 0x04121f,
-          fogColor: 0x0b3a5c,
+          background: 0x061a2e,
+          fogColor: 0x10517f,
           routeAccent: 0x35c8ff,
-          environmentIntensity: 1.35,
-          vfxIntensity: 1.2,
-          streakIntensity: 1.2,
+          environmentIntensity: 1.6,
+          vfxIntensity: 1.3,
+          streakIntensity: 1.3,
         },
       },
       {
@@ -1423,11 +1432,12 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
         endZ: 1110,
         blendIn: 20,
         overrides: {
-          background: 0x1f0404,
-          fogColor: 0x5c0b0b,
+          background: 0x2b0603,
+          fogColor: 0x7d1008,
           routeAccent: 0xff3b1f,
-          environmentIntensity: 1.4,
-          vfxIntensity: 1.2,
+          environmentIntensity: 1.7,
+          exposure: 1.12,
+          vfxIntensity: 1.3,
         },
       },
       {
@@ -1436,12 +1446,12 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
         endZ: 1330,
         blendIn: 20,
         overrides: {
-          background: 0x03170c,
-          fogColor: 0x0b4a24,
+          background: 0x04220f,
+          fogColor: 0x0f6631,
           routeAccent: 0x3dff7a,
-          environmentIntensity: 1.35,
-          vfxIntensity: 1.2,
-          streakIntensity: 1.25,
+          environmentIntensity: 1.65,
+          vfxIntensity: 1.3,
+          streakIntensity: 1.4,
         },
       },
       {
@@ -1450,11 +1460,12 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
         endZ: 1510,
         blendIn: 20,
         overrides: {
-          background: 0x1c1504,
-          fogColor: 0x5c4a0b,
+          background: 0x281e06,
+          fogColor: 0x7d6210,
           routeAccent: 0xffd23d,
-          environmentIntensity: 1.3,
-          vfxIntensity: 1.15,
+          environmentIntensity: 1.7,
+          exposure: 1.12,
+          vfxIntensity: 1.3,
         },
       },
       {
@@ -1463,13 +1474,13 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
         endZ: 1620,
         blendIn: 20,
         overrides: {
-          background: 0x02020c,
-          fogColor: 0x10103a,
+          background: 0x030312,
+          fogColor: 0x161649,
           fogNear: 26,
-          fogFar: 130,
+          fogFar: 150,
           routeAccent: 0x6a5cff,
-          environmentIntensity: 1.2,
-          vfxIntensity: 1.1,
+          environmentIntensity: 1.0,
+          vfxIntensity: 1.0,
         },
       },
       {
@@ -1478,13 +1489,13 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
         endZ: 1800,
         blendIn: 20,
         overrides: {
-          background: 0x1c0312,
-          fogColor: 0x5c0b3a,
+          background: 0x280417,
+          fogColor: 0x7d0f4d,
           routeAccent: 0xff4dd2,
-          environmentIntensity: 1.5,
-          exposure: 1.15,
-          vfxIntensity: 1.25,
-          streakIntensity: 1.3,
+          environmentIntensity: 1.85,
+          exposure: 1.18,
+          vfxIntensity: 1.45,
+          streakIntensity: 1.45,
         },
       },
     ],
@@ -1500,15 +1511,23 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
   rhythmCues: [
     { id: 'ps-cue-intro', z: 0, role: 'intro', beat: 0 },
     { id: 'ps-cue-stairs', z: 40, role: 'build', beat: 6 },
+    { id: 'ps-cue-orb-forge', z: 50, role: 'orbHit', beat: 8 },
     { id: 'ps-cue-drop', z: 90, role: 'drop', beat: 13 },
     { id: 'ps-cue-river', z: 136, role: 'accent', beat: 20 },
     { id: 'ps-cue-islands', z: 170, role: 'sectionChange', beat: 25 },
     { id: 'ps-cue-lift', z: 262, role: 'accent', beat: 38 },
     { id: 'ps-cue-high', z: 312, role: 'build', beat: 45 },
+    { id: 'ps-cue-orb-low-a', z: 317, role: 'orbHit', beat: 46 },
+    { id: 'ps-cue-orb-low-b', z: 329, role: 'orbHit', beat: 47 },
     { id: 'ps-cue-orb-sky', z: 330, role: 'orbHit', beat: 48 },
     { id: 'ps-cue-ferry', z: 378, role: 'accent', beat: 54 },
+    { id: 'ps-cue-orb-ferry-exit', z: 417, role: 'orbHit', beat: 60 },
+    { id: 'ps-cue-orb-approach', z: 430.5, role: 'orbHit', beat: 62 },
     { id: 'ps-cue-maze', z: 430, role: 'sectionChange', beat: 62 },
+    { id: 'ps-cue-orb-maze-a', z: 468, role: 'orbHit', beat: 67 },
+    { id: 'ps-cue-orb-maze-b', z: 499, role: 'orbHit', beat: 72 },
     { id: 'ps-cue-pad-maze', z: 530, role: 'padHit', beat: 76 },
+    { id: 'ps-cue-orb-pad-maze', z: 539, role: 'orbHit', beat: 77 },
     { id: 'ps-cue-ferry-pair', z: 660, role: 'accent', beat: 95 },
     { id: 'ps-cue-speed-maze', z: 692, role: 'speedHit', beat: 99 },
     { id: 'ps-cue-spire', z: 723, role: 'gravityHit', beat: 101 },
@@ -1540,6 +1559,8 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     { id: 'ps-cue-teleport', z: 1522.2, role: 'accent', beat: 200 },
     { id: 'ps-cue-maw', z: 1597, role: 'accent', beat: 209 },
     { id: 'ps-cue-core', z: 1620, role: 'climax', beat: 210 },
+    { id: 'ps-cue-orb-maw-exit', z: 1625, role: 'orbHit', beat: 210 },
+    { id: 'ps-cue-orb-island-c', z: 1647, role: 'orbHit', beat: 213 },
     { id: 'ps-cue-speed', z: 1662, role: 'speedHit', beat: 216 },
     { id: 'ps-cue-calm', z: 1694, role: 'sectionChange', beat: 218 },
     { id: 'ps-cue-chomp-final', z: 1748, role: 'accent', beat: 226 },

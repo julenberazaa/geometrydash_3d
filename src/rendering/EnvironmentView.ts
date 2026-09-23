@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { ProductionTheme } from '../visuals/productionTheme';
+import type { LevelDefinition } from '../level/levelDefinition';
 import { mulberry32 } from '../core/math';
 
 /**
@@ -34,8 +35,23 @@ export class EnvironmentView {
   // / speed moments); silenced by the same reset path as everything else.
   private readonly rayMat: THREE.MeshBasicMaterial;
   private static readonly RAY_COUNT = 12;
+  // M9.1 architecture layer: ONE InstancedMesh of large-scale biome forms
+  // (towers, focal gate-arches, flanking walls, overhead canopies, bridges,
+  // columns) filling the black void so the world reads as PLACES, not
+  // platforms in emptiness. Static (built once, deterministic PRNG), one
+  // draw, per-instance biome colors baked by z (zero per-frame cost).
+  // Everything sits off-route (|x| ≥ 8 or y ≥ 13 — never landable-looking,
+  // never colliders) and fogged for foreground/midground/background depth.
+  private readonly archMesh: THREE.InstancedMesh | null;
+  // M9.1 lightning: ONE pooled LineSegments of jagged energy bolts
+  // (localized, thin, additive) flashed by strong rhythm levels only
+  // (thresholded — beats alone never trip it). One draw, zero per-frame
+  // allocation, safe (no fullscreen flash, no strobe timing).
+  private readonly boltMat: THREE.LineBasicMaterial | null;
+  private static readonly BOLT_COUNT = 10;
+  private static readonly BOLT_SEGMENTS = 8;
 
-  constructor(levelLengthZ: number, theme: ProductionTheme) {
+  constructor(levelLengthZ: number, theme: ProductionTheme, def?: LevelDefinition) {
     this.theme = theme;
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(theme.background);
@@ -121,10 +137,194 @@ export class EnvironmentView {
         this.scene.add(win);
       }
     }
+    // M9.1 architecture + lightning (bounded set dressing, cold build).
+    const arch = EnvironmentView.buildArchitecture(pillarGeo, levelLengthZ, def);
+    this.archMesh = arch.mesh;
+    if (arch.mesh !== null) {
+      this.scene.add(arch.mesh);
+      if (arch.material !== null) this.disposables.push(arch.material);
+    }
+    const bolts = EnvironmentView.buildLightning(levelLengthZ);
+    if (bolts !== null) {
+      this.scene.add(bolts.lines);
+      this.disposables.push(bolts.geometry, bolts.material);
+      this.boltMat = bolts.material;
+    } else {
+      this.boltMat = null;
+    }
+  }
+
+  /**
+   * M9.1 architecture builder (cold, deterministic): focal gate-arches at
+   * gameplay moments (portals/orbs/teleports/chomper triggers/door walls —
+   * composition points the eye at the next required action) plus towers,
+   * flanking walls, overhead canopies, bridges and columns filling the void.
+   * Per-instance biome colors (section accent at the instance z, darkened
+   * into silhouettes; every 7th burns with a brightened impact tint).
+   * Shared box geometry (no new buffers); one material; one InstancedMesh.
+   */
+  private static buildArchitecture(
+    unitBox: THREE.BoxGeometry,
+    levelLengthZ: number,
+    def?: LevelDefinition,
+  ): { mesh: THREE.InstancedMesh | null; material: THREE.MeshBasicMaterial | null } {
+    interface ArchItem {
+      x: number;
+      y: number;
+      z: number;
+      sx: number;
+      sy: number;
+      sz: number;
+      color: THREE.Color;
+    }
+    const items: ArchItem[] = [];
+    const accentAtZ = (z: number): number => {
+      const sections = def?.visualSequence?.sections;
+      let accent: number | undefined;
+      if (sections !== undefined) {
+        for (const s of sections) {
+          if (s.startZ <= z) accent = s.overrides.routeAccent ?? accent;
+          else break;
+        }
+      }
+      return accent ?? def?.theme.edge ?? 0x35c8ff;
+    };
+    const push = (x: number, y: number, z: number, sx: number, sy: number, sz: number, hex: number, mul: number): void => {
+      items.push({ x, y, z, sx, sy, sz, color: new THREE.Color(hex).multiplyScalar(mul) });
+    };
+    // Focal gate-arches (posts + lintel framing each gameplay moment).
+    const focal: number[] = [];
+    if (def !== undefined) {
+      for (const p of def.gravityPortals ?? []) focal.push(p.z);
+      for (const p of def.speedPortals ?? []) focal.push(p.z);
+      for (const p of def.modePortals ?? []) focal.push(p.z);
+      for (const o of def.jumpOrbs ?? []) focal.push(o.center.z);
+      for (const o of def.gravityOrbs ?? []) focal.push(o.center.z);
+      for (const t of def.teleportPortals ?? []) focal.push(t.entryZ);
+      for (const c of def.chompers ?? []) focal.push(c.triggerZ);
+      for (const h of def.hazards) {
+        if (h.kind === 'killFront' && h.center.y < 4) focal.push(h.center.z);
+      }
+    }
+    focal.sort((a, b) => a - b);
+    let lastArchZ = -100;
+    let impactTick = 0;
+    for (const z of focal) {
+      if (z < -10 || z > levelLengthZ + 10 || z - lastArchZ < 6) continue;
+      lastArchZ = z;
+      impactTick++;
+      const accent = accentAtZ(z);
+      const hot = impactTick % 7 === 0;
+      const postMul = hot ? 0.8 : 0.35;
+      const lintelMul = hot ? 1.0 : 0.55;
+      push(-7.5, 5.5, z, 1.2, 11, 1.2, accent, postMul);
+      push(7.5, 5.5, z, 1.2, 11, 1.2, accent, postMul);
+      push(0, 11.6, z, 16.2, 1.2, 1.2, accent, lintelMul);
+    }
+    // Towers / walls / canopies / bridges / columns (seeded variety).
+    const rand = mulberry32(918273);
+    const fogHex = def?.theme.fogColor ?? 0x0b3a5c;
+    const fogCol = new THREE.Color(fogHex);
+    const put = (x: number, y: number, z: number, sx: number, sy: number, sz: number): void => {
+      const accent = new THREE.Color(accentAtZ(z));
+      const c = accent.clone().multiplyScalar(0.22 + rand() * 0.14).lerp(fogCol, 0.25 + rand() * 0.25);
+      items.push({ x, y, z, sx, sy, sz, color: c });
+    };
+    for (let i = 0; i < 30; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      const z = -30 + rand() * (levelLengthZ + 90);
+      const h = 20 + rand() * 22;
+      const w = 4 + rand() * 5;
+      put(side * (18 + rand() * 24), h / 2 - 6, z, w, h, w * (0.7 + rand() * 0.6));
+    }
+    for (let i = 0; i < 20; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      const z = -20 + rand() * (levelLengthZ + 60);
+      put(side * (10 + rand() * 4), 1 + rand() * 2, z, 1.5, 7 + rand() * 3, 12 + rand() * 18);
+    }
+    for (let i = 0; i < 14; i++) {
+      const z = -10 + rand() * (levelLengthZ + 40);
+      put((rand() - 0.5) * 6, 14 + rand() * 5, z, 16 + rand() * 8, 1.5, 8 + rand() * 8);
+    }
+    for (let i = 0; i < 12; i++) {
+      const z = -20 + rand() * (levelLengthZ + 60);
+      const high = rand() > 0.5;
+      put((rand() - 0.5) * 10, high ? 13 : -6, z, 22 + rand() * 14, 2, 3 + rand() * 3);
+    }
+    for (let i = 0; i < 12; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      const z = -20 + rand() * (levelLengthZ + 60);
+      put(side * (8 + rand() * 4), 3 + rand() * 3, z, 1.5, 18 + rand() * 6, 1.5);
+    }
+    if (items.length === 0) return { mesh: null, material: null };
+    const material = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: true });
+    const mesh = new THREE.InstancedMesh(unitBox, material, items.length);
+    const dummy = new THREE.Object3D();
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      if (it === undefined) continue;
+      dummy.position.set(it.x, it.y, it.z);
+      dummy.scale.set(it.sx, it.sy, it.sz);
+      dummy.rotation.set(0, 0, 0);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+      mesh.setColorAt(i, it.color);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor !== null) mesh.instanceColor.needsUpdate = true;
+    mesh.frustumCulled = false;
+    return { mesh, material };
+  }
+
+  /**
+   * M9.1 lightning bolts (cold, deterministic): jagged vertical energy
+   * paths at seeded positions (never in the corridor). One LineSegments,
+   * one additive material; opacity flashed by strong rhythm only.
+   */
+  private static buildLightning(
+    levelLengthZ: number,
+  ): { lines: THREE.LineSegments; geometry: THREE.BufferGeometry; material: THREE.LineBasicMaterial } | null {
+    const segs = EnvironmentView.BOLT_COUNT * EnvironmentView.BOLT_SEGMENTS;
+    const positions = new Float32Array(segs * 2 * 3);
+    const rand = mulberry32(31337);
+    let v = 0;
+    for (let b = 0; b < EnvironmentView.BOLT_COUNT; b++) {
+      let x = (rand() > 0.5 ? 1 : -1) * (10 + rand() * 20);
+      let y = rand() * 6;
+      const z = rand() * (levelLengthZ + 40) - 20;
+      for (let s = 0; s < EnvironmentView.BOLT_SEGMENTS; s++) {
+        const nx = x + (rand() - 0.5) * 3;
+        const ny = y + 2 + rand() * 2.5;
+        positions[v * 3] = x;
+        positions[v * 3 + 1] = y;
+        positions[v * 3 + 2] = z;
+        v++;
+        positions[v * 3] = nx;
+        positions[v * 3 + 1] = ny;
+        positions[v * 3 + 2] = z;
+        v++;
+        x = nx;
+        y = ny;
+      }
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const material = new THREE.LineBasicMaterial({
+      color: 0xbfe9ff,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      fog: false,
+    });
+    const lines = new THREE.LineSegments(geometry, material);
+    lines.frustumCulled = false;
+    return { lines, geometry, material };
   }
 
   public dispose(): void {
     for (const d of this.disposables) d.dispose();
+    this.archMesh?.dispose();
   }
 
   /**
@@ -159,19 +359,27 @@ export class EnvironmentView {
     const t = this.theme;
     this.applyVisualState(t.background, t.fogColor, t.fogNear, t.fogFar, 1);
     this.setEnergyRays(0, t.fogColor);
+    if (this.boltMat !== null) this.boltMat.opacity = 0;
   }
 
   /**
    * M7.1 ray drive (renderer-only, cold per-frame writes): `level` 0..1
-   * sets the shared beam opacity (0 = invisible, peak ≈ 0.28 — beams stay
-   * subordinate to player/hazard/route by construction); `color` retints
-   * the shared material (section accent at rest, punch family tint during
-   * events). Absolute writes, no accumulation.
+   * sets the shared beam opacity (0 = invisible, peak 0.38 — thin additive
+   * beams stay subordinate to player/hazard/route by construction);
+   * `color` retints the shared material (section accent at rest, punch
+   * family tint during events). Absolute writes, no accumulation.
    */
   public setEnergyRays(level: number, color: number): void {
     const k = level < 0 ? 0 : level > 1 ? 1 : level;
-    this.rayMat.opacity = 0.28 * k;
+    this.rayMat.opacity = 0.38 * k;
     this.rayMat.color.setHex(color);
+    // Lightning answers strong rhythm only (thresholded — the bolt field
+    // stays dark through groove/quiet sections and flashes on downbeats,
+    // drops and impacts; smooth level in, smooth opacity out).
+    if (this.boltMat !== null) {
+      const flash = Math.min(1, Math.max(0, (k - 0.45) * 2.2));
+      this.boltMat.opacity = 0.65 * flash;
+    }
   }
 
   /** Live ray opacity (cold QA path only). */
