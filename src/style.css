@@ -214,6 +214,9 @@ body {
 /* M9 press-to-start gate: minimal, readable, never gameplay. */
 .hud-start-gate {
   position: absolute;
+  /* The HUD root is pointer-transparent (canvas keeps container clicks);
+     the gate re-enables hits so the M9.2 mode buttons are clickable. */
+  pointer-events: auto;
   top: 44%;
   left: 50%;
   transform: translateX(-50%);

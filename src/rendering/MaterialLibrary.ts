@@ -363,11 +363,11 @@ export class MaterialLibrary {
     );
     this.checkpointActive = track(
       new THREE.MeshStandardMaterial({
-        color: 0xeaffff,
+        color: 0xcff6ff,
         roughness: 0.2,
         metalness: 0,
-        emissive: 0x54f0ff,
-        emissiveIntensity: 2.4,
+        emissive: 0x2fc4e8,
+        emissiveIntensity: 1.7,
       }),
     );
     this.checkpointHalo = track(

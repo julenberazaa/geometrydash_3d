@@ -164,11 +164,16 @@ const abortPageErrors = [];
   await ctx.close();
 }
 
-// --- E. ?music=off: explicit silent mode, immediate. ---
+// --- E. ?music=off: explicit silent mode.
+// M9.2 SUPERSEDED (deliberate contract change — see scripts/browser-qa-m92.mjs
+// section E): levels authoring checkpoints now gate on the mode selector
+// even with music off (one click = mode + immediate silent start). Bare
+// click = silent classic.
 {
   const page = await browser.newPage();
   await page.goto(`${URL}?music=off`, { waitUntil: 'load', timeout: 60000 });
   await page.waitForFunction(() => window.__gd3d !== undefined, null, { timeout: 60000 });
+  await page.mouse.click(1200, 650);
   // Poll for sim progress (M9 precedent) — a fixed sleep races slow
   // headless frames and flakes the z threshold under load.
   await page.waitForFunction(() => window.__gd3d.playerPosition().z > -3, null, { timeout: 30000 });
@@ -176,8 +181,9 @@ const abortPageErrors = [];
     awaiting: window.__gd3d.awaitingStart(),
     z: window.__gd3d.playerPosition().z,
     music: window.__gd3d.musicState(),
+    mode: window.__gd3d.runMode(),
   }));
-  log('m91 ?music=off starts immediately and silent', off.awaiting === false && off.z > -3 && off.music === 'none', JSON.stringify(off));
+  log('m91 ?music=off starts silent classic on bare click', off.awaiting === false && off.z > -3 && off.music === 'none' && off.mode === 'classic', JSON.stringify(off));
   await page.close();
 }
 

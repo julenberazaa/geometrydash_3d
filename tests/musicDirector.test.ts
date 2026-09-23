@@ -22,9 +22,12 @@ class FakeSource implements AudioSourceLike {
   public startedAtOffset: number | null = null;
   public stopped = false;
   public disconnected = false;
+  /** Test hook: fired inside start (engine wires the event log here). */
+  public onStart: (() => void) | null = null;
 
   public start(_when: number, offset: number): void {
     this.startedAtOffset = offset;
+    this.onStart?.();
   }
 
   public stop(_when?: number): void {
@@ -41,6 +44,8 @@ class FakeGain implements AudioGainLike {
   public ramped = false;
   public connectedTo: unknown = null;
   public disconnected = false;
+  /** Test hook: fired inside connect (engine wires the event log here). */
+  public onConnect: (() => void) | null = null;
 
   public setGain(value: number): void {
     this.level = value;
@@ -53,6 +58,7 @@ class FakeGain implements AudioGainLike {
 
   public connect(destination: unknown): void {
     this.connectedTo = destination;
+    this.onConnect?.();
   }
 
   public disconnect(): void {
@@ -98,11 +104,8 @@ class FakeEngine implements AudioEngineLike {
     const source = new FakeSource();
     this.sources.push(source);
     this.events.push('createSource');
-    const engine = this;
-    const innerStart = source.start.bind(source);
-    source.start = (when: number, offset: number): void => {
-      engine.events.push('start');
-      innerStart(when, offset);
+    source.onStart = (): void => {
+      this.events.push('start');
     };
     return source;
   }
@@ -111,11 +114,8 @@ class FakeEngine implements AudioEngineLike {
     const gain = new FakeGain();
     this.gains.push(gain);
     this.events.push('createGain');
-    const engine = this;
-    const innerConnect = gain.connect.bind(gain);
-    gain.connect = (destination: unknown): void => {
-      engine.events.push('gainConnect');
-      innerConnect(destination);
+    gain.onConnect = (): void => {
+      this.events.push('gainConnect');
     };
     return gain;
   }

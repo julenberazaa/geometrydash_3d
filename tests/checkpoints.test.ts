@@ -6,6 +6,8 @@ import { computeStateFingerprint } from '../src/replay/stateFingerprint';
 import { targetMusicTime } from '../src/audio/musicTrack';
 import type { LevelDefinition } from '../src/level/levelDefinition';
 import { TEST_LEVEL } from '../src/content/levels/testLevel01';
+import { PRODUCTION_SHOWCASE_01 } from '../src/content/levels/productionShowcase01';
+import { ShowcaseDriver } from './helpers/showcaseScript';
 import { idleInput } from './helpers/simulation';
 
 /**
@@ -304,6 +306,37 @@ describe('checkpoint practice mode (M9.2)', () => {
     // Progress cleared: dying now returns to the origin.
     killAndRespawn(sim);
     expect(sim.player.position.z).toBeCloseTo(RUNWAY.start.z, 9);
+  });
+
+  it('THE DESCENT: all 8 crystals activate on both reference routes, trajectory untouched', () => {
+    for (const variant of ['primary', 'alternate'] as const) {
+      const sim = new GameSimulation(PRODUCTION_SHOWCASE_01);
+      sim.setCheckpointRespawnEnabled(true);
+      const driver = new ShowcaseDriver(variant);
+      const activated: string[] = [];
+      let tick = 0;
+      for (; tick < 30000; tick++) {
+        if (sim.status !== 'running') break;
+        sim.update(driver.nextInput(sim.player.position.z, sim));
+        const last = sim.lastCheckpointId;
+        if (last !== null && !activated.includes(last)) activated.push(last);
+      }
+      expect(sim.status).toBe('finished');
+      // M9.1 anchor: checkpoint detection never perturbs the trajectory.
+      expect(tick).toBe(13799);
+      expect(activated).toEqual([
+        'cp-forge',
+        'cp-skybridge',
+        'cp-labyrinth',
+        'cp-cathedral',
+        'cp-foundry',
+        'cp-reactor',
+        'cp-temple',
+        'cp-core',
+      ]);
+      // Every snapshot is a grounded cube state on the intended route.
+      expect(sim.checkpointProgress()).toEqual({ activeIndex: 8, total: 8 });
+    }
   });
 
   it('checkpoints are fingerprinted conditionally (absent levels hash identically)', () => {
