@@ -8,6 +8,7 @@ import {
   type AudioGainLike,
   type AudioSourceLike,
 } from '../src/audio/MusicDirector';
+import { GRAVITY_LESSONS_DURATION, MUSIC_DEFAULT_VOLUME } from '../src/audio/musicTrack';
 
 /**
  * M9 music-transport contract (presentation only): the MusicDirector state
@@ -71,6 +72,10 @@ class FakeEngine implements AudioEngineLike {
     this.resumed = true;
   }
 
+  public contextState(): string {
+    return this.closed ? 'closed' : 'running';
+  }
+
   public createSource(buffer: AudioBufferLike): AudioSourceLike {
     expect(buffer).toBe(this.buffer);
     const source = new FakeSource();
@@ -108,7 +113,7 @@ class FakeEngine implements AudioEngineLike {
 
 const readyDirector = async (): Promise<{ director: MusicDirector; engine: FakeEngine }> => {
   const engine = new FakeEngine();
-  const director = new MusicDirector('audio/Gravity_Lessons.mp3', engine);
+  const director = new MusicDirector('/audio/Gravity_Lessons.mp3', engine);
   director.preload();
   // Flush the preload microtask chain (fake fetch resolves immediately).
   for (let i = 0; i < 5; i++) await Promise.resolve();
@@ -220,5 +225,54 @@ describe('music transport (M9 MusicDirector)', () => {
     expect(await director.ensure()).toBe(false);
     expect(director.transportState).toBe('failed');
     expect(director.startAt(0)).toBe(false);
+  });
+
+  it('M9.1: ensure() retries a failed preload fetch instead of staying dead', async () => {
+    const engine = new FakeEngine();
+    engine.bytes = null; // first fetch fails
+    const director = new MusicDirector('/audio/Gravity_Lessons.mp3', engine);
+    director.preload();
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+    expect(await director.ensure()).toBe(false);
+    expect(director.transportState).toBe('failed');
+    // Bytes arrive later (retry path): the same director recovers.
+    engine.bytes = new ArrayBuffer(8);
+    expect(await director.ensure()).toBe(true);
+    expect(director.transportState).toBe('ready');
+    expect(director.bufferDuration()).toBeCloseTo(GRAVITY_LESSONS_DURATION, 3);
+  });
+
+  it('M9.1: ensure() retries a failed decode (bytes survive for the retry)', async () => {
+    const engine = new FakeEngine();
+    engine.failDecode = true;
+    const director = new MusicDirector('/audio/x.mp3', engine);
+    expect(await director.ensure()).toBe(false);
+    engine.failDecode = false;
+    expect(await director.ensure()).toBe(true);
+    expect(director.transportState).toBe('ready');
+  });
+
+  it('M9.1: beginGesture creates + resumes the engine synchronously', () => {
+    const engine = new FakeEngine();
+    const director = new MusicDirector('/audio/x.mp3', null, () => engine);
+    director.beginGesture();
+    expect(engine.resumed).toBe(true);
+    expect(director.audioContextState()).toBe('running');
+  });
+
+  it('M9.1: one central music volume + real-state probes', async () => {
+    const { director, engine } = await readyDirector();
+    expect(director.probe().volume).toBe(MUSIC_DEFAULT_VOLUME);
+    expect(director.probe().volume).toBeGreaterThan(0.5);
+    expect(director.bufferDuration()).toBeCloseTo(GRAVITY_LESSONS_DURATION, 3);
+    expect(director.audioContextState()).toBe('running');
+    expect(director.startAt(0)).toBe(true);
+    expect(engine.gains[0]?.level).toBe(MUSIC_DEFAULT_VOLUME);
+    expect(director.probe().gain).toBe(MUSIC_DEFAULT_VOLUME);
+    director.setMuted(true);
+    expect(director.probe().gain).toBe(0);
+    expect(engine.gains[0]?.level).toBe(0);
+    director.setMuted(false);
+    expect(director.probe().gain).toBe(MUSIC_DEFAULT_VOLUME);
   });
 });

@@ -46,6 +46,14 @@ export class Game {
   private readonly startGated: boolean;
   private started = false;
   private gatePending = false;
+  /**
+   * M9.1 fail-loud gate: audio failure NEVER auto-starts gameplay. The
+   * gate latches failed (loop stays paused, failure overlay visible) until
+   * the human retries (gesture) or explicitly starts silent (N).
+   */
+  private gateFailed = false;
+  /** Explicit human silent start after a failure (audible gate declined). */
+  private silentStart = false;
   private prevStatus: string | null = null;
 
   private paused = false;
@@ -154,6 +162,11 @@ export class Game {
     return this.gatePending;
   }
 
+  /** M9.1 QA observability: true while the fail-loud gate holds on audio failure. */
+  public get startGateFailed(): boolean {
+    return this.gateFailed;
+  }
+
   /** QA observability: fixed steps executed (pause-freeze proof). */
   public get simSteps(): number {
     return this.loop.totalSteps;
@@ -164,16 +177,23 @@ export class Game {
   }
 
   /**
-   * M9 first-gesture unlock: resume/create audio, start music at the
-   * attempt origin, and start the sim from tick 0 — together. Never
-   * blocks: audio failure (or a slow decode) still starts gameplay via
-   * the timeout backstop.
+   * M9.1 first-gesture unlock (fail-loud contract): create/resume audio
+   * synchronously in the gesture, then fetch/decode/verify and start
+   * music + sim together at tick 0. Audio failure NEVER starts gameplay
+   * silently — the gate latches failed with a loud overlay until the
+   * human retries (gesture) or explicitly starts without music (N).
+   * `?music=off` levels never enter this path (no gate at all).
    */
   private unlockStart(): void {
-    if (!this.startGated || this.started) return;
-    this.started = true;
+    if (!this.startGated || this.started || this.gatePending) return;
+    // A latched failure retries on every fresh gesture (same path).
     this.gatePending = true;
-    this.hud.setStartGate(null);
+    this.gateFailed = false;
+    this.hud.setStartGate('LOADING MUSIC…');
+    // Synchronous user-activation edge: the AudioContext must be created/
+    // resumed inside the gesture handler (autoplay policy), never from a
+    // promise microtask.
+    this.music?.beginGesture();
     // Flush the gesture press edge so the unlocking Space never jumps.
     this.input.sample();
     const director = this.music;
@@ -181,18 +201,33 @@ export class Game {
       .then(() => director?.ensure() ?? false)
       .then((ready) => {
         if (this.disposed) return;
-        if (ready) director?.restart();
-        this.gatePending = false;
-        this.loop.setPaused(false);
+        if (ready && director?.restart() === true) {
+          this.started = true;
+          this.gatePending = false;
+          this.hud.setStartGate(null);
+          this.loop.setPaused(false);
+        } else {
+          // LOUD failure: loop stays paused, overlay demands action.
+          this.gatePending = false;
+          this.gateFailed = true;
+          this.hud.setStartGate('MUSIC LOAD FAILED — CLICK TO RETRY / PRESS N TO START WITHOUT MUSIC');
+        }
       });
-    // Backstop: gameplay must never strand on audio (2.5 s wall-clock,
-    // presentation-only — the sim clock is untouched).
-    window.setTimeout(() => {
-      if (this.started && this.gatePending) {
-        this.gatePending = false;
-        this.loop.setPaused(false);
-      }
-    }, 2500);
+  }
+
+  /**
+   * M9.1 explicit silent start: ONLY from the latched failure state, ONLY
+   * via a deliberate keypress. Never automatic, never a timeout.
+   */
+  private startWithoutMusic(): void {
+    if (!this.startGated || this.started || !this.gateFailed) return;
+    this.started = true;
+    this.silentStart = true;
+    this.gateFailed = false;
+    this.hud.setStartGate(null);
+    this.hud.setMessage('STARTED WITHOUT MUSIC');
+    this.input.sample();
+    this.loop.setPaused(false);
   }
 
   private onClick = (): void => {
@@ -243,20 +278,25 @@ export class Game {
   private onKeyDown = (event: KeyboardEvent): void => {
     // First gesture unlocks the (guarded, optional) death blip.
     this.deathSfx.ensure();
-    // M9: the unlocking press only starts audio + sim (the edge is
-    // flushed in unlockStart so it never becomes gameplay input).
+    // M9.1: the unlocking press only starts audio + sim (the edge is
+    // flushed in unlockStart so it never becomes gameplay input). N is the
+    // EXPLICIT silent start, honored only from the latched failure state.
     if (event.code === 'Space' || event.code === 'ArrowUp') this.unlockStart();
+    if (event.code === 'KeyN') this.startWithoutMusic();
     if (this.gatePending) return;
     switch (event.code) {
       case 'KeyR':
+        // The start gate owns pre-start input (no restart before tick 0).
+        if (!this.started) break;
         // Manual restart ends the current context: abort an active playback,
         // otherwise discard the partial live tape, then restart the attempt.
         if (this.replay.isPlaying) this.replay.abortReplay();
         else this.replay.discardRecording();
         this.simulation.restart();
         // R-from-running produces no dead→running edge, so restart music
-        // explicitly (R-from-dead double-restarts harmlessly at the origin).
-        if (this.started) this.music?.restart();
+        // explicitly (R-from-dead double-restarts harmlessly at the origin;
+        // explicit-silent runs have no transport to restart).
+        if (!this.silentStart) this.music?.restart();
         this.hud.setMessage('');
         break;
       case 'KeyP':

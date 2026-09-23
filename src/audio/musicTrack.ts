@@ -30,6 +30,13 @@ export const GRAVITY_LESSONS_FINAL_TIME = 115.06;
 /** Last track time carrying sustained musical content (≈). */
 export const GRAVITY_LESSONS_MUSIC_END = 115.3;
 
+/**
+ * Production music output volume (M9.1 — SINGLE owner). The MusicDirector
+ * defaults to this; death SFX stays subordinate (peak 0.1). No scattered
+ * music gains exist anywhere else in the codebase.
+ */
+export const MUSIC_DEFAULT_VOLUME = 0.9;
+
 /** Musical energy tier driving presentation density (authored, not heard). */
 export type MusicEnergy = 'silence' | 'groove' | 'loud' | 'break' | 'quiet' | 'build' | 'outro';
 

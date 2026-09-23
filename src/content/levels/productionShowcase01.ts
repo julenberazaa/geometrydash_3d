@@ -57,7 +57,8 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
   // THE DESCENT was built for Gravity Lessons — the attempt starts at the
   // first track sample (offset 0) through the press-to-start gate, and the
   // authored finish lands on the beat-230 final impact (≈ 115.06 s).
-  musicTrack: { audioPath: 'audio/Gravity_Lessons.mp3', trackOffset: 0 },
+  // M9.1: root-absolute public URL (port-proof under any Vite dev port).
+  musicTrack: { audioPath: '/audio/Gravity_Lessons.mp3', trackOffset: 0 },
 
   gravityPortals: [
     // ACT 4 spire: rapid 4-surface tour. M9: the ceiling flip lands on

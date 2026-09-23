@@ -1,4 +1,4 @@
-import { GRAVITY_LESSONS_DURATION } from './musicTrack';
+import { GRAVITY_LESSONS_DURATION, MUSIC_DEFAULT_VOLUME } from './musicTrack';
 
 /**
  * MusicDirector (M9) — the ONE presentation owner of music transport.
@@ -48,6 +48,8 @@ export interface AudioGainLike {
 export interface AudioEngineLike {
   readonly currentTime: number;
   resume(): void;
+  /** Live AudioContext state ('running' | 'suspended' | 'closed'). */
+  contextState(): string;
   createSource(buffer: AudioBufferLike): AudioSourceLike;
   createGain(): AudioGainLike;
   readonly destination: unknown;
@@ -70,6 +72,10 @@ export class WebAudioEngine implements AudioEngineLike {
 
   public resume(): void {
     if (this.ctx.state === 'suspended') void this.ctx.resume();
+  }
+
+  public contextState(): string {
+    return this.ctx.state;
   }
 
   public createSource(buffer: AudioBufferLike): AudioSourceLike {
@@ -164,6 +170,12 @@ export interface MusicProbe {
   actualTime: number;
   driftMs: number;
   volume: number;
+  /** Last gain value applied to the output node (0 when muted). */
+  gain: number;
+  /** Decoded buffer duration in seconds (-1 when nothing decoded). */
+  bufferDuration: number;
+  /** Live AudioContext state ('running' | 'suspended' | 'closed' | 'none'). */
+  contextState: string;
 }
 
 export type MusicSyncAction = 'idle' | 'ok' | 'drift' | 'resynced';
@@ -190,7 +202,9 @@ export class MusicDirector {
   private pausedOffset = 0;
   private lastTarget = 0;
   private muted = false;
-  private volume = 0.9;
+  private volume = MUSIC_DEFAULT_VOLUME;
+  /** Last gain applied to a live output node (probe evidence). */
+  private appliedGain = 0;
   private disposed = false;
 
   constructor(
@@ -230,6 +244,86 @@ export class MusicDirector {
     if (this.audioPath === null || this.fetchedBytes !== null || this.fetchPromise !== null) return;
     if (this.state !== 'idle') return;
     this.state = 'loading';
+    this.startFetch();
+  }
+
+  /**
+   * Synchronous gesture edge (M9.1): create/resume the AudioContext INSIDE
+   * the user-gesture handler. Autoplay policy ties the running state to
+   * user activation — creating/resuming from a promise microtask can leave
+   * the context suspended (audible silence with a 'playing' transport).
+   * Never throws.
+   */
+  public beginGesture(): void {
+    if (this.disposed) return;
+    try {
+      if (this.engine === null) {
+        this.engine = this.createEngine();
+        if (this.engine === null) {
+          this.state = 'failed';
+          return;
+        }
+      }
+      this.engine.resume();
+    } catch {
+      this.state = 'failed';
+    }
+  }
+
+  /**
+   * Gesture path: resume the context, (re)fetch the bytes when missing,
+   * and decode. Never throws; returns true when the track is ready. A
+   * failed preload is NOT terminal — this retries the fetch AND the decode
+   * (fetched bytes survive a decode failure; decode reads a copy).
+   */
+  public async ensure(): Promise<boolean> {
+    if (this.disposed) return false;
+    try {
+      if (this.engine === null) {
+        this.engine = this.createEngine();
+        if (this.engine === null) {
+          this.state = 'failed';
+          return false;
+        }
+      }
+      this.engine.resume();
+      if (this.fetchedBytes === null) {
+        // The gesture may arrive before preload finished — await it; when
+        // preload failed (or never ran), start a fresh fetch instead of
+        // giving up silently.
+        if (this.fetchPromise === null && this.audioPath !== null) this.startFetch();
+        if (this.fetchPromise !== null) {
+          try {
+            this.fetchedBytes = await this.fetchPromise;
+          } catch {
+            this.state = 'failed';
+            return false;
+          }
+        } else {
+          this.state = 'failed';
+          return false;
+        }
+      }
+      // (fetchedBytes is non-null here — every still-null path above
+      // returned false; decode resolves a buffer or throws into the catch
+      // below, so reaching the end means the track is ready.)
+      if (this.buffer === null) {
+        if (this.state === 'idle' || this.state === 'failed') this.state = 'loading';
+        this.buffer = await this.engine.decode(this.fetchedBytes);
+        this.state = 'ready';
+      } else if (this.state !== 'playing' && this.state !== 'paused') {
+        this.state = 'ready';
+      }
+      return true;
+    } catch {
+      this.state = 'failed';
+      return false;
+    }
+  }
+
+  /** Start (or restart) the byte fetch; resolves into fetchedBytes. */
+  private startFetch(): void {
+    if (this.audioPath === null) return;
     const path = this.audioPath;
     const engine = this.engine;
     let pending: Promise<ArrayBuffer>;
@@ -242,6 +336,7 @@ export class MusicDirector {
               return await r.arrayBuffer();
             });
     } catch {
+      this.fetchPromise = null;
       this.state = 'failed';
       return;
     }
@@ -261,45 +356,6 @@ export class MusicDirector {
     );
   }
 
-  /**
-   * Gesture path: create/resume the context, await the preloaded bytes,
-   * and decode. Never throws; returns true when the track is ready.
-   */
-  public async ensure(): Promise<boolean> {
-    if (this.disposed) return false;
-    try {
-      if (this.engine === null) {
-        this.engine = this.createEngine();
-        if (this.engine === null) {
-          this.state = 'failed';
-          return false;
-        }
-      }
-      this.engine.resume();
-      // The gesture may arrive before preload finished — await the bytes
-      // (with the caller-owned backstop guaranteeing gameplay starts).
-      if (this.fetchedBytes === null && this.fetchPromise !== null) {
-        try {
-          this.fetchedBytes = await this.fetchPromise;
-        } catch {
-          this.state = 'failed';
-          return false;
-        }
-      }
-      if (this.buffer === null && this.fetchedBytes !== null && this.audioPath !== null) {
-        if (this.state === 'idle' || this.state === 'failed') this.state = 'loading';
-        this.buffer = await this.engine.decode(this.fetchedBytes);
-        this.state = 'ready';
-      } else if (this.buffer !== null && this.state !== 'playing' && this.state !== 'paused') {
-        this.state = 'ready';
-      }
-      return this.buffer !== null;
-    } catch {
-      this.state = 'failed';
-      return false;
-    }
-  }
-
   /** Start (or restart) the track at a buffer offset in seconds. */
   public startAt(offsetSeconds: number): boolean {
     if (this.disposed || this.buffer === null || this.engine === null) return false;
@@ -310,7 +366,8 @@ export class MusicDirector {
       const source = engine.createSource(buffer);
       const gain = engine.createGain();
       gain.connect(engine.destination);
-      gain.setGain(this.muted ? 0 : this.volume);
+      this.appliedGain = this.muted ? 0 : this.volume;
+      gain.setGain(this.appliedGain);
       const offset = Math.min(Math.max(0, offsetSeconds), Math.max(0, buffer.duration - 0.05));
       const gen = this.generation + 1;
       this.generation = gen;
@@ -406,7 +463,10 @@ export class MusicDirector {
   public setMuted(muted: boolean): void {
     this.muted = muted;
     try {
-      if (this.gain !== null) this.gain.setGain(muted ? 0 : this.volume);
+      if (this.gain !== null) {
+        this.appliedGain = muted ? 0 : this.volume;
+        this.gain.setGain(this.appliedGain);
+      }
     } catch {
       // Presentation-only — ignore.
     }
@@ -415,9 +475,27 @@ export class MusicDirector {
   public setVolume(volume: number): void {
     this.volume = Math.min(1, Math.max(0, volume));
     try {
-      if (this.gain !== null && !this.muted) this.gain.setGain(this.volume);
+      if (this.gain !== null && !this.muted) {
+        this.appliedGain = this.volume;
+        this.gain.setGain(this.appliedGain);
+      }
     } catch {
       // Presentation-only — ignore.
+    }
+  }
+
+  /** Decoded buffer duration in seconds (-1 when nothing decoded). */
+  public bufferDuration(): number {
+    return this.buffer !== null ? this.buffer.duration : -1;
+  }
+
+  /** Live AudioContext state ('none' when no engine exists). */
+  public audioContextState(): string {
+    if (this.engine === null) return 'none';
+    try {
+      return this.engine.contextState();
+    } catch {
+      return 'unknown';
     }
   }
 
@@ -432,6 +510,9 @@ export class MusicDirector {
       actualTime: actual,
       driftMs: (actual - this.lastTarget) * 1000,
       volume: this.volume,
+      gain: this.state === 'playing' ? this.appliedGain : 0,
+      bufferDuration: this.bufferDuration(),
+      contextState: this.audioContextState(),
     };
   }
 

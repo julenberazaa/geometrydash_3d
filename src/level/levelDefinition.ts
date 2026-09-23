@@ -310,8 +310,8 @@ export interface VisualSetpieceDef {
  */
 export interface MusicTrackRef {
   /**
-   * Public asset path relative to the app root served by Vite
-   * (e.g. `audio/Gravity_Lessons.mp3` for `public/audio/...`).
+   * Root-absolute public asset URL served by Vite (M9.1: unambiguous under
+   * any dev port — e.g. `/audio/Gravity_Lessons.mp3` for `public/audio/...`).
    */
   audioPath: string;
   /**

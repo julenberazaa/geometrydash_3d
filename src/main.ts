@@ -193,12 +193,19 @@ declare global {
       // M9 music-transport observability (presentation only).
       awaitingStart: () => boolean;
       startGatePending: () => boolean;
+      /** M9.1 fail-loud gate: latched while audio failure holds gameplay. */
+      startGateFailed: () => boolean;
       simSteps: () => number;      musicState: () => string;
       musicTargetTime: () => number;
       musicActualTime: () => number;
       musicDriftMs: () => number;
       musicPlaying: () => boolean;
       musicMuted: () => boolean;
+      /** M9.1 audio-evidence probes (proves real state, not assumptions). */
+      musicBufferDuration: () => number;
+      musicContextState: () => string;
+      musicVolume: () => number;
+      musicGain: () => number;
     };
   }
 }
@@ -382,6 +389,7 @@ window.__gd3d = {
   // M9 music probes (presentation only — the sim clock stays authoritative).
   awaitingStart: (): boolean => game.awaitingStart,
   startGatePending: (): boolean => game.startGatePending,
+  startGateFailed: (): boolean => game.startGateFailed,
   simSteps: (): number => game.simSteps,
   musicState: (): string => game.musicDirector?.probe().state ?? 'none',
   musicTargetTime: (): number => game.musicDirector?.probe().targetTime ?? -1,
@@ -389,6 +397,10 @@ window.__gd3d = {
   musicDriftMs: (): number => game.musicDirector?.probe().driftMs ?? 0,
   musicPlaying: (): boolean => game.musicDirector?.probe().playing ?? false,
   musicMuted: (): boolean => game.musicDirector?.probe().muted ?? false,
+  musicBufferDuration: (): number => game.musicDirector?.bufferDuration() ?? -1,
+  musicContextState: (): string => game.musicDirector?.audioContextState() ?? 'none',
+  musicVolume: (): number => game.musicDirector?.probe().volume ?? -1,
+  musicGain: (): number => game.musicDirector?.probe().gain ?? -1,
 };
 
 // Hot Module Acceptance for Vite dev server.
