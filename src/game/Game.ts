@@ -149,6 +149,16 @@ export class Game {
     return this.startGated && !this.started;
   }
 
+  /** M9 QA observability: true while the start-gate audio handoff is pending. */
+  public get startGatePending(): boolean {
+    return this.gatePending;
+  }
+
+  /** QA observability: fixed steps executed (pause-freeze proof). */
+  public get simSteps(): number {
+    return this.loop.totalSteps;
+  }
+
   public get musicDirector(): MusicDirector | null {
     return this.music;
   }

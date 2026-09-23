@@ -604,3 +604,59 @@ and teleport snaps preserved). Proof: 28 camera tests green (5 multi-height,
 11 occlusion A–J, 2 both-route sweeps) + `scripts/browser-qa-camera-m86.mjs`
 46/46 (14 staged high/low areas, live pull-in, fade dormant, zero errors).
 Final state: ENGINEERING COMPLETE / HUMAN CAMERA GATE OPEN.
+
+## M9 — Gravity Lessons rhythm polish: ENGINEERING COMPLETE / HUMAN MUSIC-RHYTHM GAMEPLAY GATE OPEN (feature/m9-gravity-lessons-rhythm-polish, NOT merged)
+
+Human M8.6 verdict: POSITIVE after the camera corrective pass (level
+visually strong, substantially more enjoyable) — but wide permissive
+corridors still admit ~4–5 equivalent safe lines. M9 takes THE DESCENT
+from platforming level to music-driven superproduction on three pillars:
+(1) real music + rhythm sync, (2) precision-route polish, (3) rhythm VFX.
+
+Music (measured locally from the user-supplied file — never replaced):
+`Gravity_Lessons.mp3` (121.574 s, 44.1 kHz stereo, 192 kbps, committed at
+`public/audio/`, no LFS) is stable 120 BPM (beat k at 0.06 + 0.5·k s),
+final impact beat 230 at 115.06 s, digital silence after ~115.3 s.
+`MusicDirector` (presentation-owned Web Audio transport) follows the
+deterministic sim clock (`targetMusicTime = elapsedSimTime + offset`;
+dead-band ±60 ms, resync beyond 180 ms — sim never touched); press-to-start
+gate (tick-0 frozen scene, first gesture starts music + sim together);
+P pause/resume, death/respawn cut + origin restart, R restart, F4 replay
+follow, `?music=off` silent with zero gameplay difference. Music metadata
+is fingerprint-excluded (pinned); ReplayV1 unchanged.
+
+Retime: reference route 14797 ticks (123.31 s) → 13800 ticks (115.00 s),
+finish 60 ms off beat 230 (major tier). Levers, all musically justified:
+2× Spider spire (climax snap chains) with a 1× wall-entry precision window,
+2× foundry slalom (Drop-B single-door weave walls), 2× ship-exit runway;
+vertical transitions stay 1× (rise/fall physics covers 2× distance at 2×).
+Authored alignment (reference driver vs beat grid): majors median 60 ms,
+30/51 within ±70 ms, finish ±70 ms; documented outliers (recovery
+pad-shaft, physics-locked ceiling hop, river-locked spider pair, wall-calm
+lip window, syncopated ship-tunnel flips, 2×-lip speed portals) report
+honestly with reasons. 44 beat-anchored rhythm cues (evolved M7.1 system).
+
+Precision routing: route-openness audit (safe-band counter) 60.5% → 44.2%
+3+-band samples (alternate 62.3% → 46.0%), one-band plurality, no demanding
+stretch over 12 u open (entry + designated runouts exempt); lane-lazy
+variant dies at the first weave doors; double-spike + slalom + road-narrow
+surgery + ~70 funnel teeth (both reference lines verified); density floor
+held (skill jumps, lane edges, passive gap, supports, travel, reversals,
+platform riding — all green on both routes).
+
+Rhythm VFX: deterministic `rhythmPulse` (8th/beat/downbeat/drop envelopes
+from sim time + section-entry impacts — no audio analysis, pause/replay
+safe) composed into the existing timeline/punch/VFX/beam hooks (zero new
+draws/materials; biome response via section accents); new warm-red
+`impact` punch family on Chomper-lunge edges. Bounded + photosensitivity
+bound (smooth decays, in-contract clamps, `?fx=off` escape hatch).
+
+Proof: `npm run verify` green (49 files / 613 tests); both routes finish
+0 deaths + replay VERIFIED; `scripts/browser-qa-m9.mjs` 14/14 green (gate,
+unlock, transport lifecycle, pause/restart/death/mute, pulse oscillation,
+staged captures, `?music=off`, flat 40/8/64 resources, zero errors) with
+`qa/screenshots/m9-*` evidence. Spec:
+`specs/milestones/M9_GRAVITY_LESSONS_RHYTHM_POLISH.md`. Automation cannot
+decide sync feel, flash power, musical flow, precision, difficulty-vs-fun,
+readability, or one-piece feel — do NOT mark PASS until the human plays it
+with sound on. Next: human music-rhythm gameplay gate, then real-GPU perf.

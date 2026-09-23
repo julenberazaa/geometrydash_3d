@@ -1,7 +1,17 @@
 # M9 — Gravity Lessons: Rhythm Polish ("THE DESCENT" music-driven superproduction)
 
-> Status: IN PROGRESS (branch `feature/m9-gravity-lessons-rhythm-polish`,
-> branched from `feature/m8-6-extreme-density-verticality` @ `550915b`).
+> Status: ENGINEERING COMPLETE / HUMAN MUSIC-RHYTHM GAMEPLAY GATE OPEN
+> (branch `feature/m9-gravity-lessons-rhythm-polish`, NOT merged).
+> `npm run verify` green (49 files / 613 tests); both reference routes
+> finish with 0 deaths and replay VERIFIED; `scripts/browser-qa-m9.mjs`
+> 14/14 green with `qa/screenshots/m9-*` evidence. Measured: finish 60 ms
+> off beat 230; majors median 60 ms, 30/51 within ±70 ms; openness
+> 60.5% → 44.2% 3+-band (alt 62.3% → 46.0%). Automation cannot approve
+> sync feel, flash power, musical flow, precision, difficulty-vs-fun,
+> readability, or one-piece feel — do NOT mark PASS until the human plays
+> it with sound on.
+>
+> (Entry context below preserved as written at milestone start.)
 > M8.6 received a POSITIVE human verdict after the camera corrective pass:
 > the level is visually strong and substantially more enjoyable. M9 takes it
 > from "a good difficult 3D platforming level" to "a music-driven, highly

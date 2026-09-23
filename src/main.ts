@@ -192,7 +192,8 @@ declare global {
       debugStartReplayJson: (json: string) => { ok: boolean; reason?: string };
       // M9 music-transport observability (presentation only).
       awaitingStart: () => boolean;
-      musicState: () => string;
+      startGatePending: () => boolean;
+      simSteps: () => number;      musicState: () => string;
       musicTargetTime: () => number;
       musicActualTime: () => number;
       musicDriftMs: () => number;
@@ -380,6 +381,8 @@ window.__gd3d = {
   },
   // M9 music probes (presentation only — the sim clock stays authoritative).
   awaitingStart: (): boolean => game.awaitingStart,
+  startGatePending: (): boolean => game.startGatePending,
+  simSteps: (): number => game.simSteps,
   musicState: (): string => game.musicDirector?.probe().state ?? 'none',
   musicTargetTime: (): number => game.musicDirector?.probe().targetTime ?? -1,
   musicActualTime: (): number => game.musicDirector?.probe().actualTime ?? -1,

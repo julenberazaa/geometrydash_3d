@@ -77,7 +77,16 @@ multi-deck islands, stairs/shafts, two-deck maze, 4-way gravity spire,
 Chomper combos, hard + inverted Ship, hard wall Spider, teleport network,
 5 deterministic moving ferry/elevator islands, everything-remix finale —
 reference + alternate routes finish with 0 deaths and verified replays
-(spec: `specs/milestones/M8_6_EXTREME_DENSITY_VERTICALITY.md`).
+(spec: `specs/milestones/M8_6_EXTREME_DENSITY_VERTICALITY.md`). M9 Gravity
+Lessons rhythm polish on `feature/m9-gravity-lessons-rhythm-polish`
+(engineering complete, human music-rhythm gate OPEN): the user-supplied
+`Gravity_Lessons.mp3` (stable 120 BPM, committed under `public/audio/`)
+plays through a presentation-owned transport that follows the deterministic
+sim clock (never drives it); THE DESCENT starts behind a press-to-start
+gate and its ~115 s reference route lands the finish on the track's final
+impact (beat 230) with 51 authored beat anchors, single-flow precision
+routing (route-openness audited), and deterministic beat-reactive visuals
+(spec: `specs/milestones/M9_GRAVITY_LESSONS_RHYTHM_POLISH.md`).
 M6A visual production foundation
 engineering-complete (production theme + shared materials + controlled
 bloom/post, zero gameplay change, 182/182 tests, M6A browser QA 24/24
@@ -154,6 +163,7 @@ Individual: `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`.
 | `←` / `→` | Lane target (one press = one lane, provisional) | Same — never mirrored |
 | `R` | Instant restart | Instant restart (back to start gravity + speed) |
 | `P` | Pause | Pause |
+| `M` | Mute music (presentation only) | Same |
 | `F1` / `F2` / `F3` | Debug stats / collider wireframes / player hitbox | Same |
 | `F4` | Replay the last completed attempt (input ignored during playback) | Same |
 

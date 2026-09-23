@@ -60,7 +60,7 @@ export class Hud {
     const help = document.createElement('div');
     help.className = 'hud-help';
     help.textContent =
-      'SPACE/↑ jump · ←/→ lanes · ↓ fast-fall · R restart · P pause · F1 debug info · F2 colliders · F3 player hitbox · F4 replay last attempt';
+      'SPACE/↑ jump · ←/→ lanes · ↓ fast-fall · R restart · P pause · M mute music · F1 debug info · F2 colliders · F3 player hitbox · F4 replay last attempt';
 
     // M9 start gate: minimal press-to-start overlay for music levels (the
     // first gesture unlocks audio + starts the sim from tick 0 together).

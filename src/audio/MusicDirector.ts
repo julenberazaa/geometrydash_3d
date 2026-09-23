@@ -179,6 +179,8 @@ export class MusicDirector {
   private state: MusicTransportState = 'idle';
   private audioPath: string | null = null;
   private fetchedBytes: ArrayBuffer | null = null;
+  /** In-flight fetch (preload rabbitholes the bytes; ensure awaits it). */
+  private fetchPromise: Promise<ArrayBuffer> | null = null;
   private buffer: AudioBufferLike | null = null;
   private source: AudioSourceLike | null = null;
   private gain: AudioGainLike | null = null;
@@ -225,31 +227,43 @@ export class MusicDirector {
 
   /** Eager byte fetch (no gesture needed); decode waits for ensure(). */
   public preload(): void {
-    if (this.audioPath === null || this.fetchedBytes !== null || this.state !== 'idle') return;
+    if (this.audioPath === null || this.fetchedBytes !== null || this.fetchPromise !== null) return;
+    if (this.state !== 'idle') return;
     this.state = 'loading';
+    const path = this.audioPath;
     const engine = this.engine;
-    const fetchNow =
-      engine !== null
-        ? engine.fetchBytes(this.audioPath)
-        : fetch(this.audioPath).then(async (r) => {
-            if (!r.ok) throw new Error(`music fetch ${r.status}`);
-            return await r.arrayBuffer();
-          });
-    void fetchNow.then(
+    let pending: Promise<ArrayBuffer>;
+    try {
+      pending =
+        engine !== null
+          ? engine.fetchBytes(path)
+          : fetch(path).then(async (r) => {
+              if (!r.ok) throw new Error(`music fetch ${r.status}`);
+              return await r.arrayBuffer();
+            });
+    } catch {
+      this.state = 'failed';
+      return;
+    }
+    this.fetchPromise = pending;
+    void pending.then(
       (bytes) => {
         if (this.disposed) return;
         this.fetchedBytes = bytes;
+        this.fetchPromise = null;
         if (this.buffer !== null) this.state = 'ready';
       },
       () => {
-        if (!this.disposed) this.state = 'failed';
+        if (this.disposed) return;
+        this.fetchPromise = null;
+        if (this.buffer === null) this.state = 'failed';
       },
     );
   }
 
   /**
-   * Gesture path: create/resume the context and decode. Never throws;
-   * returns true when the track is ready to start.
+   * Gesture path: create/resume the context, await the preloaded bytes,
+   * and decode. Never throws; returns true when the track is ready.
    */
   public async ensure(): Promise<boolean> {
     if (this.disposed) return false;
@@ -262,6 +276,16 @@ export class MusicDirector {
         }
       }
       this.engine.resume();
+      // The gesture may arrive before preload finished — await the bytes
+      // (with the caller-owned backstop guaranteeing gameplay starts).
+      if (this.fetchedBytes === null && this.fetchPromise !== null) {
+        try {
+          this.fetchedBytes = await this.fetchPromise;
+        } catch {
+          this.state = 'failed';
+          return false;
+        }
+      }
       if (this.buffer === null && this.fetchedBytes !== null && this.audioPath !== null) {
         if (this.state === 'idle' || this.state === 'failed') this.state = 'loading';
         this.buffer = await this.engine.decode(this.fetchedBytes);

@@ -496,9 +496,31 @@ renderer-owned and gameplay-free.
 
 ## 7.8 Out of scope for the current foundation
 
-Music/BPM sync, public editor, backend, persistence. See `ROADMAP.md`.
+Public editor, backend, persistence. See `ROADMAP.md`.
 (Pads, orbs, speed portals and the trigger infrastructure shipped in M4 —
 §6.1. Ship/Spider modes, wall gravity and moving hazards ship in M8.)
+
+## 7.9 Music-driven precision routing — CURRENT (M9)
+
+THE DESCENT is built for the track Gravity Lessons (120 BPM, beat 0 at
+0.06 s, final impact beat 230 at 115.06 s) and the reference route lands
+its finish on that impact (~115 s). Permanent rules:
+
+- **MUSIC FOLLOWS DETERMINISTIC GAMEPLAY TIME. GAMEPLAY NEVER FOLLOWS
+  THE AUDIO CLOCK.** The 120 Hz fixed simulation stays authoritative;
+  gameplay is authored to match the music (portal/pad/orb/trigger
+  positions whose reference arrival lands on beats), and audio output
+  follows the sim clock (with presentation-only drift correction). Pause
+  freezes both; death/respawn and restart re-enter at the musical origin;
+  replays carry no audio state.
+- **Single-flow precision routing with occasional two-way alternatives.**
+  Visual corridor width is not equivalent to safe-route width: most
+  demanding gameplay presents ONE authored intended line through wide 3D
+  spaces (hazards, holes, heights, islands, walls, Chompers and portals
+  define it), occasionally TWO meaningful alternatives — never several
+  simultaneous easy lines. Major gameplay moments (pads, orbs, portals,
+  drops, lunges, mode flips, finish) land on strong musical moments;
+  small movements ride subdivisions.
 
 ## 8. Reference art
 
