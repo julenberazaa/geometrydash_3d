@@ -469,11 +469,15 @@ export class RendererHost {
     this.deathBurst.update(renderDtSeconds);
     this.interactionView.update(renderDtSeconds);
     this.checkpointView.update(renderDtSeconds);
+    // M9.2 biome-mote drift (render-dt, in place; pause freezes via dt 0).
+    this.environmentView.updateMotes(renderDtSeconds);
     this.chomperView.update(sim.chomperStates, renderDtSeconds);
     this.platformView.update(sim.platformStates, alpha);
     // M8.3 lava motion: convect crust + descend falls (render-dt driven;
     // pause freezes the flow like every other presentation clock).
     this.levelView.updateLava(renderDtSeconds);
+    // M9.2 portal energy breathing (same render-dt contract).
+    this.levelView.updatePortals(renderDtSeconds);
     // M8A lava shimmer: slow dense pulse on the shared lava materials
     // (sim-time driven so pause freezes it; zero geometry per frame).
     this.library.setLavaPulse((sim.elapsedSimTime * 0.5) % 1);

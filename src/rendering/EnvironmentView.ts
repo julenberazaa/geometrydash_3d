@@ -48,8 +48,25 @@ export class EnvironmentView {
   // (thresholded — beats alone never trip it). One draw, zero per-frame
   // allocation, safe (no fullscreen flash, no strobe timing).
   private readonly boltMat: THREE.LineBasicMaterial | null;
-  private static readonly BOLT_COUNT = 10;
+  private static readonly BOLT_COUNT = 14;
   private static readonly BOLT_SEGMENTS = 8;
+  /**
+   * M9.2 abyss floor (ONE static mesh, 1 draw): a dark biome-tinted bed
+   * far below the route (y = −13.5, just above the void death plane) so
+   * falls and low framings read rock instead of black nothing. Vertex
+   * colors follow the section backgrounds (darkened); fog does the rest.
+   * Pure dressing — never a collider, never landable-looking (it sits
+   * below the lethal bound).
+   */
+  // M9.2 biome motes (ONE Points cloud, 1 draw): slow-rising ambient
+  // particles tinted per biome by z (forge embers, island mint, maze
+  // violet, cathedral cyan, reactor sparks, temple gold, void indigo,
+  // core magenta). Render-dt drift with in-place wrap (zero allocation,
+  // pause freezes with dt 0) — subordinate to gameplay juice by size.
+  private readonly moteGeo: THREE.BufferGeometry | null;
+  private readonly motePos: Float32Array | null;
+  private readonly moteSpeed: Float32Array | null;
+  private static readonly MOTE_COUNT = 240;
 
   constructor(levelLengthZ: number, theme: ProductionTheme, def?: LevelDefinition) {
     this.theme = theme;
@@ -144,7 +161,7 @@ export class EnvironmentView {
       this.scene.add(arch.mesh);
       if (arch.material !== null) this.disposables.push(arch.material);
     }
-    const bolts = EnvironmentView.buildLightning(levelLengthZ);
+    const bolts = EnvironmentView.buildLightning(levelLengthZ, def);
     if (bolts !== null) {
       this.scene.add(bolts.lines);
       this.disposables.push(bolts.geometry, bolts.material);
@@ -152,6 +169,50 @@ export class EnvironmentView {
     } else {
       this.boltMat = null;
     }
+    // M9.2 abyss floor + biome motes (bounded dressing, cold build).
+    const abyss = EnvironmentView.buildAbyssFloor(levelLengthZ, def);
+    if (abyss !== null) {
+      this.scene.add(abyss.mesh);
+      this.disposables.push(abyss.geometry, abyss.material);
+    }
+    const motes = EnvironmentView.buildMotes(levelLengthZ, def);
+    if (motes !== null) {
+      this.scene.add(motes.points);
+      this.disposables.push(motes.geometry, motes.material);
+      this.moteGeo = motes.geometry;
+      this.motePos = motes.positions;
+      this.moteSpeed = motes.speeds;
+    } else {
+      this.moteGeo = null;
+      this.motePos = null;
+      this.moteSpeed = null;
+    }
+  }
+
+  /** Section background at z (biome identity for cold-built dressing). */
+  private static bgAtZ(def: LevelDefinition | undefined, z: number): number {
+    const sections = def?.visualSequence?.sections;
+    let bg: number | undefined;
+    if (sections !== undefined) {
+      for (const s of sections) {
+        if (s.startZ <= z) bg = s.overrides.background ?? bg;
+        else break;
+      }
+    }
+    return bg ?? def?.theme.background ?? 0x07040f;
+  }
+
+  /** Section route accent at z (biome identity for cold-built dressing). */
+  private static accentAtZ(def: LevelDefinition | undefined, z: number): number {
+    const sections = def?.visualSequence?.sections;
+    let accent: number | undefined;
+    if (sections !== undefined) {
+      for (const s of sections) {
+        if (s.startZ <= z) accent = s.overrides.routeAccent ?? accent;
+        else break;
+      }
+    }
+    return accent ?? def?.theme.edge ?? 0x35c8ff;
   }
 
   /**
@@ -230,14 +291,14 @@ export class EnvironmentView {
       const c = accent.clone().multiplyScalar(0.22 + rand() * 0.14).lerp(fogCol, 0.25 + rand() * 0.25);
       items.push({ x, y, z, sx, sy, sz, color: c });
     };
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 44; i++) {
       const side = i % 2 === 0 ? -1 : 1;
       const z = -30 + rand() * (levelLengthZ + 90);
       const h = 20 + rand() * 22;
       const w = 4 + rand() * 5;
       put(side * (18 + rand() * 24), h / 2 - 6, z, w, h, w * (0.7 + rand() * 0.6));
     }
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 28; i++) {
       const side = i % 2 === 0 ? -1 : 1;
       const z = -20 + rand() * (levelLengthZ + 60);
       put(side * (10 + rand() * 4), 1 + rand() * 2, z, 1.5, 7 + rand() * 3, 12 + rand() * 18);
@@ -280,28 +341,40 @@ export class EnvironmentView {
    * M9.1 lightning bolts (cold, deterministic): jagged vertical energy
    * paths at seeded positions (never in the corridor). One LineSegments,
    * one additive material; opacity flashed by strong rhythm only.
+   * M9.2: per-vertex biome tint (section accent at the bolt z, material
+   * color stays white) + 10 → 14 bolts.
    */
   private static buildLightning(
     levelLengthZ: number,
+    def?: LevelDefinition,
   ): { lines: THREE.LineSegments; geometry: THREE.BufferGeometry; material: THREE.LineBasicMaterial } | null {
     const segs = EnvironmentView.BOLT_COUNT * EnvironmentView.BOLT_SEGMENTS;
     const positions = new Float32Array(segs * 2 * 3);
+    const colors = new Float32Array(segs * 2 * 3);
     const rand = mulberry32(31337);
+    const tint = new THREE.Color();
     let v = 0;
     for (let b = 0; b < EnvironmentView.BOLT_COUNT; b++) {
       let x = (rand() > 0.5 ? 1 : -1) * (10 + rand() * 20);
       let y = rand() * 6;
       const z = rand() * (levelLengthZ + 40) - 20;
+      tint.setHex(EnvironmentView.accentAtZ(def, z));
       for (let s = 0; s < EnvironmentView.BOLT_SEGMENTS; s++) {
         const nx = x + (rand() - 0.5) * 3;
         const ny = y + 2 + rand() * 2.5;
         positions[v * 3] = x;
         positions[v * 3 + 1] = y;
         positions[v * 3 + 2] = z;
+        colors[v * 3] = tint.r;
+        colors[v * 3 + 1] = tint.g;
+        colors[v * 3 + 2] = tint.b;
         v++;
         positions[v * 3] = nx;
         positions[v * 3 + 1] = ny;
         positions[v * 3 + 2] = z;
+        colors[v * 3] = tint.r;
+        colors[v * 3 + 1] = tint.g;
+        colors[v * 3 + 2] = tint.b;
         v++;
         x = nx;
         y = ny;
@@ -309,8 +382,10 @@ export class EnvironmentView {
     }
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     const material = new THREE.LineBasicMaterial({
-      color: 0xbfe9ff,
+      color: 0xffffff,
+      vertexColors: true,
       transparent: true,
       opacity: 0,
       blending: THREE.AdditiveBlending,
@@ -320,6 +395,109 @@ export class EnvironmentView {
     const lines = new THREE.LineSegments(geometry, material);
     lines.frustumCulled = false;
     return { lines, geometry, material };
+  }
+
+  /**
+   * M9.2 abyss floor (cold, deterministic): one long dark bed under the
+   * route with per-band biome colors (section background darkened into
+   * rock, never competing with the route). 1 draw, static forever.
+   */
+  private static buildAbyssFloor(
+    levelLengthZ: number,
+    def?: LevelDefinition,
+  ): { mesh: THREE.Mesh; geometry: THREE.BufferGeometry; material: THREE.MeshBasicMaterial } | null {
+    const bands = 96;
+    const geometry = new THREE.PlaneGeometry(130, levelLengthZ + 120, 1, bands);
+    geometry.rotateX(-Math.PI / 2);
+    const pos = geometry.getAttribute('position') as THREE.BufferAttribute;
+    const colors = new Float32Array(pos.count * 3);
+    const c = new THREE.Color();
+    // The mesh sits at z = levelLengthZ / 2 − 10: local z maps to world.
+    const meshZ = levelLengthZ / 2 - 10;
+    for (let i = 0; i < pos.count; i++) {
+      const worldZ = pos.getZ(i) + meshZ;
+      c.setHex(EnvironmentView.bgAtZ(def, worldZ)).multiplyScalar(0.32);
+      colors[i * 3] = c.r;
+      colors[i * 3 + 1] = c.g;
+      colors[i * 3 + 2] = c.b;
+    }
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    const material = new THREE.MeshBasicMaterial({ vertexColors: true, fog: true });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set(0, -13.5, levelLengthZ / 2 - 10);
+    mesh.frustumCulled = false;
+    return { mesh, geometry, material };
+  }
+
+  /**
+   * M9.2 biome motes (cold, deterministic): one rising ambient particle
+   * field tinted per biome by z. Positions + speeds are caller-owned
+   * arrays mutated in place by `updateMotes` (zero allocation).
+   */
+  private static buildMotes(
+    levelLengthZ: number,
+    def?: LevelDefinition,
+  ): {
+    points: THREE.Points;
+    geometry: THREE.BufferGeometry;
+    material: THREE.PointsMaterial;
+    positions: Float32Array;
+    speeds: Float32Array;
+  } | null {
+    const n = EnvironmentView.MOTE_COUNT;
+    const positions = new Float32Array(n * 3);
+    const colors = new Float32Array(n * 3);
+    const speeds = new Float32Array(n);
+    const rand = mulberry32(60521);
+    const c = new THREE.Color();
+    for (let i = 0; i < n; i++) {
+      const x = (rand() - 0.5) * 56;
+      const y = -10 + rand() * 24;
+      const z = -30 + rand() * (levelLengthZ + 90);
+      positions[i * 3] = x;
+      positions[i * 3 + 1] = y;
+      positions[i * 3 + 2] = z;
+      c.setHex(EnvironmentView.accentAtZ(def, z)).multiplyScalar(0.55 + rand() * 0.45);
+      colors[i * 3] = c.r;
+      colors[i * 3 + 1] = c.g;
+      colors[i * 3 + 2] = c.b;
+      speeds[i] = 0.4 + rand() * 1.1;
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    const material = new THREE.PointsMaterial({
+      size: 0.28,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.55,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      sizeAttenuation: true,
+    });
+    const points = new THREE.Points(geometry, material);
+    points.frustumCulled = false;
+    return { points, geometry, material, positions, speeds };
+  }
+
+  /**
+   * M9.2 mote drift (render-dt, in place): slow rise with vertical wrap
+   * (embers/motes/sparks float up out of frame and re-enter below).
+   * Pause freezes (dt 0); zero allocation on the hot path.
+   */
+  public updateMotes(renderDt: number): void {
+    const pos = this.motePos;
+    const speeds = this.moteSpeed;
+    const geo = this.moteGeo;
+    if (pos === null || speeds === null || geo === null || renderDt <= 0) return;
+    for (let i = 0; i < speeds.length; i++) {
+      const speed = speeds[i] ?? 0;
+      const y0 = pos[i * 3 + 1] ?? -10;
+      let y = y0 + speed * renderDt;
+      if (y > 14) y = -10;
+      pos[i * 3 + 1] = y;
+    }
+    (geo.getAttribute('position') as THREE.BufferAttribute).needsUpdate = true;
   }
 
   public dispose(): void {

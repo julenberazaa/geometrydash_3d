@@ -74,6 +74,14 @@ export class LevelView {
   private readonly lavaAnim: LavaAnimNode[] = [];
   /** M8.3 lava clock (render seconds; pause freezes the flow). */
   private lavaTime = 0;
+  /**
+   * M9.2 portal-pulse registry (cleared on dispose): outer ring meshes +
+   * their build-time base scales. Presentation-only energy breathing —
+   * trigger bounds are simulation-owned and never move.
+   */
+  private readonly portalPulse: { mesh: THREE.Mesh; base: number; phase: number }[] = [];
+  /** M9.2 portal clock (render seconds; pause freezes the pulse). */
+  private portalTime = 0;
 
   constructor(
     level: LoadedLevel,
@@ -599,6 +607,9 @@ export class LevelView {
     ring.scale.setScalar(radius / 0.62);
     ring.position.set(x, y, z);
     this.group.add(ring);
+    // M9.2 portal pulse: the outer ring breathes gently (phase-offset by
+    // z so neighboring gates never pump in lockstep — no strobe read).
+    this.portalPulse.push({ mesh: ring, base: radius / 0.62, phase: z * 0.35 });
     const rim = new THREE.Mesh(this.library.orbHalo, paneMat);
     rim.scale.setScalar((radius * 0.72) / 0.62);
     rim.position.set(x, y, z);
@@ -1191,10 +1202,29 @@ export class LevelView {
     }
   }
 
+  /**
+   * M9.2 portal energy breathing (render-dt, in place): outer rings swell
+   * ±4% on a slow phase-offset sine (delta-from-build — t = 0 resumes the
+   * build pose, neighbors never pump in lockstep). Pause freezes (dt 0);
+   * zero allocation; trigger bounds untouched (simulation-owned).
+   */
+  public updatePortals(renderDtSeconds: number): void {
+    if (renderDtSeconds <= 0 || this.portalPulse.length === 0) return;
+    this.portalTime += renderDtSeconds;
+    const t = this.portalTime;
+    for (let i = 0; i < this.portalPulse.length; i++) {
+      const p = this.portalPulse[i];
+      if (p === undefined) continue;
+      const s = p.base * (1 + 0.04 * (Math.sin(t * 1.6 + p.phase) - Math.sin(p.phase)));
+      p.mesh.scale.setScalar(s);
+    }
+  }
+
   public dispose(): void {
     // Meshes only — materials/geometries belong to the MaterialLibrary.
     this.group.clear();
     this.lavaAnim.length = 0;
+    this.portalPulse.length = 0;
     this.occluderMeshes.clear();
     // The merged edge-line buffer is view-owned (level-specific).
     if (this.edgeLineGeo !== null) {

@@ -147,7 +147,7 @@ export class CheckpointView {
     burst.mesh.visible = true;
     burst.mesh.position.copy(crystal.core.position);
     burst.material.color.setHex(this.accentAtZ(crystal.core.position.z));
-    burst.material.opacity = 0.9;
+    burst.material.opacity = 0.8;
     burst.mesh.scale.setScalar(0.6);
   }
 
@@ -161,8 +161,8 @@ export class CheckpointView {
         burst.mesh.visible = false;
         continue;
       }
-      burst.mesh.scale.setScalar(0.6 + t * 3.2);
-      burst.material.opacity = 0.9 * (1 - t);
+      burst.mesh.scale.setScalar(0.6 + t * 2.6);
+      burst.material.opacity = 0.8 * (1 - t);
     }
   }
 
