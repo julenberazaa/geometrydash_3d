@@ -14,6 +14,8 @@ export interface HudElements {
 export class Hud {
   public readonly els: HudElements;
   private readonly replayBadge: HTMLElement;
+  /** M9 press-to-start gate overlay (music levels only). */
+  private readonly startGate: HTMLElement;
 
   constructor(container: HTMLElement) {
     const root = document.createElement('div');
@@ -60,14 +62,22 @@ export class Hud {
     help.textContent =
       'SPACE/↑ jump · ←/→ lanes · ↓ fast-fall · R restart · P pause · F1 debug info · F2 colliders · F3 player hitbox · F4 replay last attempt';
 
+    // M9 start gate: minimal press-to-start overlay for music levels (the
+    // first gesture unlocks audio + starts the sim from tick 0 together).
+    const startGate = document.createElement('div');
+    startGate.className = 'hud-start-gate';
+    startGate.style.display = 'none';
+
     root.appendChild(top);
     root.appendChild(message);
     root.appendChild(replayBadge);
     root.appendChild(help);
+    root.appendChild(startGate);
     container.appendChild(root);
 
     this.els = { root, name, progressFill: fill, progressText, attempts, message };
     this.replayBadge = replayBadge;
+    this.startGate = startGate;
   }
 
   public update(opts: {
@@ -94,6 +104,16 @@ export class Hud {
     }
     this.replayBadge.style.display = 'block';
     if (this.replayBadge.textContent !== text) this.replayBadge.textContent = text;
+  }
+
+  /** M9 start gate (null hides it). Driven by Game exactly once per session. */
+  public setStartGate(text: string | null): void {
+    if (text === null) {
+      this.startGate.style.display = 'none';
+      return;
+    }
+    this.startGate.style.display = 'block';
+    if (this.startGate.textContent !== text) this.startGate.textContent = text;
   }
 
   public setVisible(visible: boolean): void {

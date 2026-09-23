@@ -147,3 +147,22 @@ body {
   pointer-events: none;
   white-space: pre;
 }
+
+/* M9 press-to-start gate: minimal, readable, never gameplay. */
+.hud-start-gate {
+  position: absolute;
+  top: 44%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: #7df9ff;
+  text-shadow: 0 0 16px rgba(125, 249, 255, 0.75);
+  background: rgba(4, 10, 24, 0.72);
+  border: 1px solid rgba(125, 249, 255, 0.35);
+  padding: 12px 26px;
+  border-radius: 8px;
+  text-align: center;
+  white-space: nowrap;
+}

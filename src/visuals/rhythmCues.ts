@@ -17,6 +17,9 @@ import type { LevelDefinition } from '../level/levelDefinition';
  *   performance.now() anywhere in cue identity.
  * - Never stored in ReplayV1; never read by GameSimulation, collision, or
  *   the level fingerprint (like `theme`/`visualSequence`/`visual`/`mount`).
+ * - M9 evolution: cues may carry an authored `beat` anchor into the
+ *   Gravity Lessons beat grid (`src/audio/musicTrack.ts`) — the mapping is
+ *   still position→beat metadata, never audio-driven behavior.
  * - The visual timeline does NOT consume cues at runtime (no competing
  *   trigger system): sections and cues are authored to coincide (e.g. a
  *   `drop` cue at the 2x portal inside the sprint section), but each system
@@ -46,6 +49,13 @@ export interface RhythmCue {
   z: number;
   /** Semantic role for future music mapping. */
   role: RhythmCueRole;
+  /**
+   * OPTIONAL authored beat anchor (M9): the Gravity Lessons beat index
+   * this cue's gameplay moment is authored to land on (see
+   * `src/audio/musicTrack.ts`). Presentation-only metadata — never read
+   * by the simulation, never fingerprinted. Absent = unmapped.
+   */
+  beat?: number;
 }
 
 /** Cold-path sorted copy of a level's cues (evaluation assumes z order). */

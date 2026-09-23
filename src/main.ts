@@ -33,12 +33,16 @@ const triggersParam = gameParams.get('triggers');
 // M6D perf profiler: `?perf=1` enables the DEBUG frame profiler (bounded
 // ring buffer, off by default, zero gameplay effect).
 const perfParam = gameParams.get('perf');
+// M9 music transport: `?music=off` silences the track (no start gate, no
+// audio load) with zero gameplay difference — pairs with `?fx=off`.
+const musicParam = gameParams.get('music');
 const game = new Game(container, resolution.level, {
   postEnabled: postParam === null ? undefined : postParam !== 'off',
   fxEnabled: fxParam === null ? undefined : fxParam !== 'off',
   triggersEnabled: triggersParam === null ? undefined : triggersParam !== 'off',
 }, {
   perfEnabled: perfParam === '1',
+  musicEnabled: musicParam === null ? undefined : musicParam !== 'off',
 });
 game.start();
 
@@ -167,8 +171,7 @@ declare global {
       debugReplayBurst: () => void;
       toggleDebug: () => void;
       // M5 replay observability (read-only unless noted).
-      levelId: () => string;
-      levelDisplayName: () => string;
+      levelId: () => string;      levelDisplayName: () => string;
       hasReplay: () => boolean;
       replayMode: () => 'live' | 'replay';
       replayTick: () => number;
@@ -182,6 +185,14 @@ declare global {
       exportLastReplay: () => string | null;
       /** QA-only: parse + start an arbitrary serialized tape (cross-level rejection proof). */
       debugStartReplayJson: (json: string) => { ok: boolean; reason?: string };
+      // M9 music-transport observability (presentation only).
+      awaitingStart: () => boolean;
+      musicState: () => string;
+      musicTargetTime: () => number;
+      musicActualTime: () => number;
+      musicDriftMs: () => number;
+      musicPlaying: () => boolean;
+      musicMuted: () => boolean;
     };
   }
 }
@@ -357,6 +368,14 @@ window.__gd3d = {
     const started = game.replayCoordinator.startReplay(parsed.replay);
     return started.ok ? { ok: true } : { ok: false, reason: started.reason };
   },
+  // M9 music probes (presentation only — the sim clock stays authoritative).
+  awaitingStart: (): boolean => game.awaitingStart,
+  musicState: (): string => game.musicDirector?.probe().state ?? 'none',
+  musicTargetTime: (): number => game.musicDirector?.probe().targetTime ?? -1,
+  musicActualTime: (): number => game.musicDirector?.probe().actualTime ?? -1,
+  musicDriftMs: (): number => game.musicDirector?.probe().driftMs ?? 0,
+  musicPlaying: (): boolean => game.musicDirector?.probe().playing ?? false,
+  musicMuted: (): boolean => game.musicDirector?.probe().muted ?? false,
 };
 
 // Hot Module Acceptance for Vite dev server.

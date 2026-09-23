@@ -5,6 +5,8 @@ import { PerfProfiler, type PerfSnapshot } from '../debug/perfProfiler';
 import { GameSimulation } from './GameSimulation';
 import { RendererHost, type RendererOptions } from '../rendering/RendererHost';
 import { DeathSfx } from '../audio/deathSfx';
+import { MusicDirector } from '../audio/MusicDirector';
+import { beatAtTime, sectionAtTime, targetMusicTime } from '../audio/musicTrack';
 import { Hud } from '../ui/Hud';
 import { DebugOverlay } from '../debug/DebugOverlay';
 import { TEST_LEVEL } from '../content/levels/testLevel01';
@@ -15,6 +17,8 @@ import type { LevelDefinition } from '../level/levelDefinition';
 export interface GameOptions {
   /** Enable the DEBUG frame profiler (`?perf=1`). Default off. */
   perfEnabled?: boolean;
+  /** M9: music transport on/off (`?music=off` disables). Default on. */
+  musicEnabled?: boolean;
 }
 
 /**
@@ -31,6 +35,18 @@ export class Game {
   private readonly deathSfx: DeathSfx;
   private readonly hud: Hud;
   private readonly debugOverlay: DebugOverlay;
+  /**
+   * M9 music transport (presentation-owned). Present ONLY when the level
+   * declares `musicTrack` and music is enabled — other levels start
+   * immediately and stay silent (no behavior change).
+   */
+  private readonly music: MusicDirector | null;
+  private readonly trackOffset: number;
+  /** M9 start gate: tick-0 hold for the first-gesture audio unlock. */
+  private readonly startGated: boolean;
+  private started = false;
+  private gatePending = false;
+  private prevStatus: string | null = null;
 
   private paused = false;
   private debugInfoVisible = false;
@@ -56,6 +72,17 @@ export class Game {
     // (`?perf=1` enables) — one branch per frame when disabled.
     this.perfEnabled = gameOptions.perfEnabled ?? false;
     this.deathSfx = new DeathSfx();
+    // M9: bind music transport to levels that declare a track (opt-out via
+    // `?music=off`). Eager byte preload; decode + context wait for the
+    // first gesture (autoplay policy).
+    const musicEnabled = gameOptions.musicEnabled ?? true;
+    const track = musicEnabled ? levelDef.musicTrack ?? null : null;
+    this.trackOffset = track?.trackOffset ?? 0;
+    this.music = track !== null ? new MusicDirector(track.audioPath) : null;
+    this.startGated = this.music !== null;
+    // Non-music levels are "started" from tick 0 (legacy immediate start).
+    this.started = !this.startGated;
+    this.music?.preload();
     this.simulation = new GameSimulation(levelDef, {
       onJump: () => {
         this.jumpCount++;
@@ -102,12 +129,66 @@ export class Game {
     window.addEventListener('resize', this.onResize);
     window.addEventListener('keydown', this.onKeyDown);
     this.input.attach(window);
+    this.container.addEventListener('click', this.onClick);
+    if (this.startGated) {
+      // M9 start gate: THE DESCENT renders frozen at tick 0 under the
+      // press-to-start overlay — gameplay and music begin together on the
+      // first gesture, never seconds apart.
+      this.loop.setPaused(true);
+      this.hud.setStartGate('PRESS SPACE / CLICK TO START');
+    }
   }
 
   public start(): void {
     this.input.setEnabled(true);
     this.loop.start();
   }
+
+  /** M9 QA observability: true while the press-to-start gate is holding. */
+  public get awaitingStart(): boolean {
+    return this.startGated && !this.started;
+  }
+
+  public get musicDirector(): MusicDirector | null {
+    return this.music;
+  }
+
+  /**
+   * M9 first-gesture unlock: resume/create audio, start music at the
+   * attempt origin, and start the sim from tick 0 — together. Never
+   * blocks: audio failure (or a slow decode) still starts gameplay via
+   * the timeout backstop.
+   */
+  private unlockStart(): void {
+    if (!this.startGated || this.started) return;
+    this.started = true;
+    this.gatePending = true;
+    this.hud.setStartGate(null);
+    // Flush the gesture press edge so the unlocking Space never jumps.
+    this.input.sample();
+    const director = this.music;
+    void Promise.resolve()
+      .then(() => director?.ensure() ?? false)
+      .then((ready) => {
+        if (this.disposed) return;
+        if (ready) director?.restart();
+        this.gatePending = false;
+        this.loop.setPaused(false);
+      });
+    // Backstop: gameplay must never strand on audio (2.5 s wall-clock,
+    // presentation-only — the sim clock is untouched).
+    window.setTimeout(() => {
+      if (this.started && this.gatePending) {
+        this.gatePending = false;
+        this.loop.setPaused(false);
+      }
+    }, 2500);
+  }
+
+  private onClick = (): void => {
+    this.deathSfx.ensure();
+    this.unlockStart();
+  };
 
   public get totalJumps(): number {
     return this.jumpCount;
@@ -137,8 +218,10 @@ export class Game {
     window.removeEventListener('resize', this.onResize);
     window.removeEventListener('keydown', this.onKeyDown);
     this.input.detach(window);
+    this.container.removeEventListener('click', this.onClick);
     this.rendererHost.dispose();
     this.deathSfx.dispose();
+    this.music?.dispose();
     this.hud.setVisible(false);
     this.debugOverlay.setVisible(false);
   }
@@ -150,6 +233,10 @@ export class Game {
   private onKeyDown = (event: KeyboardEvent): void => {
     // First gesture unlocks the (guarded, optional) death blip.
     this.deathSfx.ensure();
+    // M9: the unlocking press only starts audio + sim (the edge is
+    // flushed in unlockStart so it never becomes gameplay input).
+    if (event.code === 'Space' || event.code === 'ArrowUp') this.unlockStart();
+    if (this.gatePending) return;
     switch (event.code) {
       case 'KeyR':
         // Manual restart ends the current context: abort an active playback,
@@ -157,13 +244,25 @@ export class Game {
         if (this.replay.isPlaying) this.replay.abortReplay();
         else this.replay.discardRecording();
         this.simulation.restart();
+        // R-from-running produces no dead→running edge, so restart music
+        // explicitly (R-from-dead double-restarts harmlessly at the origin).
+        if (this.started) this.music?.restart();
         this.hud.setMessage('');
         break;
       case 'KeyP':
+        if (!this.started) break;
         this.paused = !this.paused;
+        if (this.paused) this.music?.pause();
         this.loop.setPaused(this.paused);
+        // Resume audio BEFORE the sim so both continue from the same
+        // deterministic position (residual drift self-corrects below).
+        if (!this.paused) this.music?.resume();
         this.input.setEnabled(!this.paused);
         this.hud.setMessage(this.paused ? 'PAUSED' : '');
+        break;
+      case 'KeyM':
+        // M9 presentation-only music mute toggle (gameplay untouched).
+        if (this.music !== null) this.music.setMuted(!this.music.isMuted);
         break;
       case 'F1':
         event.preventDefault();
@@ -184,11 +283,16 @@ export class Game {
         // Minimal replay control: replay the last completed attempt.
         // Ignored while a playback is already active.
         event.preventDefault();
+        if (!this.started) break;
         const last = this.replay.lastReplay;
         if (last !== null) {
           const started = this.replay.startReplay(last);
           if (!started.ok) this.hud.setMessage(`REPLAY REJECTED — ${started.reason}`);
-          else this.hud.setMessage('');
+          else {
+            // F4 playback follows replay sim time from the origin.
+            this.music?.restart();
+            this.hud.setMessage('');
+          }
         }
         break;
       }
@@ -232,6 +336,12 @@ export class Game {
     // wall-clock dt. Simulation pause behavior is untouched.
     this.rendererHost.applyFrame(alpha, this.paused ? 0 : renderDtSeconds);
     this.rendererHost.render();
+    // M9 music lifecycle edges + drift follow (presentation-only — the
+    // sim clock is the master, audio output follows it):
+    // running→dead cuts during the hold; dead→running restarts at the
+    // origin on respawn; finish cuts (the tail rings out); every frame
+    // the transport chases the deterministic target (dead-band/resync).
+    this.updateMusic();
     // DOM overlays follow the render freeze so frozen QA frames (and their
     // screenshots) show death-moment HUD/debug state, not live respawn state.
     if (this.rendererHost.debugFreezeFrame) return;
@@ -248,8 +358,38 @@ export class Game {
     }
   }
 
-  private updateDebugOverlay(): void {
-    const sim = this.simulation;
+  private updateMusic(): void {
+    const director = this.music;
+    if (director === null) {
+      this.prevStatus = this.simulation.status;
+      return;
+    }
+    const status = this.simulation.status;
+    if (this.prevStatus === 'running' && status === 'dead') director.cut();
+    else if (this.prevStatus === 'dead' && status === 'running') director.restart();
+    else if (this.prevStatus !== 'finished' && status === 'finished') director.cut();
+    this.prevStatus = status;
+    if (this.started && !this.paused && !this.gatePending) {
+      director.syncToTarget(targetMusicTime(this.simulation.elapsedSimTime, this.trackOffset));
+    }
+  }
+
+  /** M9 F1 line: deterministic target vs audible transport vs drift. */
+  private musicStatusLine(): string {
+    const director = this.music;
+    if (director === null) return 'music: — (level declares no track)';
+    const probe = director.probe();
+    const target = targetMusicTime(this.simulation.elapsedSimTime, this.trackOffset);
+    const section = sectionAtTime(target);
+    const beat = beatAtTime(target);
+    return (
+      `music: ${probe.state}${probe.muted ? ' muted' : ''} | target ${target.toFixed(2)}s` +
+      ` | actual ${probe.actualTime.toFixed(2)}s | drift ${probe.driftMs.toFixed(0)}ms` +
+      ` | ${section.id} beat ${beat}`
+    );
+  }
+
+  private updateDebugOverlay(): void {    const sim = this.simulation;
     const p = sim.player;
     const stats = this.rendererHost.stats;
     const frame = sim.gameplayFrame;
@@ -269,12 +409,12 @@ export class Game {
       `replayLevel: ${this.replay.lastReplay?.levelId ?? this.simulation.level.def.id} | fp=${this.replay.levelFingerprint.slice(0, 8)} | hash=${this.replay.lastStateHash?.slice(0, 8) ?? '—'} | hz=${SIMULATION_HZ}`,
       `contactN: (${sim.lastContactNormal.x.toFixed(1)}, ${sim.lastContactNormal.y.toFixed(1)}, ${sim.lastContactNormal.z.toFixed(1)}) | preVel: (${sim.lastPreImpactVelocity.x.toFixed(1)}, ${sim.lastPreImpactVelocity.y.toFixed(1)}, ${sim.lastPreImpactVelocity.z.toFixed(1)})`,
       `draw calls: ${stats.calls} | tris: ${stats.triangles}`,
+      this.musicStatusLine(),
     ]);
   }
 }
 
-/** Compact one-line replay verification state for the F1 overlay. */
-const formatVerification = (v: ReplayVerification): string => {
+/** Compact one-line replay verification state for the F1 overlay. */const formatVerification = (v: ReplayVerification): string => {
   switch (v.kind) {
     case 'idle':
       return 'idle';

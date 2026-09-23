@@ -16,7 +16,8 @@
  *
  * Explicitly EXCLUDED (not gameplay-relevant):
  *   displayName (UX label), hazard `visual` + `mount` hints, teleport
- *   `style`, visualSetpieces, theme, visualSequence, rhythmCues
+ *   `style`, visualSetpieces, theme, visualSequence, rhythmCues (incl. the
+ *   M9 optional `beat` anchors), musicTrack (M9 track binding)
  *   (all renderer-only).
  * Changing renderer-only data therefore keeps old replays compatible.
  */

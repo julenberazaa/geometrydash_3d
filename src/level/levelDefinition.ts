@@ -302,6 +302,26 @@ export interface VisualSetpieceDef {
   halfExtents: Vec3;
 }
 
+/**
+ * Presentation-only music binding (M9): declares the track a level plays.
+ * NEVER gameplay, NEVER fingerprinted, NEVER read by the simulation or
+ * replay code (same exclusion class as `theme`/`visualSequence`/
+ * `rhythmCues`). Levels without it stay silent (validation + legacy).
+ */
+export interface MusicTrackRef {
+  /**
+   * Public asset path relative to the app root served by Vite
+   * (e.g. `audio/Gravity_Lessons.mp3` for `public/audio/...`).
+   */
+  audioPath: string;
+  /**
+   * Authored track offset in seconds added to deterministic sim time
+   * (targetMusicTime = elapsedSimTime + trackOffset). 0 = the attempt
+   * starts at the first track sample.
+   */
+  trackOffset: number;
+}
+
 /** Visual theme values consumed by the rendering layer only. */
 export interface LevelTheme {
   background: number;
@@ -536,4 +556,12 @@ export interface LevelDefinition {
    * Absent = no cues.
    */
   rhythmCues?: RhythmCue[];
+  /**
+   * Optional music binding (M9): the track this level plays. Levels that
+   * declare it start through the press-to-start gate with music following
+   * deterministic sim time; levels without it start immediately and stay
+   * silent. Presentation-only: never read by simulation, collision,
+   * replay, or the level fingerprint.
+   */
+  musicTrack?: MusicTrackRef;
 }
