@@ -386,6 +386,14 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
       halfExtents: { x: 0.9, y: 0.9, z: 1.5 },
       impulse: 6,
     },
+    // ACT 3 pad-flight orb (center — mid-flight reshaper onto the upper
+    // deck; the pad-maze launch alone leaves a 19 u desert).
+    {
+      id: 'ps-orb-pad-maze',
+      center: { x: 0, y: 6.19, z: 539 },
+      halfExtents: { x: 0.9, y: 0.9, z: 1.5 },
+      impulse: 10,
+    },
     // ACT 2 upper: required orb over the 8 u HIGH gap.
     {
       id: 'ps-orb-sky',

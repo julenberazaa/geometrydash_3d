@@ -134,7 +134,7 @@ export class ShowcaseDriver {
       // M9.1 ACT 3 maze: approach hop + teeth jog (door 1 passed running,
       // centered) + door-line hops + door orbs (incl. the mid-flight
       // orb-chain link) + pre-steers (one shared line; gaps ≤ 90 ticks).
-      439, 456, 467, 474, 485, 491, 498, 505, 519,
+      439, 456, 467, 474, 485, 491, 498, 505, 519, 539,
       346, 354, 364, // HIGH-drop rhythm (open slabs, lane-neutral)
       // Exit-gap takeoff (the 4.5 u upper→slab drop extends the flight to
       // 12.2 u — a documented exit-gap breath) + slab hop pair.
