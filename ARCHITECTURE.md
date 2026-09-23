@@ -405,20 +405,25 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   factor 0.12), follow 8.5 / look-ahead 10 / FOV 62, no roll, render-dt
   smoothing only. Gravity-aware VERTICAL framing (M3.1): an explicit
   `CameraFocusSide` (`'aboveFocus' | 'belowFocus'` + M8B `'freeMinusFocus' |
-  'freePlusFocus'`) selects the height formula — Floor: `playerY * 0.35 +
-  4.2` (elevated, unchanged); Ceiling: `playerY * 0.35 - 0.3`. M8B walls:
-  the eye shifts ±3.4 u toward the free-face side while keeping the
-  elevated floor height (side free face + top face readable, never a
+  'freePlusFocus'`) selects the height line — Floor: `playerY * 0.35 +
+  aboveIntercept` (elevated); Ceiling: `playerY * 0.35 + belowIntercept`.
+  M8B walls: the eye shifts ±3.4 u toward the free-face side while keeping
+  the elevated floor line (side free face + top face readable, never a
   side-on silhouette); `camera.up` stays world +Y on all four surfaces. **Surface-relative projection symmetry (M3.3):**
   the below-focus line is the EXACT mirror of the above-focus line about the
-  corridor mid-plane (shared `verticalParallax` 0.35; reflected anchor
-  `belowFocusAnchor` −0.3; look bias +0.6 above / −0.6 below with the focus
-  side), so the Cube's FREE face (the face on the `surfaceNormal` side,
-  opposite support — top on Floor, bottom on Ceiling) projects with
-  identical apparent size/perspective on every gravity surface (measured
-  0.219 pre-fix → 1.000 post-fix; pinned 0.98..1.02 in
-  `tests/cameraFraming.test.ts`, acceptance 0.90..1.10). The ceiling eye
-  hangs mid-corridor BELOW the cube (rest y ≈ 1.61 vs cube 5.45, ≈4.4 u
+  corridor mid-plane (shared slope 0.35; corridor intercepts 4.2 / −0.3; look
+  bias +0.6 above / −0.6 below with the focus side), so the Cube's FREE face
+  (the face on the `surfaceNormal` side, opposite support — top on Floor,
+  bottom on Ceiling) projects with identical apparent size/perspective on
+  every gravity surface (measured 0.219 pre-fix → 1.000 post-fix; pinned
+  0.98..1.02 in `tests/cameraFraming.test.ts`, acceptance 0.90..1.10). **Multi-height generalization (M8.6 corrective):**
+  the intercepts are SLOW per-side state, not constants: while grounded the
+  active side adapts toward its deck-invariant target (`playerY * 0.65 ±
+  eyeHeight` 3.8425, λ=4/s) so any deck frames like the corridor; airborne
+  they freeze so jumps/drops/portal flights keep the proven transient shape.
+  Snaps land the intercept exact (teleports frame correctly from frame one);
+  the corridor constants are fixed points (corridor behavior byte-preserved).
+  The ceiling eye hangs mid-corridor BELOW the cube (rest y ≈ 1.61 vs cube 5.45, ≈4.4 u
   clear of the slab) and can never be pulled up into the slab the player
   runs under — the pre-M3.1 gravity-blind formula put the eye at y ≈ 6.11,
   INSIDE the slabs (proven: 343 penetrating steps, worst 0.157 u;
@@ -430,10 +435,30 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   and `noteSpiderSwap` captures the pre-swap pose; the 0.55 s envelope
   blends it onto the moving desired framing with smootherstep (zero
   velocity at both ends — continuous, never a cut or whip). Teleport
-  portals, respawn, and R-teleport still snap. Eye non-penetration
+  portals, respawn, and R-teleport still snap (the snap gate is
+  status-independent since M8.6: a teleport that kills on arrival still
+  snaps instead of stranding the ideal pose). Eye non-penetration
   across the real full-level playthrough is pinned by
   `tests/cameraFraming.test.ts` (level-data-aware auditor; the camera itself
   still never reads level data).
+- `CameraOcclusionResolver` (`src/camera/`, M8.6 Bug B, pure math): resolves
+  the ideal ChaseCamera pose against blocking geometry WITHOUT orbiting —
+  pull-in along the focus→eye axis ahead of the nearest obstruction
+  (expanded-AABB sphere-equivalent sweep, wall skin 0.25, min focus distance
+  1.6). Appearance tracks immediately (never lags into occlusion), restore
+  relaxes slowly (λ=2.4); an eye-inside-solid escape walks back toward the
+  ideal (non-penetration outranks pull-in). Blockers: static solids adapted
+  once per level + authoritative moving-platform poses in fixed ≤8 scratch
+  (hazards/lava/portals never block). Runs AFTER damping/glide/snaps, so a
+  Spider glide is never reinterpreted as a cut. Pinned by
+  `tests/cameraOcclusion.test.ts` (A–J contract) + the both-route
+  `tests/showcaseCamera.test.ts` sweep (0 penetrations, 0 uncovered blocked
+  segments, fade triggers only at the ship-tunnel min-clamp, all covered).
+- `CameraOccluderFade` (`src/rendering/`, M8.6 Bug B §14, last resort):
+  when pull-in reports no usable pose, fades the single reported solid /
+  platform body mesh to 0.25 (presentation-only; ≤4 concurrent single-use
+  clones, disposed on release; trims/rails/hazards/lava/portals never
+  registered — `LevelView.occluderMeshes` + `MovingPlatformView.occluderMesh`).
 - `RendererHost`: SOLE owner of `WebGLRenderer`. Resolves the production
   theme (`resolveProductionTheme`, renderer-owned with a per-level route
   overlay) and owns the shared `MaterialLibrary` (sole material/geometry
@@ -638,8 +663,9 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   cause/lethal/hold/contact-normal/pre-impact-velocity) + `DebugView` (F2
   collider wireframes, F3 player hitbox). `__gd3d` probes expose death cause,
   lethal info, gravity mode/portal state, support id, speed multiplier +
-  current forward speed + interaction counters/used-state (M4), camera
-  up/eye/look, live-camera world→screen projection (`screenPoint`), renderer
+   current forward speed + interaction counters/used-state (M4), camera
+   up/eye/look (+ M8.6 ideal eye, pull-in distance, occluded/blocker-count,
+   faded-occluder probes), live-camera world→screen projection (`screenPoint`), renderer
   stats, scene-child count, burst state, player velocity
   (`playerVelocity`, M8.5 — Ship PD regulation under headless
   time-dilation), platform poses (`platforms`, M8.6) + the deterministic
@@ -795,6 +821,7 @@ fixed-tick PHYSICAL input tape plus verification evidence.
 | Floor behavior bit-identical to the approved pre-M3 build | `floorCompat` golden gate (exact-float trajectories) |
 | Camera not parented; lateral bias bounded | `ChaseCamera` tuning + code review |
 | Camera eye never inside blocking geometry (either gravity surface) | `cameraFraming` regression (real-playthrough eye sweep) + browser QA m3.1 live eye sampling |
+| Camera-to-player sight line: no opaque solid between eye and Cube after pull-in resolution, except fade-covered min-clamp | `cameraOcclusion` A–J + `showcaseCamera` both-route sweep + camera browser QA staged visibility |
 | Floor/ceiling view parity: comparable eye distance + centered player; ceiling run surfaces carry floor-parity underside rails | `cameraFraming` M3.2 parity bounds + `undersideRails` regression + browser QA m3.2 screen-space checks |
 | Surface-relative projection symmetry: the FREE face (opposite support) projects identically on every gravity surface; floor framing unchanged | `cameraFraming` M3.3 exact-mirror + free-face area parity tests + `m33-audit.mjs` before/after metrics + browser QA m3.3 live parity check |
 | Swept collision, no tunneling at speed | `collision` anti-tunneling tests |

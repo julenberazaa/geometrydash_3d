@@ -152,3 +152,49 @@ four-way gravity; more islands/pads/orbs/speed variation/traps; no
 invisible kills; replay VERIFIED; alternate viable; browser QA clean;
 performance bounded. Human gate: ENGINEERING COMPLETE / HUMAN
 EXTREME-GAMEPLAY GATE OPEN.
+
+## 10. Camera corrective pass (multi-height framing + occlusion-safe chase)
+
+Fresh human playtest of the rework found two camera bugs (same branch, no
+new milestone, no level redesign).
+
+BUG A — the camera did not follow multi-height gameplay (it lingered near
+the old world height on stairs, shafts, high/low islands and ferries).
+Root cause (measured before fixing): the M3.3 height lines were functions
+of ABSOLUTE player height with corridor-tuned intercepts — the eye-player
+offset drifted with world height (floor deck y=−10: offset 10.7 vs corridor
+3.84; settled high deck y=20: offset −8.8, eye BELOW the player on floor
+framing; ceiling deck y=−10: eye ABOVE the player; wall deck y=0: 4.2 vs
+3.84; free-face parity at deck y=15: 0.917, outside band).
+Fix: per-side SLOW height-line intercepts — grounded adaptation toward the
+deck-invariant line (rest offset ±3.8425 u on all four sides at EVERY deck),
+airborne freeze (transients keep the proven 0.35-slope shape), exact
+intercept on snap. Corridor constants are fixed points: corridor behavior
+byte-preserved (all M3/M8B pins green unchanged). New invariant:
+"support/world height may change; camera-player framing does not."
+
+BUG B — solids occluded the player (camera outside every collider while a
+block still hid the Cube). New invariant: eye non-penetration PLUS
+camera-to-player line-of-sight. Fix: `CameraOcclusionResolver` (pull-in
+along the sight axis, no orbiting/yaw/roll; appearance tracks immediately,
+restore relaxes slowly; min focus distance 1.6; eye-inside escape walks
+back out) over static solids + authoritative platform poses, plus the
+renderer-only `CameraOccluderFade` last resort (single blocking body mesh,
+≤4 clones, hazards/portals never touched). Spider glide and
+teleport/respawn snaps preserved (snap gate hardened: a teleport that kills
+on arrival still snaps instead of stranding the pose).
+
+Proof: `tests/cameraFraming.test.ts` +5 multi-height cases (decks
+−10/0/6/15/30, parity at deck, smooth ascent); `tests/cameraOcclusion.test.ts`
+11 (A–J + min-clamp); `tests/showcaseCamera.test.ts` both-route full sweep
+(0 penetrations, 0 uncovered blocked segments — 7 fade-covered frames at
+the ship-tunnel min-clamp, all covered); `scripts/browser-qa-camera-m86.mjs`
+46/46 (14 staged high/low areas incl. y≈11.6 ceiling run and y≈13 Spider
+decks with exact 3.84 offsets in-page, live pull-in with the player kept
+visible, fade dormant, resources flat, zero errors). Shoulder-shift
+deliberately deferred (optional; pull-in + fade cover the contract).
+Perf: bounded blocker set (≈ solids + ≤8 platforms), scalar slab math,
+zero per-frame allocation (walk-back on pulled frames only).
+Final state: ENGINEERING COMPLETE / HUMAN CAMERA GATE OPEN — automation
+cannot approve feel; the human re-tests upstairs/downstairs/ceiling/wall
+framing, occlusion behavior, and the M8.6 gauntlet itself.

@@ -595,3 +595,12 @@ with 0 deaths, in-page REPLAY VERIFIED, flat resources, zero errors).
 Spec: `specs/milestones/M8_6_EXTREME_DENSITY_VERTICALITY.md`. Automation
 proves completable, deterministic and denser — never fun, fair-feeling or
 really hard: do NOT mark PASS until the human plays it end to end.
+
+Camera corrective pass (same branch): human playtest found multi-height
+framing collapse + solid occlusion. Fixed by deck-invariant intercept
+adaptation (rest ±3.84 u on all sides at every deck; corridor pins
+unchanged) + occlusion pull-in resolver with fade last resort (Spider glide
+and teleport snaps preserved). Proof: 28 camera tests green (5 multi-height,
+11 occlusion A–J, 2 both-route sweeps) + `scripts/browser-qa-camera-m86.mjs`
+46/46 (14 staged high/low areas, live pull-in, fade dormant, zero errors).
+Final state: ENGINEERING COMPLETE / HUMAN CAMERA GATE OPEN.

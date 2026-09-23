@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import type { GameSimulation } from '../game/GameSimulation';
 import { ChaseCamera, CAMERA_TUNING } from '../camera/ChaseCamera';
 import type { CameraFocusSide } from '../camera/ChaseCamera';
+import { CameraOcclusionResolver, type CameraBlocker } from '../camera/CameraOcclusionResolver';
+import { CameraOccluderFade } from './CameraOccluderFade';
 import type { GravityMode } from '../player/playerState';
 import { LevelView } from './LevelView';
 import { PlayerView } from './PlayerView';
@@ -113,6 +115,29 @@ export class RendererHost {
   private readonly chomperView: ChomperView;
   /** M8.6 moving-platform presentation (observes sim platform states). */
   private readonly platformView: MovingPlatformView;
+  /**
+   * M8.6 camera visibility (Bug B): the ChaseCamera's ideal pose resolved
+   * against blocking geometry (pull-in, no orbiting). Presentation-only —
+   * the resolver never touches simulation state.
+   */
+  private readonly occlusion: CameraOcclusionResolver;
+  /**
+   * Static camera blockers adapted once per level from solid colliders
+   * (cold path; hazards/lava/kill volumes never block the camera). Moving
+   * platforms ride fixed scratch entries updated in place per frame (their
+   * authoritative poses are observed, never written).
+   */
+  private readonly staticBlockers: CameraBlocker[];
+  private readonly platformBlockers: CameraBlocker[];
+  /** Combined blocker set (static + platform scratch), built once per level. */
+  private readonly allBlockers: CameraBlocker[];
+  /**
+   * M8.6 occluder fade (§14, last resort): fades the single reported
+   * blocking mesh when pull-in cannot recover sight. Renderer-only.
+   */
+  private readonly occluderFade: CameraOccluderFade;
+  /** Resolver `platform-<id>` → MovingPlatformView definition index. */
+  private readonly platformFadeIndex = new Map<string, number>();
   public get playerView(): Readonly<PlayerView> {
     return this.playerViewInternal;
   }
@@ -132,6 +157,9 @@ export class RendererHost {
   private prevStatus = 'running';
   /** Last player position applied (teleport detection for R-while-running). */
   private readonly lastAppliedPos = { x: 0, y: 0, z: 0 };
+  /** True when this frame cut the camera (teleport/respawn): the visibility
+   *  resolver applies pull-in immediately so the new pose is safe at once. */
+  private cameraSnappedThisFrame = false;
   /** Restrained death kick: FOV points + vertical units, both fast-decaying. */
   private fovKick = 0;
   private heightKick = 0;
@@ -246,6 +274,50 @@ export class RendererHost {
     this.post = new PostPipeline(this.renderer, this.scene, this.camera, this.theme, postEnabled);
 
     this.chaseCamera = new ChaseCamera();
+    this.occlusion = new CameraOcclusionResolver();
+    this.staticBlockers = [];
+    for (const c of simulation.level.world.colliders()) {
+      if (c.kind !== 'solid') continue;
+      this.staticBlockers.push({
+        id: c.id,
+        minX: c.center.x - c.halfExtents.x,
+        minY: c.center.y - c.halfExtents.y,
+        minZ: c.center.z - c.halfExtents.z,
+        maxX: c.center.x + c.halfExtents.x,
+        maxY: c.center.y + c.halfExtents.y,
+        maxZ: c.center.z + c.halfExtents.z,
+      });
+    }
+    // Fixed platform scratch (bounded by the authoring cap): centers are
+    // rewritten every frame from the authoritative sim poses; half extents
+    // are level-constant. Unused entries sit at a far-away point no camera
+    // segment can ever reach (never allocate, never intersect).
+    this.platformBlockers = [];
+    const platformDefs = simulation.level.movingPlatforms;
+    for (let i = 0; i < 8; i++) {
+      const def = platformDefs[i];
+      if (def === undefined) {
+        this.platformBlockers.push({
+          id: `platform-unused-${String(i)}`,
+          minX: 1e9, minY: 1e9, minZ: 1e9,
+          maxX: 1e9, maxY: 1e9, maxZ: 1e9,
+        });
+        continue;
+      }
+      const hx = def.halfExtents.x;
+      const hy = def.halfExtents.y;
+      const hz = def.halfExtents.z;
+      this.platformBlockers.push({
+        id: `platform-${def.id}`,
+        minX: -hx, minY: -hy, minZ: -hz,
+        maxX: hx, maxY: hy, maxZ: hz,
+      });
+    }
+    this.allBlockers = [...this.staticBlockers, ...this.platformBlockers];
+    this.occluderFade = new CameraOccluderFade();
+    simulation.level.movingPlatforms.forEach((def, index) => {
+      this.platformFadeIndex.set(`platform-${def.id}`, index);
+    });
     this.applyFrame(0, 0);
   }
 
@@ -293,11 +365,18 @@ export class RendererHost {
         Math.abs(p.y - this.lastAppliedPos.y) +
         Math.abs(p.z - this.lastAppliedPos.z) >
       5;
-    if ((this.prevStatus === 'dead' && sim.status === 'running') || (sim.status === 'running' && teleported && !spiderSwap)) {
+    // M8.6 visibility: a teleport that kills on arrival (debug placement
+    // into a wall, or a portal exit inside a hazard) must still snap — the
+    // status gate used to strand the ideal pose hundreds of units behind,
+    // and the resolver then pulled along a stale sightline. Snapping onto
+    // a death pose is harmless: the respawn edge re-snaps on revive, and
+    // `teleported` clears after one frame (lastAppliedPos follows).
+    if ((this.prevStatus === 'dead' && sim.status === 'running') || (teleported && !spiderSwap)) {
       this.chaseCamera.snapTo(p, 0, this.focusSide());
       this.fovKick = 0;
       this.heightKick = 0;
       this.deathBurst.clear();
+      this.cameraSnappedThisFrame = true;
     }
     this.prevStatus = sim.status;
     this.lastAppliedPos.x = p.x;
@@ -350,7 +429,51 @@ export class RendererHost {
     // M6D: no updateProjectionMatrix here — render() applies the fov kick
     // and updates the projection once per presented frame (this method ran
     // it redundantly every frame, doubling a matrix recompute).
-    this.chaseCamera.update(p, 0, renderDtSeconds, this.focusSide());
+    this.chaseCamera.update(p, 0, renderDtSeconds, this.focusSide(), sim.player.grounded);
+    // M8.6 visibility (§9): resolve the ideal pose against blocking
+    // geometry AFTER all desired-pose sources (damping, Spider glide,
+    // snaps) have run — the resolver never reinterprets a glide as a cut.
+    // Platform scratch follows the authoritative sim poses (observed only).
+    const states = sim.platformStates;
+    const defs = sim.level.movingPlatforms;
+    const n = Math.min(states.length, defs.length, this.platformBlockers.length);
+    for (let i = 0; i < n; i++) {
+      const st = states[i];
+      const def = defs[i];
+      const b = this.platformBlockers[i];
+      if (st === undefined || def === undefined || b === undefined) continue;
+      const hx = def.halfExtents.x;
+      const hy = def.halfExtents.y;
+      const hz = def.halfExtents.z;
+      b.minX = st.x - hx; b.maxX = st.x + hx;
+      b.minY = st.y - hy; b.maxY = st.y + hy;
+      b.minZ = st.z - hz; b.maxZ = st.z + hz;
+    }
+    this.occlusion.resolve(
+      p,
+      this.chaseCamera.currentPosition,
+      this.chaseCamera.currentLookTarget,
+      this.allBlockers,
+      renderDtSeconds,
+      this.cameraSnappedThisFrame,
+    );
+    this.cameraSnappedThisFrame = false;
+    // M8.6 occluder fade (§14): ONLY when pull-in reports no usable pose,
+    // and ONLY the reported solid/platform body mesh. Everything else
+    // (hazards, lava, portals, trims, environment) can never be registered.
+    let fadeMesh: THREE.Mesh | null = null;
+    if (this.occlusion.needsOccluderFade) {
+      const occluderId = this.occlusion.occluderId;
+      if (occluderId !== null) {
+        if (occluderId.startsWith('platform-')) {
+          const index = this.platformFadeIndex.get(occluderId);
+          fadeMesh = index !== undefined ? this.platformView.occluderMesh(index) : null;
+        } else {
+          fadeMesh = this.levelView.occluderMeshes.get(occluderId) ?? null;
+        }
+      }
+    }
+    this.occluderFade.update(fadeMesh, renderDtSeconds);
   }
 
   /**
@@ -379,10 +502,12 @@ export class RendererHost {
     // THREE camera pose is applied here (not in applyFrame) so debug tools
     // that reposition the pure-math camera (debugSnapCameraToDeath) take
     // effect even while simulation-to-view updates are frozen for photos.
+    // M8.6 visibility: the PRESENTED pose is the occlusion-resolved one —
+    // the ideal ChaseCamera pose only survives when the sight line is clear.
     this.camera.fov = CAMERA_TUNING.fov + this.fovKick;
     this.camera.updateProjectionMatrix();
-    const camPos = this.chaseCamera.currentPosition;
-    const look = this.chaseCamera.currentLookTarget;
+    const camPos = this.occlusion.currentResolvedEye;
+    const look = this.occlusion.currentResolvedLook;
     this.camera.position.set(camPos.x, camPos.y + this.heightKick, camPos.z);
     this.camera.up.set(0, 1, 0); // never rolls
     this.camera.lookAt(look.x, look.y, look.z);
@@ -424,6 +549,39 @@ export class RendererHost {
    * session (presentation only — proves the smoothing path engaged).
    */
   public swapGlideCount = 0;
+
+  /**
+   * M8.6 camera-visibility observability (presentation/debug only — the
+   * visibility QA contract: eye non-penetration + sight-line visibility).
+   */
+  public get cameraOccluded(): boolean {
+    return this.occlusion.isOccluded;
+  }
+
+  public get cameraOccluderCount(): number {
+    return this.occlusion.blockerCount;
+  }
+
+  public get cameraIdealEye(): Readonly<{ x: number; y: number; z: number }> {
+    return this.occlusion.currentIdealEye;
+  }
+
+  public get cameraResolvedEye(): Readonly<{ x: number; y: number; z: number }> {
+    return this.occlusion.currentResolvedEye;
+  }
+
+  public get cameraResolvedLook(): Readonly<{ x: number; y: number; z: number }> {
+    return this.occlusion.currentResolvedLook;
+  }
+
+  public get cameraPullInDistance(): number {
+    return this.occlusion.pullInDistance;
+  }
+
+  /** Meshes currently held faded by the last-resort fallback (bound). */
+  public get fadedOccluderCount(): number {
+    return this.occluderFade.fadedCount;
+  }
 
   /** Live scene child count (leak guard for repeated death/respawn QA). */
   public get sceneChildren(): number {

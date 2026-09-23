@@ -62,6 +62,14 @@ interface LavaAnimNode {
  */
 export class LevelView {
   public readonly group: THREE.Group;
+  /**
+   * M8.6 occluder-fade registry: runtime solid collider id (`solid-<index>`
+   * in `def.solids` order, matching `levelRuntime`) → the solid's primary
+   * BODY mesh. Trims/rails/tops are never faded (thin spatial-reference
+   * language stays). Hazards, lava, portals and setpieces are never
+   * registered (the fade fallback can only touch opaque route solids).
+   */
+  public readonly occluderMeshes = new Map<string, THREE.Mesh>();
   /** M8.3 lava motion registry (cleared on dispose). */
   private readonly lavaAnim: LavaAnimNode[] = [];
   /** M8.3 lava clock (render seconds; pause freezes the flow). */
@@ -82,8 +90,10 @@ export class LevelView {
     const edgeMat = library.routeEdge;
     const hazardMat = library.hazard;
 
+    let solidIndex = 0;
     for (const solid of level.def.solids) {
       const mesh = new THREE.Mesh(box, bodyMat);
+      this.occluderMeshes.set(`solid-${String(solidIndex++)}`, mesh);
       mesh.scale.set(
         solid.halfExtents.x * 2,
         solid.halfExtents.y * 2,
@@ -1185,6 +1195,7 @@ export class LevelView {
     // Meshes only — materials/geometries belong to the MaterialLibrary.
     this.group.clear();
     this.lavaAnim.length = 0;
+    this.occluderMeshes.clear();
     // The merged edge-line buffer is view-owned (level-specific).
     if (this.edgeLineGeo !== null) {
       this.edgeLineGeo.dispose();

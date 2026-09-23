@@ -316,13 +316,15 @@ describe('M8B wall camera (no roll, free face readable)', () => {
     const eye = camera.currentPosition;
     const look = camera.currentLookTarget;
     expect(eye.x).toBeLessThan(4.45 - 2);
-    expect(eye.y).toBeCloseTo(3 * 0.35 + 4.2, 6);
+    // M8.6 deck-invariant: a wall run at deck y=3 frames like the floor
+    // line at deck 3 (eye = player + corridor rest offset 3.8425).
+    expect(eye.y).toBeCloseTo(3 + 3.8425, 6);
     expect(look.x).toBeLessThan(0.6);
     expect(look.y).toBeCloseTo(3.6, 6);
     // RightWall mirrors in X, never in Y.
     camera.snapTo({ x: -4.45, y: 3, z: 40 }, 0, 'freePlusFocus');
     expect(camera.currentPosition.x).toBeGreaterThan(-4.45 + 2);
-    expect(camera.currentPosition.y).toBeCloseTo(3 * 0.35 + 4.2, 6);
+    expect(camera.currentPosition.y).toBeCloseTo(3 + 3.8425, 6);
   });
 
   it('keeps Floor/Ceiling framing numerically unchanged', () => {

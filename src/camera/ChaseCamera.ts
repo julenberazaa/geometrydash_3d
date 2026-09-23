@@ -18,6 +18,16 @@ import { vec3, dampFactor } from '../core/math';
  * Floor, bottom face on Ceiling) projects with the same apparent size and
  * perspective on every gravity surface. The mirror is vertical only: X/Z
  * framing, up vector, FOV and roll (none) are identical on both sides.
+ *
+ * M8.6 MULTI-HEIGHT GENERALIZATION: the M3.3 height lines were functions of
+ * ABSOLUTE player height with corridor-tuned intercepts — outside the 0/6
+ * band the eye-player offset drifted with world height (measured in
+ * tests/cameraFraming.test.ts: floor eye below the player on high decks,
+ * ceiling eye above it on low decks). Each focus side now keeps a SLOW
+ * height-line intercept adapting toward its deck-invariant line while
+ * grounded; airborne the intercepts freeze, preserving the proven transient
+ * shape. Rest framing is deck-invariant: support/world height may change;
+ * camera-player framing does not.
  */
 /**
  * Which side of the focus the camera frames it from. `aboveFocus` is the
@@ -35,26 +45,30 @@ export type CameraFocusSide = 'aboveFocus' | 'belowFocus' | 'freeMinusFocus' | '
 export interface CameraTuning {
   /** Distance behind the player along -forward. */
   followDistance: number;
-  /** Camera height anchor on the free-face side (aboveFocus framing). */
-  height: number;
   /**
-   * Vertical parallax factor shared by BOTH focus sides: the eye tracks this
-   * fraction of the player's vertical motion, so jump framing reads the same
-   * way on every gravity surface (mirrored along gravity).
+   * Free-face-side eye distance at rest (M8.6): the corridor rest offset
+   * 3.8425 u (old `height` 4.2 − 0.65 · corridor floor rest 0.55), preserved
+   * as the deck-invariant reference — a player on a deck at Y=20 is framed
+   * exactly like the same player at Y=2. Above the player on Floor/walls,
+   * mirrored below on Ceiling.
    */
-  verticalParallax: number;
+  eyeHeight: number;
   /**
-   * Y anchor of the below-focus height line `playerY * verticalParallax +
-   * belowFocusAnchor`. Together with `height` it satisfies the M3.3 mirror:
-   * the below-focus line is the above-focus line reflected about the corridor
-   * mid-plane y = 3 (floor support plane 0 ↔ ceiling underside 6; floor rest
-   * cube y 0.55 + eye offset +3.84 ↔ ceiling rest cube y 5.45 + eye offset
-   * −3.84), so the rest eye sits the SAME distance on the free-face side of
-   * the player on both surfaces. Like the M3.1 framing constants, this anchor
-   * is tuned for corridor-style levels (support planes 0/6); a future level
-   * with a very different ceiling band may need a declared framing hint.
+   * Deck-relative readability slope (M8.6, the classic `verticalParallax`
+   * 0.35): the desired eye always tracks this fraction of player height, so
+   * airborne transients (jumps, drops, portal flights) keep the exact proven
+   * corridor transient shape on every deck. The intercepts (below) carry the
+   * deck adaptation instead.
    */
-  belowFocusAnchor: number;
+  heightParallax: number;
+  /**
+   * Intercept adaptation rate (M8.6, exponential damping lambda, 1/s):
+   * while grounded, the active side's intercept chases its deck-invariant
+   * target fast enough to re-frame stairs/deck landings in under a second,
+   * with a smooth damped glide — never a snap. Airborne the intercepts
+   * freeze (jump readability + portal-flight shape preserved).
+   */
+  interceptAdaptRate: number;
   /** How far ahead of the player the look target sits (units along forward). */
   lookAhead: number;
   /** Vertical offset of the look target toward the free-face side of the
@@ -81,9 +95,9 @@ export interface CameraTuning {
 
 export const CAMERA_TUNING: CameraTuning = {
   followDistance: 8.5,
-  height: 4.2,
-  verticalParallax: 0.35,
-  belowFocusAnchor: -0.3,
+  eyeHeight: 3.8425,
+  heightParallax: 0.35,
+  interceptAdaptRate: 4.0,
   lookAhead: 10,
   lookHeightBias: 0.6,
   fov: 62,
@@ -93,6 +107,15 @@ export const CAMERA_TUNING: CameraTuning = {
   lateralBiasFactor: 0.12,
   wallFreeSideOffset: 3.4,
 };
+
+/**
+ * Corridor rest heights (M3.1): the deck-invariant adaptation below is
+ * anchored so its fixed points are EXACTLY the legacy corridor constants
+ * (above 4.2 at floor rest 0.55, below −0.3 at ceiling rest 5.45) — corridor
+ * behavior is preserved by construction, not by coincidence.
+ */
+export const CORRIDOR_FLOOR_REST_Y = 0.55;
+export const CORRIDOR_CEILING_REST_Y = 5.45;
 
 /**
  * M8.2 Spider-swap glide: how long (render seconds) the camera takes to
@@ -121,10 +144,26 @@ export class ChaseCamera {
   private swapEnvelope = Infinity;
   private readonly glideFromPos: Vec3 = vec3(0, 0, 0);
   private readonly glideFromLook: Vec3 = vec3(0, 0, 0);
+  /**
+   * M8.6 deck intercepts (presentation-only state): the slow per-side height-
+   * line intercepts the desired eye offsets from. Each side adapts toward its
+   * deck-invariant line ONLY while grounded (stairs, decks, ferries); airborne
+   * (jumps, drops, portal flights) they freeze, so transients keep the exact
+   * proven 0.35-slope shape re-centered on the current deck. Initialized to
+   * the corridor constants, which are the fixed points of the adaptation at
+   * corridor rest heights — corridor behavior is preserved by construction.
+   */
+  private aboveIntercept: number;
+  private belowIntercept: number;
 
   constructor(tuning: CameraTuning = CAMERA_TUNING) {
     this.tuning = tuning;
-    this.position = vec3(0, tuning.height, -tuning.followDistance);
+    // Corridor fixed points of the adaptation (see update): at corridor
+    // rest the deck-invariant targets equal the legacy constants exactly.
+    const slope = 1 - tuning.heightParallax;
+    this.aboveIntercept = CORRIDOR_FLOOR_REST_Y * slope + tuning.eyeHeight;
+    this.belowIntercept = CORRIDOR_CEILING_REST_Y * slope - tuning.eyeHeight;
+    this.position = vec3(0, tuning.eyeHeight, -tuning.followDistance);
     this.lookTarget = vec3(0, 0, tuning.lookAhead);
   }
 
@@ -158,8 +197,35 @@ export class ChaseCamera {
     trackCenterX: number,
     renderDtSeconds: number,
     focusSide: CameraFocusSide = 'aboveFocus',
+    grounded = true,
   ): void {
     const t = this.tuning;
+    const below = focusSide === 'belowFocus';
+
+    // M8.6 deck-intercept adaptation FIRST: while grounded, the ACTIVE side's
+    // intercept chases its deck-invariant target (the line whose rest offset
+    // is exactly ±eyeHeight at the CURRENT deck), so stairs, deck landings
+    // and ferry rides re-frame smoothly in under a second. Airborne the
+    // intercepts freeze — jumps, drops and portal flights keep the proven
+    // 0.35-slope transient shape. The inactive side keeps its last adapted
+    // value and re-adapts on return. Pause (dt 0) freezes adaptation like
+    // every presentation clock. Snaps cut the POSE (see snapTo) but keep the
+    // adapted intercepts — the cut lands on the best-known framing and the
+    // glide finishes the job, never a stale-deck swoosh.
+    if (grounded) {
+      const slope = 1 - t.heightParallax;
+      const target = below
+        ? playerPosition.y * slope - t.eyeHeight
+        : playerPosition.y * slope + t.eyeHeight;
+      // A snap (init/teleport/respawn) cuts: land the intercept EXACTLY on
+      // the new deck's line so the cut frames correctly from frame one.
+      const k = this.initialized ? dampFactor(t.interceptAdaptRate, renderDtSeconds) : 1;
+      if (below) {
+        this.belowIntercept += (target - this.belowIntercept) * k;
+      } else {
+        this.aboveIntercept += (target - this.aboveIntercept) * k;
+      }
+    }
 
     // Desired: behind + elevated + track-centered with a small damped bias.
     const lateralOffset = playerPosition.x - trackCenterX;
@@ -170,21 +236,25 @@ export class ChaseCamera {
     // M8B wall framing: shift the eye toward the free-face side (open
     // corridor side of the wall run) while keeping the floor-like height,
     // so the side free face opens up AND the top face stays readable.
-    // Floor/Ceiling formulas are byte-untouched (regression-pinned).
+    // Corridor rest numbers are preserved (regression-pinned); the height
+    // line is now deck-relative (see below).
     const freeMinus = focusSide === 'freeMinusFocus';
     const freePlus = focusSide === 'freePlusFocus';
     const desiredX =
       trackCenterX + bias + (freeMinus ? -t.wallFreeSideOffset : freePlus ? t.wallFreeSideOffset : 0);
-    // Surface-relative vertical framing (M3.3): both height lines share the
-    // same parallax slope and are exact mirrors about the corridor mid-plane,
-    // so the free face opposite the support projects identically on both
-    // surfaces. On the ceiling the eye hangs BELOW the focus (the open
-    // corridor side) so it can never be pulled up into the slab the player
-    // runs under. Walls keep the elevated floor line (top-face readable).
-    const below = focusSide === 'belowFocus';
-    const desiredY = below
-      ? playerPosition.y * t.verticalParallax + t.belowFocusAnchor
-      : playerPosition.y * t.verticalParallax + t.height;
+    // Surface-relative vertical framing (M3.3, generalized M8.6): the
+    // desired eye rides the active side's height line — the classic 0.35
+    // slope with a slowly deck-adapted intercept. Airborne this is the
+    // proven corridor transient shape re-centered on the current deck;
+    // grounded-and-settled the rest eye sits EXACTLY ±eyeHeight on the
+    // free-face side at EVERY deck height, so a deck at Y=20 frames like
+    // the corridor. On the ceiling the eye hangs BELOW the focus (the open
+    // side) so it can never be pulled up into the slab the player runs
+    // under. Walls keep the elevated floor line (top-face readable) plus
+    // the free-side X shift. Corridor rest numbers are fixed points of the
+    // adaptation (regression-pinned).
+    const intercept = below ? this.belowIntercept : this.aboveIntercept;
+    const desiredY = playerPosition.y * t.heightParallax + intercept;
     const desiredZ = playerPosition.z - t.followDistance;
 
     const desiredLookX =

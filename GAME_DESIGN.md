@@ -149,12 +149,34 @@ offset along the free-face normal) so future gravity surfaces inherit it.
 Presentation only — no camera roll, no world rotation, no gameplay
 difference, no Cube-scale or FOV tricks.
 
+**Multi-height framing (M8.6 corrective):** support/world height may change;
+camera-player framing does not. The M3.3 mirror is generalized from the
+corridor to every deck: each focus side keeps a slow height-line intercept
+that adapts toward its deck-invariant line while grounded (stairs, landings,
+ferry rides re-frame in under a second with a smooth glide, never a snap),
+and freezes airborne (jumps, drops, portal flights keep the proven transient
+shape re-centered on the current deck). A deck at Y=20 frames like the
+corridor (same ±3.84 u rest offset on all four sides). The camera is never
+mechanically parented — jump readability still comes from damped lag.
+
 **Wall framing (M8B):** on wall gravity the eye shifts ~3.4 u toward the
 free-face side (the open corridor side of the wall run) while STAYING at
 the elevated floor height and looking slightly toward the free side — so
 the side free face opens up AND the top face stays readable in one stable
 view. The camera NEVER rolls (`camera.up` stays world +Y on all four
-surfaces); Floor/Ceiling framing is numerically unchanged.
+surfaces); Floor/Ceiling corridor rest framing is a fixed point of the
+M8.6 deck adaptation (numerically unchanged).
+
+**Camera visibility (M8.6 corrective):** camera-eye non-penetration PLUS
+camera-to-player line-of-sight. The chase pose resolves against blocking
+geometry by PULLING IN along the sight axis ahead of the nearest obstruction
+(no orbiting, no yaw cuts, no roll — the chase language is untouched);
+appearance tracks immediately (a lagging contract would hide the player for
+whole frames) while the relax-back is slow and natural. Pull-in never goes
+past a minimum usable distance and never inside the Cube; where no usable
+pose exists, the single blocking mesh fades (presentation-only, smooth,
+bounded, restored at once — never hazards, portals, or the environment).
+The visibility system observes authoritative moving-platform poses too.
 
 **View parity (M3.2):** the ceiling must never be harder because of the VIEW.
 Because the below-focus eye makes the Cube's own silhouette partially occlude

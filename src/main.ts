@@ -84,6 +84,16 @@ declare global {
       cameraUpY: () => number;
       cameraEye: () => { x: number; y: number; z: number };
       cameraLook: () => { x: number; y: number; z: number };
+      /** QA-only: the ideal (pre-occlusion) camera eye (M8.6 visibility). */
+      cameraIdealEye: () => { x: number; y: number; z: number };
+      /** QA-only: pull-in active this frame (M8.6 visibility). */
+      cameraOccluded: () => boolean;
+      /** QA-only: blockers on the ideal sight segment (M8.6 visibility). */
+      cameraOccluderCount: () => number;
+      /** QA-only: smoothed pull-in distance (M8.6 visibility). */
+      cameraPullInDistance: () => number;
+      /** QA-only: meshes held faded by the last-resort fallback (M8.6). */
+      cameraFadedOccluders: () => number;
       screenPoint: (x: number, y: number, z: number) => {
         ndcX: number; ndcY: number; px: number; py: number; behind: boolean;
       };
@@ -221,9 +231,19 @@ window.__gd3d = {
   isInteractionUsed: (id: string): boolean => game['simulation'].isInteractionUsed(id),
   interactionRingsActive: () => game['rendererHost'].interactionRingsActive,
   supportId: () => game['simulation'].player.supportColliderId,
-  cameraUpY: () => game['rendererHost'].camera.up.y,
-  cameraEye: () => ({ ...game['rendererHost'].chaseCamera.currentPosition }),
-  cameraLook: () => ({ ...game['rendererHost'].chaseCamera.currentLookTarget }),
+      cameraUpY: () => game['rendererHost'].camera.up.y,
+      cameraEye: () => ({ ...game['rendererHost'].cameraResolvedEye }),
+      cameraLook: () => ({ ...game['rendererHost'].cameraResolvedLook }),
+      /** QA-only: the ideal (pre-occlusion) camera eye (M8.6 visibility proof). */
+      cameraIdealEye: () => ({ ...game['rendererHost'].cameraIdealEye }),
+      /** QA-only: pull-in active this frame (M8.6 visibility proof). */
+      cameraOccluded: () => game['rendererHost'].cameraOccluded,
+      /** QA-only: blockers on the ideal sight segment (M8.6 visibility proof). */
+      cameraOccluderCount: () => game['rendererHost'].cameraOccluderCount,
+      /** QA-only: smoothed pull-in distance (M8.6 visibility proof). */
+      cameraPullInDistance: () => game['rendererHost'].cameraPullInDistance,
+      /** QA-only: meshes held faded by the last-resort fallback (M8.6). */
+      cameraFadedOccluders: () => game['rendererHost'].fadedOccluderCount,
   screenPoint: (x: number, y: number, z: number): { ndcX: number; ndcY: number; px: number; py: number; behind: boolean } =>
     game['rendererHost'].projectToScreen(x, y, z),
   // Debug-only QA placement (see GameSimulation.debugPlaceAt).

@@ -158,6 +158,7 @@ describe('ChaseCamera framing invariants', () => {
         0,
         SIMULATION_DT,
         sim.gravityMode === 'ceiling' ? 'belowFocus' : 'aboveFocus',
+        sim.player.grounded,
       );
       if (sim.status === 'running') {
         const eye = cam.currentPosition;
@@ -313,5 +314,116 @@ describe('M3.3 surface-relative projection symmetry', () => {
     const floorPlayer = projectNdc(floor.frame.eye, floor.frame.look, floor.frame.player);
     const ceilingPlayer = projectNdc(ceiling.frame.eye, ceiling.frame.look, ceiling.frame.player);
     expect(ceilingPlayer.y).toBeCloseTo(-floorPlayer.y, 6);
+  });
+});
+
+/**
+ * M8.6 corrective pass, BUG A — MULTI-HEIGHT FRAMING (deterministic, pure
+ * math): the M3.3 corridor-tuned height lines (`playerY * 0.35 + anchor`)
+ * collapse outside the 0/6 corridor — the eye-player offset is a function
+ * of ABSOLUTE world height, so on high decks the floor eye drops BELOW the
+ * player and on low decks the ceiling eye rises ABOVE it. The contract:
+ * support/world height may change; camera-player framing does not. The
+ * rest eye must sit the same free-face-side distance (±EYE, the corridor
+ * rest offset 3.8425 u) at EVERY deck height, on all four focus sides, with
+ * smooth (never snapping) tracking during large ascents/descents. Jump
+ * readability still comes from damped lag, not from absolute-height drift.
+ */
+describe('M8.6 multi-height surface-relative framing', () => {
+  /** Corridor rest eye offset (4.2 − 0.65·0.55): the deck-invariant target. */
+  const EYE = 4.2 - 0.65 * 0.55;
+  const DECKS = [-10, 0, 6, 15, 30];
+  const FREE_HALF = 0.62; // visual cube half-edge (mirrors the M3.3 block)
+
+  const restOffset = (
+    playerY: number,
+    side: 'aboveFocus' | 'belowFocus' | 'freeMinusFocus' | 'freePlusFocus',
+  ): { eyeY: number; eyeX: number; lookY: number; offset: number } => {
+    const cam = new ChaseCamera();
+    const player = { x: 0, y: playerY, z: 210 };
+    cam.snapTo(player, 0, side);
+    const eye = cam.currentPosition;
+    const look = cam.currentLookTarget;
+    const below = side === 'belowFocus';
+    return { eyeY: eye.y, eyeX: eye.x, lookY: look.y, offset: below ? playerY - eye.y : eye.y - playerY };
+  };
+
+  it('floor eye offset is deck-invariant (free-face side, same distance at every height)', () => {
+    for (const y of DECKS) {
+      const { eyeY, offset } = restOffset(y, 'aboveFocus');
+      expect(eyeY, `floor deck y=${y}: eye must stay ABOVE the player`).toBeGreaterThan(y);
+      expect(offset, `floor deck y=${y}: eye-player offset must equal the corridor offset`).toBeCloseTo(EYE, 1);
+    }
+  });
+
+  it('ceiling eye offset is deck-invariant (mirrored below at every height)', () => {
+    for (const y of DECKS) {
+      const { eyeY, offset } = restOffset(y, 'belowFocus');
+      expect(eyeY, `ceiling deck y=${y}: eye must stay BELOW the player`).toBeLessThan(y);
+      expect(offset, `ceiling deck y=${y}: player-eye offset must equal the corridor offset`).toBeCloseTo(EYE, 1);
+    }
+  });
+
+  it('wall framing follows vertical traversal (free-side X shift + floor-like height at the deck)', () => {
+    for (const y of [0, 6, 15, 30]) {
+      const minus = restOffset(y, 'freeMinusFocus');
+      const plus = restOffset(y, 'freePlusFocus');
+      expect(minus.eyeX, `leftWall deck y=${y}`).toBeCloseTo(-CAMERA_TUNING.wallFreeSideOffset, 1);
+      expect(plus.eyeX, `rightWall deck y=${y}`).toBeCloseTo(CAMERA_TUNING.wallFreeSideOffset, 1);
+      expect(minus.offset, `leftWall deck y=${y}: elevated floor-like height`).toBeCloseTo(EYE, 1);
+      expect(plus.offset, `rightWall deck y=${y}: elevated floor-like height`).toBeCloseTo(EYE, 1);
+    }
+  });
+
+  it('free-face projection parity holds AT deck heights (not only the 0/6 corridor)', () => {
+    // Floor rest at a high deck vs ceiling rest at the SAME deck: the
+    // mirror must translate with the gameplay (area ratio ≈ 1).
+    const areaAt = (playerY: number, side: 'aboveFocus' | 'belowFocus'): number => {
+      const cam = new ChaseCamera();
+      const player = { x: 0, y: playerY, z: 210 };
+      cam.snapTo(player, 0, side);
+      const eye = cam.currentPosition;
+      const look = cam.currentLookTarget;
+      const faceY = side === 'aboveFocus' ? playerY + FREE_HALF : playerY - FREE_HALF;
+      const corners = (
+        [
+          [-FREE_HALF, -FREE_HALF],
+          [FREE_HALF, -FREE_HALF],
+          [FREE_HALF, FREE_HALF],
+          [-FREE_HALF, FREE_HALF],
+        ] as const
+      ).map(([dx, dz]) => ({ x: player.x + dx, y: faceY, z: player.z + dz }));
+      return shoelaceArea(corners.map((p) => projectNdc(eye, look, p)));
+    };
+    for (const y of [15, 30]) {
+      const ratio = areaAt(y, 'belowFocus') / areaAt(y, 'aboveFocus');
+      expect(ratio, `free-face parity at deck y=${y}`).toBeGreaterThan(0.95);
+      expect(ratio, `free-face parity at deck y=${y}`).toBeLessThan(1.05);
+    }
+    // Deck-invariance of apparent size: floor rest at y=15 must frame the
+    // cube like floor rest at the corridor (y=0.55).
+    const deckRatio = areaAt(15, 'aboveFocus') / areaAt(0.55, 'aboveFocus');
+    expect(deckRatio, 'floor free-face area must not change with deck height').toBeGreaterThan(0.9);
+    expect(deckRatio, 'floor free-face area must not change with deck height').toBeLessThan(1.1);
+  });
+
+  it('tracks a large ascent smoothly (no snap) and re-settles to the corridor framing', () => {
+    const cam = new ChaseCamera();
+    cam.snapTo({ x: 0, y: 0.55, z: 100 }, 0, 'aboveFocus');
+    let peakStep = 0;
+    let prevY = cam.currentPosition.y;
+    // Rise 0.55 → 20 over 3 s (faster than any real stair climb).
+    for (let i = 1; i <= 180; i++) {
+      const y = 0.55 + ((20 - 0.55) * i) / 180;
+      cam.update({ x: 0, y, z: 100 + i * 0.2 }, 0, 1 / 60, 'aboveFocus');
+      peakStep = Math.max(peakStep, Math.abs(cam.currentPosition.y - prevY));
+      prevY = cam.currentPosition.y;
+    }
+    expect(peakStep, 'ascent must be a smooth damped follow, never a snap').toBeLessThan(1.0);
+    // Settle at the new deck: framing must converge back to the corridor offset.
+    for (let i = 0; i < 300; i++) {
+      cam.update({ x: 0, y: 20, z: 136 }, 0, 1 / 60, 'aboveFocus');
+    }
+    expect(cam.currentPosition.y - 20, 'settled high-deck offset').toBeCloseTo(EYE, 1);
   });
 });

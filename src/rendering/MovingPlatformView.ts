@@ -20,6 +20,8 @@ export const MAX_PLATFORM_VIEW = 8;
 
 interface PlatformNodes {
   group: THREE.Group;
+  /** Primary body mesh (the only platform mesh the occluder fade may touch). */
+  body: THREE.Mesh;
 }
 
 export class MovingPlatformView {
@@ -49,8 +51,18 @@ export class MovingPlatformView {
       g.add(plate);
       g.position.set(def.base.x, def.base.y, def.base.z);
       this.group.add(g);
-      this.nodes.push({ group: g });
+      this.nodes.push({ group: g, body });
     }
+  }
+
+  /**
+   * M8.6 occluder fade: the primary body mesh of platform `index`
+   * (definition order, matching the resolver's `platform-<id>` blockers via
+   * the level's `movingPlatforms` order). Ride plates are never faded.
+   */
+  public occluderMesh(index: number): THREE.Mesh | null {
+    const node = this.nodes[index];
+    return node !== undefined ? node.body : null;
   }
 
   /** Per rendered frame: interpolate every platform prev→current pose. */
