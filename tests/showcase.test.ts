@@ -164,36 +164,42 @@ describe('M8.6 production showcase', () => {
     expect(sim.deathPosition.z).toBeLessThan(452);
   });
 
-  it('face-plants into the entry gap wall without jumping', () => {
-    const sim = new GameSimulation(PRODUCTION_SHOWCASE_01);
-    // No inputs at all: the run leaves the entry slab (ends z 20), drops
-    // into the 4 u gap and meets the far wall — jumping is mandatory from
-    // the very first seconds.
-    for (let tick = 0; tick < 2000 && sim.attempts === 1; tick++) {
-      sim.update(idleInput);
-    }
-    expect(sim.attempts).toBeGreaterThan(1);
-    expect(sim.lastDeathCause).toBe('frontImpact');
-    expect(sim.deathPosition.z).toBeGreaterThan(18);
-    expect(sim.deathPosition.z).toBeLessThan(28);
-  });
+    it('face-plants into the entry gap wall without jumping', () => {
+      const sim = new GameSimulation(PRODUCTION_SHOWCASE_01);
+      // No inputs at all: the run leaves the entry slab (ends z 4), drops
+      // into the 5 u gap and meets the first island's front face — jumping
+      // is mandatory from the very first seconds (M9.1 island chain).
+      for (let tick = 0; tick < 2000 && sim.attempts === 1; tick++) {
+        sim.update(idleInput);
+      }
+      expect(sim.attempts).toBeGreaterThan(1);
+      expect(sim.lastDeathCause).toBe('frontImpact');
+      expect(sim.deathPosition.z).toBeGreaterThan(6);
+      expect(sim.deathPosition.z).toBeLessThan(11);
+    });
 
-  it('kills as lava when the forge river hop is missed', () => {
-    const sim = new GameSimulation(PRODUCTION_SHOWCASE_01);
-    // Jump the entry gap + stairs + deck-end drop + catcher hop (weaving
-    // the MID-deck doors on the way) but NOT the at-grade river
-    // (z 140.5..143.5): the lava strip kills.
-    const jumps = [18, 36, 43, 53, 89, 104];
-    const splitTaps = [
-      { atZ: 60, dir: 'right' as const },
-      { atZ: 69, dir: 'left' as const },
-      { atZ: 81, dir: 'left' as const },
-      // Deck-end lane recenter (the catcher island is center-only; the
-      // lane settles during the jump-89 flight, same split as the driver).
-      { atZ: 89.5, dir: 'right' as const },
-      { atZ: 118, dir: 'right' as const },
-      { atZ: 126, dir: 'left' as const },
-    ];
+    it('kills as lava when the forge river hop is missed', () => {
+      const sim = new GameSimulation(PRODUCTION_SHOWCASE_01);
+      // Navigate the M9.1 island chain + offset stairs + pier + shaft +
+      // jog road (same edges as the reference driver) but NOT the at-grade
+      // river (z 140.5..143.5): the lava strip kills.
+      const jumps = [2.5, 13.5, 24.5, 35.5, 49.5, 63.5, 76, 86.3, 107.5, 116.8, 127.5];
+      const splitTaps = [
+        { atZ: 13.5, dir: 'right' as const },
+        { atZ: 24.5, dir: 'left' as const },
+        { atZ: 25.5, dir: 'left' as const },
+        { atZ: 35.5, dir: 'right' as const },
+        { atZ: 49.5, dir: 'left' as const },
+        { atZ: 63.5, dir: 'right' as const },
+        { atZ: 64.5, dir: 'right' as const },
+        { atZ: 70, dir: 'left' as const },
+        { atZ: 95.5, dir: 'right' as const },
+        { atZ: 107.5, dir: 'left' as const },
+        { atZ: 108.5, dir: 'left' as const },
+        { atZ: 116.8, dir: 'right' as const },
+        { atZ: 126, dir: 'right' as const },
+        { atZ: 130.5, dir: 'left' as const },
+      ];
     let ji = 0;
     let ti = 0;
     for (let tick = 0; tick < 4000 && sim.attempts === 1; tick++) {

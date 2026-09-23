@@ -546,90 +546,116 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
   ],
 
   solids: [
-    // ================= ACT 1 FORGE ASCENT (0..170) =================
-    // Entry slab + 4 u hop gap.
-    { center: { x: 0, y: -0.5, z: 5 }, halfExtents: { x: 5.4, y: 0.5, z: 15 } },
-    { center: { x: 0, y: -0.5, z: 32 }, halfExtents: { x: 5.4, y: 0.5, z: 8 } },
-    // Stair ascent to MID (risers 1.5, 3 u run-up per riser for the
-    // frozen jump envelope: land mid-tread with room for the next rise).
-    { center: { x: 0, y: 0.75, z: 43 }, halfExtents: { x: 3, y: 0.75, z: 3 } },
-    { center: { x: 0, y: 1.5, z: 51 }, halfExtents: { x: 3, y: 1.5, z: 3 } },
-    // MID deck (top 4.5, z 56..90).
-    { center: { x: 0, y: 2.5, z: 73 }, halfExtents: { x: 5.4, y: 2, z: 17 } },
-    // Drop chamber: catcher island (top 0, z 96..102) below the deck end.
-    { center: { x: 0, y: -0.5, z: 99 }, halfExtents: { x: 1.3, y: 0.5, z: 3 } },
-    { center: { x: 0, y: -0.5, z: 116 }, halfExtents: { x: 5.4, y: 0.5, z: 14 } },
+    // ================= ACT 1 FORGE ASCENT (0..176) =================
+    // M9.1 REBUILD: the old entry slab + wide MID deck + single catcher
+    // are gone. The forge now opens with a staggered island chain (first
+    // input at z~2.5), offset broken stairs, a 1-lane sky pier with hop
+    // rhythm, a staggered double-catcher drop shaft, a narrow slalom road
+    // and a fast-fall exit drop. Every support is 1–2 lanes wide (the
+    // audit's one-band lever); wide slabs survive only as the entry slab
+    // and the act handover.
+    // Entry slab (top 0, z -10..4).
+    { center: { x: 0, y: -0.5, z: -3 }, halfExtents: { x: 5.4, y: 0.5, z: 7 } },
+    // Staggered island chain (5 u gaps = the 8.8 u jump rhythm, alternating
+    // lateral offsets — jump + steer from the first seconds).
+    { center: { x: 0, y: -0.5, z: 12 }, halfExtents: { x: 1.6, y: 0.5, z: 3 } },
+    { center: { x: -2.6, y: -0.5, z: 23 }, halfExtents: { x: 1.6, y: 0.5, z: 3 } },
+    { center: { x: 2.6, y: -0.5, z: 34 }, halfExtents: { x: 1.6, y: 0.5, z: 3 } },
+    // Landing funnel (wide catch, z 42..46) into the narrow riser (z 46..54).
+    { center: { x: 0, y: -0.5, z: 44 }, halfExtents: { x: 5.4, y: 0.5, z: 2 } },
+    { center: { x: 0, y: -0.5, z: 50 }, halfExtents: { x: 1.6, y: 0.5, z: 4 } },
+    // Broken offset stairs (risers 1.5; tread 1 meets the funnel so the
+    // apex-on-face takeoff comes 5 u after the funnel landing).
+    { center: { x: 1.3, y: 0.75, z: 59 }, halfExtents: { x: 1.3, y: 0.75, z: 5 } },
+    { center: { x: -1.3, y: 1.5, z: 73 }, halfExtents: { x: 1.3, y: 1.5, z: 4 } },
+    // Sky pier (top 4.5, z 82..102): 1-lane entry with a hop spike, then a
+    // 2-lane span with a center tooth forcing the drop-side lane.
+    { center: { x: 0, y: 2, z: 87 }, halfExtents: { x: 1.3, y: 2.5, z: 5 } },
+    { center: { x: 0, y: 2, z: 97 }, halfExtents: { x: 2, y: 2.5, z: 5 } },
+    // Drop shaft: staggered catchers (A lane 2, B lane 0) force drop +
+    // steer + immediate double transfer.
+    { center: { x: -2.6, y: -0.5, z: 107.5 }, halfExtents: { x: 2, y: 0.5, z: 2.5 } },
+    { center: { x: 2.6, y: -0.5, z: 115.5 }, halfExtents: { x: 2, y: 0.5, z: 3.5 } },
+    // Narrow jog road (top 0, z 120..136): center span then a left-offset
+    // span (same height — steer through, no jump) with one hop spike on
+    // the offset line. Narrow support holds the single band throughout.
+    { center: { x: 0, y: -0.5, z: 124 }, halfExtents: { x: 1.6, y: 0.5, z: 4 } },
+    { center: { x: -1.3, y: -0.5, z: 132 }, halfExtents: { x: 1.6, y: 0.5, z: 4 } },
     // River containment (z 140.5..143.5): east pillar + curb + shelf + rims.
     { center: { x: 4.9, y: 1.75, z: 142 }, halfExtents: { x: 0.5, y: 1.75, z: 1 } },
     { center: { x: 4.375, y: -0.1, z: 142 }, halfExtents: { x: 0.375, y: 0.75, z: 1.75 } },
     { center: { x: -7.4, y: -1.15, z: 142 }, halfExtents: { x: 2, y: 0.5, z: 1.75 } },
     { center: { x: -6.4, y: -0.1, z: 140.3 }, halfExtents: { x: 2.4, y: 0.85, z: 0.3 } },
     { center: { x: -6.4, y: -0.1, z: 143.7 }, halfExtents: { x: 2.4, y: 0.85, z: 0.3 } },
-    // River gap slabs (route crosses z 140.5..143.5 over the lava strip).
-    { center: { x: 0, y: -0.5, z: 136 }, halfExtents: { x: 5.4, y: 0.5, z: 10 } },
-    // M9 funnel: the post-river road narrows to the center strip for the
-    // double-spike (z 156..168) — side lanes end at readable road-narrows
-    // (fall = routing death), so the 160 + 164 double cannot be ridden
-    // around. Both reference lines hold center here.
-    { center: { x: 0, y: -0.5, z: 157 }, halfExtents: { x: 1.3, y: 0.5, z: 13 } },
-    { center: { x: 3.35, y: -0.5, z: 150 }, halfExtents: { x: 2.05, y: 0.5, z: 6 } },
-    { center: { x: -3.35, y: -0.5, z: 150 }, halfExtents: { x: 2.05, y: 0.5, z: 6 } },
+    // River takeoff strip (narrow, z 136..140.5).
+    { center: { x: 0, y: -0.5, z: 138.25 }, halfExtents: { x: 1.6, y: 0.5, z: 2.25 } },
+    // Post-river strip (narrow, z 144..168) + road-narrow stubs (side lanes
+    // end — leaving center falls) for the kept proving double (160 + 164).
+    { center: { x: 0, y: -0.5, z: 156 }, halfExtents: { x: 1.6, y: 0.5, z: 12 } },
+    { center: { x: 3.35, y: -0.5, z: 147 }, halfExtents: { x: 2.05, y: 0.5, z: 3 } },
+    { center: { x: -3.35, y: -0.5, z: 147 }, halfExtents: { x: 2.05, y: 0.5, z: 3 } },
+    // Exit drop island (top −1.5, z 170..174): fast-fall off the strip,
+    // immediate jump back up to the handover road.
+    { center: { x: 0, y: -2, z: 172 }, halfExtents: { x: 1.6, y: 0.5, z: 2 } },
+    // Handover road (wide recovery, z 176..184).
+    { center: { x: 0, y: -0.5, z: 180 }, halfExtents: { x: 5.4, y: 0.5, z: 4 } },
     // Forge flanking towers (off-route silhouettes).
     { center: { x: 9, y: 4, z: 60 }, halfExtents: { x: 1.5, y: 8, z: 3 } },
     { center: { x: -9, y: 4, z: 110 }, halfExtents: { x: 1.5, y: 8, z: 3 } },
 
-    // ================= ACT 2 SKYBRIDGE ISLANDS (170..430) =================
-    { center: { x: 0, y: -0.5, z: 173 }, halfExtents: { x: 5.4, y: 0.5, z: 3 } },
-    // LOW island chain (lane 1, gaps 2–3 u) + long landing island.
-    { center: { x: 0, y: -0.5, z: 180.5 }, halfExtents: { x: 1.3, y: 0.5, z: 3.5 } },
-    { center: { x: 0, y: -0.5, z: 190.5 }, halfExtents: { x: 1.3, y: 0.5, z: 3.5 } },
-    { center: { x: 0, y: -0.5, z: 199.5 }, halfExtents: { x: 1.3, y: 0.5, z: 2.5 } },
-    { center: { x: 0, y: -0.5, z: 207 }, halfExtents: { x: 1.3, y: 0.5, z: 5 } },
-    // LOW road under the stairs/MID line (alternate route + stacked cross).
-    { center: { x: 0, y: -0.5, z: 221 }, halfExtents: { x: 5.4, y: 0.5, z: 7 } },
-    { center: { x: 0, y: -0.5, z: 236 }, halfExtents: { x: 5.4, y: 0.5, z: 8 } },
-    { center: { x: 0, y: -0.5, z: 253 }, halfExtents: { x: 5.4, y: 0.5, z: 9 } },
-    // Stairs to MID (tops 1.5 / 3.0, 10 u treads for the 8.8 u jump rhythm).
-    { center: { x: 0, y: 0.75, z: 221 }, halfExtents: { x: 1.3, y: 0.75, z: 5 } },
-    { center: { x: 0, y: 1.5, z: 231 }, halfExtents: { x: 1.3, y: 1.5, z: 5 } },
-    // MID island + traverse (top 4.5, z 238..264) FLOATING over the LOW
-    // road: slabs span y 2..4.5, leaving a 2 u run-under corridor. M9: the
-    // traverse is center-lane-only (the driver holds x=0 over both rhythm
-    // hops) — the LOW road passes underneath, unaffected.
-    { center: { x: 0, y: 3.25, z: 241 }, halfExtents: { x: 1.3, y: 1.25, z: 3 } },
-    { center: { x: 0, y: 3.25, z: 254 }, halfExtents: { x: 1.3, y: 1.25, z: 10 } },
-    { center: { x: 4, y: 1, z: 241 }, halfExtents: { x: 0.5, y: 1, z: 1 } },
-    { center: { x: -4, y: 1, z: 250 }, halfExtents: { x: 0.5, y: 1, z: 1 } },
-    { center: { x: 4, y: 1, z: 259 }, halfExtents: { x: 0.5, y: 1, z: 1 } },
-    // Pad-split floor (top 0, z 262..312): center lane launches via
-    // ps-pad-sky onto the MID deck; lanes 0/2 run the LOW spike weave.
-    { center: { x: 0, y: -0.5, z: 287 }, halfExtents: { x: 5.4, y: 0.5, z: 25 } },
-    // MID deck after the pad (top 4.5, z 280..312) FLOATING over the LOW
-    // branch: slab spans y 2..4.5, 2 u run-under corridor below.
-    { center: { x: 0, y: 3.25, z: 296 }, halfExtents: { x: 5.4, y: 1.25, z: 16 } },
+    // ================= ACT 2 SKYBRIDGE ISLANDS (176..430, M9.1) =================
+    // M9.1 REBUILD (anchor-preserving): pads (271.3 / 306.3), orb (333.5),
+    // ferry-void (393), HIGH/LOW branch split and all lava stay on their
+    // musical Z — but every wide slab between them is split into narrow
+    // strips + stubs, threaded with teeth corridors, hop spikes and doors.
+    // Entry road (top 0, z 176..190 — the F-drop jump lands here).
+    { center: { x: 0, y: -0.5, z: 183 }, halfExtents: { x: 5.4, y: 0.5, z: 7 } },
+    // Entry island chain (1-lane, alternating offsets — takeoffs sit
+    // ≥ 0.7 u after each landing so one-shot edges never fire mid-air).
+    { center: { x: 0, y: -0.5, z: 193 }, halfExtents: { x: 1.6, y: 0.5, z: 3 } },
+    { center: { x: -2.6, y: -0.5, z: 204 }, halfExtents: { x: 1.6, y: 0.5, z: 3 } },
+    { center: { x: 2.6, y: -0.5, z: 213 }, halfExtents: { x: 1.6, y: 0.5, z: 3 } },
+    { center: { x: 0, y: -0.5, z: 222 }, halfExtents: { x: 1.6, y: 0.5, z: 3 } },
+    // Stair landing (top 0, z 227..236) + offset stairs (risers 1.5, faces
+    // placed for apex-on-face takeoffs after each landing; the drop off
+    // stair 2 lands with room for the pad hop).
+    { center: { x: 0, y: -0.5, z: 231.5 }, halfExtents: { x: 5.4, y: 0.5, z: 4.5 } },
+    { center: { x: 1.3, y: 0.75, z: 243 }, halfExtents: { x: 1.3, y: 0.75, z: 5 } },
+    { center: { x: -1.3, y: 1.5, z: 253.5 }, halfExtents: { x: 1.3, y: 1.5, z: 4 } },
+    // LOW road (top 0, z 227..262) under the stairs — the alternate weaves
+    // around the stair fronts here (stairs block bands statically).
+    { center: { x: 0, y: -0.5, z: 244.5 }, halfExtents: { x: 5.4, y: 0.5, z: 17.5 } },
+    // Pad approach split (z 262..280): center strip (primary drop + hop +
+    // pad run) + lane-0 side strip (alternate weave) — lane-2 side is void.
+    { center: { x: 0, y: -0.5, z: 271 }, halfExtents: { x: 1.6, y: 0.5, z: 9 } },
+    { center: { x: 2.6, y: -0.5, z: 271 }, halfExtents: { x: 2, y: 0.5, z: 9 } },
+    // Pad-split floor (top 0, z 280..312): the alternate LOW spike weave
+    // runs here while the primary pad flight passes overhead.
+    { center: { x: 0, y: -0.5, z: 296 }, halfExtents: { x: 5.4, y: 0.5, z: 16 } },
+    // MID deck after the pad (top 4.5, z 280..312) NARROWED to lanes 1+2
+    // over the LOW branch: slab spans y 2..4.5, 2 u run-under corridor.
+    { center: { x: -1, y: 3.25, z: 296 }, halfExtents: { x: 2.2, y: 1.25, z: 16 } },
     { center: { x: 6.5, y: 1, z: 288 }, halfExtents: { x: 1, y: 1, z: 1 } },
     { center: { x: -6.5, y: 1, z: 296 }, halfExtents: { x: 1, y: 1, z: 1 } },
     { center: { x: 6.5, y: 1, z: 304 }, halfExtents: { x: 1, y: 1, z: 1 } },
-    // HIGH island reached via ps-pad-ridge (no stairs — jump rhythm
-    // overshoots short treads, so the pad flies the whole rise).
-    // HIGH island (top 8, z 312..330) + overhang ceiling (bottom 11).
-    { center: { x: 0, y: 6, z: 321 }, halfExtents: { x: 2.6, y: 2, z: 9 } },
+    // HIGH island (top 8, z 312..330) NARROWED + overhang ceiling (bottom 11).
+    { center: { x: 0, y: 6, z: 321 }, halfExtents: { x: 1.6, y: 2, z: 9 } },
     { center: { x: 0, y: 12, z: 321 }, halfExtents: { x: 5.4, y: 1, z: 9 } },
-    // HIGH landing (top 8, z 340..347) after the required 10 u orb gap
-    // (a plain jump falls short — the orb is mandatory, no teeter save).
-    { center: { x: 0, y: 7.5, z: 343.5 }, halfExtents: { x: 2.6, y: 0.5, z: 3.5 } },    // MID drop slab (top 4.5, z 347..360) FLOATING over the LOW route:
-    // slab spans y 2..4.5, leaving a 2 u corridor underneath (fits the
-    // 1.1 player running, never jumping, below).
-    { center: { x: 0, y: 3.25, z: 353.5 }, halfExtents: { x: 2.6, y: 1.25, z: 6.5 } },
+    // HIGH landing (top 8, z 340..347) NARROWED after the required orb gap.
+    { center: { x: 0, y: 7.5, z: 343.5 }, halfExtents: { x: 1.6, y: 0.5, z: 3.5 } },
+    // MID drop slab (top 4.5, z 347..360) NARROWED over the LOW route.
+    { center: { x: 0, y: 3.25, z: 353.5 }, halfExtents: { x: 1.6, y: 1.25, z: 6.5 } },
     { center: { x: 4, y: 1, z: 350 }, halfExtents: { x: 0.5, y: 1, z: 1 } },
     { center: { x: -4, y: 1, z: 357 }, halfExtents: { x: 0.5, y: 1, z: 1 } },
-    // LOW ground route beneath the HIGH line (stacked crossing).
+    // LOW ground route beneath the HIGH line (kept full — the M9 doors
+    // hold lanes 1+2 statically; the primary center fall lands here).
     { center: { x: 0, y: -0.5, z: 319 }, halfExtents: { x: 5.4, y: 0.5, z: 7 } },
     { center: { x: 0, y: -0.5, z: 335 }, halfExtents: { x: 5.4, y: 0.5, z: 9 } },
     { center: { x: 0, y: -0.5, z: 353 }, halfExtents: { x: 5.4, y: 0.5, z: 9 } },
     // LOW runway to the void (top 0, z 360..378 — meets the drop slab).
-    { center: { x: 0, y: -0.5, z: 369 }, halfExtents: { x: 5.4, y: 0.5, z: 9 } },    // Far runway (top 0, z 408..430).
-    { center: { x: 0, y: -0.5, z: 419 }, halfExtents: { x: 5.4, y: 0.5, z: 11 } },
+    { center: { x: 0, y: -0.5, z: 369 }, halfExtents: { x: 5.4, y: 0.5, z: 9 } },
+    // Far runway (top 0, z 408..430) NARROWED with discipline teeth.
+    { center: { x: 0, y: -0.5, z: 419 }, halfExtents: { x: 1.6, y: 0.5, z: 11 } },
     // Skybridge side pools containment.
     { center: { x: -8.5, y: -4.5, z: 240 }, halfExtents: { x: 3.5, y: 0.5, z: 45.5 } },
     { center: { x: -11.625, y: -2.25, z: 240 }, halfExtents: { x: 0.375, y: 0.75, z: 45.5 } },
@@ -852,64 +878,35 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
   ],
 
   hazards: [
-    // ================= ACT 1 =================
-    // Weave gates on the MID deck (paired killFront posts, 2.6 u doors).
-    // One lane change per door (a double needs ~7 u the deck rhythm can't
-    // give at speed): z 66: door lane 2. z 78: door lane 1. z 88: door
-    // lane 0. Every door still forces a change — alternating 2/1/0.
-    { kind: 'killFront', visual: 'block', center: { x: 0, y: 6, z: 66 }, halfExtents: { x: 1.3, y: 1.5, z: 0.5 } },
-    { kind: 'killFront', visual: 'block', center: { x: 3.35, y: 6, z: 66 }, halfExtents: { x: 2.05, y: 1.5, z: 0.5 } },
-    { kind: 'killFront', visual: 'block', center: { x: 3.35, y: 6, z: 78 }, halfExtents: { x: 2.05, y: 1.5, z: 0.5 } },
-    { kind: 'killFront', visual: 'block', center: { x: -3.35, y: 6, z: 78 }, halfExtents: { x: 2.05, y: 1.5, z: 0.5 } },
-    { kind: 'killFront', visual: 'block', center: { x: 0, y: 6, z: 88 }, halfExtents: { x: 1.3, y: 1.5, z: 0.5 } },
-    { kind: 'killFront', visual: 'block', center: { x: -3.35, y: 6, z: 88 }, halfExtents: { x: 2.05, y: 1.5, z: 0.5 } },
-    // Catcher-island spike (forces the immediate hop).
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 108 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    // M9 funnel: the catcher road is lane-1 discipline (the driver holds
-    // center 104–118) — lanes 0+2 carry teeth.
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 112 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 112 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    // M9 funnel: the 118–126 weave sits on lane 2 — lanes 0+1 carry teeth
-    // (the transit at x≈−1.3 never touches the lane-1 tooth).
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 122 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 122 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    // M9 funnel: post-weave road back on lane 1 — lanes 0+2 carry teeth.
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 130 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 130 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 134 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 134 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    // Post-river spikes (alternating lanes + the M9 lane-1 double:
-    // 160 + 164 cleared by the 147 + 157.5 jump pair inside the envelope —
-    // the second takeoff sits 1.95 u before the first spike face so the
-    // rising box clears its top before the swept overlap begins).
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 150 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 156 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // ================= ACT 1 (M9.1 rebuild) =================
+    // Sky-pier hop spike + center tooth (forces the drop-side lane — the
+    // tooth sits 6 u past its tap so the lateral transit completes first).
+    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 4.75, z: 89 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 4.75, z: 101 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Catcher spikes (force the immediate double transfer A → B → road).
+    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 109.3 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 118.5 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Jog hop spike (on the offset line — takeoff keeps 2 u lead, and the
+    // flight lands on the takeoff strip with room for the river takeoff).
+    { kind: 'hazard', visual: 'spike', center: { x: -1.3, y: 0.25, z: 130 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Kept proving double (160 + 164, jumps 147 + 157.5 inside the
+    // envelope — the combo both routes must execute).
     { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 160 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 164 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
 
-    // ================= ACT 2 =================
-    // MID traverse spikes (center rhythm hops for the elevated line;
-    // the LOW road passes underneath, unaffected).
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 4.75, z: 248 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 4.75, z: 258 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    // LOW road spike (alternate weaves here — open sky, never under the
-    // floating traverse, so the jump never head-bumps into it).
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 230 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    // M9 funnel: the LOW road under the traverse holds lane 0 (alternate
-    // data, hopping 242/256 — the flights clear the teeth laterally AND
-    // vertically; the primary traverse runs overhead).
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 248 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 248 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 258 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 258 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    // LOW branch weave spikes (open sky before the floating deck — the
-    // alternate stays lane 0 throughout, hopping the lane-0 spike).
+    // ================= ACT 2 (M9.1 rebuild) =================
+    // Entry chain + stairs: clean precision (transfers + risers are the
+    // challenge; no spikes on the takeoff/landing spots).
+    // Alternate stair-drop combo (lane 0): drop-jump off stair 1, hop,
+    // teeth dodge + forced return, side-strip hop — every tap answers
+    // geometry (the shared center hop spike forces the lane-0 return).
+    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 257 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 260 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Pad-approach hops: center strip (shared) + lane-0 side strip.
     { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 266 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 272 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 278 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    // M9 funnel: the LOW weave runs lane 0 (alternate data) — lanes 1+2
-    // carry teeth where the alternate is grounded or high above the
-    // flight (the primary pad flight passes overhead, y 4.7+).
+    // Split-zone teeth (lanes 1+2 — the alternate holds lane 0, the
+    // primary pad flight passes overhead, y 4.7+).
     { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 274 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 274 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 282 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
@@ -923,22 +920,14 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 298 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 306 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 306 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    // MID deck spikes (the elevated line) + M9 funnel teeth on the
-    // off-driver lanes (driver: lane 1 at 284, lane 2 at 294).
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 4.75, z: 290 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 4.75, z: 300 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 4.75, z: 284 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // MID deck spikes (narrowed deck serves lanes 1+2 — off-deck M9 teeth
+    // removed; on-deck timing kept. Driver: lane 1 at 284, lane 2 at 294).
     { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 4.75, z: 284 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 4.75, z: 294 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: 0, y: 4.75, z: 294 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    // HIGH traverse spike (under the overhang — jump timing) + M9
-    // funnel teeth (driver holds center; the 319 flight clears 326 high;
-    // the ridge flight clears 316 high; the LOW line runs underneath).
+    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 4.75, z: 300 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // HIGH spike (narrowed island — single timing under the overhang; the
+    // 319 flight clears it, then the gap takeoff).
     { kind: 'hazard', visual: 'spike', center: { x: 0, y: 8.25, z: 322 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 8.25, z: 316 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 8.25, z: 316 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 8.25, z: 326 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 8.25, z: 326 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     // LOW ground-route spikes (beneath the HIGH line) + the M9 lane-0
     // commitment teeth (alternate data: lane 0 throughout 312–360 —
     // grounded at 324/336/350, so full-height doors punish deviation
@@ -948,9 +937,14 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     { kind: 'killFront', visual: 'block', center: { x: -1.3, y: 1.5, z: 324 }, halfExtents: { x: 2.6, y: 1.5, z: 0.5 } },
     { kind: 'killFront', visual: 'block', center: { x: -1.3, y: 1.5, z: 336 }, halfExtents: { x: 2.6, y: 1.5, z: 0.5 } },
     { kind: 'killFront', visual: 'block', center: { x: -1.3, y: 1.5, z: 350 }, halfExtents: { x: 2.6, y: 1.5, z: 0.5 } },
-    // Far runway weave.
+    // Far runway (narrowed strip): hop pair + discipline teeth (the ferry
+    // recenter holds center; deviation meets teeth).
     { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 414 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 422 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 426 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 418 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 418 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 424 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 424 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     // M9 funnel: HIGH-drop + ferry-approach discipline (primary falls
     // center 356–368, both lines settle after; the falling line clears
     // every tooth vertically, the settled lines hold their lanes).
@@ -960,10 +954,7 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 362 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 370 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 376 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    // M9 funnel: HIGH landing discipline (driver holds center through the
-    // orb-gap landing) — lanes 0+2 carry teeth.
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 8.25, z: 344 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 8.25, z: 344 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // HIGH landing narrowed (1-lane) — no teeth needed, support holds it.
 
     // ================= ACT 3 =================
     // Maze walls (single blocking slab each — fast reads at speed).

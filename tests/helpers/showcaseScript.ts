@@ -102,15 +102,19 @@ export class ShowcaseDriver {
 
   constructor(variant: 'primary' | 'alternate' = 'primary', opts: { laneLazy?: boolean } = {}) {
     // Shared trunk jumps (acts 1/4/5/6-exit/7-run/9).
+    // M9.1 ACT 1: island chain + offset stairs + pier hop + shaft
+    // double-transfer + slalom weave + river + kept double + exit drop.
+    // (withJump transfers live in trunkTaps, not here — one edge each.
+    // Pop-over takeoffs keep ≥ 2 u lead before the spike face — the rise
+    // needs ~0.6 u to clear a 0.5 top.)
     const trunkJumps = [
-      18, // A1 entry gap
-      36, 43, 53, // A1 stairs + step-to-deck (early takeoffs: land mid-tread
-      // with room for the next 1.5 riser — the frozen jump envelope needs
-      // ~3 u of run-up per riser)
-      104, // A1 catcher hop (spike 108)
-      138, // A1 river
+      2.5, 76, 86.3, 127.5, 138.5,
       // M9 post-river double (lane-1 spikes 160 + 164 — two takeoffs).
-      147, 157.5,
+      147, 157.5, 172.3,
+      // M9.1 ACT 2 shared: island chain (takeoffs ≥ 0.7 u post-landing)
+      // + far-runway second hop. (The pad hop is primary-only — the
+      // alternate would waste it mid-air over its own later hop.)
+      186, 224, 424,
       728, // A4 floor spike
       756.5, 766.5, // A4 ceiling spikes
       769, // A4 ceiling gap
@@ -131,8 +135,8 @@ export class ShowcaseDriver {
     ];
     const primaryJumps = [
       ...trunkJumps,
-      // ACT 2 islands + stairs + HIGH orb line.
-      172.5, 182.5, 192.5, 202.5, 211.5, 221.5, 234,
+      // M9.1 ACT 2 HIGH orb line (entry chain + stairs are trunk-shared).
+      263, // pad hop (lands on the pad → MID deck)
       319, // HIGH spike
       329, // HIGH gap takeoff (orb 333.5 fires mid-flight)
       333, // orb press edge inside the window
@@ -143,8 +147,6 @@ export class ShowcaseDriver {
       459.5, 469.5, 489.5, 499.5, 559, 583, 623,
       // ACT 3 upper rhythm hops.
       597, 609,
-      // ACT 2 traverse rhythm hops.
-      245.5, 255.5,
       // ACT 8 HIGH deck (approach hop + two orb gaps + lift exit — orb
       // presses track their windows: A mid-window, B mid-window).
       1503.5, 1542, 1545.8, 1558, 1560.5, 1577.5, 1587,
@@ -153,8 +155,9 @@ export class ShowcaseDriver {
     ];
     const alternateJumps = [
       ...trunkJumps.filter((z) => z !== 1550.5),
-      172.5, 182.5, 192.5, 202.5, 212.5, 227.5, 270, // islands + gap hop + LOW road
-      242, 256, // LOW road rhythm hops (open slabs)
+      244, // drop-jump off stair 1 (lands LOW road)
+      254.5, // lane-0 hop (spike 257)
+      269.5, // side-strip hop (lane-0 spike 272)
       313, 326, 338.5, // LOW ground-route spike rhythm (lane-neutral hops)
       376, // ferry board jump
       401, // ferry exit jump
@@ -167,16 +170,31 @@ export class ShowcaseDriver {
       1633, 1642, 1651, 1660.5, 1767.5,
     ];
     const trunkTaps: TapAction[] = [
-      // A1 weave doors (alternating 2/1/0 — one change per door).
-      { atZ: 60, dir: 'right' },
-      { atZ: 69, dir: 'left' },
-      { atZ: 81, dir: 'left' },
-      // Deck-end drop: combined jump + recenter — the catcher island is
-      // center-only (x ±1.3), so the flight carries the lane back to 1.
-      { atZ: 89, dir: 'right', withJump: true },
-      // A1 catcher-road weave (open road; 1 → 2 → 1, islands run center).
-      { atZ: 118, dir: 'right' },
-      { atZ: 126, dir: 'left' },
+      // M9.1 A1 island/stair/pier/shaft transfers (jump + steer combined —
+      // the plain-jump list above carries no lateral edge for these).
+      { atZ: 13.5, dir: 'right', withJump: true }, // B → C (lane 2)
+      { atZ: 24.5, dir: 'left', withJump: true }, // C → D (lane 0, first)
+      { atZ: 25.5, dir: 'left' }, // C → D (second edge)
+      { atZ: 35.5, dir: 'right', withJump: true }, // D → funnel (center)
+      { atZ: 49.5, dir: 'left', withJump: true }, // funnel → tread 1 (apex on the face)
+      { atZ: 63.5, dir: 'right', withJump: true }, // tread 1 → tread 2
+      { atZ: 64.5, dir: 'right' }, // tread 2 (second edge, mid-flight)
+      { atZ: 70, dir: 'left' }, // bridge prep (mid-flight recenter)
+      { atZ: 95.5, dir: 'right' }, // pier tooth → drop-side lane (no jump)
+      { atZ: 107.5, dir: 'left', withJump: true }, // catcher A → B
+      { atZ: 108.5, dir: 'left' }, // catcher B (second edge)
+      { atZ: 116.8, dir: 'right', withJump: true }, // catcher B → road (rhythm: rise before the face)
+      { atZ: 126, dir: 'right' }, // jog out (offset span)
+      { atZ: 130.5, dir: 'left' }, // jog back mid-flight (lands centered)
+      // M9.1 ACT 2 shared island transfers (both variants climb the chain
+      // identically; the split comes at the stairs).
+      { atZ: 195.5, dir: 'right', withJump: true }, // i1 → i2 (lane 2)
+      { atZ: 205, dir: 'left', withJump: true }, // i2 → i3 (first)
+      { atZ: 206, dir: 'left' }, // i2 → i3 (second edge, mid-flight)
+      { atZ: 214.5, dir: 'right', withJump: true }, // i3 → i4 (center)
+      // M9.1 shared stair-1 climb (both variants ascend; primary continues
+      // to stair 2, alternate drops off the end to the LOW weave).
+      { atZ: 234.5, dir: 'left', withJump: true }, // landing → stair 1
       // A4 ceiling spike weaves (lane 2, then lane 1 for the last).
       { atZ: 750, dir: 'right' },
       { atZ: 782, dir: 'left' },
@@ -228,6 +246,11 @@ export class ShowcaseDriver {
     ];
     const primaryTaps: TapAction[] = [
       ...trunkTaps,
+      // M9.1 A2 stair-2 climb (primary only — alternate drops off stair 1
+      // to the LOW weave). Then recenter for the center-strip drop.
+      { atZ: 245, dir: 'right', withJump: true }, // stair 1 → stair 2
+      { atZ: 246, dir: 'right' }, // stair 2 (second edge, mid-flight steer)
+      { atZ: 256, dir: 'left' }, // drop recenter (lands center strip)
       // A2 MID deck spikes.
       { atZ: 286, dir: 'right' },
       { atZ: 296, dir: 'left' },
@@ -247,8 +270,10 @@ export class ShowcaseDriver {
     ];
     const alternateTaps: TapAction[] = [
       ...trunkTaps,
-      // A2 LOW split (land the LOW road, then slide clear of the pad).
-      { atZ: 215, dir: 'left' },
+      // M9.1 A2 stair-drop combo: teeth dodge + forced lane-0 return for
+      // the side-strip hop (the shared center hop spike threatens lane 1).
+      { atZ: 255.5, dir: 'right' }, // dodge teeth 260 (lane 1)
+      { atZ: 262, dir: 'left' }, // return lane 0 (spike 266 threatens center)
       // A2 LOW road weave (open road, lane-neutral pair).
       { atZ: 285, dir: 'left' },
       { atZ: 297, dir: 'right' },
@@ -299,7 +324,8 @@ export class ShowcaseDriver {
     // NOTE: the A1 drop chamber needs NO fast-fall (the natural fall
     // lands the catcher; holding down drives into its face).
     // The maw-exit dive is shared trunk (both variants fall 1614 → slab).
-    const trunkFF: Array<[number, number]> = [[1613, 1618]];
+    // M9.1 A1: pier-end shaft drop + exit-strip drop (deliberate falling).
+    const trunkFF: Array<[number, number]> = [[102, 105], [168, 170.5], [257.5, 260], [1613, 1618]];
     this.fastFallRanges = variant === 'primary'
       ? [...trunkFF, [359, 364], [1572, 1580]]
       : [...trunkFF];
