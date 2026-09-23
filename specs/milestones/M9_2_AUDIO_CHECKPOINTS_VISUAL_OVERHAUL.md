@@ -132,3 +132,33 @@ untouched. Visual: richer surfaces, stronger palettes, denser world, less
 black, stronger depth/particles/rays/lightning/rhythm response,
 readability + lava preserved. QA: verify green, all browser gates green,
 replay VERIFIED, perf documented.
+
+## As-built (engineering record)
+
+- Audio root cause: `startAt()` never called any source→gain connection
+  (no such method existed) — proven by reading the code, fixed behind
+  `engine.connectSourceToGain`, pinned by order-log + fail-loud tests.
+  Browser: graphReady true, effectiveGain 0.9, buffer 121.573875 s.
+- Checkpoints: `SimulationCheckpointSnapshot` owns the audited full
+  state; platform poses recompute from the restored tick; detection runs
+  only when armed (classic bit-identity pinned incl. the DESCENT
+  13799-tick both-route anchor); 8 gates at sampled grounded cube states
+  (FORGE 170 / SKYBRIDGE 395 ferry / LABYRINTH 705 / CATHEDRAL 921.5 /
+  FOUNDRY 1100 / REACTOR 1325 / TEMPLE 1502 / CORE 1620); camera reuses
+  the dead→running snap; music re-seeks via `restartMusicForSimTime`.
+- Visual: abyss floor y=−13.5 (below the void bound), 240 motes
+  (opacity 0.55, size 0.28), 14 tinted bolts, 44 towers / 28 walls,
+  portal breathing ±4%, crystals on shared assets. Lava, bloom, exposure,
+  player/hazard identities untouched. Measured: library 47 materials /
+  9 geometries, 69 scene children; draw calls remain dominated by
+  pre-existing per-mesh route dressing (M9.2 adds ~30: 28 crystal meshes
+  + abyss + motes). Real-GPU verdict stays a human gate.
+- Known staging notes: pause-freezing clusters the trail into a
+  bloom-heavy ball (still artifact, not product); ship + gate + trail can
+  stack brightly mid-transition (pre-existing ship look, flagged for the
+  human visual gate); teleport shortcuts compress checkpoint music
+  anchors in QA (mechanism proven by anchor-equality + exact headless
+  elapsed restore).
+- Gates: `npm run verify` green (635 tests); `browser-qa-m92.mjs` 16/16
+  PASS. OPEN: HUMAN AUDIBLE MUSIC PASS (can you hear Gravity Lessons?),
+  human checkpoint feel, human visual gate, real-GPU perf.

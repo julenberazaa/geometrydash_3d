@@ -624,6 +624,49 @@ proves cross-cap determinism in-gate). Automation proves completable, never
 fun — do NOT mark PASS until the human plays it with sound on (HUMAN AUDIBLE
 MUSIC PASS + HUMAN M9.1 gameplay gate both OPEN).
 
+## M9.2 — Audio root-cause fix + checkpoint practice mode + visual overhaul: ENGINEERING COMPLETE / HUMAN AUDIO + CHECKPOINT + VISUAL GATE OPEN (feature/m9-2-audio-checkpoints-visual-overhaul, NOT merged)
+
+M9.1 gameplay HUMAN-APPROVED (no route redesign). Three goals:
+
+Audio (root cause PROVEN by audit, not inferred): `MusicDirector.startAt()`
+created the buffer source AND the gain, connected gain → destination, and
+started the source — but NEVER connected source → gain (the interface
+exposed no connection at all). Transport stayed green while nothing could
+reach the speakers — the exact human symptom. Fix: every live voice now
+satisfies BUFFER SOURCE → MASTER GAIN → DESTINATION, wired in that order
+BEFORE `start()` via `engine.connectSourceToGain` (real nodes stay inside
+`WebAudioEngine`; wiring failure aborts loud, never silent `playing`);
+`MusicProbe` + `__gd3d` carry `sourceCreated/sourceConnected/
+gainConnected/effectiveGain/graphReady`; `tests/musicDirector.test.ts`
+proves the wiring order structurally (fails on the old silent-`playing`
+behavior). Browser gate `scripts/browser-qa-m92.mjs` 16/16 green incl.
+the structural graph assertion (source + gain connected, 0.9, ready,
+buffer ≈ 121.57 s). HUMAN AUDIBLE MUSIC PASS stays open (only ears prove
+speakers).
+
+Checkpoints: CLASSIC RUN vs CHECKPOINT RUN selector on the start gate
+(one click = mode + audio unlock + start; Space/bare click = classic,
+C/2 = checkpoint). Eight authored gem/crystal gates (FORGE/SKYBRIDGE/
+LABYRINTH/CATHEDRAL/FOUNDRY/REACTOR/TEMPLE/CORE — sampled grounded cube
+states, both reference routes activate 8/8 with the 13799-tick anchor
+preserved). Sim-owned atomic snapshots (position/velocity, grounded,
+support, lane, gravity, mode, speed, all one-shot sets, Chompers,
+platform tick with pose re-derivation, elapsed anchor); death
+auto-respawns from the latest; music re-seeks to the checkpoint time;
+camera snaps via the existing dead→running edge; R = checkpoint,
+Shift+R = full restart; session-scoped; F4 stays classic (checkpoint runs
+are practice, finish shows PRACTICE COMPLETE). `npm run verify` green
+(635 tests incl. 13 new `checkpoints` + 3 new structural audio).
+
+Visual: abyss floor (biome-tinted bed below the void bound), 240 biome
+motes, lightning 10 → 14 with per-bolt biome tint, architecture 30 → 44
+towers / 20 → 28 walls (still one instanced draw), portal-ring energy
+breathing, checkpoint crystals (shared gem + idle/active materials +
+pooled bursts). Lava untouched. Library 40 → 47 materials (+7 checkpoint),
+8 → 9 geometries (+1 gem); per-biome `qa/screenshots/m92-biome-*` stills
+vs the m91 set. Real-GPU perf verdict stays a human gate (draw calls are
+dominated by pre-existing per-mesh route dressing; M9.2 adds ~30).
+
 ## M9 — Gravity Lessons rhythm polish: ENGINEERING COMPLETE / HUMAN MUSIC-RHYTHM GAMEPLAY GATE OPEN (feature/m9-gravity-lessons-rhythm-polish, NOT merged)
 
 Human M8.6 verdict: POSITIVE after the camera corrective pass (level

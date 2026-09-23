@@ -18,7 +18,29 @@ Product priority order (applies to every tradeoff):
 Automatic forward motion through a 3D track. Deterministic precision gameplay:
 instant death on mistakes, fast restart (<~500 ms feel), memorable
 data-driven levels. Lanes instead of free horizontal movement. No checkpoints,
-no Practice Mode initially.
+no Practice Mode initially (M9.2 adds an explicit opt-in practice mode —
+see §1.1; classic runs keep the original no-checkpoint contract).
+
+## 1.1 Practice checkpoints — CURRENT (M9.2)
+
+THE DESCENT offers two run modes behind a minimal start selector
+(CLASSIC RUN / CHECKPOINT RUN — one click also unlocks audio and starts
+the run; `Space`/bare click defaults to classic, `C`/`2` picks
+checkpoint):
+
+- **CLASSIC RUN:** the original contract — death restarts from the level
+  origin, replays verify tick-for-tick, completions are official.
+- **CHECKPOINT RUN (practice):** visible floating gem/crystal gates (one
+  per major segment, ~8 across THE DESCENT) save deterministic progress
+  when crossed. The next death auto-respawns from the latest activated
+  crystal — position, velocity, gravity, player mode, speed, lane intent,
+  used portals/pads/orbs, Chomper phases, moving-platform phase and music
+  time all restored — with the camera snapping to the revived pose. With
+  no crystal reached, death restarts from the origin. `R` restarts from
+  the current checkpoint, `Shift+R` fully restarts (progress cleared).
+  Checkpoint progress is session-scoped (reload resets it); checkpoint
+  runs are never official completions (`F4` replay stays classic-only;
+  finishing shows PRACTICE COMPLETE, never LEVEL COMPLETE).
 
 ## 2. The Cube — CURRENT
 
@@ -114,8 +136,10 @@ NEVER rotates and the camera NEVER rolls when gravity changes.
   cube / ship / spider ghost shell + tinted chunks that hold size, then
   core flash + shock ring + camera punch), deterministic respawn at
   start (restoring the level's start gravity mode).
-  Attempts increment exactly once per respawn/restart, never on death itself;
-  manual `R` restart is not death. `R` restarts immediately from any state.
+   Attempts increment exactly once per respawn/restart, never on death itself;
+   manual `R` restart is not death. `R` restarts immediately from any state
+   (from the level origin in classic runs; from the latest checkpoint in
+   checkpoint practice runs — see §1.1).
   Finish can never trigger after death. Falling out of bounds after a lateral
   (or forward) exit completes through this same path — side falls are never
   instant kills. A lethal step NEVER applies a gravity transition: lethal

@@ -120,7 +120,17 @@ Cube expansion engineering-complete (`?level=advanced-cube-01`: harder
 62.125 s Cube level with LOW/MID/HIGH bands, one teleport portal pair,
 guardian setpiece, eight visual scenes, verified replay, 349/349 tests) —
 HUMAN ADVANCED-CUBE GATE OPEN. M6D
-real-GPU closeout intentionally pending (M7.1 is its workload).
+real-GPU closeout intentionally pending (M7.1 is its workload). M9.2
+(audio root-cause fix + checkpoint practice mode + visual overhaul,
+`feature/m9-2-audio-checkpoints-visual-overhaul`): every live music
+voice is now wired source → gain → destination before start (structural
+test + browser graph assertion; human audible gate still open); THE
+DESCENT starts behind a CLASSIC / CHECKPOINT mode selector with 8
+crystal checkpoints (sim-owned atomic snapshots, music re-seek, camera
+snap, R/Shift+R semantics, session-scoped practice never stored as
+replay); abyss floor, biome motes, tinted lightning, denser
+architecture, portal breathing (spec:
+`specs/milestones/M9_2_AUDIO_CHECKPOINTS_VISUAL_OVERHAUL.md`).
 
 ## Setup
 
@@ -161,11 +171,13 @@ Individual: `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`.
 | `↑` | Jump | Fast-fall (airborne) |
 | `↓` | Fast-fall (airborne) | Jump |
 | `←` / `→` | Lane target (one press = one lane, provisional) | Same — never mirrored |
-| `R` | Instant restart | Instant restart (back to start gravity + speed) |
+| `R` | Instant restart | Instant restart (back to start gravity + speed; checkpoint runs restart from the latest crystal) |
+| `Shift+R` | (classic: same as `R`) | Checkpoint runs: full origin restart, progress cleared |
+| `C` / `2` | Start a CHECKPOINT RUN from the mode selector | Same |
 | `P` | Pause | Pause |
 | `M` | Mute music (presentation only) | Same |
 | `F1` / `F2` / `F3` | Debug stats / collider wireframes / player hitbox | Same |
-| `F4` | Replay the last completed attempt (input ignored during playback) | Same |
+| `F4` | Replay the last completed attempt (input ignored during playback; classic runs only — checkpoint runs are practice) | Same |
 
 Interactions (M4): yellow pads launch on contact (no input); yellow orbs
 grant a mid-air jump on a Space/arrow press inside their window; blue orbs

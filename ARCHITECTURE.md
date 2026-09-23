@@ -11,9 +11,15 @@ main.ts → Game (composition root)
   Game → InputSystem → GameSimulation → { CubeController, CollisionWorld, LevelRuntime }
   Game → ReplayCoordinator → GameSimulation (M5: recording/playback orchestration ABOVE the sim)
   Game → MusicDirector → Web Audio output (M9: presentation-owned transport;
-    audio FOLLOWS sim time, never drives it — §10)
-  Game → RendererHost → { LevelView, PlayerView, EnvironmentView, DebugView, ChaseCamera }
-  Game → Hud, DebugOverlay
+    audio FOLLOWS sim time, never drives it — §10; M9.2: every live voice
+    satisfies BUFFER SOURCE → MASTER GAIN → DESTINATION, wired via
+    engine.connectSourceToGain BEFORE start — structural test + graphReady)
+  Game → RendererHost → { LevelView, PlayerView, EnvironmentView, DebugView, ChaseCamera, CheckpointView (M9.2) }
+  Game → Hud (M9.2: mode selector + checkpoint progress), DebugOverlay
+  Game owns the M9.2 run mode (classic/checkpoint): sim flag + crystal
+  visibility + checkpoint-aware music re-seek + R/Shift+R semantics.
+  Checkpoint snapshots live in GameSimulation (capture/restore); Game
+  never constructs them.
 ```
 
 Hard boundary: **simulation never imports Three.js, DOM, or CSS.**
@@ -169,6 +175,9 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   `speedPortals` (id + crossing Z + multiplier tier), `jumpPads`
   (trigger volume + mount surface + explicit impulse), `jumpOrbs` /
   `gravityOrbs` (activation window AABBs, orbs add an impulse),
+  `checkpoints?` (M9.2: id + displayName + trigger center/halfExtents;
+  HUD displayName is presentation-only and fingerprint-excluded, like
+  teleport `style` / hazard `visual`+`mount`),
   `teleportPortals?` (M7.2: id + entry Z + exit + exit lane; `style` is
   presentation-only, never fingerprinted), `movingPlatforms?` (M8.6: id +
   base + halfExtents + axis x|y + amplitude + periodTicks + phaseTicks;
@@ -188,8 +197,10 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   from real forward distance. `LoadedLevel` also exposes the indexed
   interaction lists (`jumpPads`, `jumpOrbs`, `gravityOrbs`, Z-sorted
   `speedPortals`, entryZ-sorted `teleportPortals`) that `GameSimulation`
-  processes. `movingPlatforms` rides in definition order (no trigger
-  sorting — poses are pure tick functions). M8A lethal lava volumes register as `lava-<id>` hazard-kind
+  processes.   `movingPlatforms` rides in definition order (no trigger
+  sorting — poses are pure tick functions). `checkpoints` (M9.2) rides in
+  definition order (HUD progress + fingerprint order; empty when absent).
+  M8A lethal lava volumes register as `lava-<id>` hazard-kind
   colliders through the SAME hazard pathway (no second lethal engine;
   the `lava-` prefix tags the `lava` death cause) — see
   `lavaAuthoring.ts` for the sourced/contained authoring contract. M8B
@@ -357,7 +368,32 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   so live edges can never leak across a replay. Owns the non-gameplay keys
   `R` (abort playback / discard partial tape + restart) and `F4` (replay
   the last completed attempt), and pushes the coordinator badge to the HUD
-  every frame.
+  every frame. M9.2 run mode (still no gameplay logic): owns
+  classic/checkpoint selection (selector buttons / Space+C+1+2 / bare
+  click), applies it via `sim.setCheckpointRespawnEnabled` +
+  `rendererHost.setCheckpointsVisible`, re-seeks music to the checkpoint
+  sim time on checkpoint restores (`restartMusicForSimTime`), routes
+  `Shift+R` to `sim.restartRun()` (full origin restart, progress cleared),
+  guards `F4` to classic runs, and shows PRACTICE COMPLETE (discarding the
+  partial tape — checkpoint runs are never official completions).
+- `SimulationCheckpointSnapshot` (M9.2, `GameSimulation`): the ONE
+  deterministic resume representation — position/prev/velocity, grounded,
+  support id, lane intent, authoritative gravity + player mode, speed
+  multiplier, all four one-shot sets, Chomper states + swept prevs,
+  platform TICK (poses/carriage/colliders recompute from it — never
+  stored), elapsed sim time, debug/VFX continuity records + counters.
+  `captureCheckpointState()` / `restoreCheckpointState()` are sim-owned
+  (presentation never constructs snapshots); progress (activated ids +
+  active id + per-id snapshots) is run-scoped, survives checkpoint
+  restores, clears ONLY on `restartRun()`. Detection (`processCheckpoints`,
+  swept-volume, once per id per run, after every gameplay mutation)
+  runs ONLY when checkpoint mode is armed — classic trajectories are
+  bit-identical (pinned by the `checkpoints` isolation test + the DESCENT
+  13799-tick both-route anchor). `respawn()` routes to the latest snapshot
+  when armed; attempts still +1 per restore; checkpoint progress is
+  session state, never in the state hash (checkpoint runs are not
+  ReplayV1); checkpoint defs ARE level-fingerprinted conditionally
+  (`checkpoints:v1`, zero bytes when absent — golden fixture untouched).
 
 ## 7.1 Replay (`src/replay/`, M5)
 
@@ -649,11 +685,47 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   dt 0 freezes with pause). Composed into the timeline base look by
   `RendererHost.applyVisualState` (bloom/exposure/environment/beams/VFX
   legs, all re-clamped; beams retint in the section accent = automatic
-  biome response), BELOW the event-punch overlay; trigger-owned
+  biome response), BELOW the event-punch overlay;   trigger-owned
   (`?triggers=off` silences it), music-level-gated (trackless levels
   bit-identical), `?music=off`-independent (authored rhythm, not heard
   audio). M9 `impact` event-punch family (warm red, Chomper-lunge edges)
   joins the same overlay.
+- `MusicDirector` graph contract (M9.2 — the M9/M9.1 silence root cause):
+  `startAt()` created the source AND the gain, connected gain →
+  destination, and started the source WITHOUT ever connecting source →
+  gain (the interface exposed no connection at all), so transport stayed
+  green while nothing could reach the speakers. Now every live voice
+  satisfies BUFFER SOURCE → MASTER GAIN → DESTINATION, wired in that
+  order BEFORE `start()` via `engine.connectSourceToGain` (real nodes stay
+  inside `WebAudioEngine` behind wrapper→node maps; fakes record the
+  order); wiring failure aborts loud (`failed`), never silent `playing`.
+  Probes: `sourceCreated/sourceConnected/gainConnected/effectiveGain` +
+  `graphReady()` (connected + gain > 0 + context running — necessary, not
+  audible proof; only the human gate proves speakers).
+- `CheckpointView` (M9.2, owned by `RendererHost`): floating gem/crystal
+  gates from level data — shared gem geometry, two shared crystal
+  materials (translucent idle / bright active), one shared halo, one fixed
+  4-material burst pool (the interaction pool is view-owned and cannot be
+  shared); polls `isCheckpointActivated`, edge-detects
+  `checkpointEventCount` for the section-accent-tinted burst + scale pop.
+  Hidden in classic runs (`setCheckpointsVisible`); empty-group rule keeps
+  checkpoint-less levels at zero extra children. Crystal visuals never
+  affect triggers (simulation-owned swept volumes).
+- `Hud` mode selector (M9.2): two buttons inside the start gate (one click
+  = mode + audio unlock + start; bare clicks/keys default classic) + a
+  run-mode badge and a `CHECKPOINT i/N — NAME` progress line. CSS keeps the
+  HUD root pointer-transparent except the gate (canvas keeps container
+  clicks; buttons stopPropagation).
+- `LevelView.updatePortals` (M9.2): outer portal rings breathe ±4% on a
+  slow z-phased sine (delta-from-build, pause freezes, trigger bounds
+  untouched). `EnvironmentView` M9.2 dressing (all cold-built, bounded):
+  abyss floor (one static biome-tinted bed at y −13.5, below the void
+  bound — 1 draw), biome motes (one 240-point rising field, per-biome
+  vertex colors, in-place wrap, pause freezes — 1 draw), lightning 10 →
+  14 bolts with per-vertex biome tint, architecture towers 30 → 44 /
+  walls 20 → 28 (still one instanced draw). Library delta: +7 materials
+  (checkpoint idle/active/halo + 4 burst) + 1 geometry (gem octahedron);
+  no new lights, no per-frame allocation.
 - `perfProfiler.ts` (`src/debug/`, M6D) — DEBUG/PERF-only frame profiler
   living ABOVE gameplay (never touches sim/input/replay): bounded
   Float64 ring (600 samples, zero hot-loop allocation, O(1) counters),
@@ -859,6 +931,25 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   band + REPLAY VERIFIED, restart/fallback/resource guards).
 - Gate: `npm run verify` = typecheck + lint + tests + build. Full:
   `npm run verify:full` adds browser QA (needs `npm run dev` + browsers).
+- `tests/checkpoints.test.ts` (M9.2, 13 tests, synthetic runway + the real
+  DESCENT): classic never activates (origin respawn), checkpoint starts at
+  origin, activate-once, latest-wins, no-checkpoint death → origin, full
+  state restore (speed/mode/lane/gravity/velocity/used sets), Chomper
+  spent/dormant round-trip, platform tick + pose re-derivation, elapsed
+  anchor + prev re-seat, classic trajectory bit-identity under detection
+  (state-hash equality), R-from-checkpoint vs `restartRun()` clearing,
+  conditional fingerprinting, and the DESCENT 8/8 activation on BOTH
+  reference routes with the 13799-tick anchor preserved.
+- `scripts/browser-qa-m92.mjs` (M9.2, 16 checks, system Chrome): asset
+  bytes, selector gate at tick 0, CLASSIC graph wired (structural:
+  sourceCreated + sourceConnected + gainConnected + effectiveGain 0.9 +
+  graphReady + buffer ≈ 121.57), checkpoint start, cp-forge 1/8, death →
+  respawn at the crystal with music re-seek to the checkpoint anchor +
+  camera snap, latest-wins, R/Shift+R, the full `?music=off` ×
+  {classic, checkpoint} matrix, fail-loud preservation, zero console/page
+  errors. Transport/graph pass ≠ human audible pass (open gate).
+- M9.2 visual evidence: `qa/screenshots/m92-biome-*` (per-biome stills,
+  local-only) + the m91 BEFORE set for comparisons.
 
 ## 10. Invariant matrix
 
@@ -957,6 +1048,8 @@ in-page eye-velocity proof (no cut) |
 | VFX pools bounded; no per-frame/per-event allocation; exact-once emission per real edge; reset on attempt/death/teleport; `?fx=off` preserves gameplay | `motionVfx` lifecycle tests + browser QA m6b section (counters, resets, resource guards, post×fx matrix) |
 | Event punch envelope peaks/decays/composes by max with family tints; contact skid grounded-only, Floor/Ceiling-relative, speed-scaled, timeline-calmed, reset-safe; worst-case event volume << burst pool; sim trigger-free; punch excluded from replays; `?triggers=off` holds the envelope at rest | `eventPunch` tests + browser QA m6c2 section (peak/tint/rest-restore proofs, skid floor+ceiling, fallback split, replay proof, 26/8/3 guards) |
 | Timeline section identity position-driven; state never accumulates/drifts; bloom ⇒ contract, exposure ⇒ 0.5..2; player/hazard stable; sequence excluded from fingerprint; sim trigger-free; transitions add zero draws/materials/geometries; `?triggers=off` restores exact base; nothing timeline in replays | `visualTimeline` tests + browser QA m6c1 section (interpolation bounds, identity pins, reset/replay proofs, 26/8/3 guards, fallback matrix) |
+| M9.2 audio output path: every live voice is source → gain → destination, wired in order before start; wiring failure fails loud, never silent `playing` | `musicDirector` structural order test + fail-loud wiring test + graphReady pins + browser QA m92 graph assertion (never TRANSPORT PASS with no output path) |
+| M9.2 checkpoints: latest-wins activation, atomic full-state restore (incl. platform tick + elapsed anchor), classic bit-identity, R = checkpoint / Shift+R = full, session-scoped, replay-isolated | `checkpoints` tests + DESCENT 8/8 both-route activation pin + browser QA m92 checkpoint section |
 | No milestone passes with failing verification | `npm run verify` + `AGENTS.md` process rule |
 
 ## 11. Known non-defects / deferred perf notes
