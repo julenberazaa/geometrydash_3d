@@ -115,7 +115,8 @@ export class ShowcaseDriver {
       756.5, 766.5, // A4 ceiling spikes
       769, // A4 ceiling gap
       786.5, // A4 ceiling spike
-      904, 913.5, // A4 gravity-orb presses (pad flight + ceiling return)
+      // M9 beat-127/129 orb windows (track the shifted orbs).
+      901.5, 915, // A4 gravity-orb presses (pad flight + ceiling return)
       913.5, // A4 shaft-exit spike
       933, // A5 ferry board
       957, // A5 ferry exit
@@ -144,8 +145,9 @@ export class ShowcaseDriver {
       597, 609,
       // ACT 2 traverse rhythm hops.
       245.5, 255.5,
-      // ACT 8 HIGH deck (approach hop + two orb gaps + lift exit).
-      1503.5, 1542, 1546.5, 1558, 1562.5, 1577.5, 1587,
+      // ACT 8 HIGH deck (approach hop + two orb gaps + lift exit — orb
+      // presses track their windows: A mid-window, B mid-window).
+      1503.5, 1542, 1545.8, 1558, 1560.5, 1577.5, 1587,
       // ACT 9 finale (island hops + boosted void-gap jump + river).
       1633, 1642, 1651, 1660.5, 1767.5,
     ];
@@ -178,8 +180,9 @@ export class ShowcaseDriver {
       // A4 ceiling spike weaves (lane 2, then lane 1 for the last).
       { atZ: 750, dir: 'right' },
       { atZ: 782, dir: 'left' },
-      // A4 left-wall rhythm (vertical lane taps on the open wall).
-      { atZ: 802, dir: 'up' },
+      // A4 left-wall rhythm (vertical lane taps on the open wall — the
+      // UP tap follows the beat-112 wall landing).
+      { atZ: 806, dir: 'up' },
       { atZ: 822, dir: 'down' },
       // A4 wall staircase (UP around y-3, DOWN before y-5.6).
       { atZ: 844, dir: 'up' },

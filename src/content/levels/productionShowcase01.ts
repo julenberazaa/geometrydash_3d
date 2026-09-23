@@ -43,8 +43,9 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
   startLaneIndex: 1,
   laneCenters: [2.6, 0, -2.6],
   baseForwardSpeed: 14,
-  // M9: the finish sits ~0.2 s past the river air — beat-230 aligned.
-  finishZ: 1788,
+  // M9: the finish sits on the beat-230 final impact (115.06 s) — tuned
+  // in 1 u steps against the reference driver (1 u ≈ 71 ms at 1×).
+  finishZ: 1790,
   deathY: -14,
   deathYMax: 14,
   // Runaway catcher (M8.2 precedent): legit play never exceeds |x| 8;
@@ -59,34 +60,37 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
   musicTrack: { audioPath: 'audio/Gravity_Lessons.mp3', trackOffset: 0 },
 
   gravityPortals: [
-    // ACT 4 spire: rapid 4-surface tour.
+    // ACT 4 spire: rapid 4-surface tour. M9: the ceiling flip lands on
+    // beat 104 (52.06 s) — the rise still lands mid-slab.
     {
-      id: 'ps-spire-up', z: 745, target: 'ceiling',
-      triggerCenter: { x: 0, y: 1.5, z: 745 },
+      id: 'ps-spire-up', z: 742.5, target: 'ceiling',
+      triggerCenter: { x: 0, y: 1.5, z: 742.5 },
+      triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
+    },
+    // M9: the wall flip lands on beat 112 (56.06 s — the breakdown
+    // downbeat). Ceiling rider line ≈ (0, 9.45): gate hangs under the slab.
+    {
+      id: 'ps-spire-wall', z: 798.4, target: 'leftWall',
+      triggerCenter: { x: 0, y: 8.4, z: 798.4 },
       triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
     },
     {
-      // Ceiling rider line ≈ (0, 9.45): gate hangs under the slab.
-      id: 'ps-spire-wall', z: 795, target: 'leftWall',
-      triggerCenter: { x: 0, y: 8.4, z: 795 },
-      triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
-    },
-    {
-      // Left-wall rider line ≈ (4.85, 3): wall-mounted gate.
-      id: 'ps-spire-right', z: 835, target: 'rightWall',
-      triggerCenter: { x: 3.9, y: 3, z: 835 },
+      // Left-wall rider line ≈ (4.85, 3): wall-mounted gate. M9: beat 117.
+      id: 'ps-spire-right', z: 833.5, target: 'rightWall',
+      triggerCenter: { x: 3.9, y: 3, z: 833.5 },
       triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
     },
     {
       // Right-wall rider line ≈ (−4.85, 0.4): mirrored wall gate.
-      id: 'ps-spire-down', z: 865, target: 'floor',
-      triggerCenter: { x: -3.9, y: 1.5, z: 865 },
+      // M9: beat 121 (60.56 s).
+      id: 'ps-spire-down', z: 861.4, target: 'floor',
+      triggerCenter: { x: -3.9, y: 1.5, z: 861.4 },
       triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
     },
-    // ACT 5 foundry: ceiling Chomper swap.
+    // ACT 5 foundry: ceiling Chomper swap. M9: beat 141 (70.56 s).
     {
-      id: 'ps-foundry-up', z: 1000, target: 'ceiling',
-      triggerCenter: { x: 0, y: 1.5, z: 1000 },
+      id: 'ps-foundry-up', z: 1001.3, target: 'ceiling',
+      triggerCenter: { x: 0, y: 1.5, z: 1001.3 },
       triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
     },
     {
@@ -94,7 +98,10 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
       triggerCenter: { x: 0, y: 8.4, z: 1030 },
       triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
     },
-    // ACT 6 abyss: sustained invert + burst.
+    // ACT 6 abyss: sustained invert + burst. M9: the revert ring rides
+    // HIGH (y 5.5 — the authored ship line crests y≈6.3 there; a low ring
+    // is skippable by altitude, which strands the revert/invert2 accents).
+    // The flips land on beats 171 (85.56 s) + 176 (88.06 s).
     {
       id: 'ps-abyss-invert', z: 1200, target: 'ceiling',
       triggerCenter: { x: 0, y: 3, z: 1200 },
@@ -102,7 +109,7 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     },
     {
       id: 'ps-abyss-revert', z: 1250, target: 'floor',
-      triggerCenter: { x: 0, y: 3, z: 1250 },
+      triggerCenter: { x: 0, y: 5.5, z: 1250 },
       triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
     },
     {
@@ -111,11 +118,12 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
       triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
     },
     {
-      id: 'ps-abyss-revert2', z: 1302, target: 'floor',
-      triggerCenter: { x: 0, y: 3, z: 1302 },
+      id: 'ps-abyss-revert2', z: 1305, target: 'floor',
+      triggerCenter: { x: 0, y: 3, z: 1305 },
       triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
     },
-    // ACT 7 spire: drop onto the left wall.
+    // ACT 7 spire: drop onto the left wall. M9: beat 191 (95.56 s) —
+    // lip-catch (the HIGH runway still grounds the flip).
     {
       id: 'ps-climb-wall', z: 1460, target: 'leftWall',
       triggerCenter: { x: 0, y: 8.5, z: 1460 },
@@ -127,7 +135,8 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
       triggerCenter: { x: 3.9, y: 3, z: 1490 },
       triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
     },
-    // ACT 9 remix: ceiling hop + wall burst.
+    // ACT 9 remix: ceiling hop + wall burst. M9: the burst pair lands on
+    // beats 221/223 (110.56/111.56 s) — rigid shift, choreography kept.
     {
       id: 'ps-remix-up', z: 1696, target: 'ceiling',
       triggerCenter: { x: 0, y: 1.5, z: 1696 },
@@ -151,14 +160,17 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     },
   ],
   speedPortals: [
+    // M9: the maze-exit burst lands on beat 99 (49.56 s) — 3 u upstream
+    // (the weave choreography is untouched; only the 1×→2× handoff moves).
     {
-      id: 'ps-speed-maze', z: 695, multiplier: 2,
-      triggerCenter: { x: 0, y: 1.5, z: 695 },
+      id: 'ps-speed-maze', z: 692, multiplier: 2,
+      triggerCenter: { x: 0, y: 1.5, z: 692 },
       triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
     },
+    // M9: spire-entry restore on beat 101 (50.56 s).
     {
-      id: 'ps-speed-spire', z: 720, multiplier: 1,
-      triggerCenter: { x: 0, y: 1.5, z: 720 },
+      id: 'ps-speed-spire', z: 723, multiplier: 1,
+      triggerCenter: { x: 0, y: 1.5, z: 723 },
       triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
     },
     // The 2× lip boosts the void-gap jump mid-flight (take off 1×).
@@ -181,41 +193,43 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     // (single-door weave walls at 2× lane-change spacing) from the lava
     // jump through the ship approach — then 1× restores for the Ship gate.
     {
-      id: 'ps-speed-foundry', z: 1038, multiplier: 2,
-      triggerCenter: { x: 0, y: 1.5, z: 1038 },
+      id: 'ps-speed-foundry', z: 1036.5, multiplier: 2,
+      triggerCenter: { x: 0, y: 1.5, z: 1036.5 },
       triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
     },
     {
-      id: 'ps-speed-approach', z: 1110, multiplier: 1,
-      triggerCenter: { x: 0, y: 1.5, z: 1110 },
+      id: 'ps-speed-approach', z: 1119, multiplier: 1,
+      triggerCenter: { x: 0, y: 1.5, z: 1119 },
       triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
     },
     // M9 musical arrangement: the climax (beats 184–224) runs the Spider
     // spire at 2× (fast snap chains on beat subdivisions) — the snaps are
     // instant surface switches, so doubling forward speed doubles musical
-    // density without changing the authored press positions.
+    // density without changing the authored press positions. M9: 2× from
+    // the runway start (beat-181 arrival) for maximum climax energy.
     {
-      id: 'ps-speed-spider', z: 1312, multiplier: 2,
-      triggerCenter: { x: 0, y: 1.5, z: 1312 },
+      id: 'ps-speed-spider', z: 1315, multiplier: 2,
+      triggerCenter: { x: 0, y: 1.5, z: 1315 },
       triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
     },
     {
-      id: 'ps-speed-void', z: 1502, multiplier: 1,
-      triggerCenter: { x: 0, y: 1.5, z: 1502 },
+      id: 'ps-speed-void', z: 1510, multiplier: 1,
+      triggerCenter: { x: 0, y: 1.5, z: 1510 },
       triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
     },
     // M9: the wall-entry fall takes the same TIME at any speed but covers
     // 2× the distance at 2× — the authored wall choreography (landing +
     // UP-tap + snap before the 1480 spike) only fits at 1×. Precision
     // window through the wall slabs, back to 2× for the floor return.
+    // M9: the window opens on beat 190 (95.06 s).
     {
-      id: 'ps-speed-wall-calm', z: 1458, multiplier: 1,
-      triggerCenter: { x: 0, y: 8.5, z: 1458 },
+      id: 'ps-speed-wall-calm', z: 1453.5, multiplier: 1,
+      triggerCenter: { x: 0, y: 8.5, z: 1453.5 },
       triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
     },
     {
-      id: 'ps-speed-wall-burst', z: 1492, multiplier: 2,
-      triggerCenter: { x: 0, y: 1.5, z: 1492 },
+      id: 'ps-speed-wall-burst', z: 1489, multiplier: 2,
+      triggerCenter: { x: 0, y: 1.5, z: 1489 },
       triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
     },
     {
@@ -225,29 +239,30 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     },
   ],
   modePortals: [
+    // M9: ship-on lands on beat 151 (75.56 s) — gate at the tunnel mouth.
     {
-      id: 'ps-ship-on', z: 1115, target: 'ship',
-      triggerCenter: { x: 0, y: 1.5, z: 1115 },
+      id: 'ps-ship-on', z: 1107, target: 'ship',
+      triggerCenter: { x: 0, y: 1.5, z: 1107 },
       triggerHalfExtents: { x: 1.5, y: 1.5, z: 1.5 },
     },
     {
-      id: 'ps-ship-off', z: 1310, target: 'cube',
-      triggerCenter: { x: 0, y: 2.6, z: 1310 },
+      id: 'ps-ship-off', z: 1313, target: 'cube',
+      triggerCenter: { x: 0, y: 2.6, z: 1313 },
       triggerHalfExtents: { x: 1.5, y: 1.5, z: 1.5 },
     },
     {
-      id: 'ps-spider-on', z: 1335, target: 'spider',
-      triggerCenter: { x: 0, y: 1.5, z: 1335 },
+      id: 'ps-spider-on', z: 1343, target: 'spider',
+      triggerCenter: { x: 0, y: 1.5, z: 1343 },
       triggerHalfExtents: { x: 1.5, y: 1.5, z: 1.5 },
     },
     {
-      id: 'ps-spider-off', z: 1500, target: 'cube',
-      triggerCenter: { x: 0, y: 1.5, z: 1500 },
+      id: 'ps-spider-off', z: 1501, target: 'cube',
+      triggerCenter: { x: 0, y: 1.5, z: 1501 },
       triggerHalfExtents: { x: 1.5, y: 1.5, z: 1.5 },
     },
     {
-      id: 'ps-remix-spider-on', z: 1742, target: 'spider',
-      triggerCenter: { x: 0, y: 1.5, z: 1742 },
+      id: 'ps-remix-spider-on', z: 1745, target: 'spider',
+      triggerCenter: { x: 0, y: 1.5, z: 1745 },
       triggerHalfExtents: { x: 1.7, y: 1.5, z: 1.5 },
     },
     {
@@ -258,18 +273,20 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
   ],
   jumpPads: [
     // ACT 2: center-lane launch onto the MID deck (top 4.5); lanes 0/2
-    // bypass on the LOW weave (branch split).
+    // bypass on the LOW weave (branch split). M9: +0.8 u so the launch
+    // lands on beat 39 (19.56 s).
     {
       id: 'ps-pad-sky',
-      center: { x: 0, y: 0.3, z: 270.5 },
+      center: { x: 0, y: 0.3, z: 271.3 },
       halfExtents: { x: 1.2, y: 0.3, z: 1 },
       surface: 'floor',
       impulse: 22,
     },
-    // ACT 2: ridge launch from the MID deck onto the HIGH island.
+    // ACT 2: ridge launch from the MID deck onto the HIGH island. M9:
+    // +1.3 u for beat 44 (22.06 s).
     {
       id: 'ps-pad-ridge',
-      center: { x: 0, y: 4.8, z: 305 },
+      center: { x: 0, y: 4.8, z: 306.3 },
       halfExtents: { x: 1.2, y: 0.3, z: 1 },
       surface: 'floor',
       impulse: 19,
@@ -282,16 +299,20 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
       surface: 'floor',
       impulse: 22,
     },
-    // ACT 8: center-lane launch through the HIGH teleport ring.
+    // ACT 8: center-lane launch through the HIGH teleport ring. M9: the
+    // whole gantry (pad + dividers + both rings) rides +2.2 u so the
+    // launch lands on beat 198 (99.06 s) with the ring threading intact.
     {
       id: 'ps-pad-high',
-      center: { x: 0, y: 0.3, z: 1512.5 },
+      center: { x: 0, y: 0.3, z: 1514.7 },
       halfExtents: { x: 1.2, y: 0.3, z: 1 },
       surface: 'floor',
       impulse: 26,
     },
     // ACT 4: passive recovery out of the fall shaft (top −6 → 0) —
     // catches the fall mid-drop (the swept path crosses it before landing).
+    // M9: position REVERTED — the catch geometry only overlaps the fall
+    // path at this exact z (a recovery, not a beat anchor).
     {
       id: 'ps-pad-shaft',
       center: { x: 0, y: -5.7, z: 895.5 },
@@ -312,7 +333,8 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
       impulse: 11,
     },
     // ACT 8 HIGH deck: required orbs over the two 8 u gaps (impulse 13
-    // keeps the combined arcs well under deathYMax).
+    // keeps the combined arcs well under deathYMax). M9: orb-b rides
+    // −2 u (beat-204 window) with the driver press tracking mid-window.
     {
       id: 'ps-orb-terminal-a',
       center: { x: 0, y: 9.6, z: 1546.5 },
@@ -321,43 +343,45 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     },
     {
       id: 'ps-orb-terminal-b',
-      center: { x: 0, y: 9.6, z: 1562.5 },
+      center: { x: 0, y: 9.6, z: 1560.5 },
       halfExtents: { x: 0.9, y: 0.9, z: 1.5 },
       impulse: 13,
     },
   ],
   gravityOrbs: [
-    // ACT 4: ceiling traverse over the lava strip and back.
-    { id: 'ps-gorb-spire', center: { x: 0, y: 1.6, z: 905 }, halfExtents: { x: 0.9, y: 0.9, z: 1.5 } },
-    { id: 'ps-gorb-spire-back', center: { x: 0, y: 8.9, z: 913.5 }, halfExtents: { x: 0.9, y: 0.9, z: 1.5 } },
+    // ACT 4: ceiling traverse over the lava strip and back. M9: beats 127
+    // (63.56 s) + 129 (64.56 s) — driver presses track the windows.
+    { id: 'ps-gorb-spire', center: { x: 0, y: 1.6, z: 902.2 }, halfExtents: { x: 0.9, y: 0.9, z: 1.5 } },
+    { id: 'ps-gorb-spire-back', center: { x: 0, y: 8.9, z: 915.2 }, halfExtents: { x: 0.9, y: 0.9, z: 1.5 } },
   ],
   teleportPortals: [
     // ACT 8 gantry: two bounded entries (HIGH via pad / LOW via lane 2).
     // Lane 0 meets no deck (death by routing); missing the rings meets a
-    // divider wall (frontImpact).
+    // divider wall (frontImpact). M9: +2.2 u with the pad (beat-198/199).
     {
       id: 'ps-teleport-high',
-      entryZ: 1520,
-      entryCenter: { x: 0, y: 9, z: 1520 },
+      entryZ: 1522.2,
+      entryCenter: { x: 0, y: 9, z: 1522.2 },
       entryHalfExtents: { x: 0.9, y: 1.7, z: 1 },
-      exit: { x: 0, y: 8.55, z: 1530 },
+      exit: { x: 0, y: 8.55, z: 1532.2 },
       exitLaneIndex: 1,
       style: 'gate',
     },
     {
       id: 'ps-teleport-low',
-      entryZ: 1520,
-      entryCenter: { x: -2.6, y: 1.5, z: 1520 },
+      entryZ: 1522.2,
+      entryCenter: { x: -2.6, y: 1.5, z: 1522.2 },
       entryHalfExtents: { x: 0.9, y: 1.7, z: 1 },
-      exit: { x: -2.6, y: 1.05, z: 1530 },
+      exit: { x: -2.6, y: 1.05, z: 1532.2 },
       exitLaneIndex: 2,
       style: 'gate',
     },
-    // ACT 9 maw hop over the void before the finale content.
+    // ACT 9 maw hop over the void before the finale content. M9: entry
+    // on beat 209 (104.56 s); the exit anchor is unchanged.
     {
       id: 'ps-teleport-maw',
-      entryZ: 1600,
-      entryCenter: { x: 0, y: 1.5, z: 1600 },
+      entryZ: 1597,
+      entryCenter: { x: 0, y: 1.5, z: 1597 },
       entryHalfExtents: { x: 1.8, y: 1.8, z: 1 },
       exit: { x: 0, y: 1.75, z: 1614 },
       exitLaneIndex: 1,
@@ -366,10 +390,11 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
   ],
   chompers: [
     // ACT 5 #1: lunge across the ferry deck (jump FROM the ferry).
+    // M9: lunge starts on beat 133 (66.56 s — telegraph anticipates it).
     {
       id: 'ps-chomp-ferry',
       dormant: { x: 8, y: 0.75, z: 952 },
-      triggerZ: 940,
+      triggerZ: 937.8,
       lungeDirection: -1,
       lungeDistance: 16,
       telegraphTicks: 48,
@@ -377,11 +402,11 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
       halfExtents: { x: 0.8, y: 0.45, z: 0.8 },
       chainAnchor: { x: 10, y: 2.5, z: 952 },
     },
-    // ACT 5 #2: lunge out of the lane weave.
+    // ACT 5 #2: lunge out of the lane weave. M9: beat 140 (70.06 s).
     {
       id: 'ps-chomp-weave',
       dormant: { x: -8, y: 0.75, z: 995 },
-      triggerZ: 985,
+      triggerZ: 986.5,
       lungeDirection: 1,
       lungeDistance: 16,
       telegraphTicks: 48,
@@ -389,11 +414,11 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
       halfExtents: { x: 0.8, y: 0.45, z: 0.8 },
       chainAnchor: { x: -10, y: 2.5, z: 995 },
     },
-    // ACT 5 #3: ceiling lunge (dodge by ceiling jump).
+    // ACT 5 #3: ceiling lunge (dodge by ceiling jump). M9: beat 143.
     {
       id: 'ps-chomp-ceil',
       dormant: { x: 8, y: 9.3, z: 1015 },
-      triggerZ: 1005,
+      triggerZ: 1007.5,
       lungeDirection: -1,
       lungeDistance: 16,
       telegraphTicks: 48,
@@ -419,11 +444,12 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     },
     // ACT 9 #5: finale lunge out of the spider exit (short lunge
     // −8 → 0 — lane 0 is statically safe, dodged by lane, never jumped
-    // at 2× where the flight would overshoot into the river).
+    // at 2× where the flight would overshoot into the river). M9: the
+    // lunge lands on beat 227 (113.56 s).
     {
       id: 'ps-chomp-final',
       dormant: { x: -8, y: 0.75, z: 1758 },
-      triggerZ: 1748,
+      triggerZ: 1751,
       lungeDirection: 1,
       lungeDistance: 8,
       telegraphTicks: 48,
@@ -674,10 +700,11 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     { center: { x: 0, y: -0.5, z: 982.5 }, halfExtents: { x: 5.4, y: 0.5, z: 17.5 } },
     // Ceiling slab for the #3 swap (underside y=10, z 1000..1030).
     { center: { x: 0, y: 10.5, z: 1015 }, halfExtents: { x: 5.4, y: 0.5, z: 15 } },
-    // Low-ceiling block for the #4 lane dodge (bottom y=2.2, z 1058..1064
-    // — M9: shifted downstream so the 2× lava-jump flight clears its face;
-    // the lengthened 2× lunge tail still runs under it).
-    { center: { x: 0, y: 3.6, z: 1061 }, halfExtents: { x: 5.4, y: 1.4, z: 3 } },
+    // Low-ceiling block for the #4 lane dodge (bottom y=2.2, z 1060..1066
+    // — M9: shifted downstream so the 2× lava-jump flight lands under its
+    // lip (top clearance 1.05 u) and runs beneath it; the lengthened 2×
+    // lunge tail still runs under it).
+    { center: { x: 0, y: 3.6, z: 1063 }, halfExtents: { x: 5.4, y: 1.4, z: 3 } },
     // Foundry pools containment.
     { center: { x: -8.5, y: -4.5, z: 1000 }, halfExtents: { x: 3.5, y: 0.5, z: 50.5 } },
     { center: { x: -11.625, y: -2.25, z: 1000 }, halfExtents: { x: 0.375, y: 0.75, z: 50.5 } },
@@ -1104,9 +1131,9 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
 
     // ================= ACT 8 =================
     // Choice dividers (missing all three rings meets a wall; tops y=5 so
-    // the pad-launched HIGH flight passes over).
-    { kind: 'killFront', visual: 'block', center: { x: 1.3, y: 2.5, z: 1520 }, halfExtents: { x: 0.35, y: 2.5, z: 1 } },
-    { kind: 'killFront', visual: 'block', center: { x: -1.3, y: 2.5, z: 1520 }, halfExtents: { x: 0.35, y: 2.5, z: 1 } },
+    // the pad-launched HIGH flight passes over). M9: +2.2 u with the pad.
+    { kind: 'killFront', visual: 'block', center: { x: 1.3, y: 2.5, z: 1522.2 }, halfExtents: { x: 0.35, y: 2.5, z: 1 } },
+    { kind: 'killFront', visual: 'block', center: { x: -1.3, y: 2.5, z: 1522.2 }, halfExtents: { x: 0.35, y: 2.5, z: 1 } },
     // Gantry approach spikes (hop into the split: center launches HIGH,
     // lane 2 runs LOW; lane 0 meets no deck and dies).
     { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 1506 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
@@ -1290,45 +1317,64 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
       },
     ],
   },
+  /**
+   * M9 beat-anchored rhythm cues (presentation-only, never gameplay — see
+   * `src/visuals/rhythmCues.ts`): every cue carries the Gravity Lessons
+   * beat index the reference traversal reaches at its z (measured from
+   * the scripted reference route, pinned by `tests/musicAlignment.test.ts`).
+   * Cue z tracks its gameplay moment (portal/entry/lunge/section); the
+   * beat is the musical identity. Sorted by z; beats non-decreasing.
+   */
   rhythmCues: [
-    { id: 'ps-cue-intro', z: 0, role: 'intro' },
-    { id: 'ps-cue-stairs', z: 40, role: 'build' },
-    { id: 'ps-cue-drop', z: 90, role: 'drop' },
-    { id: 'ps-cue-river', z: 136, role: 'accent' },
-    { id: 'ps-cue-islands', z: 170, role: 'sectionChange' },
-    { id: 'ps-cue-lift', z: 262, role: 'accent' },
-    { id: 'ps-cue-high', z: 312, role: 'build' },
-    { id: 'ps-cue-orb-sky', z: 330, role: 'orbHit' },
-    { id: 'ps-cue-ferry', z: 378, role: 'accent' },
-    { id: 'ps-cue-maze', z: 430, role: 'sectionChange' },
-    { id: 'ps-cue-pad-maze', z: 530, role: 'padHit' },
-    { id: 'ps-cue-ferry-pair', z: 660, role: 'accent' },
-    { id: 'ps-cue-speed-maze', z: 695, role: 'speedHit' },
-    { id: 'ps-cue-spire', z: 720, role: 'gravityHit' },
-    { id: 'ps-cue-ceiling', z: 745, role: 'gravityHit' },
-    { id: 'ps-cue-wall-left', z: 795, role: 'gravityHit' },
-    { id: 'ps-cue-wall-right', z: 835, role: 'gravityHit' },
-    { id: 'ps-cue-shaft', z: 890, role: 'drop' },
-    { id: 'ps-cue-foundry', z: 920, role: 'sectionChange' },
-    { id: 'ps-cue-chomp-ferry', z: 940, role: 'accent' },
-    { id: 'ps-cue-chomp-weave', z: 985, role: 'accent' },
-    { id: 'ps-cue-ceil-swap', z: 1000, role: 'gravityHit' },
-    { id: 'ps-cue-abyss', z: 1110, role: 'sectionChange' },
-    { id: 'ps-cue-invert', z: 1200, role: 'drop' },
-    { id: 'ps-cue-revert', z: 1250, role: 'sectionChange' },
-    { id: 'ps-cue-spire-climb', z: 1330, role: 'sectionChange' },
-    { id: 'ps-cue-wall-snap', z: 1460, role: 'gravityHit' },
-    { id: 'ps-cue-void', z: 1510, role: 'sectionChange' },
-    { id: 'ps-cue-teleport', z: 1520, role: 'accent' },
-    { id: 'ps-cue-maw', z: 1600, role: 'accent' },
-    { id: 'ps-cue-core', z: 1620, role: 'climax' },
-    { id: 'ps-cue-speed', z: 1662, role: 'speedHit' },
-    { id: 'ps-cue-calm', z: 1694, role: 'sectionChange' },
-    { id: 'ps-cue-speed2', z: 1754, role: 'speedHit' },
-    { id: 'ps-cue-release-speed', z: 1778, role: 'sectionChange' },
-    { id: 'ps-cue-chomp-final', z: 1748, role: 'accent' },
-    { id: 'ps-cue-release', z: 1776, role: 'release' },
-    { id: 'ps-cue-finish', z: 1788, role: 'finish' },
+    { id: 'ps-cue-intro', z: 0, role: 'intro', beat: 0 },
+    { id: 'ps-cue-stairs', z: 40, role: 'build', beat: 6 },
+    { id: 'ps-cue-drop', z: 90, role: 'drop', beat: 13 },
+    { id: 'ps-cue-river', z: 136, role: 'accent', beat: 20 },
+    { id: 'ps-cue-islands', z: 170, role: 'sectionChange', beat: 25 },
+    { id: 'ps-cue-lift', z: 262, role: 'accent', beat: 38 },
+    { id: 'ps-cue-high', z: 312, role: 'build', beat: 45 },
+    { id: 'ps-cue-orb-sky', z: 330, role: 'orbHit', beat: 48 },
+    { id: 'ps-cue-ferry', z: 378, role: 'accent', beat: 54 },
+    { id: 'ps-cue-maze', z: 430, role: 'sectionChange', beat: 62 },
+    { id: 'ps-cue-pad-maze', z: 530, role: 'padHit', beat: 76 },
+    { id: 'ps-cue-ferry-pair', z: 660, role: 'accent', beat: 95 },
+    { id: 'ps-cue-speed-maze', z: 692, role: 'speedHit', beat: 99 },
+    { id: 'ps-cue-spire', z: 723, role: 'gravityHit', beat: 101 },
+    { id: 'ps-cue-ceiling', z: 742.5, role: 'gravityHit', beat: 104 },
+    { id: 'ps-cue-wall-left', z: 798.4, role: 'gravityHit', beat: 112 },
+    { id: 'ps-cue-wall-right', z: 833.5, role: 'gravityHit', beat: 117 },
+    { id: 'ps-cue-spire-down', z: 861.4, role: 'gravityHit', beat: 121 },
+    { id: 'ps-cue-shaft', z: 890, role: 'drop', beat: 125 },
+    { id: 'ps-cue-foundry', z: 920, role: 'sectionChange', beat: 130 },
+    { id: 'ps-cue-chomp-ferry', z: 940, role: 'accent', beat: 133 },
+    { id: 'ps-cue-chomp-weave', z: 985, role: 'accent', beat: 140 },
+    { id: 'ps-cue-ceil-swap', z: 1001.3, role: 'gravityHit', beat: 141 },
+    { id: 'ps-cue-chomp-ceil', z: 1015, role: 'accent', beat: 143 },
+    { id: 'ps-cue-foundry-down', z: 1030, role: 'gravityHit', beat: 145 },
+    { id: 'ps-cue-speed-foundry', z: 1036.5, role: 'speedHit', beat: 146 },
+    { id: 'ps-cue-chomp-low', z: 1052, role: 'accent', beat: 147 },
+    { id: 'ps-cue-abyss', z: 1107, role: 'sectionChange', beat: 151 },
+    { id: 'ps-cue-invert', z: 1200, role: 'drop', beat: 164 },
+    { id: 'ps-cue-revert', z: 1250, role: 'sectionChange', beat: 171 },
+    { id: 'ps-cue-invert2', z: 1286, role: 'sectionChange', beat: 176 },
+    { id: 'ps-cue-revert2', z: 1305, role: 'sectionChange', beat: 179 },
+    { id: 'ps-cue-speed-spider', z: 1315, role: 'speedHit', beat: 180 },
+    { id: 'ps-cue-spire-climb', z: 1330, role: 'sectionChange', beat: 182 },
+    { id: 'ps-cue-wall-calm', z: 1453.5, role: 'sectionChange', beat: 190 },
+    { id: 'ps-cue-wall-snap', z: 1460, role: 'gravityHit', beat: 191 },
+    { id: 'ps-cue-speed-wall-burst', z: 1489, role: 'speedHit', beat: 195 },
+    { id: 'ps-cue-wall-floor', z: 1490, role: 'gravityHit', beat: 195 },
+    { id: 'ps-cue-void', z: 1510, role: 'sectionChange', beat: 197 },
+    { id: 'ps-cue-teleport', z: 1522.2, role: 'accent', beat: 200 },
+    { id: 'ps-cue-maw', z: 1597, role: 'accent', beat: 209 },
+    { id: 'ps-cue-core', z: 1620, role: 'climax', beat: 210 },
+    { id: 'ps-cue-speed', z: 1662, role: 'speedHit', beat: 216 },
+    { id: 'ps-cue-calm', z: 1694, role: 'sectionChange', beat: 218 },
+    { id: 'ps-cue-chomp-final', z: 1748, role: 'accent', beat: 226 },
+    { id: 'ps-cue-speed2', z: 1754, role: 'speedHit', beat: 227 },
+    { id: 'ps-cue-release', z: 1776, role: 'release', beat: 228 },
+    { id: 'ps-cue-release-speed', z: 1778, role: 'sectionChange', beat: 228 },
+    { id: 'ps-cue-finish', z: 1790, role: 'finish', beat: 230 },
   ],
   theme: TEST_LEVEL.theme,
 };
