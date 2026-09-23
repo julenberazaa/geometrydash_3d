@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PRODUCTION_SHOWCASE_01 } from '../src/content/levels/productionShowcase01';
 import { ShowcaseDriver } from './helpers/showcaseScript';
-import { collectTrajectory, analyzeRouteOpenness } from './helpers/routeOpenness';
+import { collectTrajectory, analyzeRouteOpenness, M91_RECOVERY_WINDOWS } from './helpers/routeOpenness';
 
 /**
  * M9 route-openness audit (THE DESCENT) — the human complaint made
@@ -23,7 +23,9 @@ describe('M9 route openness audit', () => {
     const traj = collectTrajectory(PRODUCTION_SHOWCASE_01, (z, sim) => driver.nextInput(z, sim));
     expect(traj.status).toBe('finished');
     expect(traj.floorCubeSamples).toBeGreaterThan(8000);
-    const report = analyzeRouteOpenness(PRODUCTION_SHOWCASE_01, traj.samples);
+    const report = analyzeRouteOpenness(PRODUCTION_SHOWCASE_01, traj.samples, {
+      recoveryWindows: M91_RECOVERY_WINDOWS,
+    });
     console.log(
       `openness: samples=${report.coverage} open(3+)b=${(report.openFraction * 100).toFixed(1)}% ` +
         `one=${(report.oneBandFraction * 100).toFixed(1)}% two=${(report.twoBandFraction * 100).toFixed(1)}%`,
@@ -49,7 +51,9 @@ describe('M9 route openness audit', () => {
     const driver = new ShowcaseDriver('alternate');
     const traj = collectTrajectory(PRODUCTION_SHOWCASE_01, (z, sim) => driver.nextInput(z, sim));
     expect(traj.status).toBe('finished');
-    const report = analyzeRouteOpenness(PRODUCTION_SHOWCASE_01, traj.samples);
+    const report = analyzeRouteOpenness(PRODUCTION_SHOWCASE_01, traj.samples, {
+      recoveryWindows: M91_RECOVERY_WINDOWS,
+    });
     console.log(
       `openness-alt: samples=${report.coverage} open(3+)b=${(report.openFraction * 100).toFixed(1)}% ` +
         `one=${(report.oneBandFraction * 100).toFixed(1)}% two=${(report.twoBandFraction * 100).toFixed(1)}%`,

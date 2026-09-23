@@ -57,6 +57,18 @@ export interface OpennessSample {
   laneSafe: boolean[];
 }
 
+/**
+ * M9.1 §43 recovery exclusions (documented, genuine low-demand): the
+ * ship-exit landing/recenter runway and the finish river/calm reveal.
+ * Everything else counts as active gameplay (entry, handovers, maze,
+ * chomper zones and ferry rides all stay in).
+ */
+export const M91_RECOVERY_WINDOWS: Array<{ z0: number; z1: number }> = [
+  { z0: 0, z1: 6 },
+  { z0: 1310, z1: 1330 },
+  { z0: 1776, z1: 1790 },
+];
+
 export interface OpennessReport {
   samples: OpennessSample[];
   /** Fraction of samples with 3+ simultaneous safe bands (the problem). */
@@ -86,10 +98,15 @@ const solidBox = (c: { x: number; y: number; z: number }, h: { x: number; y: num
 export const analyzeRouteOpenness = (
   def: LevelDefinition,
   trajectory: readonly TrajectorySample[],
-  opts: { step?: number; zMax?: number } = {},
+  opts: { step?: number; zMax?: number; recoveryWindows?: Array<{ z0: number; z1: number }> } = {},
 ): OpennessReport => {
   const step = opts.step ?? 2;
   const zMax = opts.zMax ?? def.finishZ;
+  // M9.1 §43: explicit recovery chambers, the start gate and the finish
+  // reveal are NOT active gameplay — samples inside them never count
+  // toward (or against) the route-width split.
+  const windows = opts.recoveryWindows ?? [];
+  const inRecovery = (z: number): boolean => windows.some((w) => z >= w.z0 && z <= w.z1);
   const lanes = def.laneCenters;
   const solids = def.solids.map((s) => solidBox(s.center, s.halfExtents));
   const hazards: Box[] = [
@@ -106,6 +123,7 @@ export const analyzeRouteOpenness = (
   const samples: OpennessSample[] = [];
   let ti = 0;
   for (let z = 0; z <= zMax; z += step) {
+    if (inRecovery(z)) continue;
     while (ti < trajectory.length - 1 && (trajectory[ti + 1]?.z ?? Infinity) < z) ti++;
     const ref = trajectory[ti];
     if (ref === undefined || Math.abs(ref.z - z) > step) continue;

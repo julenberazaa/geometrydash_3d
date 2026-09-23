@@ -116,7 +116,7 @@ export class ShowcaseDriver {
       // M9.1 ACT 2 shared: island chain (takeoffs ≥ 0.7 u post-landing)
       // + far-runway second hop. (The pad hop is primary-only — the
       // alternate would waste it mid-air over its own later hop.)
-      186, 224, 424,
+      186, 224, 412, 417, 425, 430.5,
       728, // A4 floor spike
       738, // A4 entry hop (portal fires mid-flight → ceiling up-fall)
       // M9.1 A4 ceiling dive-hops (narrowed 1-lane + joint hole) + wall hops.
@@ -134,11 +134,13 @@ export class ShowcaseDriver {
       // M9.1 ACT 3 maze: approach hop + teeth jog (door 1 passed running,
       // centered) + door-line hops + door orbs (incl. the mid-flight
       // orb-chain link) + pre-steers (one shared line; gaps ≤ 90 ticks).
-      433.5, 456, 467, 474, 485, 491, 498, 505, 519,
+      439, 456, 467, 474, 485, 491, 498, 505, 519,
       346, 354, 364, // HIGH-drop rhythm (open slabs, lane-neutral)
       // Exit-gap takeoff (the 4.5 u upper→slab drop extends the flight to
       // 12.2 u — a documented exit-gap breath) + slab hop pair.
       620, 633, 644,
+      // M9.1 ACT 9 weave hop (lane-0 gate line, past the boosted landing).
+      1680,
     ];
     const primaryJumps = [
       ...trunkJumps,
@@ -147,17 +149,18 @@ export class ShowcaseDriver {
       319, // HIGH spike
       329, // HIGH gap takeoff (orb 333.5 fires mid-flight)
       333, // orb press edge inside the window
-      376, // ferry board jump
+      368, // ferry-approach hop (primary HIGH-drop line, spike 370)
+      377.5, // late ferry board (primary, past the hop landing)
       401, // ferry exit jump
       412, // far-runway spike
       // M9.1 ACT 3 upper hole-chain (narrowed 1-lane + two joint holes;
       // the exit gap uses the shared 620 takeoff, never a duplicate).
       550, 559.5, 570, 583.5, 599.5, 610,
-      // ACT 8 HIGH deck (approach hop + two orb gaps + lift exit — orb
-      // presses track their windows: A mid-window, B mid-window).
-      1503.5, 1542, 1545.8, 1558, 1560.5, 1577.5, 1587,
+      // M9.1 ACT 8 HIGH deck (hop + mid-flight orb-A + hop (post-orb
+      // landing) + grounded orb-B + hole + lift exit — orbs beat-anchored).
+      1503.5, 1538, 1545.8, 1556, 1559.5, 1570, 1577.5, 1587,
       // ACT 9 finale (island hops + boosted void-gap jump + river).
-      1633, 1642, 1651, 1660.5, 1767.5,
+      1620, 1625, 1647, 1660.5, 1767.5,
     ];
     const alternateJumps = [
       ...trunkJumps.filter((z) => z !== 1550.5),
@@ -172,9 +175,10 @@ export class ShowcaseDriver {
       401, // ferry exit jump
       412, // far-runway spike
       1507, // gantry approach spike (lane 2)
-      1543, 1553, 1565, // LOW deck holes + spike
-      1587, // reconnect hop spike (shared runway)
-      1633, 1642, 1651, 1660.5, 1767.5,
+      1516.5, // teleport-flight hop (lane-2 spike 1519, fires the low ring)
+      // M9.1 LOW deck (hop + hole + hop + hole + exit hop + reconnect hop).
+      1535, 1545, 1554.5, 1565, 1574.5, 1584.5,
+      1620, 1625, 1647, 1660.5, 1767.5,
     ];
     const trunkTaps: TapAction[] = [
       // M9.1 A1 island/stair/pier/shaft transfers (jump + steer combined —
@@ -206,8 +210,8 @@ export class ShowcaseDriver {
       { atZ: 234.5, dir: 'left', withJump: true }, // landing → stair 1
       // M9.1 ACT 3 shared door line (single doors + split door 6; one line
       // for both variants until the pad split; gaps all ≤ 90 ticks).
-      { atZ: 443, dir: 'right' }, // teeth-448 dodge (lane 2)
-      { atZ: 448, dir: 'left' }, // door-1 return (lane 1, fits 0.45)
+      { atZ: 444, dir: 'right' }, // teeth-449 dodge (lane 2, 5 u transit)
+      { atZ: 448, dir: 'left' }, // door-1 return (lane 1, fits 0.9)
       { atZ: 459, dir: 'right' }, // door-2 steer (lane 2, mid-flight)
       { atZ: 478, dir: 'left' }, // door-3 landing align (lane 1, hop-2 flight)
       { atZ: 506, dir: 'left' }, // door-5 pre-steer (lane 0, hop-4 flight)
@@ -248,10 +252,10 @@ export class ShowcaseDriver {
       // A7 wall staircase (UP on the left wall, DOWN on the right).
       { atZ: 1463, dir: 'up' },
       { atZ: 1475, dir: 'down' },
-      // A9 weave (lane 0 through the 2× gates, then lane 1).
-      { atZ: 1658, dir: 'left' },
-      { atZ: 1660, dir: 'left' },
-      { atZ: 1684, dir: 'right' },
+      // M9.1 A9 weave (dodge to lane 0 mid-boosted-flight, hop the lane-0
+      // gate line, recenter mid-flight with a full 10 u 2× lead for gate 3).
+      { atZ: 1668, dir: 'left' },
+      { atZ: 1682, dir: 'right' },
       // A9 ceiling-rise spike dodge (lane 0) + recenter for the gates.
       { atZ: 1698, dir: 'left' },
       { atZ: 1705, dir: 'right' },
@@ -259,8 +263,9 @@ export class ShowcaseDriver {
       { atZ: 1722, dir: 'up' },
       // Wall-exit recenter (lane 2 → lane 1 for the spider ring).
       { atZ: 1736, dir: 'left' },
-      // Finale Chomper lane dodge (lane 1 → lane 0, short lunge).
-      { atZ: 1754, dir: 'left' },
+      // Finale Chomper lane dodge (early — 6 u transit clears the
+      // post-spider teeth before the lunge starts).
+      { atZ: 1750, dir: 'left' },
       // Post-river recenter (lane 0 → lane 1 for the calm gate).
       { atZ: 1772, dir: 'right' },
     ];
@@ -274,6 +279,8 @@ export class ShowcaseDriver {
       // A2 MID deck spikes.
       { atZ: 286, dir: 'right' },
       { atZ: 296, dir: 'left' },
+      // (Ferry approach: the primary hops center and boards late; the
+      // alternate runs lane 0 and boards on M9 timing — see jumps.)
       // Door 6 + pad (primary only — from lane 0 back to lane 1 for the
       // pad trigger; the alternate holds lane 0 around it).
       { atZ: 522, dir: 'right' },
@@ -282,9 +289,10 @@ export class ShowcaseDriver {
       { atZ: 700, dir: 'left' },
       { atZ: 714, dir: 'right' },
       // A9 islands lane changes.
-      { atZ: 1634.5, dir: 'left' },
-      { atZ: 1645.5, dir: 'right' },
-      { atZ: 1646.2, dir: 'right' },
+      { atZ: 1644, dir: 'right' },
+      { atZ: 1652, dir: 'left' }, // launch alignment (mid-orb-flight — lands the narrow slab solidly)
+      { atZ: 1633, dir: 'left', withJump: true },
+      { atZ: 1643, dir: 'right', withJump: true },
     ];
     const alternateTaps: TapAction[] = [
       ...trunkTaps,
@@ -320,15 +328,19 @@ export class ShowcaseDriver {
       { atZ: 1501, dir: 'right' },
       { atZ: 1585, dir: 'left' },
       // A9 islands lane changes.
-      { atZ: 1634.5, dir: 'left' },
-      { atZ: 1645.5, dir: 'right' },
-      { atZ: 1646.2, dir: 'right' },
+      { atZ: 1644, dir: 'right' },
+      { atZ: 1652, dir: 'left' }, // launch alignment (mid-orb-flight — lands the narrow slab solidly)
+      { atZ: 1633, dir: 'left', withJump: true },
+      { atZ: 1643, dir: 'right', withJump: true },
     ];
-    // Shared Spider snap presses: dodge walls, ceiling returns, climb
-    // shaft, wall↔wall snaps, remix pair.
+    // M9.1 shared Spider snap presses: four dodge-wall pairs (up-presses
+    // keep 2 u lead before each wall face), a 9-snap climb chain (every
+    // 5 u), the runway dodge pair (wall section keeps its M9 snaps).
     const presses = [
-      1344, 1356, 1364, 1376, 1384, 1396,
-      1400.1, 1414, 1424, 1430, 1435,
+      // Up-snaps land 1.5 u before teeth/wall faces (the floor teeth would
+      // catch a late snap); down-snaps ride 1.5–3 u past each wall.
+      1346.5, 1353, 1360, 1368, 1376.5, 1383, 1390, 1398,
+      1401, 1406, 1411, 1416, 1421, 1426, 1431, 1436, 1441,
       1445, 1452, // runway dodge-wall snap pair (up under the slab, down past)
       1472, 1482,
       1743, 1749,
