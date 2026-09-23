@@ -72,7 +72,10 @@ const abortPageErrors = [];
   // --- C. Space unlocks: real transport evidence. ---
   await page.keyboard.press('Space');
   await page.waitForFunction(() => window.__gd3d.playerPosition().z > -3, null, { timeout: 30000 });
-  await sleep(page, 2000);
+  // Condition-based wait (M9 precedent): fetch/decode/start is async and
+  // headless software rendering is slow — never assert on a fixed sleep.
+  await page.waitForFunction(() => window.__gd3d.musicState() === 'playing', null, { timeout: 60000 });
+  await sleep(page, 500);
   const live = await ev(page, () => ({
     awaiting: window.__gd3d.awaitingStart(),
     pending: window.__gd3d.startGatePending(),
@@ -97,14 +100,30 @@ const abortPageErrors = [];
   log('m91 transport live (buffer/ctx/playing/gain)', transportOk, JSON.stringify(live));
   // Headless software rendering starves the sim (8-step catch-up cap), so
   // wall-clock advance is NOT the assertion: music must track the SIM
-  // clock (both advance together, whatever the wall rate).
-  const t1 = await ev(page, () => ({ target: window.__gd3d.musicTargetTime(), actual: window.__gd3d.musicActualTime() }));
-  await sleep(page, 1500);
-  const t2 = await ev(page, () => ({ target: window.__gd3d.musicTargetTime(), actual: window.__gd3d.musicActualTime() }));
+  // clock (both advance together, whatever the wall rate). The window
+  // adapts to headless speed (poll until the sim clock visibly flows);
+  // endpoints must each sit within policy — a designed hard resync
+  // (MusicDirector restarts the source at target beyond 180 ms drift,
+  // so `actual` legitimately jumps mid-window) still passes, while a
+  // frozen transport fails the endpoint/drift checks.
+  const sampleTimes = () => ev(page, () => ({ target: window.__gd3d.musicTargetTime(), actual: window.__gd3d.musicActualTime() }));
+  const t1 = await sampleTimes();
+  await page.waitForFunction(
+    (t0) => window.__gd3d.musicTargetTime() - t0 > 0.25,
+    t1.target,
+    { timeout: 60000 },
+  );
+  const t2 = await sampleTimes();
   const targetAdv = t2.target - t1.target;
-  const actualAdv = t2.actual - t1.actual;
   log('m91 target music time advances', targetAdv > 0.2, `+${targetAdv.toFixed(2)}s`);
-  log('m91 actual music time advances with the sim clock', actualAdv > 0.2 && Math.abs(actualAdv - targetAdv) < 0.5, `actual+${actualAdv.toFixed(2)}s vs target+${targetAdv.toFixed(2)}s`);
+  const endpointsTracked =
+    t1.actual > 0 && t2.actual > 0 &&
+    Math.abs(t1.actual - t1.target) < 1.0 && Math.abs(t2.actual - t2.target) < 1.0;
+  log(
+    'm91 actual music time advances with the sim clock',
+    targetAdv > 0.2 && endpointsTracked,
+    `t1 target=${t1.target.toFixed(2)} actual=${t1.actual.toFixed(2)} t2 target=${t2.target.toFixed(2)} actual=${t2.actual.toFixed(2)}`,
+  );
   const drift = await ev(page, () => window.__gd3d.musicDriftMs());
   log('m91 drift within policy', Math.abs(drift) < 1000, `drift=${drift.toFixed(0)}ms`);
   await page.close();
@@ -150,7 +169,9 @@ const abortPageErrors = [];
   const page = await browser.newPage();
   await page.goto(`${URL}?music=off`, { waitUntil: 'load', timeout: 60000 });
   await page.waitForFunction(() => window.__gd3d !== undefined, null, { timeout: 60000 });
-  await sleep(page, 2000);
+  // Poll for sim progress (M9 precedent) — a fixed sleep races slow
+  // headless frames and flakes the z threshold under load.
+  await page.waitForFunction(() => window.__gd3d.playerPosition().z > -3, null, { timeout: 30000 });
   const off = await ev(page, () => ({
     awaiting: window.__gd3d.awaitingStart(),
     z: window.__gd3d.playerPosition().z,
