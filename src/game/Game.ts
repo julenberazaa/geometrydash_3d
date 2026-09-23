@@ -19,6 +19,14 @@ export interface GameOptions {
   perfEnabled?: boolean;
   /** M9: music transport on/off (`?music=off` disables). Default on. */
   musicEnabled?: boolean;
+  /**
+   * M9.1 QA slow-motion: override the fixed-step catch-up budget
+   * (`?stepcap=N`, clamped 1..8). Fewer steps per frame = finer input
+   * delivery quantum for precision QA on slow software renderers, at the
+   * cost of sim-vs-wall speed. The tick ORDER, count and physics are
+   * identical — replays verify across cap values. Default: engine budget.
+   */
+  maxCatchUpSteps?: number;
 }
 
 /**
@@ -131,7 +139,7 @@ export class Game {
           this.frameRender(alpha, renderDt);
         },
       },
-      { stepDt: SIMULATION_DT },
+      { stepDt: SIMULATION_DT, maxCatchUpSteps: gameOptions.maxCatchUpSteps },
     );
 
     window.addEventListener('resize', this.onResize);
@@ -170,6 +178,11 @@ export class Game {
   /** QA observability: fixed steps executed (pause-freeze proof). */
   public get simSteps(): number {
     return this.loop.totalSteps;
+  }
+
+  /** M9.1 QA observability: effective per-frame catch-up budget (stepcap proof). */
+  public get stepCap(): number {
+    return this.loop.stepsBudget;
   }
 
   public get musicDirector(): MusicDirector | null {

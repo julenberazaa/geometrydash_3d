@@ -63,6 +63,11 @@ export class FixedStepLoop {
   public discardedMsLastFrame = 0;
   public totalSteps = 0;
 
+  /** QA observability: effective per-frame catch-up budget. */
+  public get stepsBudget(): number {
+    return this.opts.maxCatchUpSteps;
+  }
+
   constructor(cb: FixedStepLoopCallbacks, options: FixedStepLoopOptions = {}) {
     this.cb = cb;
     this.opts = {

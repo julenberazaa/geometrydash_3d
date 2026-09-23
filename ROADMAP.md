@@ -605,6 +605,25 @@ and teleport snaps preserved). Proof: 28 camera tests green (5 multi-height,
 46/46 (14 staged high/low areas, live pull-in, fade dormant, zero errors).
 Final state: ENGINEERING COMPLETE / HUMAN CAMERA GATE OPEN.
 
+## M9.1 — Radical rhythm rebuild: IN PROGRESS (feature/m9-1-radical-rhythm-rebuild, NOT merged)
+
+Takeover after the M9 human gate FAILED (silent browser audio + insufficient
+re-authoring). Phase A (audible-music root cause + fail-loud start gate):
+TRANSPORT PASS 13/13 twice (`scripts/browser-qa-m91-audio.mjs`). Phase B
+(same id/title, radically re-authored route, 7/9 acts replaced): density
+targets held per `tests/showcaseM91.test.ts` + `tests/showcaseDensity.test.ts`
+(2× action events, 1.7× reversals/bands, 1.5× supports, 2× fast-fall,
+≤90-tick gaps), route-width 70/90/10 contract green, both reference routes
+finish tick 13799 with 0 deaths + replay VERIFIED, `npm run verify` green
+(50 files / 619 tests). Phase C (re-sync + visual overdrive: instanced
+architecture, lightning, per-biome palettes): music alignment green,
+screenshots `qa/screenshots/m91-*`. Browser playthrough gate 20/20 via the
+tick-exact in-page tape (wall-clock live driving exceeds headless delivery
+quantum at this density — documented in the spec §7; `?stepcap=N` QA slow-mo
+proves cross-cap determinism in-gate). Automation proves completable, never
+fun — do NOT mark PASS until the human plays it with sound on (HUMAN AUDIBLE
+MUSIC PASS + HUMAN M9.1 gameplay gate both OPEN).
+
 ## M9 — Gravity Lessons rhythm polish: ENGINEERING COMPLETE / HUMAN MUSIC-RHYTHM GAMEPLAY GATE OPEN (feature/m9-gravity-lessons-rhythm-polish, NOT merged)
 
 Human M8.6 verdict: POSITIVE after the camera corrective pass (level

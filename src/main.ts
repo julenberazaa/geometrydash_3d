@@ -36,6 +36,13 @@ const perfParam = gameParams.get('perf');
 // M9 music transport: `?music=off` silences the track (no start gate, no
 // audio load) with zero gameplay difference — pairs with `?fx=off`.
 const musicParam = gameParams.get('music');
+// M9.1 QA slow-motion: `?stepcap=N` overrides the per-frame catch-up
+// budget (clamped 1..8) for precision input delivery on slow renderers —
+// same ticks, same order, slower wall rate; replays verify across values.
+const stepCapRaw = Number.parseInt(gameParams.get('stepcap') ?? '', 10);
+const stepCapParam = Number.isInteger(stepCapRaw)
+  ? Math.min(8, Math.max(1, stepCapRaw))
+  : undefined;
 const game = new Game(container, resolution.level, {
   postEnabled: postParam === null ? undefined : postParam !== 'off',
   fxEnabled: fxParam === null ? undefined : fxParam !== 'off',
@@ -43,6 +50,7 @@ const game = new Game(container, resolution.level, {
 }, {
   perfEnabled: perfParam === '1',
   musicEnabled: musicParam === null ? undefined : musicParam !== 'off',
+  maxCatchUpSteps: stepCapParam,
 });
 game.start();
 
@@ -157,7 +165,8 @@ declare global {
       rhythmSection: () => string;
       // M6D performance observability (presentation only).
       perfEnabled: () => boolean;
-      perfSnapshot: () => {
+      /** M9.1 QA slow-motion: effective per-frame catch-up budget. */
+      stepCap: () => number;      perfSnapshot: () => {
         frames: number; fps: number; p50: number; p95: number; p99: number;
         max: number; over25: number; over33: number; over50: number; capacity: number;
       };
@@ -334,6 +343,7 @@ window.__gd3d = {
   rhythmSection: () => game['rendererHost'].rhythmSection,
   // M6D probes: bounded profiler + real-GPU identity (cold path).
   perfEnabled: () => game.isPerfEnabled,
+  stepCap: () => game.stepCap,
   perfSnapshot: () => ({ ...game.perfSnapshot() }),
   perfBeginSampling: (): void => {
     game.perfBeginSampling();

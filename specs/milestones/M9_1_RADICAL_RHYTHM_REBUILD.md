@@ -151,14 +151,24 @@ M9.1 acceptance targets (primary reference route, same metric code):
 
 ## 7. Open items (tracked, not hidden)
 
-- `tests/musicAlignment.test.ts` (2 tests) is RED during the rebuild:
-  maxAbsError 0.377 s vs the M9 0.36 bound (speed-remix portal arrives
-  17 ms past the bound). Root cause: acts 1–5 run 4 ticks faster than M9
-  (cleaner lines) plus the inherited ship-tunnel syncopation (the ship
-  enters at 2× for 12 u by M9 design — verified mult=2 at ship-on,
-  mult=1 at invert). NO bound is weakened mid-rebuild; the full music
-  re-sync (portal/cue/beat re-tune + bound review) lands after acts 7–9
-  (§34–35 of the takeover brief).
+- `tests/musicAlignment.test.ts` went RED mid-rebuild (maxAbsError 0.377 s
+  vs the M9 0.36 bound — acts 1–5 run 4 ticks faster on cleaner lines plus
+  the inherited ship-tunnel syncopation) and is GREEN again after the full
+  music re-sync (max 352 ms; NO bound was weakened at any point).
 - Documented micro-recoveries (all < 1.0 s, intentional): exit-gap breath
   (620→633, 111 ticks), ferry-boarding breath (644→657, ~111 ticks),
   chomp-telegraph breaths (lunge waits, dramatic pauses).
+- In-page full-run instrument ( adverse headless delivery, NOT geometry):
+  wall-clock live driving (8 ms polls → KeyboardEvents) cannot deliver
+  sub-2 u edges on SwiftShader (100 ms+ frames, ~1.9 u observation skips;
+  8 instrumented runs, ~138 polls over minutes, deaths all delivery-timed
+  past edges). The gate therefore plays the unit-recorded tick-exact tape
+  in-page (`debugStartReplayJson`, same coordinator as F4): 20/20 PASS
+  (finish z1790, 0 deaths, REPLAY VERIFIED, music target 115.0 s) at cap 8
+  AND `?stepcap=4` (cross-cap determinism). Live hands stay the human gate.
+- `?stepcap=N` (1..8, default engine budget) is permanent QA infra
+  (`GameOptions.maxCatchUpSteps`, `__gd3d.stepCap()` probe): same ticks,
+  same order, slower wall rate — replays verify across cap values in-gate.
+- HUMAN AUDIBLE MUSIC PASS still open (headless proves TRANSPORT only).
+  HUMAN M9.1 gameplay gate still open (automation proves completable,
+  never fun).

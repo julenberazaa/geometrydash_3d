@@ -35,6 +35,12 @@ indistinguishable from keyboard input and reads back state for hashing.
   (see cadence-test history in `tests/fixedStep.test.ts`).
 - Render framerate must not change jump height, landing timing, forward
   distance, lane motion, or collision results (cadence tests enforce this).
+- M9.1 QA slow-motion (`?stepcap=N`, `GameOptions.maxCatchUpSteps`,
+  `__gd3d.stepCap()` probe): overrides the per-frame catch-up budget
+  (clamped 1..8) WITHOUT changing tick order, count, or physics — fewer
+  steps per frame = finer input-delivery quantum for precision QA on slow
+  software renderers, at the cost of sim-vs-wall speed. Replays verify
+  across cap values. Default path (cap 8) is byte-identical to before.
 
 ## 3. Input (`src/input/InputSystem.ts`)
 
