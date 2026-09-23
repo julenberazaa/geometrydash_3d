@@ -148,3 +148,17 @@ M9.1 acceptance targets (primary reference route, same metric code):
   bandTransitions ≥ 383 (1.7× 225); supportChanges ≥ 303 (1.5× 202);
   ffEngagedTicks ≥ 208 (2.0× 104); maxActionGap ≤ 90 ticks (0.75 s).
 - Route width: one-band ≥ 70%, one+two ≥ 90%, 3+ ≤ 10%.
+
+## 7. Open items (tracked, not hidden)
+
+- `tests/musicAlignment.test.ts` (2 tests) is RED during the rebuild:
+  maxAbsError 0.377 s vs the M9 0.36 bound (speed-remix portal arrives
+  17 ms past the bound). Root cause: acts 1–5 run 4 ticks faster than M9
+  (cleaner lines) plus the inherited ship-tunnel syncopation (the ship
+  enters at 2× for 12 u by M9 design — verified mult=2 at ship-on,
+  mult=1 at invert). NO bound is weakened mid-rebuild; the full music
+  re-sync (portal/cue/beat re-tune + bound review) lands after acts 7–9
+  (§34–35 of the takeover brief).
+- Documented micro-recoveries (all < 1.0 s, intentional): exit-gap breath
+  (620→633, 111 ticks), ferry-boarding breath (644→657, ~111 ticks),
+  chomp-telegraph breaths (lunge waits, dramatic pauses).

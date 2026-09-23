@@ -199,8 +199,11 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
       triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
     },
     {
+      // M9.1: the trigger rides ON the authored ship line (y 3.0 — the
+      // tunnel mouth climbs over the top-2 rise wall there; a low ring is
+      // flown over and the ship strands at 2×, arriving ~250 ms early).
       id: 'ps-speed-approach', z: 1119, multiplier: 1,
-      triggerCenter: { x: 0, y: 1.5, z: 1119 },
+      triggerCenter: { x: 0, y: 3, z: 1119 },
       triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
     },
     // M9 musical arrangement: the climax (beats 184–224) runs the Spider
@@ -355,12 +358,19 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
       halfExtents: { x: 0.9, y: 0.9, z: 1.5 },
       impulse: 8,
     },
-    // ACT 2 LOW-ground orb (lane 0 — mid-flight reshaper before door 324).
+    // ACT 2 LOW-ground orbs (lane 0): (a) mid-flight reshaper before door
+    // 324, (b) mid-flight reshaper before the 338.5 rhythm hop.
     {
       id: 'ps-orb-low-a',
       center: { x: 2.6, y: 2.0, z: 317 },
       halfExtents: { x: 0.9, y: 0.9, z: 1.5 },
       impulse: 8,
+    },
+    {
+      id: 'ps-orb-low-b',
+      center: { x: 2.6, y: 2.6, z: 329 },
+      halfExtents: { x: 0.9, y: 0.9, z: 1.5 },
+      impulse: 6,
     },
     // ACT 2 upper: required orb over the 8 u HIGH gap.
     {
@@ -774,12 +784,16 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     { center: { x: 0, y: 13, z: 760 }, halfExtents: { x: 7, y: 0.8, z: 1 } },
     { center: { x: 7.5, y: 5, z: 815 }, halfExtents: { x: 1, y: 9, z: 2 } },
 
-    // ================= ACT 5 CHOMPER FOUNDRY (920..1110) =================
-    { center: { x: 0, y: -0.5, z: 927.5 }, halfExtents: { x: 5.4, y: 0.5, z: 7.5 } },
-    // Far slab after the ferry void (top 0, z 965..1000).
+    // ================= ACT 5 CHOMPER FOUNDRY (920..1110, M9.1) =================
+    // M9.1 (chomper triggers/portals/speed/ferry/lava on their musical Z):
+    // narrowed entry + ceiling (1-lane, center line), hop before the weave
+    // gates, center hop on the ceiling traverse (portal-flight return).
+    { center: { x: 0, y: -0.5, z: 927.5 }, halfExtents: { x: 1.6, y: 0.5, z: 7.5 } },
+    // Far slab after the ferry void (top 0, z 965..1000 — kept full: the
+    // weave gates force lane excursions).
     { center: { x: 0, y: -0.5, z: 982.5 }, halfExtents: { x: 5.4, y: 0.5, z: 17.5 } },
-    // Ceiling slab for the #3 swap (underside y=10, z 1000..1030).
-    { center: { x: 0, y: 10.5, z: 1015 }, halfExtents: { x: 5.4, y: 0.5, z: 15 } },
+    // Ceiling slab for the #3 swap (underside y=10, z 1000..1030, 1-lane).
+    { center: { x: 0, y: 10.5, z: 1015 }, halfExtents: { x: 1.6, y: 0.5, z: 15 } },
     // Low-ceiling block for the #4 lane dodge (bottom y=2.2, z 1060..1066
     // — M9: shifted downstream so the 2× lava-jump flight lands under its
     // lip (top clearance 1.05 u) and runs beneath it; the lengthened 2×
@@ -814,12 +828,20 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     { center: { x: 0, y: 7.5, z: 1143 }, halfExtents: { x: 5.4, y: 1.5, z: 3 } },
     // Alternating teeth: ceiling (bottom 5.5) / floor (top 0.5) — slalom
     // slot 0.5..5.5 (fairness margins: dust-grazes are not difficulty).
+    // M9.1 extends the same rhythm to the invert gate (a correction every
+    // ~0.5–1 s through the whole approach).
     { center: { x: 0, y: 7.25, z: 1153.5 }, halfExtents: { x: 5.4, y: 1.75, z: 1.5 } },
     { center: { x: 0, y: -1.25, z: 1161.5 }, halfExtents: { x: 5.4, y: 1.75, z: 1.5 } },
     { center: { x: 0, y: 7.25, z: 1169.5 }, halfExtents: { x: 5.4, y: 1.75, z: 1.5 } },
-    // Pillar slalom (full height, one lane blocked each).
+    { center: { x: 0, y: -1.25, z: 1177.5 }, halfExtents: { x: 5.4, y: 1.75, z: 1.5 } },
+    { center: { x: 0, y: 7.25, z: 1185.5 }, halfExtents: { x: 5.4, y: 1.75, z: 1.5 } },
+    { center: { x: 0, y: -1.25, z: 1193.5 }, halfExtents: { x: 5.4, y: 1.75, z: 1.5 } },
+    // Pillar slalom (full height, one lane blocked each — lateral gates
+    // forcing X steering THROUGH the vertical slalom: 3D threading).
     { center: { x: 2.6, y: 3, z: 1182 }, halfExtents: { x: 1.3, y: 6, z: 2 } },
     { center: { x: -2.6, y: 3, z: 1192 }, halfExtents: { x: 1.3, y: 6, z: 2 } },
+    { center: { x: 2.6, y: 3, z: 1207 }, halfExtents: { x: 1.3, y: 6, z: 2 } },
+    { center: { x: -2.6, y: 3, z: 1222 }, halfExtents: { x: 1.3, y: 6, z: 2 } },
     // Inverted ribs: floor ribs (top −1.5) + ceiling ribs (bottom 7.5).
     { center: { x: 0, y: -2.25, z: 1210 }, halfExtents: { x: 5.4, y: 0.75, z: 1.5 } },
     { center: { x: 0, y: 8.25, z: 1215 }, halfExtents: { x: 5.4, y: 0.75, z: 1.5 } },
@@ -835,10 +857,17 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     { center: { x: 0, y: 6.5, z: 1260 }, halfExtents: { x: 5.4, y: 2.5, z: 2 } },
     { center: { x: 0, y: -1, z: 1270 }, halfExtents: { x: 5.4, y: 2, z: 2 } },
     { center: { x: 0, y: 3, z: 1280 }, halfExtents: { x: 1.3, y: 6, z: 2 } },
+    // S-weave side pillar (dodged from the far side, then hold the line
+    // through the S and the center pillar — pillars 4 u apart cannot be
+    // threaded with lane precision, so only one side pillar stands here).
+    { center: { x: -2.6, y: 3, z: 1264 }, halfExtents: { x: 1.3, y: 6, z: 2 } },
     // Burst teeth (alternating, z 1290..1298 — same fair slot).
     { center: { x: 0, y: 7.25, z: 1290 }, halfExtents: { x: 5.4, y: 1.75, z: 1.5 } },
     { center: { x: 0, y: -1.25, z: 1294 }, halfExtents: { x: 5.4, y: 1.75, z: 1.5 } },
     { center: { x: 0, y: 7.25, z: 1298 }, halfExtents: { x: 5.4, y: 1.75, z: 1.5 } },
+    // Burst side pillars (3D threading through the inverted burst).
+    { center: { x: 2.6, y: 3, z: 1292 }, halfExtents: { x: 1.3, y: 6, z: 2 } },
+    { center: { x: -2.6, y: 3, z: 1298 }, halfExtents: { x: 1.3, y: 6, z: 2 } },
     // Ship-exit landing runway (top 0, z 1310..1330).
     { center: { x: 0, y: -0.5, z: 1320 }, halfExtents: { x: 5.4, y: 0.5, z: 10 } },
     // ================= ACT 7 SPIDER SPIRE (1330..1510) =================
@@ -1110,13 +1139,13 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 886 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 886 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
 
-    // ================= ACT 5 =================
-    // M9 funnel: foundry-entry discipline (both lines settle center
-    // 924+ after the shaft drop — lanes 0+2 carry teeth the fall clears).
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 928 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 928 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 934 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 934 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // ================= ACT 5 (M9.1 rebuild) =================
+    // Entry narrowed (1-lane) — support holds the line, teeth removed.
+    // Entry hop spike (carries the shaft-exit landing to the board jump).
+    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 925 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Ferry-exit hop spike (the exit flight lands here; weave taps steer
+    // mid-flight for gate 982).
+    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 972 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     // Weave gates around the #2 lunge.
     { kind: 'killFront', visual: 'block', center: { x: 0, y: 1.5, z: 975 }, halfExtents: { x: 1.3, y: 1.5, z: 0.5 } },
     // M9 funnel: slalom-entry discipline (both lines dodge lane 2 through
@@ -1125,8 +1154,9 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     { kind: 'killFront', visual: 'block', center: { x: 2.6, y: 1.5, z: 982 }, halfExtents: { x: 3.9, y: 1.5, z: 0.5 } },
     { kind: 'killFront', visual: 'block', center: { x: 3.35, y: 1.5, z: 989 }, halfExtents: { x: 2.05, y: 1.5, z: 0.5 } },
     { kind: 'killFront', visual: 'block', center: { x: -3.35, y: 1.5, z: 989 }, halfExtents: { x: 2.05, y: 1.5, z: 0.5 } },
-    // Ceiling spike on the #3 traverse.
-    { kind: 'hazard', visual: 'spike', mount: 'ceiling', center: { x: -2.6, y: 9.75, z: 1022 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Ceiling hop spike (centered for the narrowed traverse — dive-hop
+    // into the portal-flight return).
+    { kind: 'hazard', visual: 'spike', mount: 'ceiling', center: { x: 0, y: 9.75, z: 1026 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     // M9 foundry slalom (2× weave walls, single-door commitment each —
     // the maze-wall precedent at 2× lane-change spacing: 10 u lead per
     // tap). Doors: lane 2 through 1080, lane 1 through 1096. The old 1×

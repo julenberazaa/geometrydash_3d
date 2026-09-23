@@ -126,6 +126,9 @@ export class ShowcaseDriver {
       913.5, // A4 shaft-exit spike
       933, // A5 ferry board
       957, // A5 ferry exit
+      923, // A5 entry hop (to the board jump)
+      967, // A5 ferry-exit hop (weave taps steer mid-flight)
+      1023, // A5 ceiling hop (portal-flight return)
       1042.5, // A5 lava strip (2× flight clears the strip + lunge head)
       869.5, 879.5, // spire-entry rhythm hops
       // M9.1 ACT 3 maze: approach hop + teeth jog (door 1 passed running,
@@ -161,7 +164,7 @@ export class ShowcaseDriver {
       244, // drop-jump off stair 1 (lands LOW road)
       254.5, // lane-0 hop (spike 257)
       269.5, // side-strip hop (lane-0 spike 272)
-      313, 317, 326, 338.5, // LOW-ground hops + mid-flight orb reshaper
+      313, 317, 326, 329, 338.5, // LOW-ground hops + mid-flight orb reshapers
       // M9.1 ACT 3 transition hops (lane-0 hop + lane-2 strip hop) +
       // lower exit hop (carries the weave to the exit gap).
       529, 542, 600,
@@ -223,19 +226,22 @@ export class ShowcaseDriver {
       { atZ: 975, dir: 'right' },
       { atZ: 977, dir: 'right' },
       { atZ: 984.5, dir: 'left' },
-      { atZ: 1018, dir: 'left' },
-      { atZ: 1025, dir: 'right' },
+      // (A5 ceiling holds center on the narrowed traverse — hop, no taps.)
       { atZ: 1048, dir: 'right' },
       // M9 slalom returns: dodge through the lengthened lunge, back to
       // center after it, then the two single-door weaves (10 u leads).
       { atZ: 1063, dir: 'left' },
       { atZ: 1070, dir: 'right' },
       { atZ: 1086, dir: 'left' },
-      // A6 pillar slalom + S-weave pillar + recenter for the gates.
+      // M9.1 A6 3D pillar slalom (dodge each side pillar away from it —
+      // taps fire a full transit (6–8 u) before each pillar face, never at
+      // it; intent never leaves 0..2).
       { atZ: 1172, dir: 'right' },
       { atZ: 1186, dir: 'left' },
-      { atZ: 1274, dir: 'left' },
-      { atZ: 1280, dir: 'right' },
+      { atZ: 1199, dir: 'right' },
+      { atZ: 1214, dir: 'left' },
+      { atZ: 1256, dir: 'left' },
+      { atZ: 1282, dir: 'right' },
       // A7 temple ceiling spike.
       { atZ: 1352, dir: 'left' },
       { atZ: 1366, dir: 'right' },
@@ -501,7 +507,7 @@ export class ShowcaseDriver {
 
   /** Banded Ship altitude targets (tuned ride lines — see ACT 6 notes). */
   private shipTarget(z: number): number {
-    if (z < 1128) return 3.4; // rise over the top-2 wall
+    if (z < 1128) return 3.0; // rise over the top-2 wall + hit the 1× ring
     if (z < 1140) return 4.0; // settle for the dive block
     if (z < 1146) return 3.5; // dive under (bottom 6)
     if (z < 1200) return 3.0; // teeth slalom cruise
