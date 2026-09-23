@@ -215,6 +215,12 @@ declare global {
       musicContextState: () => string;
       musicVolume: () => number;
       musicGain: () => number;
+      /** M9.2 graph-structure probes (source→gain→destination wiring). */
+      musicSourceCreated: () => boolean;
+      musicSourceConnected: () => boolean;
+      musicGainConnected: () => boolean;
+      musicEffectiveGain: () => number;
+      musicGraphReady: () => boolean;
     };
   }
 }
@@ -411,6 +417,11 @@ window.__gd3d = {
   musicContextState: (): string => game.musicDirector?.audioContextState() ?? 'none',
   musicVolume: (): number => game.musicDirector?.probe().volume ?? -1,
   musicGain: (): number => game.musicDirector?.probe().gain ?? -1,
+  musicSourceCreated: (): boolean => game.musicDirector?.probe().sourceCreated ?? false,
+  musicSourceConnected: (): boolean => game.musicDirector?.probe().sourceConnected ?? false,
+  musicGainConnected: (): boolean => game.musicDirector?.probe().gainConnected ?? false,
+  musicEffectiveGain: (): number => game.musicDirector?.probe().effectiveGain ?? -1,
+  musicGraphReady: (): boolean => game.musicDirector?.graphReady() ?? false,
 };
 
 // Hot Module Acceptance for Vite dev server.

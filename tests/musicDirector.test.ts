@@ -39,6 +39,8 @@ class FakeSource implements AudioSourceLike {
 class FakeGain implements AudioGainLike {
   public level = -1;
   public ramped = false;
+  public connectedTo: unknown = null;
+  public disconnected = false;
 
   public setGain(value: number): void {
     this.level = value;
@@ -49,8 +51,13 @@ class FakeGain implements AudioGainLike {
     this.level = 0;
   }
 
-  public connect(_destination: unknown): void {}
-  public disconnect(): void {}
+  public connect(destination: unknown): void {
+    this.connectedTo = destination;
+  }
+
+  public disconnect(): void {
+    this.disconnected = true;
+  }
 }
 
 class FakeEngine implements AudioEngineLike {
@@ -60,9 +67,19 @@ class FakeEngine implements AudioEngineLike {
   public decoded = false;
   public sources: FakeSource[] = [];
   public gains: FakeGain[] = [];
+  /**
+   * M9.2 structural graph log: every wiring event in call order, so the
+   * test can prove create → connect(source→gain) → connect(gain→dest) →
+   * start instead of merely asserting `state === 'playing'`.
+   */
+  public events: string[] = [];
+  public connectCalls: { source: AudioSourceLike; gain: AudioGainLike }[] = [];
   public buffer: AudioBufferLike = { duration: 121.574 };
   public bytes: ArrayBuffer | null = new ArrayBuffer(8);
   public failDecode = false;
+  /** When true, wiring throws (simulates the disconnected-graph bug). */
+  public failConnect = false;
+  public readonly destinationObject: unknown = {};
 
   public get currentTime(): number {
     return this.now;
@@ -80,17 +97,37 @@ class FakeEngine implements AudioEngineLike {
     expect(buffer).toBe(this.buffer);
     const source = new FakeSource();
     this.sources.push(source);
+    this.events.push('createSource');
+    const engine = this;
+    const innerStart = source.start.bind(source);
+    source.start = (when: number, offset: number): void => {
+      engine.events.push('start');
+      innerStart(when, offset);
+    };
     return source;
   }
 
   public createGain(): AudioGainLike {
     const gain = new FakeGain();
     this.gains.push(gain);
+    this.events.push('createGain');
+    const engine = this;
+    const innerConnect = gain.connect.bind(gain);
+    gain.connect = (destination: unknown): void => {
+      engine.events.push('gainConnect');
+      innerConnect(destination);
+    };
     return gain;
   }
 
+  public connectSourceToGain(source: AudioSourceLike, gain: AudioGainLike): void {
+    if (this.failConnect) throw new Error('fake wiring failure');
+    this.connectCalls.push({ source, gain });
+    this.events.push('sourceConnect');
+  }
+
   public get destination(): unknown {
-    return {};
+    return this.destinationObject;
   }
 
   public async decode(_data: ArrayBuffer): Promise<AudioBufferLike> {
@@ -258,6 +295,69 @@ describe('music transport (M9 MusicDirector)', () => {
     director.beginGesture();
     expect(engine.resumed).toBe(true);
     expect(director.audioContextState()).toBe('running');
+  });
+
+  it('M9.2: startAt wires source→gain→destination in order before start', async () => {
+    const { director, engine } = await readyDirector();
+    expect(director.startAt(0)).toBe(true);
+    // The exact audible output path: source into gain, gain into the
+    // destination, and only then start. Order matters — starting an
+    // unwired source is the M9/M9.1 silence signature.
+    expect(engine.events).toEqual([
+      'createSource',
+      'createGain',
+      'sourceConnect',
+      'gainConnect',
+      'start',
+    ]);
+    expect(engine.connectCalls).toHaveLength(1);
+    expect(engine.connectCalls[0]?.source).toBe(engine.sources[0]);
+    expect(engine.connectCalls[0]?.gain).toBe(engine.gains[0]);
+    expect(engine.gains[0]?.connectedTo).toBe(engine.destinationObject);
+    const probe = director.probe();
+    expect(probe.sourceCreated).toBe(true);
+    expect(probe.sourceConnected).toBe(true);
+    expect(probe.gainConnected).toBe(true);
+    expect(probe.effectiveGain).toBe(MUSIC_DEFAULT_VOLUME);
+    expect(probe.graphReady).toBe(true);
+    expect(director.graphReady()).toBe(true);
+  });
+
+  it('M9.2: a wiring failure never leaves a silent `playing` transport', async () => {
+    const engine = new FakeEngine();
+    const director = new MusicDirector('/audio/Gravity_Lessons.mp3', engine);
+    director.preload();
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+    expect(await director.ensure()).toBe(true);
+    engine.failConnect = true;
+    // The old code returned true here with `playing` while nothing was
+    // connected — the new contract fails loud instead.
+    expect(director.startAt(0)).toBe(false);
+    expect(director.transportState).toBe('failed');
+    expect(director.isPlaying).toBe(false);
+    expect(director.graphReady()).toBe(false);
+    const probe = director.probe();
+    expect(probe.sourceConnected).toBe(false);
+    expect(probe.gainConnected).toBe(false);
+    expect(probe.graphReady).toBe(false);
+  });
+
+  it('M9.2: graphReady drops when the voice is torn down or muted', async () => {
+    const { director } = await readyDirector();
+    director.startAt(0);
+    expect(director.graphReady()).toBe(true);
+    director.setMuted(true);
+    expect(director.graphReady()).toBe(false);
+    director.setMuted(false);
+    expect(director.graphReady()).toBe(true);
+    director.pause();
+    expect(director.graphReady()).toBe(false);
+    expect(director.probe().sourceConnected).toBe(false);
+    director.resume();
+    expect(director.graphReady()).toBe(true);
+    director.cut();
+    expect(director.graphReady()).toBe(false);
+    expect(director.probe().gainConnected).toBe(false);
   });
 
   it('M9.1: one central music volume + real-state probes', async () => {

@@ -52,6 +52,15 @@ export interface AudioEngineLike {
   contextState(): string;
   createSource(buffer: AudioBufferLike): AudioSourceLike;
   createGain(): AudioGainLike;
+  /**
+   * M9.2 graph contract: wire a live source voice into its master music
+   * gain (source → gain). The real engine connects the underlying
+   * AudioBufferSourceNode to the underlying GainNode; fakes record the
+   * wiring for the structural test. Every live music voice MUST pass
+   * through this before `start()` — an unwired source advances transport
+   * time while producing silence.
+   */
+  connectSourceToGain(source: AudioSourceLike, gain: AudioGainLike): void;
   readonly destination: unknown;
   decode(data: ArrayBuffer): Promise<AudioBufferLike>;
   fetchBytes(url: string): Promise<ArrayBuffer>;
@@ -61,6 +70,14 @@ export interface AudioEngineLike {
 /** Real Web Audio engine (constructed lazily on the start gesture). */
 export class WebAudioEngine implements AudioEngineLike {
   private readonly ctx: AudioContext;
+  /**
+   * M9.2: wrapper → real-node maps so `connectSourceToGain` can wire the
+   * true graph (source → gain → destination) without ever exposing raw
+   * Web Audio nodes outside this engine. MusicDirector stays the single
+   * music owner; Game never sees a node.
+   */
+  private readonly sourceNodes = new WeakMap<AudioSourceLike, AudioBufferSourceNode>();
+  private readonly gainNodes = new WeakMap<AudioGainLike, GainNode>();
 
   constructor() {
     this.ctx = new window.AudioContext();
@@ -88,7 +105,7 @@ export class WebAudioEngine implements AudioEngineLike {
     source.onended = (): void => {
       if (handler !== null) handler();
     };
-    return {
+    const wrapper: AudioSourceLike = {
       get onended(): (() => void) | null {
         return handler;
       },
@@ -114,11 +131,13 @@ export class WebAudioEngine implements AudioEngineLike {
         }
       },
     };
+    this.sourceNodes.set(wrapper, source);
+    return wrapper;
   }
 
   public createGain(): AudioGainLike {
     const gain = this.ctx.createGain();
-    return {
+    const wrapper: AudioGainLike = {
       setGain: (value: number): void => {
         gain.gain.setTargetAtTime(value, this.ctx.currentTime, 0.015);
       },
@@ -136,6 +155,17 @@ export class WebAudioEngine implements AudioEngineLike {
         }
       },
     };
+    this.gainNodes.set(wrapper, gain);
+    return wrapper;
+  }
+
+  public connectSourceToGain(source: AudioSourceLike, gain: AudioGainLike): void {
+    const sourceNode = this.sourceNodes.get(source);
+    const gainNode = this.gainNodes.get(gain);
+    if (sourceNode === undefined || gainNode === undefined) {
+      throw new Error('music graph: unknown voice (source/gain not created by this engine)');
+    }
+    sourceNode.connect(gainNode);
   }
 
   public get destination(): unknown {
@@ -176,6 +206,18 @@ export interface MusicProbe {
   bufferDuration: number;
   /** Live AudioContext state ('running' | 'suspended' | 'closed' | 'none'). */
   contextState: string;
+  /**
+   * M9.2 graph probes (structural, not audible proof): a live voice exists,
+   * the source is wired into its gain, and the gain is wired to the
+   * destination. `graphReady` means source-connected AND gain-connected
+   * AND gain > 0 AND context running — necessary for audibility, never a
+   * speaker-output proof (only the human gate proves that).
+   */
+  sourceCreated: boolean;
+  sourceConnected: boolean;
+  gainConnected: boolean;
+  effectiveGain: number;
+  graphReady: boolean;
 }
 
 export type MusicSyncAction = 'idle' | 'ok' | 'drift' | 'resynced';
@@ -205,6 +247,14 @@ export class MusicDirector {
   private volume = MUSIC_DEFAULT_VOLUME;
   /** Last gain applied to a live output node (probe evidence). */
   private appliedGain = 0;
+  /**
+   * M9.2 graph wiring flags: set ONLY by the successful source → gain →
+   * destination path in `startAt()`; cleared whenever the voice is torn
+   * down. A `playing` state with either flag false means transport
+   * WITHOUT an output path (the M9/M9.1 silence signature).
+   */
+  private sourceConnected = false;
+  private gainConnected = false;
   private disposed = false;
 
   constructor(
@@ -356,7 +406,15 @@ export class MusicDirector {
     );
   }
 
-  /** Start (or restart) the track at a buffer offset in seconds. */
+  /**
+   * Start (or restart) the track at a buffer offset in seconds.
+   *
+   * M9.2 graph contract (BUFFER SOURCE → MASTER MUSIC GAIN →
+   * DESTINATION): the source is wired into its gain BEFORE the gain is
+   * wired to the destination and BEFORE `start()` — in exactly that
+   * order. Any wiring failure aborts loud (`failed`, returns false) and
+   * never leaves a `playing` transport with no output path.
+   */
   public startAt(offsetSeconds: number): boolean {
     if (this.disposed || this.buffer === null || this.engine === null) return false;
     try {
@@ -365,7 +423,12 @@ export class MusicDirector {
       const buffer = this.buffer;
       const source = engine.createSource(buffer);
       const gain = engine.createGain();
+      // 1. source → gain (the M9/M9.1 silence bug was this line missing).
+      engine.connectSourceToGain(source, gain);
+      this.sourceConnected = true;
+      // 2. gain → destination.
       gain.connect(engine.destination);
+      this.gainConnected = true;
       this.appliedGain = this.muted ? 0 : this.volume;
       gain.setGain(this.appliedGain);
       const offset = Math.min(Math.max(0, offsetSeconds), Math.max(0, buffer.duration - 0.05));
@@ -376,6 +439,8 @@ export class MusicDirector {
         if (this.generation === gen && this.state === 'playing' && this.actualTime() >= buffer.duration - 0.3) {
           this.state = 'ready';
           this.source = null;
+          this.sourceConnected = false;
+          this.gainConnected = false;
         }
       };
       source.start(0, offset);
@@ -387,6 +452,8 @@ export class MusicDirector {
       this.state = 'playing';
       return true;
     } catch {
+      this.sourceConnected = false;
+      this.gainConnected = false;
       this.state = 'failed';
       return false;
     }
@@ -435,6 +502,8 @@ export class MusicDirector {
       this.generation += 1;
       this.state = 'ready';
       this.source = null;
+      this.sourceConnected = false;
+      this.gainConnected = false;
     } catch {
       this.state = 'failed';
     }
@@ -499,9 +568,18 @@ export class MusicDirector {
     }
   }
 
-  /** Debug/QA probe (cold path): target vs actual vs drift. */
+  /** Live-voice graph readiness (M9.2): output path exists + audible gain + running context. */
+  public graphReady(): boolean {
+    if (this.state !== 'playing') return false;
+    if (!this.sourceConnected || !this.gainConnected) return false;
+    if (this.appliedGain <= 0) return false;
+    return this.audioContextState() === 'running';
+  }
+
+  /** Debug/QA probe (cold path): target vs actual vs drift + graph wiring. */
   public probe(): MusicProbe {
     const actual = this.state === 'playing' ? this.actualTime() : this.pausedOffset;
+    const effectiveGain = this.state === 'playing' ? this.appliedGain : 0;
     return {
       state: this.state,
       playing: this.state === 'playing',
@@ -510,9 +588,14 @@ export class MusicDirector {
       actualTime: actual,
       driftMs: (actual - this.lastTarget) * 1000,
       volume: this.volume,
-      gain: this.state === 'playing' ? this.appliedGain : 0,
+      gain: effectiveGain,
       bufferDuration: this.bufferDuration(),
       contextState: this.audioContextState(),
+      sourceCreated: this.source !== null,
+      sourceConnected: this.sourceConnected,
+      gainConnected: this.gainConnected,
+      effectiveGain,
+      graphReady: this.graphReady(),
     };
   }
 
@@ -540,6 +623,8 @@ export class MusicDirector {
     this.generation += 1;
     const source = this.source;
     this.source = null;
+    this.sourceConnected = false;
+    this.gainConnected = false;
     if (source !== null) {
       try {
         source.onended = null;
