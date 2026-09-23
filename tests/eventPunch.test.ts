@@ -98,6 +98,20 @@ describe('eventPunch envelope', () => {
     updatePunch(punch, 10);
     expect(combinedPunchEnergy(punch)).toBe(0);
   });
+
+  it('M9 impact punches warm red for Chomper lunges (teleport still wins ties)', () => {
+    const punch = makeEventPunchState();
+    triggerPunch(punch, 'impact');
+    expect(combinedPunchEnergy(punch)).toBe(1);
+    expect(dominantPunchColor(punch)).toBe(0xff5a2a);
+    // Impact outranks a simultaneous gravity tie but not teleport.
+    triggerPunch(punch, 'gravity');
+    expect(dominantPunchColor(punch)).toBe(0xff5a2a);
+    triggerPunch(punch, 'teleport');
+    expect(dominantPunchColor(punch)).toBe(0xc77dff);
+    updatePunch(punch, 10);
+    expect(combinedPunchEnergy(punch)).toBe(0);
+  });
 });
 
 describe('VfxSystem surface-contact emission', () => {

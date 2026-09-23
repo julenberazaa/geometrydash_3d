@@ -150,6 +150,11 @@ declare global {
       // M7.1 beat-ready cue observability (presentation only).
       rhythmCue: () => string | null;
       energyRays: () => number;
+      // M9 rhythm-pulse observability (presentation only).
+      rhythmBeat: () => number;
+      rhythmDownbeat: () => number;
+      rhythmDrop: () => number;
+      rhythmSection: () => string;
       // M6D performance observability (presentation only).
       perfEnabled: () => boolean;
       perfSnapshot: () => {
@@ -314,6 +319,11 @@ window.__gd3d = {
   rhythmCue: () => game['rendererHost'].rhythmCueId,
   // M7.1 background energy-ray opacity (cold path).
   energyRays: () => game['rendererHost'].energyRayOpacity,
+  // M9 rhythm-pulse probes (deterministic sim-time envelopes).
+  rhythmBeat: () => game['rendererHost'].rhythmBeat,
+  rhythmDownbeat: () => game['rendererHost'].rhythmDownbeat,
+  rhythmDrop: () => game['rendererHost'].rhythmDrop,
+  rhythmSection: () => game['rendererHost'].rhythmSection,
   // M6D probes: bounded profiler + real-GPU identity (cold path).
   perfEnabled: () => game.isPerfEnabled,
   perfSnapshot: () => ({ ...game.perfSnapshot() }),

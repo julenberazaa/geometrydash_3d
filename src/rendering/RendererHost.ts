@@ -45,6 +45,16 @@ import {
   prepareRhythmCues,
   type PreparedRhythmCues,
 } from '../visuals/rhythmCues';
+import {
+  clearRhythmImpact,
+  evaluateRhythmPulse,
+  makeRhythmImpactState,
+  makeRhythmPulse,
+  updateRhythmImpact,
+  type RhythmImpactState,
+  type RhythmPulse,
+} from '../visuals/rhythmPulse';
+import { targetMusicTime } from '../audio/musicTrack';
 
 /**
  * RendererHost — THE ONLY module allowed to own WebGLRenderer and apply
@@ -91,6 +101,19 @@ export class RendererHost {
   private readonly timelineSections: PreparedVisualSequence;
   /** M7.1 beat-ready cues: prepared position-driven markers (possibly empty). */
   private readonly rhythmCues: PreparedRhythmCues;
+  /**
+   * M9 rhythm pulse: deterministic beat-grid envelopes from sim-time music
+   * time (no audio reads). Composed into the timeline base look by
+   * applyVisualState (below the event-punch overlay). Active only on
+   * music levels with triggers on; levels without a track keep legacy
+   * behavior bit-identically.
+   */
+  private readonly rhythmPulse: RhythmPulse = makeRhythmPulse();
+  private readonly rhythmImpact: RhythmImpactState = makeRhythmImpactState();
+  private readonly rhythmActive: boolean;
+  private readonly rhythmTrackOffset: number;
+  /** Previous Chomper phases for the lunge→impact punch edge (fixed, ≤8). */
+  private readonly lastChomperPhases: string[];
   /** Current resolved visual state (caller-owned scratch, reused per frame). */
   private readonly visualState: VisualState;
   private triggersEnabled: boolean;
@@ -210,6 +233,12 @@ export class RendererHost {
     // visual sequence): prepared once, resolved per frame from z, never
     // stored, never fed to the sim.
     this.rhythmCues = prepareRhythmCues(simulation.level.def);
+    // M9 rhythm pulse: active only on music levels (the beat grid follows
+    // the declared track); other levels never evaluate it.
+    const track = simulation.level.def.musicTrack ?? null;
+    this.rhythmActive = track !== null;
+    this.rhythmTrackOffset = track?.trackOffset ?? 0;
+    this.lastChomperPhases = simulation.chomperStates.map((s) => s.phase);
     this.visualState = makeVisualState();
     resetVisualState(this.theme, this.visualState);
     this.triggersEnabled = options.triggersEnabled ?? true;
@@ -401,6 +430,10 @@ export class RendererHost {
     // M6C1 timeline: position-driven presentation from the same
     // interpolated Z (pause-safe: same z re-resolves the same state).
     this.updateVisualTimeline(ip.z);
+    // M9 rhythm pulse: deterministic sim-time beat envelopes feeding the
+    // timeline base look below (pause-safe: frozen sim time re-resolves
+    // the identical pulse — pure function, no accumulation).
+    this.updateRhythmPulse(renderDtSeconds);
     // M6C2 event punch: sim edges feed the envelope, the overlay maps it
     // onto bloom/exposure/environment above the timeline base look.
     this.updateEventPunch(renderDtSeconds);
@@ -688,13 +721,35 @@ export class RendererHost {
   }
 
   /**
+   * M9 rhythm pulse evaluation (presentation only): beat-grid envelopes
+   * from deterministic sim-time music time. Trigger-owned (with triggers
+   * off the scratch holds rest); music-level-gated (other levels never
+   * evaluate — legacy behavior preserved). Render-dt drives ONLY the
+   * section-entry impact decay (dt 0 while paused freezes it).
+   */
+  private updateRhythmPulse(renderDtSeconds: number): void {
+    if (!this.triggersEnabled || !this.rhythmActive) {
+      this.rhythmPulse.eighth = 0;
+      this.rhythmPulse.beat = 0;
+      this.rhythmPulse.downbeat = 0;
+      this.rhythmPulse.drop = 0;
+      if (this.rhythmImpact.energy > 0) clearRhythmImpact(this.rhythmImpact);
+      return;
+    }
+    const musicTime = targetMusicTime(this.simulation.elapsedSimTime, this.rhythmTrackOffset);
+    evaluateRhythmPulse(musicTime, this.rhythmPulse);
+    updateRhythmImpact(this.rhythmImpact, musicTime, renderDtSeconds);
+  }
+
+  /**
    * M6C2 event punch: observe the same pre-existing sim edges the VFX
-   * reads (portal/speed/interaction counters — no sim change) and feed
-   * the punch envelope. Same-frame dedup mirrors the VFX rules (a
-   * gravity-orb flip or speed crossing already has its dedicated pulse).
-   * Trigger-owned: with triggers disabled the envelope stays at rest so
-   * `?triggers=off` remains the exact baseline. Render-dt evolution only
-   * (dt 0 while paused freezes the envelope with presentation pause).
+   * reads (portal/speed/interaction counters + Chomper phases — no sim
+   * change) and feed the punch envelope. Same-frame dedup mirrors the
+   * VFX rules (a gravity-orb flip or speed crossing already has its
+   * dedicated pulse). Trigger-owned: with triggers disabled the envelope
+   * stays at rest so `?triggers=off` remains the exact baseline.
+   * Render-dt evolution only (dt 0 while paused freezes the envelope
+   * with presentation pause).
    */
   private updateEventPunch(renderDtSeconds: number): void {
     const sim = this.simulation;
@@ -709,6 +764,16 @@ export class RendererHost {
       }
       if (sim.teleportEventCount !== this.lastPunchTeleport) {
         triggerPunch(this.punch, 'teleport');
+      }
+      // M9 Chomper-lunge impacts: telegraph→lunging edges punch warm red
+      // (lunges land on musical accents — see the alignment contract).
+      const states = sim.chomperStates;
+      for (let i = 0; i < states.length && i < this.lastChomperPhases.length; i++) {
+        const phase = states[i]?.phase ?? 'dormant';
+        if (phase === 'lunging' && this.lastChomperPhases[i] !== 'lunging') {
+          triggerPunch(this.punch, 'impact');
+        }
+        this.lastChomperPhases[i] = phase;
       }
       const events = sim.interactionEventCount - this.lastPunchEvents;
       if (events > 0) {
@@ -768,25 +833,63 @@ export class RendererHost {
     const s = this.visualState;
     this.library.applyRouteState(s.routeBody, s.routeSurface, s.routeAccent);
     this.levelView.setEdgeAccent(s.routeAccent);
+    // M9 rhythm pulse legs (below the event-punch overlay): beat-grid
+    // envelopes pump the SAME in-place hooks the timeline owns — bloom
+    // (re-clamped in-contract), exposure (0.5..2), environment (0..2),
+    // beams (section accent = automatic biome response: forge amber,
+    // islands teal, maze violet, cathedral blue, foundry red, reactor
+    // green, temple gold, void indigo, core magenta), VFX multipliers
+    // (≤2). At rest (pulse 0) every leg resolves the exact section look.
+    const pulse = this.rhythmPulse;
+    const impact = this.rhythmImpact.energy;
+    const pulseBloom = pulse.beat * 0.06 + pulse.downbeat * 0.1 + impact * 0.12;
+    const pulseExposure = pulse.beat * 0.03 + pulse.downbeat * 0.05 + impact * 0.06;
+    const pulseEnv = pulse.beat * 0.15 + pulse.drop * 0.25 + impact * 0.3;
     this.environmentView.applyVisualState(
       s.background,
       s.fogColor,
       s.fogNear,
       s.fogFar,
-      s.environmentIntensity,
+      Math.min(2, Math.max(0, s.environmentIntensity + pulseEnv)),
     );
-    // Section ray bed: livelier sections carry visible beams in their own
-    // accent color; calm sections fade them out (clamped — never dominant).
+    // Section ray bed + beat/downbeat/impact ray bursts in the section
+    // accent (clamped — beams stay subordinate by construction).
     const bed = Math.min(0.45, Math.max(0, (s.environmentIntensity - 1) * 0.7));
-    this.environmentView.setEnergyRays(bed, s.routeAccent);
-    this.post.setBloomParams(s.bloomStrength, s.bloomRadius, s.bloomThreshold);
-    this.renderer.toneMappingExposure = s.exposure;
-    this.vfx.setIntensity(s.vfxIntensity, s.streakIntensity);
+    this.environmentView.setEnergyRays(
+      Math.min(1, bed + pulse.beat * 0.25 + pulse.downbeat * 0.35 + impact * 0.5),
+      s.routeAccent,
+    );
+    this.post.setBloomParams(s.bloomStrength + pulseBloom, s.bloomRadius, s.bloomThreshold);
+    this.renderer.toneMappingExposure = Math.min(2, Math.max(0.5, s.exposure + pulseExposure));
+    this.vfx.setIntensity(
+      Math.min(2, s.vfxIntensity * (1 + pulse.beat * 0.2 + pulse.drop * 0.3)),
+      Math.min(2, s.streakIntensity * (1 + pulse.downbeat * 0.2 + impact * 0.2)),
+    );
   }
 
   /** Live M6C2 punch envelope 0..1 (QA observability; 0 at rest/off). */
   public get eventPunchEnergy(): number {
     return combinedPunchEnergy(this.punch);
+  }
+
+  /** M9 live rhythm-beat envelope 0..1 (QA; deterministic sim-time pulse). */
+  public get rhythmBeat(): number {
+    return this.rhythmPulse.beat;
+  }
+
+  /** M9 live rhythm-downbeat envelope 0..1 (QA). */
+  public get rhythmDownbeat(): number {
+    return this.rhythmPulse.downbeat;
+  }
+
+  /** M9 live section-energy pump 0..1 (QA). */
+  public get rhythmDrop(): number {
+    return this.rhythmPulse.drop;
+  }
+
+  /** M9 section id resolved from deterministic music time (QA). */
+  public get rhythmSection(): string {
+    return this.rhythmPulse.sectionId;
   }
 
   /** Dominant M6C2 punch tint (QA observability; environment flash color). */

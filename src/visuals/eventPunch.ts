@@ -22,7 +22,7 @@
  */
 
 /** Event families that carry a visual punch. */
-export type EventPunchKind = 'pad' | 'jumpOrb' | 'gravity' | 'speed' | 'teleport';
+export type EventPunchKind = 'pad' | 'jumpOrb' | 'gravity' | 'speed' | 'teleport' | 'impact';
 
 interface PunchSlot {
   energy: number;
@@ -36,6 +36,8 @@ export interface EventPunchState {
   gravity: PunchSlot;
   speed: PunchSlot;
   teleport: PunchSlot;
+  /** M9 Chomper-lunge impacts (warm red — lunges land on musical accents). */
+  impact: PunchSlot;
 }
 
 /** Per-kind punch tuning: peak energy + exponential decay rate (per second).
@@ -46,13 +48,14 @@ const PUNCH_TUNING: Record<EventPunchKind, { peak: number; decay: number; color:
   gravity: { peak: 1.0, decay: 2.0, color: 0x4fc3ff },
   speed: { peak: 0.9, decay: 2.6, color: 0xffffff },
   teleport: { peak: 1.0, decay: 2.2, color: 0xc77dff },
+  impact: { peak: 1.0, decay: 2.8, color: 0xff5a2a },
 };
 
 /** Fixed dominance order for ties (teleport wins — the rarest signature event). */
-const DOMINANCE: readonly EventPunchKind[] = ['teleport', 'gravity', 'speed', 'pad', 'jumpOrb'];
+const DOMINANCE: readonly EventPunchKind[] = ['teleport', 'impact', 'gravity', 'speed', 'pad', 'jumpOrb'];
 
 /** Frozen per-kind iteration order (hot-loop: no key-array allocation). */
-const PUNCH_KINDS = ['pad', 'jumpOrb', 'gravity', 'speed', 'teleport'] as const;
+const PUNCH_KINDS = ['pad', 'jumpOrb', 'gravity', 'speed', 'teleport', 'impact'] as const;
 
 /** Fresh punch state (cold paths + tests only; the host reuses one). */
 export const makeEventPunchState = (): EventPunchState => ({
@@ -61,6 +64,7 @@ export const makeEventPunchState = (): EventPunchState => ({
   gravity: { energy: 0, color: PUNCH_TUNING.gravity.color },
   speed: { energy: 0, color: PUNCH_TUNING.speed.color },
   teleport: { energy: 0, color: PUNCH_TUNING.teleport.color },
+  impact: { energy: 0, color: PUNCH_TUNING.impact.color },
 });
 
 /**

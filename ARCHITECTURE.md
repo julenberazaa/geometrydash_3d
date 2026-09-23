@@ -10,6 +10,8 @@
 main.ts → Game (composition root)
   Game → InputSystem → GameSimulation → { CubeController, CollisionWorld, LevelRuntime }
   Game → ReplayCoordinator → GameSimulation (M5: recording/playback orchestration ABOVE the sim)
+  Game → MusicDirector → Web Audio output (M9: presentation-owned transport;
+    audio FOLLOWS sim time, never drives it — §10)
   Game → RendererHost → { LevelView, PlayerView, EnvironmentView, DebugView, ChaseCamera }
   Game → Hud, DebugOverlay
 ```
@@ -603,6 +605,39 @@ fixed-tick PHYSICAL input tape plus verification evidence.
 - `DeathSfx` (`src/audio/`, M2): lazy guarded Web Audio death blip (0.18 s),
   created on first user gesture; silence-on-failure; gameplay never depends
   on it.
+- `musicTrack.ts` (`src/audio/`, M9): the authored Gravity Lessons timeline
+  as pure data + pure beat/section math (120 BPM grid, offset 0.06 s,
+  arrangement sections, anchors, sim-time master `targetMusicTime`).
+  THREE-free, DOM-free, clock-free. The simulation NEVER imports it
+  (gameplay is authored to MATCH the map, never driven by it); the
+  presentation (MusicDirector targets, rhythm pulses, alignment tooling)
+  reads it. `MusicTrackRef` on `LevelDefinition` binds a track to a level
+  (presentation-only: never fingerprinted, never replayed).
+- `MusicDirector` (`src/audio/`, M9): the ONE presentation owner of music
+  transport (Web Audio buffer source: load/decode/readiness, play, pause
+  as stop + offset record, resume, restart at origin, cut with short fade,
+  seek/resync, mute, volume, transport state). Owned by `Game`
+  (composition root), which coordinates lifecycle edges only: the
+  press-to-start gate (tick-0 hold until the first gesture starts music +
+  sim together), P pause/resume, death/respawn cut + origin restart, R
+  restart, F4 replay restart, per-frame `syncToTarget(elapsedSimTime +
+  offset)` with dead-band ±60 ms / resync beyond 180 ms (presentation-only
+  correction — the sim is never touched). Injectable engine surface keeps
+  the state machine unit-tested without a real AudioContext; every method
+  is guarded so audio can never throw into gameplay or QA. Levels without
+  `musicTrack` start immediately and stay silent (legacy behavior).
+- `rhythmPulse.ts` (`src/visuals/`, M9): deterministic music-reactive
+  visual modulation WITHOUT audio analysis — subdivision/beat/downbeat
+  exponential envelopes as a pure function of sim-time music time +
+  section-energy pump + section-entry impact envelope (render-dt decay,
+  dt 0 freezes with pause). Composed into the timeline base look by
+  `RendererHost.applyVisualState` (bloom/exposure/environment/beams/VFX
+  legs, all re-clamped; beams retint in the section accent = automatic
+  biome response), BELOW the event-punch overlay; trigger-owned
+  (`?triggers=off` silences it), music-level-gated (trackless levels
+  bit-identical), `?music=off`-independent (authored rhythm, not heard
+  audio). M9 `impact` event-punch family (warm red, Chomper-lunge edges)
+  joins the same overlay.
 - `perfProfiler.ts` (`src/debug/`, M6D) — DEBUG/PERF-only frame profiler
   living ABOVE gameplay (never touches sim/input/replay): bounded
   Float64 ring (600 samples, zero hot-loop allocation, O(1) counters),
