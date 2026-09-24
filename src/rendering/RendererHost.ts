@@ -4,6 +4,7 @@ import { ChaseCamera, CAMERA_TUNING } from '../camera/ChaseCamera';
 import type { CameraFocusSide } from '../camera/ChaseCamera';
 import { CameraOcclusionResolver, type CameraBlocker } from '../camera/CameraOcclusionResolver';
 import { CameraOccluderFade } from './CameraOccluderFade';
+import { ContactPulse } from './ContactPulse';
 import type { GravityMode } from '../player/playerState';
 import { LevelView } from './LevelView';
 import { PlayerView } from './PlayerView';
@@ -162,6 +163,14 @@ export class RendererHost {
    * blocking mesh when pull-in cannot recover sight. Renderer-only.
    */
   private readonly occluderFade: CameraOccluderFade;
+  /**
+   * M9.3 island contact response: the touched support body mesh briefly
+   * surges on landing (local pulse, pooled clones, no leaks). Renderer-only.
+   * Field-initialized (used by the fx flag early in the constructor).
+   */
+  private readonly contactPulse: ContactPulse = new ContactPulse();
+  /** Previous-frame grounded state (landing-edge detection for pulses). */
+  private prevGrounded = false;
   /** Resolver `platform-<id>` → MovingPlatformView definition index. */
   private readonly platformFadeIndex = new Map<string, number>();
   public get playerView(): Readonly<PlayerView> {
@@ -300,6 +309,7 @@ export class RendererHost {
     this.vfx = new VfxSystem(this.theme);
     this.scene.add(this.vfx.group);
     if (options.fxEnabled === false) this.vfx.setEnabled(false);
+    if (options.fxEnabled === false) this.contactPulse.setEnabled(false);
 
     this.debugView = new DebugView();
     this.debugView.buildColliders(simulation.level.world);
@@ -539,6 +549,29 @@ export class RendererHost {
       }
     }
     this.occluderFade.update(fadeMesh, renderDtSeconds);
+    // M9.3 island contact response (§21-24): the grounded edge pulses the
+    // TOUCHED support body mesh only (static via the solid map, moving via
+    // the platform view — the clone rides the mesh so ferry pulses follow
+    // the pose). Runs while the attempt is live; pause freezes via dt 0;
+    // `?fx=off` silences new pulses like all other contact language.
+    const groundedNow = sim.status === 'running' && sim.player.grounded;
+    if (groundedNow && !this.prevGrounded) {
+      const supportId = sim.player.supportColliderId;
+      if (supportId !== null) {
+        let pulseMesh: THREE.Mesh | null = null;
+        if (supportId.startsWith('platform-')) {
+          const index = this.platformFadeIndex.get(supportId);
+          pulseMesh = index !== undefined ? this.platformView.occluderMesh(index) : null;
+        } else {
+          pulseMesh = this.levelView.occluderMeshes.get(supportId) ?? null;
+        }
+        if (pulseMesh !== null) {
+          this.contactPulse.noteLanding(pulseMesh, supportId, this.visualState.routeAccent);
+        }
+      }
+    }
+    this.prevGrounded = groundedNow;
+    this.contactPulse.update(renderDtSeconds);
   }
 
   /**
@@ -697,6 +730,7 @@ export class RendererHost {
   /** Runtime FX toggle (debug/QA; presentation only). */
   public setFxEnabled(enabled: boolean): void {
     this.vfx.setEnabled(enabled);
+    this.contactPulse.setEnabled(enabled);
   }
 
   /** Live M6B burst particles (QA boundedness observability). */
@@ -722,6 +756,21 @@ export class RendererHost {
   /** Last landing intensity 0..1 (impact-scaling observability). */
   public get lastLandingIntensity(): number {
     return this.vfx.lastLandingIntensityValue;
+  }
+
+  /** Cumulative island landing pulses (QA observability). */
+  public get contactPulseCount(): number {
+    return this.contactPulse.pulseCount;
+  }
+
+  /** Support id of the most recent landing pulse (QA observability). */
+  public get lastContactPulseId(): string | null {
+    return this.contactPulse.lastPulseId;
+  }
+
+  /** Strongest live pulse envelope 0..1, 0 at rest (QA observability). */
+  public get contactPulseIntensity(): number {
+    return this.contactPulse.pulseIntensity;
   }
 
   /** Monotonic VFX transient-reset count (QA observability). */
@@ -1134,6 +1183,7 @@ export class RendererHost {
     this.playerViewInternal.dispose();
     this.deathBurst.dispose();
     this.vfx.dispose();
+    this.contactPulse.releaseAll();
     this.debugView.dispose();
     this.environmentView.dispose();
     this.library.dispose();

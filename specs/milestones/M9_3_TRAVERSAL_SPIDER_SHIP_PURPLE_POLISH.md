@@ -203,3 +203,11 @@ spider feel, ship feel, purple look + route, island feedback.
   sneak dies on the lanes-0+2 teeth — no funnel needed there); S-weave
   center pillar 1280→1276 + return tap 1282→1278 so the reference line
   clears the invert2 funnel face; anchor 13799 intact.
+- Commit 5: ship 3D diagonal (invert ring LEFT x−2.6, revert ring
+  HIGH-RIGHT x+2.6; funnels follow; LOW-LEFT → HIGH-RIGHT traverse +
+  right-side S-weave + center return; driver PD bands + taps reworked);
+  technical abyss already 1× (§19 satisfied by design, 12 u 2× entry
+  burst kept); anchor 13799 intact.
+- Commit 6: island landing glow (`ContactPulse` + host edge routing +
+  `__gd3d` probes + 7 unit tests); presentation-only, local-only,
+  no-leak (fade precedent); moving islands ride the mesh.

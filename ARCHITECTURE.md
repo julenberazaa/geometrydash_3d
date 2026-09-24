@@ -509,6 +509,13 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   platform body mesh to 0.25 (presentation-only; ≤4 concurrent single-use
   clones, disposed on release; trims/rails/hazards/lava/portals never
   registered — `LevelView.occluderMeshes` + `MovingPlatformView.occluderMesh`).
+- `ContactPulse` (`src/rendering/`, M9.3 island landing response):
+  RendererHost edge-detects the grounded transition and pulses the touched
+  support body mesh only (same registered mesh sets as the fade path;
+  platform clones ride the mesh so ferry pulses follow the pose) — accent
+  emissive clone (peak 2.5, 0.30 s decay), ≤4 slots, shared materials never
+  mutated, `?fx=off` silences it; probes `contactPulseCount /
+  lastContactPulseId / contactPulseIntensity` via `__gd3d`.
 - `RendererHost`: SOLE owner of `WebGLRenderer`. Resolves the production
   theme (`resolveProductionTheme`, renderer-owned with a per-level route
   overlay) and owns the shared `MaterialLibrary` (sole material/geometry

@@ -137,6 +137,10 @@ declare global {
       teleportEventCount: () => number;
       lastTeleportId: () => string | null;
       lastLandingIntensity: () => number;
+      /** M9.3 island-contact pulse probes (presentation only). */
+      contactPulseCount: () => number;
+      lastContactPulseId: () => string | null;
+      contactPulseIntensity: () => number;
       fxResets: () => number;
       burstActive: () => boolean;
       /** QA-only: Spider-swap camera glides armed (M8.2 smoothing proof). */
@@ -334,6 +338,9 @@ window.__gd3d = {
   teleportEventCount: () => game['simulation'].teleportEventCount,
   lastTeleportId: () => game['simulation'].lastTeleportId,
   lastLandingIntensity: () => game['rendererHost'].lastLandingIntensity,
+  contactPulseCount: () => game['rendererHost'].contactPulseCount,
+  lastContactPulseId: () => game['rendererHost'].lastContactPulseId,
+  contactPulseIntensity: () => game['rendererHost'].contactPulseIntensity,
   fxResets: () => game['rendererHost'].fxResets,
   burstActive: () => game['rendererHost'].deathBurstActive,
   swapGlideCount: () => game['rendererHost'].swapGlideCount,
