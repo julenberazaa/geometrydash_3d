@@ -942,8 +942,11 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     { center: { x: 0, y: -0.5, z: 1345 }, halfExtents: { x: 5.4, y: 0.5, z: 15 } },
     // Ceiling snap slab (underside y=10, z 1340..1400).
     { center: { x: 0, y: 10.5, z: 1370 }, halfExtents: { x: 5.4, y: 0.5, z: 30 } },
-    // Spider dodge walls (y 0..3 — snap up before, down after).
-    { center: { x: 0, y: 1.5, z: 1350 }, halfExtents: { x: 5.4, y: 1.5, z: 1.5 } },
+    // Spider dodge walls (y 0..3 — snap up before, down after). M9.3:
+    // wall #1 moved +3 (1350 -> 1353) so the first post-entry reaction
+    // grows 5.5 u -> 8.5 u (~0.30 s at 2x); walls 2-4 unchanged (the
+    // ceiling run clears them).
+    { center: { x: 0, y: 1.5, z: 1353 }, halfExtents: { x: 5.4, y: 1.5, z: 1.5 } },
     { center: { x: 0, y: 1.5, z: 1365 }, halfExtents: { x: 5.4, y: 1.5, z: 1.5 } },
     { center: { x: 0, y: 1.5, z: 1380 }, halfExtents: { x: 5.4, y: 1.5, z: 1.5 } },
     { center: { x: 0, y: 1.5, z: 1395 }, halfExtents: { x: 5.4, y: 1.5, z: 1.5 } },
@@ -951,20 +954,21 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     // blocked, the ceiling path (underside 12) clears it — snap up, run,
     // snap down. Missing the first snap meets the wall (frontImpact).
     { center: { x: 0, y: 9, z: 1448 }, halfExtents: { x: 5.4, y: 1, z: 2 } },
-    // Climb shaft NARROWED (1-lane precision snap landings): floor A
+    // Climb shaft WIDENED (M9.3: 1-lane x±1.6 -> roomier x±2.1 snap
+    // landings — still precise, no longer pixel-tight): floor A
     // (top 0, z 1400..1414).
-    { center: { x: 0, y: -0.5, z: 1407 }, halfExtents: { x: 1.6, y: 0.5, z: 7 } },
+    { center: { x: 0, y: -0.5, z: 1407 }, halfExtents: { x: 2.1, y: 0.5, z: 7 } },
     // Ceiling A (underside 8, z 1404..1418).
-    { center: { x: 0, y: 8.5, z: 1411 }, halfExtents: { x: 1.6, y: 0.5, z: 7 } },
+    { center: { x: 0, y: 8.5, z: 1411 }, halfExtents: { x: 2.1, y: 0.5, z: 7 } },
     // Floor B (top 4.5, z 1416..1430).
-    { center: { x: 0, y: 4, z: 1423 }, halfExtents: { x: 1.6, y: 0.5, z: 7 } },
+    { center: { x: 0, y: 4, z: 1423 }, halfExtents: { x: 2.1, y: 0.5, z: 7 } },
     // Ceiling B (underside 12, z 1420..1434).
-    { center: { x: 0, y: 12.5, z: 1427 }, halfExtents: { x: 1.6, y: 0.5, z: 7 } },
+    { center: { x: 0, y: 12.5, z: 1427 }, halfExtents: { x: 2.1, y: 0.5, z: 7 } },
     // Floor C (top 8, z 1432..1446) + HIGH runway (top 8, z 1446..1460).
-    { center: { x: 0, y: 7.5, z: 1439 }, halfExtents: { x: 1.6, y: 0.5, z: 7 } },
-    { center: { x: 0, y: 7.5, z: 1453 }, halfExtents: { x: 1.6, y: 0.5, z: 7 } },
+    { center: { x: 0, y: 7.5, z: 1439 }, halfExtents: { x: 2.1, y: 0.5, z: 7 } },
+    { center: { x: 0, y: 7.5, z: 1453 }, halfExtents: { x: 2.1, y: 0.5, z: 7 } },
     // Runway snap ceiling (underside 12, z 1444..1454) for the dodge wall.
-    { center: { x: 0, y: 12.5, z: 1449 }, halfExtents: { x: 1.6, y: 0.5, z: 5 } },
+    { center: { x: 0, y: 12.5, z: 1449 }, halfExtents: { x: 2.1, y: 0.5, z: 5 } },
     // Wall slabs (faces x=±5.4, z 1460..1490; the left wall reaches down
     // to y=2 so the return snap catches a low rider).
     { center: { x: 5.9, y: 7, z: 1475 }, halfExtents: { x: 0.5, y: 5, z: 15 } },
@@ -1286,20 +1290,25 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 1330 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 1330 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     // Spider discipline teeth (lanes 0+2 — the snap line holds center).
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 1348 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 1348 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 1362 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 1362 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 1378 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 1378 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 1392 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 1392 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // M9.3: pair #1 follows wall #1 (1348 -> 1351), pair #2 widens the
+    // down/up gap (1362 -> 1364); pairs #3/#4 removed — the climb approach
+    // breathes (one-notch easing, still center-disciplined by pairs 1-2
+    // plus the narrowed-slab snap landings).
+    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 1351 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 1351 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 1364 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 1364 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     // Spider-entry teeth (lanes 0+2 — the ship-exit line holds center
     // for the spider gate; no taps needed).
     { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 1334 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 1334 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 1338 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 1338 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // M9.3: pre-gate discipline pair (lanes 0+2 at 1340) — extends the
+    // center line to the gate mouth (a lane-0/2 runner would miss the
+    // x±1.5 ring and meet wall #1 as a cube). Time-neutral, driver-neutral.
+    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 1340 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 1340 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     // Spider-gate teeth (lanes 0+2 on the LOW landing runway — the
     // ship-exit line holds center; no taps needed).
     { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 1502 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },

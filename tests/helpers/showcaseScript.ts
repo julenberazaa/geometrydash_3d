@@ -245,8 +245,8 @@ export class ShowcaseDriver {
       { atZ: 1256, dir: 'left' },
       { atZ: 1282, dir: 'right' },
       // A7 temple ceiling spike.
-      { atZ: 1352, dir: 'left' },
-      { atZ: 1366, dir: 'right' },
+      { atZ: 1355, dir: 'left' },
+      { atZ: 1380, dir: 'right' },
       // A7 wall staircase (UP on the left wall, DOWN on the right).
       { atZ: 1463, dir: 'up' },
       { atZ: 1475, dir: 'down' },
@@ -334,10 +334,12 @@ export class ShowcaseDriver {
     // M9.1 shared Spider snap presses: four dodge-wall pairs (up-presses
     // keep 2 u lead before each wall face), a 9-snap climb chain (every
     // 5 u), the runway dodge pair (wall section keeps its M9 snaps).
+    // M9.3: pair #1 follows wall #1 (1350 -> 1353); the 1368+ presses are
+    // no-op ceiling holds (no floor below — intentionally ignored).
     const presses = [
       // Up-snaps land 1.5 u before teeth/wall faces (the floor teeth would
       // catch a late snap); down-snaps ride 1.5–3 u past each wall.
-      1346.5, 1353, 1360, 1368, 1376.5, 1383, 1390, 1398,
+      1349.5, 1356, 1362, 1368, 1376.5, 1383, 1390, 1398,
       1401, 1406, 1411, 1416, 1421, 1426, 1431, 1436, 1441,
       1445, 1452, // runway dodge-wall snap pair (up under the slab, down past)
       1472, 1482,
