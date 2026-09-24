@@ -103,14 +103,17 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     // HIGH (y 5.5 — the authored ship line crests y≈6.3 there; a low ring
     // is skippable by altitude, which strands the revert/invert2 accents).
     // The flips land on beats 171 (85.56 s) + 176 (88.06 s).
+    // M9.3: 3D lateral stagger — invert sits LEFT (x −2.6), revert sits
+    // HIGH-RIGHT (x +2.6); the ship crosses a full LOW-LEFT → HIGH-RIGHT
+    // diagonal between them (same z, same beats — timing untouched).
     {
       id: 'ps-abyss-invert', z: 1200, target: 'ceiling',
-      triggerCenter: { x: 0, y: 3, z: 1200 },
+      triggerCenter: { x: -2.6, y: 3, z: 1200 },
       triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
     },
     {
       id: 'ps-abyss-revert', z: 1250, target: 'floor',
-      triggerCenter: { x: 0, y: 5.5, z: 1250 },
+      triggerCenter: { x: 2.6, y: 5.5, z: 1250 },
       triggerHalfExtents: { x: 1.6, y: 1.6, z: 1.5 },
     },
     {
@@ -946,16 +949,18 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     { center: { x: 3.8, y: 3, z: 1119 }, halfExtents: { x: 2.2, y: 6, z: 1.5 } },
     { center: { x: 0, y: -0.8, z: 1119 }, halfExtents: { x: 1.6, y: 2.2, z: 1.5 } },
     { center: { x: 0, y: 6.8, z: 1119 }, halfExtents: { x: 1.6, y: 2.2, z: 1.5 } },
-    // Funnel: abyss-invert ceiling (aperture x±1.6, y 1.4..4.6).
-    { center: { x: -3.8, y: 3, z: 1200 }, halfExtents: { x: 2.2, y: 6, z: 1.5 } },
-    { center: { x: 3.8, y: 3, z: 1200 }, halfExtents: { x: 2.2, y: 6, z: 1.5 } },
-    { center: { x: 0, y: -0.8, z: 1200 }, halfExtents: { x: 1.6, y: 2.2, z: 1.5 } },
-    { center: { x: 0, y: 6.8, z: 1200 }, halfExtents: { x: 1.6, y: 2.2, z: 1.5 } },
-    // Funnel: abyss-revert floor, HIGH aperture (x±1.6, y 3.9..7.1).
-    { center: { x: -3.8, y: 3, z: 1250 }, halfExtents: { x: 2.2, y: 6, z: 1.5 } },
-    { center: { x: 3.8, y: 3, z: 1250 }, halfExtents: { x: 2.2, y: 6, z: 1.5 } },
-    { center: { x: 0, y: 0.45, z: 1250 }, halfExtents: { x: 1.6, y: 3.45, z: 1.5 } },
-    { center: { x: 0, y: 8.05, z: 1250 }, halfExtents: { x: 1.6, y: 0.95, z: 1.5 } },
+    // Funnel: abyss-invert ceiling, LEFT aperture (x −4.2..−1.0, y
+    // 1.4..4.6 — matches the staggered ring exactly).
+    { center: { x: -5.1, y: 3, z: 1200 }, halfExtents: { x: 0.9, y: 6, z: 1.5 } },
+    { center: { x: 2.5, y: 3, z: 1200 }, halfExtents: { x: 3.5, y: 6, z: 1.5 } },
+    { center: { x: -2.6, y: -0.8, z: 1200 }, halfExtents: { x: 1.6, y: 2.2, z: 1.5 } },
+    { center: { x: -2.6, y: 6.8, z: 1200 }, halfExtents: { x: 1.6, y: 2.2, z: 1.5 } },
+    // Funnel: abyss-revert floor, HIGH-RIGHT aperture (x 1.0..4.2, y
+    // 3.9..7.1 — matches the staggered ring exactly).
+    { center: { x: -2.5, y: 3, z: 1250 }, halfExtents: { x: 3.5, y: 6, z: 1.5 } },
+    { center: { x: 5.1, y: 3, z: 1250 }, halfExtents: { x: 0.9, y: 6, z: 1.5 } },
+    { center: { x: 2.6, y: 0.45, z: 1250 }, halfExtents: { x: 1.6, y: 3.45, z: 1.5 } },
+    { center: { x: 2.6, y: 8.05, z: 1250 }, halfExtents: { x: 1.6, y: 0.95, z: 1.5 } },
     // Funnel: abyss-invert2 ceiling (aperture x±1.6, y 1.4..4.6).
     { center: { x: -3.8, y: 3, z: 1286 }, halfExtents: { x: 2.2, y: 6, z: 1.5 } },
     { center: { x: 3.8, y: 3, z: 1286 }, halfExtents: { x: 2.2, y: 6, z: 1.5 } },

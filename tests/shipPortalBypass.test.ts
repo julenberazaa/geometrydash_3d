@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { GameSimulation } from '../src/game/GameSimulation';
 import { PRODUCTION_SHOWCASE_01 } from '../src/content/levels/productionShowcase01';
+import { ShowcaseDriver } from './helpers/showcaseScript';
 import type { PhysicalInputSnapshot } from '../src/input/InputSystem';
 import { idleInput } from './helpers/simulation';
 
@@ -48,13 +49,15 @@ class Pilot {
     }
     this.holding = false;
     if (this.laneCd <= 0) {
+      // laneLeft decrements intent (toward +X/screen-left); laneRight
+      // increments (toward −X/screen-right).
       if (x < tx - 0.35) {
         this.laneCd = 8;
-        return { ...idleInput, laneRight: { held: false, pressedThisStep: true, releasedThisStep: true } };
+        return { ...idleInput, laneLeft: { held: false, pressedThisStep: true, releasedThisStep: true } };
       }
       if (x > tx + 0.35) {
         this.laneCd = 8;
-        return { ...idleInput, laneLeft: { held: false, pressedThisStep: true, releasedThisStep: true } };
+        return { ...idleInput, laneRight: { held: false, pressedThisStep: true, releasedThisStep: true } };
       }
     }
     this.laneCd--;
@@ -144,29 +147,37 @@ describe('M9.3 ship mandatory-portal routing', () => {
     }
   });
 
-  it('abyss-invert (ceiling): the ring flips; high/side bypasses cannot continue', () => {
-    const { sim: control, outcome: cOut } = flyLeg(0, 3.0, 1192, 0, 3.0, 1212);
+  it('abyss-invert (ceiling, LEFT ring): the ring flips; high/side bypasses cannot continue', () => {
+    const { sim: control, outcome: cOut } = flyLeg(0, 3.0, 1194, -2.6, 3.0, 1212);
     expect(cOut.grav).toBe('ceiling');
     expect(cOut.status).toBe('running');
     expect(control.playerMode).toBe('ship');
 
     for (const [tx, ty] of [[0, 6.5], [4.8, 3.0]] as Array<[number, number]>) {
-      const { outcome } = flyLeg(tx, ty, 1192, tx, ty, 1212, tx > 2 ? 2 : 0);
+      const { outcome } = flyLeg(tx, ty, 1194, tx, ty, 1212, tx > 2 ? 2 : 0);
       expect(outcome.grav).toBe('floor');
       expect(outcome.status).toBe('dead');
       expect(outcome.z).toBeLessThan(1212);
     }
   });
 
-  it('abyss-revert (floor, HIGH ring): the ring flips back; a low bypass cannot continue', () => {
-    // Two-phase leg: thread the invert, cruise the ribs at slot height
-    // (no high cruise — the mid slot gate's lintel punishes altitude),
-    // dive through the slot gate, then climb to the HIGH ring (control)
-    // or stay low (bypass) at the revert station; the control dives again
-    // for the S-weave high block after the flip.
-    const run = (tyAtRevert: number): { sim: GameSimulation; outcome: LegOutcome } => {
-      const sim = enterShip();
-      sim.debugPlaceAt(0, 3.0, 1190);
+  it('abyss-revert (floor, HIGH-RIGHT ring): the ring flips back; a low bypass cannot continue', () => {
+    // Full-route handoff: the reference driver threads the staggered
+    // invert and flies the diagonal to z1240 (ceiling, right side); the
+    // test pilot takes over for the station — hold the HIGH-RIGHT ring
+    // (control) or dive low inside the same lane (bypass). (The driver
+    // is not re-entrant mid-level — stale z-triggers would fire at once —
+    // so the handoff always drives from the origin.)
+    const run = (controlLine: boolean): { sim: GameSimulation; outcome: LegOutcome } => {
+      const sim = new GameSimulation(PRODUCTION_SHOWCASE_01);
+      const driver = new ShowcaseDriver('primary');
+      for (let i = 0; i < 30000; i++) {
+        if (sim.status !== 'running' || sim.player.position.z >= 1240) break;
+        sim.update(driver.nextInput(sim.player.position.z, sim));
+      }
+      if (sim.playerMode !== 'ship' || sim.gravityMode !== 'ceiling') {
+        throw new Error('handoff failed: not on the inverted diagonal');
+      }
       const pilot = new Pilot();
       const outcome: LegOutcome = { status: '', z: 0, mode: '', grav: '', speed: 0 };
       for (let i = 0; i < 3000; i++) {
@@ -176,10 +187,9 @@ describe('M9.3 ship mandatory-portal routing', () => {
           sim.update(idleInput);
           continue;
         }
-        if (z < 1205) sim.update(pilot.next(sim, 0, 3.0));
-        else if (z < 1242) sim.update(pilot.next(sim, 0, 3.5));
-        else if (z < 1252) sim.update(pilot.next(sim, 0, tyAtRevert));
-        else sim.update(pilot.next(sim, 0, 2.8));
+        if (z < 1242) sim.update(pilot.next(sim, 2.6, 4.3));
+        else if (z < 1250) sim.update(pilot.next(sim, 2.6, controlLine ? 5.5 : 2.2));
+        else sim.update(pilot.next(sim, 2.6, controlLine ? 2.5 : 2.2));
       }
       outcome.status = sim.status;
       outcome.z = sim.player.position.z;
@@ -188,11 +198,11 @@ describe('M9.3 ship mandatory-portal routing', () => {
       outcome.speed = sim.speedMultiplier;
       return { sim, outcome };
     };
-    const control = run(5.0);
+    const control = run(true);
     expect(control.outcome.grav).toBe('floor');
     expect(control.outcome.status).toBe('running');
 
-    const bypass = run(2.2);
+    const bypass = run(false);
     expect(bypass.outcome.grav).toBe('ceiling');
     expect(bypass.outcome.status).toBe('dead');
     expect(bypass.outcome.z).toBeLessThan(1260);

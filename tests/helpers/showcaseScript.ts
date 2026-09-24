@@ -238,11 +238,15 @@ export class ShowcaseDriver {
       // M9.1 A6 3D pillar slalom (dodge each side pillar away from it —
       // taps fire a full transit (6–8 u) before each pillar face, never at
       // it; intent never leaves 0..2).
+      // M9.3 diagonal: stage LEFT for the staggered invert ring (1194),
+      // release toward center past the 1222 pillar (1206), complete the
+      // LOW-LEFT → HIGH-RIGHT diagonal (1232); the S-weave rides the
+      // right side (no staging tap needed — already there).
       { atZ: 1172, dir: 'right' },
       { atZ: 1186, dir: 'left' },
-      { atZ: 1199, dir: 'right' },
-      { atZ: 1214, dir: 'left' },
-      { atZ: 1256, dir: 'left' },
+      { atZ: 1194, dir: 'right' },
+      { atZ: 1206, dir: 'left' },
+      { atZ: 1232, dir: 'left' },
       // M9.3: return tap 1282 -> 1278 (the center pillar moved to 1276 and
       // the invert2 funnel face stands at 1284.5 — the return needs the
       // full 6.5 u runway).
@@ -526,9 +530,14 @@ export class ShowcaseDriver {
     if (z < 1140) return 4.0; // settle for the dive block
     if (z < 1146) return 3.5; // dive under (bottom 6)
     if (z < 1200) return 3.0; // teeth slalom cruise
-    if (z < 1232) return 6.3; // inverted cruise (ribs at 7.5)
-    if (z < 1243) return 3.5; // mid slot dive (slot 2..5, lead the drop)
-    if (z < 1250) return 6.3; // back up before the revert
+    // M9.3 3D diagonal (inverted, ceiling gravity): cruise left, dive
+    // through the mid slot, climb to the HIGH-RIGHT revert ring. The
+    // pre-slot target commits (a near-target ease dithers — PD needs a
+    // decisive target below the lintel).
+    if (z < 1232) return 6.0; // inverted cruise (ribs at 7.5)
+    if (z < 1238) return 4.3; // slot dive commit (lintel bottom 5.5)
+    if (z < 1243) return 4.5; // mid slot (slot 1.5..5.5, riding low)
+    if (z < 1250) return 5.5; // climb to the HIGH-RIGHT revert ring
     if (z < 1264) return 2.5; // S-weave under the high block
     if (z < 1286) return 3.5; // over the low block, around the pillar
     if (z < 1302) return 3.0; // inverted burst cruise
