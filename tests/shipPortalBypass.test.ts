@@ -183,7 +183,10 @@ describe('M9.3 ship mandatory-portal routing', () => {
       for (let i = 0; i < 3000; i++) {
         if (sim.status !== 'running' || sim.player.position.z > 1260) break;
         const z = sim.player.position.z;
-        if (sim.playerMode !== 'ship') {
+        // Widened read: the handoff guard above narrows the property chain
+        // to 'ship' for the type-checker; gameplay can still leave ship.
+        const modeNow: string = sim.playerMode;
+        if (modeNow !== 'ship') {
           sim.update(idleInput);
           continue;
         }
