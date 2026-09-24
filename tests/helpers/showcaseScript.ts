@@ -243,7 +243,10 @@ export class ShowcaseDriver {
       { atZ: 1199, dir: 'right' },
       { atZ: 1214, dir: 'left' },
       { atZ: 1256, dir: 'left' },
-      { atZ: 1282, dir: 'right' },
+      // M9.3: return tap 1282 -> 1278 (the center pillar moved to 1276 and
+      // the invert2 funnel face stands at 1284.5 — the return needs the
+      // full 6.5 u runway).
+      { atZ: 1278, dir: 'right' },
       // A7 temple ceiling spike.
       { atZ: 1355, dir: 'left' },
       { atZ: 1380, dir: 'right' },

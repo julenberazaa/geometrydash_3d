@@ -192,3 +192,14 @@ spider feel, ship feel, purple look + route, island feedback.
 - Commit 2: entry-edge fix + `tests/spiderFirstSnap.test.ts` (8 tests);
   anchor 13799 intact (showcase/playerModes/checkpoints/density/M91/
   openness/musicAlignment green).
+- Commit 3: spider easing (wall #1 1350→1353, climb slabs ±1.6→±2.1,
+  teeth 1348→1351/1362→1364, pairs 1378+1392 removed, pre-gate pair at
+  1340 added for the width ratchet); driver presses/taps re-seated;
+  anchor + width (74.0/16.2/9.9) green.
+- Commit 4: six portal funnels (speed-approach, invert, revert-HIGH,
+  invert2, revert2, ship-off; visible opening == trigger volume) +
+  `tests/shipPortalBypass.test.ts` (8 groups: controls fire, offsets
+  miss + die at rock; ship-on miss dies at the rise wall; speed-spider
+  sneak dies on the lanes-0+2 teeth — no funnel needed there); S-weave
+  center pillar 1280→1276 + return tap 1282→1278 so the reference line
+  clears the invert2 funnel face; anchor 13799 intact.

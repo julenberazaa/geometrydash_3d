@@ -921,7 +921,10 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     // S-weave offsets: high block (bottom 4, z 1258..1262), low (top 1, z 1268..1272).
     { center: { x: 0, y: 6.5, z: 1260 }, halfExtents: { x: 5.4, y: 2.5, z: 2 } },
     { center: { x: 0, y: -1, z: 1270 }, halfExtents: { x: 5.4, y: 2, z: 2 } },
-    { center: { x: 0, y: 3, z: 1280 }, halfExtents: { x: 1.3, y: 6, z: 2 } },
+    // M9.3: center pillar moved 1280 -> 1276 so the pillar-dodge return
+    // completes before the invert2 funnel face (1284.5) — the reference
+    // line needs 6.5 u of lateral runway, not 2.5 u.
+    { center: { x: 0, y: 3, z: 1276 }, halfExtents: { x: 1.3, y: 6, z: 2 } },
     // S-weave side pillar (dodged from the far side, then hold the line
     // through the S and the center pillar — pillars 4 u apart cannot be
     // threaded with lane precision, so only one side pillar stands here).
@@ -933,6 +936,43 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     // Burst side pillars (3D threading through the inverted burst).
     { center: { x: 2.6, y: 3, z: 1292 }, halfExtents: { x: 1.3, y: 6, z: 2 } },
     { center: { x: -2.6, y: 3, z: 1298 }, halfExtents: { x: 1.3, y: 6, z: 2 } },
+    // M9.3 PORTAL FUNNELS — every mandatory ship gate sits inside the ONE
+    // aperture of a full-corridor barrier wall (VISIBLE OPENING == REQUIRED
+    // TRAVERSAL OPENING). Missing a ring meets rock (frontal), never an
+    // invisible trigger. Apertures match their trigger volumes exactly;
+    // the reference line threads each with 0.5+ u margin (probed).
+    // Funnel: speed-approach 1x (aperture x±1.6, y 1.4..4.6).
+    { center: { x: -3.8, y: 3, z: 1119 }, halfExtents: { x: 2.2, y: 6, z: 1.5 } },
+    { center: { x: 3.8, y: 3, z: 1119 }, halfExtents: { x: 2.2, y: 6, z: 1.5 } },
+    { center: { x: 0, y: -0.8, z: 1119 }, halfExtents: { x: 1.6, y: 2.2, z: 1.5 } },
+    { center: { x: 0, y: 6.8, z: 1119 }, halfExtents: { x: 1.6, y: 2.2, z: 1.5 } },
+    // Funnel: abyss-invert ceiling (aperture x±1.6, y 1.4..4.6).
+    { center: { x: -3.8, y: 3, z: 1200 }, halfExtents: { x: 2.2, y: 6, z: 1.5 } },
+    { center: { x: 3.8, y: 3, z: 1200 }, halfExtents: { x: 2.2, y: 6, z: 1.5 } },
+    { center: { x: 0, y: -0.8, z: 1200 }, halfExtents: { x: 1.6, y: 2.2, z: 1.5 } },
+    { center: { x: 0, y: 6.8, z: 1200 }, halfExtents: { x: 1.6, y: 2.2, z: 1.5 } },
+    // Funnel: abyss-revert floor, HIGH aperture (x±1.6, y 3.9..7.1).
+    { center: { x: -3.8, y: 3, z: 1250 }, halfExtents: { x: 2.2, y: 6, z: 1.5 } },
+    { center: { x: 3.8, y: 3, z: 1250 }, halfExtents: { x: 2.2, y: 6, z: 1.5 } },
+    { center: { x: 0, y: 0.45, z: 1250 }, halfExtents: { x: 1.6, y: 3.45, z: 1.5 } },
+    { center: { x: 0, y: 8.05, z: 1250 }, halfExtents: { x: 1.6, y: 0.95, z: 1.5 } },
+    // Funnel: abyss-invert2 ceiling (aperture x±1.6, y 1.4..4.6).
+    { center: { x: -3.8, y: 3, z: 1286 }, halfExtents: { x: 2.2, y: 6, z: 1.5 } },
+    { center: { x: 3.8, y: 3, z: 1286 }, halfExtents: { x: 2.2, y: 6, z: 1.5 } },
+    { center: { x: 0, y: -0.8, z: 1286 }, halfExtents: { x: 1.6, y: 2.2, z: 1.5 } },
+    { center: { x: 0, y: 6.8, z: 1286 }, halfExtents: { x: 1.6, y: 2.2, z: 1.5 } },
+    // Funnel: abyss-revert2 floor (aperture x±1.6, y 1.4..4.6).
+    { center: { x: -3.8, y: 3, z: 1305 }, halfExtents: { x: 2.2, y: 6, z: 1.5 } },
+    { center: { x: 3.8, y: 3, z: 1305 }, halfExtents: { x: 2.2, y: 6, z: 1.5 } },
+    { center: { x: 0, y: -0.8, z: 1305 }, halfExtents: { x: 1.6, y: 2.2, z: 1.5 } },
+    { center: { x: 0, y: 6.8, z: 1305 }, halfExtents: { x: 1.6, y: 2.2, z: 1.5 } },
+    // Funnel: ship-off cube (aperture x±1.5, y 1.1..4.1 — the ship threads
+    // it, the ring fires mid-aperture, the cube drops through onto the
+    // exit runway; the bottom pieces merge with the runway rock).
+    { center: { x: -3.75, y: 3, z: 1313 }, halfExtents: { x: 2.25, y: 6, z: 1.5 } },
+    { center: { x: 3.75, y: 3, z: 1313 }, halfExtents: { x: 2.25, y: 6, z: 1.5 } },
+    { center: { x: 0, y: -0.95, z: 1313 }, halfExtents: { x: 1.5, y: 2.05, z: 1.5 } },
+    { center: { x: 0, y: 6.55, z: 1313 }, halfExtents: { x: 1.5, y: 2.45, z: 1.5 } },
     // Ship-exit landing runway (top 0, z 1310..1330).
     { center: { x: 0, y: -0.5, z: 1320 }, halfExtents: { x: 5.4, y: 0.5, z: 10 } },
     // ================= ACT 7 SPIDER SPIRE (1330..1510, M9.1) =================
