@@ -265,7 +265,11 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   → lethal checks (void bounds,
   hazard CCD, M8D dynamic chompers) → teleport portals → mode portals →
   jump pads → jump orbs → gravity orbs → speed portals →
-  gravity portals → finish. Owns the AUTHORITATIVE gravity mode
+  gravity portals → finish. M9.3 spider-entry edge: the top-of-step snap
+  check runs under the pre-portal mode, so `processModePortals` honors a
+  primary press on a genuine spider-entry step as a snap attempt in the
+  new mode (before pads/orbs; hazard death still wins) — otherwise the
+  entry step eats the first snap (dead input). Owns the AUTHORITATIVE gravity mode
   (`gravityMode`, reset to the level start mode by `respawn()`) and the
   AUTHORITATIVE speed state (`speedMultiplier`: the per-step forward speed is
   `def.baseForwardSpeed × speedMultiplier`, passed to the controller as

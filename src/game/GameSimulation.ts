@@ -747,7 +747,11 @@ export class GameSimulation {
     // 5c. Player-mode portals (M8C): forward-crossing planes AFTER the
     //    lethal checks (death wins) and BEFORE pads/orbs, so the new mode's
     //    controller owns the very next step with clean transient state.
-    this.processModePortals();
+    //    M9.3: an entry-step primary press is honored as a spider snap when
+    //    the step enters spider mode (the press would otherwise die with the
+    //    handoff — see processModePortals). A hazard death inside that snap
+    //    still wins the step.
+    if (this.processModePortals(jumpPressed)) return;
     // 6. Passive interactions: jump pads (swept contact, one-shot/attempt).
     this.processJumpPads();
     // 6. Active interactions: jump orbs then gravity orbs (press edge inside
@@ -1142,9 +1146,23 @@ export class GameSimulation {
    * mutation through the ONE shared `applyModeTransition` path — no
    * position jump, no impulse. One-shot per attempt (respawn re-arms).
    * Runs AFTER the lethal checks (death wins the step).
+   *
+   * M9.3 spider-entry edge: the top-of-step snap check runs under the
+   * PRE-portal mode, so a primary press on the exact entry step is
+   * consumed by the old mode (cube jump) while the handoff zeroes the
+   * jump's only effect (along-gravity velocity) — a hidden dead input
+   * forcing a double-press for the first snap. When this step genuinely
+   * enters spider mode with the press edge held, the edge is honored as
+   * a snap attempt in the new mode (same order as the top-of-step snap:
+   * before pads/orbs). Presses on steps that leave spider, or that stay
+   * outside it, are untouched.
+   *
+   * Returns true when the entry snap crossed a hazard (the caller must
+   * end the step — death wins, mirroring the top-of-step snap path).
    */
-  private processModePortals(): void {
-    if (this.level.modePortals.length === 0) return;
+  private processModePortals(jumpPressed: boolean): boolean {
+    if (this.level.modePortals.length === 0) return false;
+    const modeBefore = this.modeValue;
     const prevZ = this.prevPosition.z;
     const currentZ = this.player.position.z;
     for (const portal of this.level.modePortals) {
@@ -1162,6 +1180,10 @@ export class GameSimulation {
         this.applyModeTransition(portal.target);
       }
     }
+    if (jumpPressed && modeBefore !== 'spider' && this.modeValue === 'spider') {
+      return this.trySpiderSnap();
+    }
+    return false;
   }
 
   /**
