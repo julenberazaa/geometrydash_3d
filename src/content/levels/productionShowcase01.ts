@@ -341,8 +341,8 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
       impulse: 12,
     },
     // ACT 3 door orbs (impulse 8): (a) lane-2 hop-assist through door 2
-    // (pressed grounded), (b) lane-1 grounded launch through door 4,
-    // (c) lane-1 mid-flight reshaper on the hop-3 arc.
+    // (pressed grounded), (b) lane-0 grounded launch through the M9.3
+    // lane-0 door 4, (c) lane-1 mid-flight reshaper on the hop-3 arc.
     {
       id: 'ps-orb-maze-a',
       center: { x: -2.6, y: 1.5, z: 468 },
@@ -351,7 +351,7 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     },
     {
       id: 'ps-orb-maze-b',
-      center: { x: 0, y: 1.5, z: 499 },
+      center: { x: 2.6, y: 1.5, z: 499 },
       halfExtents: { x: 0.9, y: 0.9, z: 1.5 },
       impulse: 8,
     },
@@ -790,22 +790,73 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     // a transition runway (alternate). Ferry pair + 2× exit untouched.
     // Lower runway (top 0, z 430..540 — doors sculpt the single line).
     { center: { x: 0, y: -0.5, z: 485 }, halfExtents: { x: 5.4, y: 0.5, z: 55 } },
-    // Upper deck (top 4.5) NARROWED to a 1-lane hole-chain (joints at
-    // 560..564 + 584..588 are the precision jumps): slab spans y 3.5..4.5
+    // Upper deck (top 4.5): M9.3 MEGASTRUCTURE — the straight 1-lane
+    // hole-chain becomes three OFFSET transfer slabs (center → lane 0 →
+    // center) with 4 u transfer gaps: the route jumps LATERALLY between
+    // suspended decks instead of running straight. Slabs span y 3.5..4.5
     // so the alternate weave + exit jump fit underneath (jump envelope).
+    // Slab A (center, z 540..560).
     { center: { x: 0, y: 4, z: 550 }, halfExtents: { x: 1.6, y: 0.5, z: 10 } },
-    { center: { x: 0, y: 4, z: 574 }, halfExtents: { x: 1.6, y: 0.5, z: 10 } },
-    { center: { x: 0, y: 4, z: 605 }, halfExtents: { x: 1.6, y: 0.5, z: 17 } },
+    // Transfer gap 560..564 (A → B lateral jump).
+    // Slab B (lane 0, z 564..586).
+    { center: { x: 2.6, y: 4, z: 575 }, halfExtents: { x: 1.6, y: 0.5, z: 11 } },
+    // Transfer gap 586..590 (B → C lateral jump).
+    // Slab C1 (center, z 590..604).
+    { center: { x: 0, y: 4, z: 597 }, halfExtents: { x: 1.6, y: 0.5, z: 7 } },
+    // Transfer gap 604..608 (C1 → C2 lateral jump).
+    // Slab C2 (lane 0, z 608..620 — the exit flight launches from lane 0
+    // and steers back to center mid-flight).
+    { center: { x: 2.6, y: 4, z: 614 }, halfExtents: { x: 1.6, y: 0.5, z: 6 } },
+    // Transfer gates: tower pairs + lintel framing each transfer gap —
+    // the flights thread BETWEEN the towers and UNDER the lintel
+    // (architecture IS the obstacle; towers unreadable-side clear by 0.6+).
+    // Gate 1 (560..564 gap).
+    { center: { x: 4.5, y: 6.75, z: 560 }, halfExtents: { x: 1, y: 2.25, z: 2 } },
+    { center: { x: -4.5, y: 6.75, z: 560 }, halfExtents: { x: 1, y: 2.25, z: 2 } },
+    { center: { x: 0, y: 8.5, z: 560 }, halfExtents: { x: 5.5, y: 0.5, z: 2 } },
+    // Gate 2 (586..590 gap).
+    { center: { x: 4.5, y: 6.75, z: 588 }, halfExtents: { x: 1, y: 2.25, z: 2 } },
+    { center: { x: -4.5, y: 6.75, z: 588 }, halfExtents: { x: 1, y: 2.25, z: 2 } },
+    { center: { x: 0, y: 8.5, z: 588 }, halfExtents: { x: 5.5, y: 0.5, z: 2 } },
+    // Gate 3 (604..608 gap).
+    { center: { x: 4.5, y: 6.75, z: 604 }, halfExtents: { x: 1, y: 2.25, z: 2 } },
+    { center: { x: -4.5, y: 6.75, z: 604 }, halfExtents: { x: 1, y: 2.25, z: 2 } },
+    { center: { x: 0, y: 8.5, z: 604 }, halfExtents: { x: 5.5, y: 0.5, z: 2 } },
+    // Bridge city: three overhead spans (y 8..9) over the lower weave —
+    // fixed-impulse hop apexes top out at box 7.67, clearing by a constant
+    // 0.33 (spans any lower head-bump takeoffs via the M2 anti-gravity
+    // cancel, proven four times — apex height never varies, so the margin
+    // is exact every run); pillar bents stand off-route.
+    { center: { x: 0, y: 8.5, z: 552 }, halfExtents: { x: 6, y: 0.5, z: 1 } },
+    { center: { x: 0, y: 8.5, z: 571 }, halfExtents: { x: 6, y: 0.5, z: 1 } },
+    { center: { x: 0, y: 8.5, z: 596 }, halfExtents: { x: 6, y: 0.5, z: 1 } },
+    { center: { x: 5.5, y: 4, z: 552 }, halfExtents: { x: 0.5, y: 4, z: 1 } },
+    { center: { x: -5.5, y: 4, z: 552 }, halfExtents: { x: 0.5, y: 4, z: 1 } },
+    { center: { x: 5.5, y: 4, z: 571 }, halfExtents: { x: 0.5, y: 4, z: 1 } },
+    { center: { x: -5.5, y: 4, z: 571 }, halfExtents: { x: 0.5, y: 4, z: 1 } },
+    { center: { x: 5.5, y: 4, z: 596 }, halfExtents: { x: 0.5, y: 4, z: 1 } },
+    { center: { x: -5.5, y: 4, z: 596 }, halfExtents: { x: 0.5, y: 4, z: 1 } },
+    // Exit-drop gate towers framing the 620 plunge (both variants stay
+    // inside x ±3.5 — the alternate steers in from lane 0).
+    { center: { x: 4.5, y: 2.5, z: 626 }, halfExtents: { x: 1, y: 2.5, z: 2 } },
+    { center: { x: -4.5, y: 2.5, z: 626 }, halfExtents: { x: 1, y: 2.5, z: 2 } },
     // Deck support pillars (off-route, x=±6.5).
     { center: { x: 6.5, y: 1.75, z: 560 }, halfExtents: { x: 1, y: 1.75, z: 1 } },
     { center: { x: -6.5, y: 1.75, z: 584 }, halfExtents: { x: 1, y: 1.75, z: 1 } },
     { center: { x: 6.5, y: 1.75, z: 605 }, halfExtents: { x: 1, y: 1.75, z: 1 } },
+    { center: { x: -6.5, y: 1.75, z: 614 }, halfExtents: { x: 1, y: 1.75, z: 1 } },
     // Lower weave strip (top 0, z 548..622, lanes 1+2) + transition runway
     // (full, z 534..548 — the alternate crosses from lane 0 to lane 2).
     { center: { x: 0, y: -0.5, z: 541 }, halfExtents: { x: 5.4, y: 0.5, z: 7 } },
     { center: { x: -1.3, y: -0.5, z: 585 }, halfExtents: { x: 2.6, y: 0.5, z: 37 } },
-    // Exit slab (top 0, z 628..660) NARROWED with a hop spike.
-    { center: { x: 0, y: -0.5, z: 644 }, halfExtents: { x: 1.6, y: 0.5, z: 16 } },
+    // Exit slab (top 0, z 628..660): M9.3 lanes 1+2 (x −3.9..1.3) — the
+    // exit weaves lane 1 → lane 2 (hop spikes shape it); both variants
+    // land from the exit-gap flight and board the ferry from lane 2.
+    { center: { x: -1.3, y: -0.5, z: 644 }, halfExtents: { x: 2.6, y: 0.5, z: 16 } },
+    // Ferry overbridge (y 7..8, z 664 — boarding flights pass well under).
+    { center: { x: 0, y: 7.5, z: 664 }, halfExtents: { x: 6, y: 0.5, z: 1.5 } },
+    // Post-ferry bridge (y 7..8, z 694 — the 2× weave runs under it).
+    { center: { x: 0, y: 7.5, z: 694 }, halfExtents: { x: 6, y: 0.5, z: 1.5 } },
     // Post-ferry slab (top 0, z 688..720 — kept full: the 2× gates need
     // every lane for the one-tap line).
     { center: { x: 0, y: -0.5, z: 704 }, halfExtents: { x: 5.4, y: 0.5, z: 16 } },
@@ -1190,9 +1241,12 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     { kind: 'killFront', visual: 'block', center: { x: -3.35, y: 1.5, z: 486 }, halfExtents: { x: 2.05, y: 1.5, z: 0.5 } },
     // Hop spike (lane 1) + door-4 ride (hold the line).
     { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 487 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    // Door 4 (z 502): single lane-1 opening.
-    { kind: 'killFront', visual: 'block', center: { x: 3.35, y: 1.5, z: 502 }, halfExtents: { x: 2.05, y: 1.5, z: 0.5 } },
-    { kind: 'killFront', visual: 'block', center: { x: -3.35, y: 1.5, z: 502 }, halfExtents: { x: 2.05, y: 1.5, z: 0.5 } },
+    // Door 4 (z 502): M9.3 single lane-0 opening (the door arc goes
+    // lane 1 → lane 2 → lane 1 → lane 0 → split — the lane-0 traverse
+    // runs under orb-b, dodges the lane-2 teeth, and leaves for the
+    // lane-0 teeth dodge at 515).
+    { kind: 'killFront', visual: 'block', center: { x: -2.05, y: 1.5, z: 502 }, halfExtents: { x: 3.35, y: 1.5, z: 0.5 } },
+    { kind: 'killFront', visual: 'block', center: { x: 4.65, y: 1.5, z: 502 }, halfExtents: { x: 0.75, y: 1.5, z: 0.5 } },
     // Hop spike (lane 2) + door-5 pre-steer (mid-flight).
     { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 508 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     // Teeth dodge (lane 0 — both variants swerve to lane 1 and back).
@@ -1207,14 +1261,16 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     // Door 6 (z 534): double lane-0+lane-1 opening (the split — primary
     // takes lane 1 into the pad, alternate lane 0 around it).
     { kind: 'killFront', visual: 'block', center: { x: -3.35, y: 1.5, z: 534 }, halfExtents: { x: 2.05, y: 1.5, z: 0.5 } },
-    // Upper hole-chain (narrowed 1-lane — hop rhythm + two joint holes;
-    // the narrow support holds the single band, spikes time the hops).
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 4.75, z: 552 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 4.75, z: 572 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 4.75, z: 602 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 4.75, z: 612 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    // Transition hop spike (lane 2 — the alternate lands the strip moving).
-    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 544 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Upper transfer decks (M9.3): spikes SHAPE the transfers as hop
+    // takeoff-forcers with ROOM (missing the takeoff meets the spike
+    // 5+ u later; transfer gaps punish short landings, so no spike ever
+    // sits in a run-out path or within a continuing flight's rise):
+    // B-mid hop (570), B-exit transfer (582).
+    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 4.75, z: 576.5 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 4.75, z: 586 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // M9.3: the transition hop spike is deleted — the shared door-4
+    // lane-0 line lands at ~542.5 (right where it stood); the weave teeth
+    // below shape the strip without it.
     // Lower weave strip (narrowed lanes 1+2 — alternating teeth force the
     // weave; the narrow support caps the bands at two).
     { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 556 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
@@ -1226,9 +1282,9 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     // jog (dodge + return for the centered exit takeoff).
     { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 602 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 612 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    // Exit-slab hop pair (narrowed strip; the ferry-boarding run after
-    // the second hop is a documented boarding breath).
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 636 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Exit-slab weave (M9.3 lanes 1+2 — alternating one-side spikes force
+    // the lane-1 → lane-2 shift; the ferry-boarding run leaves from lane 2).
+    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 636 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 646 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     // Left-wall hop spike (high line — dive out and back; fills the
     // wall-portal run).
@@ -1488,10 +1544,12 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
         endZ: 720,
         blendIn: 20,
         overrides: {
-          background: 0x200e40,
-          fogColor: 0x521e86,
+          // M9.3 megastructure grade: deeper violet-black base, richer
+          // fog, same neon accent (no white-out, hazards stay warm).
+          background: 0x170826,
+          fogColor: 0x4a1485,
           routeAccent: 0xb44dff,
-          environmentIntensity: 1.55,
+          environmentIntensity: 1.7,
           vfxIntensity: 1.25,
         },
       },

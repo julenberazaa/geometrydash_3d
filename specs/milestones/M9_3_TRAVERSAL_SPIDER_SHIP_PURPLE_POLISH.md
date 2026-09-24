@@ -211,3 +211,15 @@ spider feel, ship feel, purple look + route, island feedback.
 - Commit 6: island landing glow (`ContactPulse` + host edge routing +
   `__gd3d` probes + 7 unit tests); presentation-only, local-only,
   no-leak (fade precedent); moving islands ride the mesh.
+- Commit 7+8 (one commit): purple megastructure — offset transfer decks
+  (A center → B lane 0 → C1 center → C2 lane 0, three 4 u lateral
+  transfer gaps), three tower+lintel transfer gates, bridge city (three
+  y8..9 spans + bents), exit-drop gate, exit slab lanes 1+2 with weave
+  spikes, door 4 lane-0 opening + orb-b move, takeoff-forcer spike
+  rework, ferry/post-ferry overbridges, ps-labyrinth visual deepen;
+  driver re-seated (transfers/weave/steers); anchor 13799 + full suite
+  green. Purple primary lateral 16→22 (+38%, reversals 13→17, 10.22 s
+  gap split into landing-bracketed segments); remaining gaps are
+  landing/orb/ferry/recovery-justified (documented §32 caveat: the kept
+  beat-anchored skeleton caps fixed-tap insertion short of 1.7× without
+  artificial taps).

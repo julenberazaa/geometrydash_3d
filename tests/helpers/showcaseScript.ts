@@ -137,8 +137,10 @@ export class ShowcaseDriver {
       439, 456, 467, 474, 485, 491, 498, 505, 519, 539,
       346, 354, 364, // HIGH-drop rhythm (open slabs, lane-neutral)
       // Exit-gap takeoff (the 4.5 u upper→slab drop extends the flight to
-      // 12.2 u — a documented exit-gap breath) + slab hop pair.
-      620, 633, 644,
+      // 12.2 u — a documented exit-gap breath) + slab hop pair. M9.3: the
+      // 620 takeoff left trunk (the alternate steers it); primary keeps a
+      // plain 620, alternate fires it as a withJump tap (see below).
+      633, 644,
       // M9.1 ACT 9 weave hop (lane-0 gate line, past the boosted landing).
       1680,
     ];
@@ -154,7 +156,9 @@ export class ShowcaseDriver {
       401, // ferry exit jump
       // M9.1 ACT 3 upper hole-chain (narrowed 1-lane + two joint holes;
       // the exit gap uses the shared 620 takeoff, never a duplicate).
-      550, 559.5, 570, 583.5, 599.5, 610,
+      // M9.3 transfer decks: A→B lateral (557) + B-mid hop (570) + B→C
+      // lateral (582) + C1→C2 lateral (602) + plain exit takeoff (620).
+      570, 620,
       // M9.1 ACT 8 HIGH deck (hop + mid-flight orb-A + hop (post-orb
       // landing) + grounded orb-B + hole + lift exit — orbs beat-anchored).
       1503.5, 1538, 1545.8, 1556, 1559.5, 1570, 1577.5, 1587,
@@ -170,6 +174,7 @@ export class ShowcaseDriver {
       // M9.1 ACT 3 transition hops (lane-0 hop + lane-2 strip hop) +
       // lower exit hop (carries the weave to the exit gap).
       529, 542, 600,
+      620, // M9.3 exit-gap takeoff (plain — lands the lanes-1+2 exit slab)
       376, // ferry board jump
       401, // ferry exit jump
       1507, // gantry approach spike (lane 2)
@@ -212,7 +217,9 @@ export class ShowcaseDriver {
       { atZ: 448, dir: 'left' }, // door-1 return (lane 1, fits 0.9)
       { atZ: 459, dir: 'right' }, // door-2 steer (lane 2, mid-flight)
       { atZ: 478, dir: 'left' }, // door-3 landing align (lane 1, hop-2 flight)
-      { atZ: 506, dir: 'left' }, // door-5 pre-steer (lane 0, hop-4 flight)
+      { atZ: 490, dir: 'left' }, // M9.3 door-4 pre-steer (lane 0 mid-flight)
+      // (M9.3: the old 506 door-5 pre-steer is deleted — the line is
+      // already lane 0 from door 4; re-tapping left would walk virtual.)
       { atZ: 510, dir: 'right' }, // teeth-515 dodge (lane 1, hop-4 flight)
       { atZ: 513, dir: 'left' }, // door-5/hop-5 return (lane 0, mid-flight)
       // (A4 entry holds center on the narrowed runway — hop + portal-flight,
@@ -289,6 +296,15 @@ export class ShowcaseDriver {
       // Door 6 + pad (primary only — from lane 0 back to lane 1 for the
       // pad trigger; the alternate holds lane 0 around it).
       { atZ: 522, dir: 'right' },
+      // M9.3 upper-deck transfers (withJump combos — the edges live here,
+      // never in the jump list) + exit-slab weave (center → lane 2).
+      { atZ: 557, dir: 'left', withJump: true }, // A → B lateral transfer
+      { atZ: 582, dir: 'right', withJump: true }, // B → C1 lateral transfer
+      { atZ: 602, dir: 'left', withJump: true }, // C1 → C2 lateral transfer
+      // Exit-flight steer (lane 0 → center): fires 1.5 u before the 620
+      // takeoff — any earlier pulls the runner off C2's center edge.
+      { atZ: 618.5, dir: 'right' }, // exit-flight steer (lane 0 → center)
+      { atZ: 636, dir: 'right' }, // exit weave (lane 1 → lane 2)
       // A3 2× weave (lane 1 through 700, lane 0 through 708 + 712),
       // then recenter for the speed/gravity gates.
       { atZ: 700, dir: 'left' },
@@ -314,8 +330,12 @@ export class ShowcaseDriver {
       { atZ: 307, dir: 'left' },
       // M9.1 A3 transition steer (mid-flight of the lane-0 hop — align
       // the lanes-1+2 strip for the lower weave).
+      // M9.3: the shared door-4 line runs lane 0, so the alternate leaves
+      // it before the lane-0 hop spike (516, 7 u lead for the 523 face).
+      // (M9.3: the old 537 second edge is deleted — 516 already recentered
+      // the line, so 536 alone lands lane 2; re-tapping walks virtual.)
+      { atZ: 516, dir: 'right' }, // lane-0 exit (→ lane 1)
       { atZ: 536, dir: 'right' },
-      { atZ: 537, dir: 'right' },
       // M9.1 A3 lower weave (lanes 1+2 strip — alternating dodge).
       { atZ: 551, dir: 'left' }, // dodge teeth 556 (lane 1)
       { atZ: 561, dir: 'right' }, // dodge teeth 566 (lane 2)
@@ -324,6 +344,10 @@ export class ShowcaseDriver {
       { atZ: 591, dir: 'left' }, // dodge teeth 596 (lane 1)
       { atZ: 606, dir: 'right' }, // dodge teeth 612 (lane 2, mid-flight)
       { atZ: 613.5, dir: 'left' }, // exit recenter (lane 1)
+      // M9.3 exit-slab weave (lanes 1+2): plain 620 takeoff (shared line
+      // lands center), then center → lane 2 for the 646 spike and the
+      // lane-2 ferry boarding.
+      { atZ: 636, dir: 'right' }, // exit weave (→ lane 2)
       // A3 2× weave (lane 1 through 700, lane 0 through 708 + 712),
       // then recenter for the speed/gravity gates.
       { atZ: 700, dir: 'left' },
