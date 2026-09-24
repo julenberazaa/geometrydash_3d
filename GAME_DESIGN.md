@@ -430,7 +430,9 @@ Deliberate M7.2 content/product decisions (no temporary coordinates here):
   committed jump; tall spikes read bigger while staying inside the frozen
   jump envelope; lava basins and creature setpieces are pure environmental
   menace (never collision, never landable-looking); mini-islands glow as
-  floating volumes; death bursts hit harder. All Cube-only, all fair and
+  floating volumes; a touched support briefly surges with a local landing
+  pulse (M9.3, presentation-only — the glow never affects collision);
+  death bursts hit harder. All Cube-only, all fair and
   telegraphed — difficulty from geometry, timing, route commitment and
   lane discipline, never hidden deaths.
 
@@ -445,7 +447,10 @@ input-only (modes derive deterministically from physical inputs).
 gravity portals: flying outside the visible ring does NOT switch modes).
   Crossing switches mode exactly once per attempt with a clean handoff:
   forward/lateral flow preserved, along-gravity velocity zeroed,
-  grounded/support cleared. Compact sky-cyan Ship rings (forward-dart
+  grounded/support cleared. Mandatory rings are funneled by architecture
+  (M9.3: barrier walls with one aperture exactly at the ring — visible
+  opening == required opening; missing the ring meets rock, never an
+  invisible trigger). Compact sky-cyan Ship rings (forward-dart
 glyph) and mint-green Spider rings (surface-switch glyph), rendered on
   their trigger volumes.
 - **Ship:** continuous flight, not jumping. Holding the primary action
@@ -454,14 +459,17 @@ glyph) and mint-green Spider rings (surface-switch glyph), rendered on
   on all four gravity orientations. Lane steering stays available. Ship
   sections are authored as bounded corridors/tunnels (floor + ceiling +
   visible side walls with edge language) — free control inside, a guided
-  flight space overall, never free sky.
+  flight space overall, never free sky. M9.3: technical flight steers in
+  X AND Y through staggered windows/apertures (diagonal traverses, side
+  lines, portal funnels), not altitude-only.
 - **Spider:** runs like a Cube but never jumps. On the primary PRESS the
   Spider instantly switches to the OPPOSITE support surface (floor ↔
   ceiling, leftWall ↔ rightWall), landing on the nearest valid opposite
   support within range and flipping gravity with it. Hold never repeats
-  (edge only). A hazard in the transit path kills (death wins — no
-  magical pass-through); a solid in the way, or no support in range,
-  ignores the press (never clip, never void-launch).
+  (edge only). A press on the exact mode-entry step counts as the first
+  snap (M9.3: no dead input, no double-press). A hazard in the transit
+  path kills (death wins — no magical pass-through); a solid in the way,
+  or no support in range, ignores the press (never clip, never void-launch).
 
 `Space` is the universal primary action in every mode (jump / thrust /
 surface-switch).
@@ -497,7 +505,10 @@ gameplay hazard with a readable attack contract:
   decision window closes (no blind memorization): generous approaches,
   doors centered on lanes, wrong paths visibly lethal (wall / spikes /
   lava / void). Frontal contact kills; side scrape obeys the standard
-  blocking semantics.
+  blocking semantics. M9.3: the labyrinth is a multi-level megastructure
+  (offset transfer decks jumped laterally between, tower+lintel gates,
+  overhead bridge spans, lanes-1+2 exit weave) — the route passes
+  THROUGH the architecture, not over flat slabs.
 - **Trap islands:** tempting but visibly dangerous choices — spike-covered
   decoy islands beside a clean precision line. "Trap" never means hidden
   colliders, spawn-after-landing surprises, or unavoidable deaths.

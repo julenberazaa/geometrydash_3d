@@ -663,9 +663,43 @@ motes, lightning 10 → 14 with per-bolt biome tint, architecture 30 → 44
 towers / 20 → 28 walls (still one instanced draw), portal-ring energy
 breathing, checkpoint crystals (shared gem + idle/active materials +
 pooled bursts). Lava untouched. Library 40 → 47 materials (+7 checkpoint),
-8 → 9 geometries (+1 gem); per-biome `qa/screenshots/m92-biome-*` stills
+ 8 → 9 geometries (+1 gem); per-biome `qa/screenshots/m92-biome-*` stills
 vs the m91 set. Real-GPU perf verdict stays a human gate (draw calls are
 dominated by pre-existing per-mesh route dressing; M9.2 adds ~30).
+
+## M9.3 — Traversal density + Spider fix + Ship routing + purple megastructure: ENGINEERING COMPLETE / HUMAN TRAVERSAL + SPIDER + SHIP + PURPLE GATE OPEN (feature/m9-3-traversal-spider-ship-purple-polish, NOT merged)
+
+M9.2 gameplay HUMAN-APPROVED (no rebuild). Targeted surgical polish on six
+human findings (spec: `specs/milestones/M9_3_TRAVERSAL_SPIDER_SHIP_PURPLE_POLISH.md`):
+
+- Straight-run audit (measured, both reference routes): the 10.22 s
+  purple lateral gap (522–665), ship laterals (~8.5 s), cathedral/foundry
+  gaps mapped; surgery is time-neutral (lane/wall/spike insertions never
+  move the 13799-tick / 115.06 s anchor — only speed portals affect it,
+  and none moved).
+- Spider first-snap BUG (reproduced, root-caused): entry-step presses died
+  in the mode handoff (consumed as cube jumps, effect zeroed) — now
+  honored as snap attempts (`tests/spiderFirstSnap.test.ts`, 8 tests;
+  in-page 3/3 one-press proof). Difficulty eased one notch (later first
+  wall, wider climb slabs, teeth rebalance; 4-way/wall snaps kept).
+- Ship portals: six funnel walls (visible opening == trigger volume;
+  `tests/shipPortalBypass.test.ts`, 8 groups — offsets miss and die at
+  rock) + LOW-LEFT → HIGH-RIGHT 3D diagonal (staggered invert/revert
+  rings; abyss already 1× technical).
+- Island landing glow (`ContactPulse`: local 0.30 s accent pulse, pooled
+  no-leak slots, moving islands ride the mesh; 7 unit tests + in-page
+  count/id/decay probes).
+- Purple megastructure (`ps-labyrinth` 430–720): offset transfer decks
+  (A→B→C1→C2 lateral jumps), tower+lintel gates, bridge city, exit weave,
+  lane-0 door 4; primary lateral 16→22, reversals 13→17; visual deepen.
+- Global: ship-exit gateway; remaining gaps justified (1-lane precision,
+  ferry carriage, wall stairs, orb rhythm, recovery).
+
+Proof: `npm run verify` green (54 files / 658 tests); anchor 13799 both
+routes + replay VERIFIED; m92 browser gate 16/16 green (audio + checkpoints
+intact); m93 in-page probes 12/12 green (spider 3/3, island count/id/decay,
+screenshots, zero errors). Human gates (feel, purple look, island feedback,
+audible music) remain OPEN — automation proves mechanics, never fun.
 
 ## M9 — Gravity Lessons rhythm polish: ENGINEERING COMPLETE / HUMAN MUSIC-RHYTHM GAMEPLAY GATE OPEN (feature/m9-gravity-lessons-rhythm-polish, NOT merged)
 

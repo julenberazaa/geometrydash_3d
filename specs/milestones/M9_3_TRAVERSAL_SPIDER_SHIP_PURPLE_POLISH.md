@@ -230,3 +230,27 @@ spider feel, ship feel, purple look + route, island feedback.
   stairs, orb rhythm, recovery) â€” no destabilizing changes. No speed
   portal moved in all of M9.3, so the 13799-tick / 115.06 s musical
   anchor holds by construction (musicAlignment green).
+- Commit 10 (browser QA + docs): m92 gate 16/16 green (audio graph + checkpoints intact); m93 in-page probes 12/12 green (spider first-snap 3/3 one-press, island count/id/decay, 3 human-gate screenshots, zero console/page errors); GAME_DESIGN (spider entry-edge, ship funnels + 3D steering, maze megastructure, landing pulse) + ROADMAP (M9.3 section) + ARCHITECTURE (entry edge, ContactPulse) updated.
+
+## Before ? after metrics (§41)
+
+Measured on the headless reference routes (both variants finish 13799 ticks / 114.99 s before AND after — anchor untouched).
+
+| Metric | Before | After |
+|---|---|---|
+| Purple lateral changes (primary / alternate) | 16 / 24 | 22 / 26 |
+| Purple lateral reversals (primary / alternate) | 13 / 20 | 17 / 21 |
+| Purple max lateral-passive interval | 10.22 s (522–665) | 2.50 s (522–557, orb-anchored + transfer-bracketed) |
+| Purple X range / Y range (primary) | 6.8 / 6.6 | 6.7 / 6.6 (offset decks, same corridor) |
+| Purple support transitions (primary / alternate) | 8 / 7 | 9 / 7 |
+| Purple height bands traversed | LOW + DECK + drop | LOW + DECK + TRANSFER-APEX + DROP/FERRY regimes |
+| Ship bypass survival (6 funnel portals) | 6/6 reach downstream unconsumed | 0/6 (all die at funnel rock) |
+| Ship X range / Y range | -2.6..2.6 / 0.6..6.4 | -2.6..2.6 / 0.6..6.1 (diagonal carries + right-side S-weave) |
+| Spider first-snap one-press success | dead input on entry step | 8/8 regression tests + 3/3 in-page |
+| Spider snap count (reference) | 23 | 23 (density kept; margins widened) |
+| Safe-route split one/two/open | 75.0 / 15.5 / 9.5 | 74.0 / 16.2 / 9.9 (one+two 90.1 = 90) |
+| Suite | 635 tests | 658 tests (+8 spider +8 bypass +7 pulse) |
+| Browser | m92 16/16 | m92 16/16 + m93 probes 12/12, zero errors |
+
+Caveats (§32): the 1.7× lateral target lands at 1.38× primary (16?22) — the kept beat-anchored doors/orbs/ferries cap fixed-tap insertion; further taps would be artificial. Remaining >1.25 s laterals are landing-bracketed precision, orb-anchored, ferry-engaged, or justified recovery (audited §36). Ship speed unchanged (abyss already 1× technical; §19 satisfied by design).
+
