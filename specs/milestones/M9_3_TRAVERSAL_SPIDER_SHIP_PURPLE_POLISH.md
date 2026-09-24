@@ -223,3 +223,10 @@ spider feel, ship feel, purple look + route, island feedback.
   landing/orb/ferry/recovery-justified (documented §32 caveat: the kept
   beat-anchored skeleton caps fixed-tap insertion short of 1.7× without
   artificial taps).
+- Commit 9 (global cleanup): ship-exit gateway (wall aperture threading
+  the 1318 rhythm hop, zero driver impact); audit of all remaining gaps
+  (forge/islands/cathedral/foundry/void/spider-transition) finds them in
+  justified contexts (1-lane precision, ferry carriage, wall-gravity
+  stairs, orb rhythm, recovery) — no destabilizing changes. No speed
+  portal moved in all of M9.3, so the 13799-tick / 115.06 s musical
+  anchor holds by construction (musicAlignment green).

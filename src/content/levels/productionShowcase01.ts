@@ -1031,6 +1031,13 @@ export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
     { center: { x: 0, y: 6.55, z: 1313 }, halfExtents: { x: 1.5, y: 2.45, z: 1.5 } },
     // Ship-exit landing runway (top 0, z 1310..1330).
     { center: { x: 0, y: -0.5, z: 1320 }, halfExtents: { x: 5.4, y: 0.5, z: 10 } },
+    // M9.3 exit gate (z 1318..1321): the runway threads a wall aperture
+    // (x ±1.6, y 0..4) — the 1318 rhythm hop flies through it (flight box
+    // top stays under 3.3; the ship-off funnel stands behind, the spider
+    // entry teeth ahead — the whole exit reads as one gateway sequence).
+    { center: { x: 3.5, y: 2, z: 1319.5 }, halfExtents: { x: 1.9, y: 2, z: 1.5 } },
+    { center: { x: -3.5, y: 2, z: 1319.5 }, halfExtents: { x: 1.9, y: 2, z: 1.5 } },
+    { center: { x: 0, y: 4.5, z: 1319.5 }, halfExtents: { x: 1.6, y: 0.5, z: 1.5 } },
     // ================= ACT 7 SPIDER SPIRE (1330..1510, M9.1) =================
     // M9.1 (mode/gravity portals on their musical Z): four dodge walls
     // (up/down snap pairs), a 9-snap climb chain (every 5 u), narrowed
