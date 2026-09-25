@@ -872,6 +872,7 @@ variants):
 
 ## M9 — Gravity Lessons rhythm polish: ENGINEERING COMPLETE / HUMAN MUSIC-RHYTHM GAMEPLAY GATE OPEN (feature/m9-gravity-lessons-rhythm-polish, NOT merged)
 
+
 Human M8.6 verdict: POSITIVE after the camera corrective pass (level
 visually strong, substantially more enjoyable) — but wide permissive
 corridors still admit ~4–5 equivalent safe lines. M9 takes THE DESCENT
@@ -925,3 +926,50 @@ staged captures, `?music=off`, flat 40/8/64 resources, zero errors) with
 decide sync feel, flash power, musical flow, precision, difficulty-vs-fun,
 readability, or one-piece feel — do NOT mark PASS until the human plays it
 with sound on. Next: human music-rhythm gameplay gate, then real-GPU perf.
+
+## M9.6 — Island Hub + Input Reliability + Spider Feel: ENGINEERING COMPLETE / HUMAN HUB + INPUT + SPIDER GATE OPEN (feature/m9-6-island-hub-input-spider-polish, NOT merged)
+
+Follow-up pass on the M9.5 stack (GOAL A hub, GOAL B Descent enrichment,
+GOAL C input audit+fix, GOAL D spider feel) — audited first, then fixed:
+
+- Hub: the flat two-card start screen is now a 3D island hub (`IslandHub`,
+  menu-owned Three.js scene in the game's visual language) — THE DESCENT
+  island (teal tiers, waterfall + pool, floating-rock path) + GRAVITY
+  RIFT island (basalt, lava cracks, spike ring, skull-abstract) + 5
+  stepping stones with flow pulses traveling toward the selected island
+  + water + motes + per-island beacon/ring rigs. Selection (plain TS in
+  `LevelSelectView`) mirrors both ways: destination panels, 3D raycast
+  island picking, animated CLASSIC/CHECKPOINT slider (same semantics),
+  START. Menu XOR session canvas (hub disposed on START, rebuilt on menu
+  return). Legacy `.m94-*` hooks kept — pre-M9.6 gates migrated only on
+  the menu canvas assertion (hub owns the single menu canvas).
+- Input (root-caused, not guessed): (C1) clicks/taps had NO gameplay path
+  (keyboard-only) — pointer contacts now drive the shared `space` edge
+  (UI-button targets excluded, zero replay-codec change); (C2) the
+  always-visible ☰ MENU button kept focus, so the next gameplay Space
+  re-clicked it (spurious pause one press after every menu use — the
+  "state change" bug; spider suffered most) — every menu/HUD/pause
+  button now blurs on activation; (C3) async start handoff flushes stale
+  edges; (C4) named blur handler removed on detach. Proof: unit
+  (`inputPointer`, 10 tests) + browser (tap-jump, spider-edge delivery,
+  Space-after-menu jumps without pausing — incl. a dead-hold
+  misdiagnosis caught and corrected in-gate).
+- Spider: snaps record count + exact travel anchors, ignored presses
+  record count + reason (`spiderSnap`, 8 tests); 6-tick deterministic
+  press forgiveness (replay-safe, snapshot-carried, reference-neutral);
+  `SpiderBeamView` energy beam + spray + endpoint flashes on every snap
+  (presentation-only, camera glide untouched).
+- Descent: Zone G island weave (180.5/190.5 ride lane 0 — one
+  out-and-back, +2 lanes each variant, +5.2 lateral travel, anchor
+  14797 tick-exact, replays VERIFIED). Explicitly NOT done: new Chompers
+  (8/8 cap constructor-enforced), Zone H (hop rhythm vs 548 transition
+  jump), Zone I (0.5 s scripted drop+ceiling-touch vs orb timing) —
+  audited with trajectory evidence in the spec.
+- Proof: `npm run verify` green (710 tests: +10 inputPointer, +8
+  spiderSnap); `browser-qa-m96` 15/15 green (hub, slider, switching,
+  menu return, pointer/spider reliability, beam, disposal, audio
+  budget, zero errors); migrated m94/m941/m942/m95 menu gates green;
+  Rift route/music/fingerprint untouched. Spec:
+  `specs/milestones/M9_6_ISLAND_HUB_INPUT_SPIDER_POLISH.md`. Automation
+  proves mechanics, never fun/feel — do NOT mark PASS until the human
+  plays the hub flow, the enriched Descent, and the spider with sound on.

@@ -73,12 +73,13 @@ const menu = await ev(page, () => ({
   titles: [...document.querySelectorAll('.m94-card-title')].map((e) => e.textContent),
   tags: [...document.querySelectorAll('.m94-card-tag')].map((e) => e.textContent),
   canvases: document.querySelectorAll('canvas').length,
+  hubCanvases: document.querySelectorAll('.m96-hub-canvas').length,
   probeCards: window.__gd3d.menuCards(),
 }));
 log(
   'm941 main menu holds exactly the two production levels',
   menu.cards.length === 2 && menu.cards.includes('the-descent') &&
-    menu.cards.includes('production-showcase-01') && menu.canvases === 0 &&
+    menu.cards.includes('production-showcase-01') && menu.canvases === 1 && menu.hubCanvases === 1 &&
     (menu.probeCards ?? []).length === 2 &&
     menu.titles.includes('THE DESCENT') && menu.titles.includes('GRAVITY RIFT') &&
     menu.tags.includes('ORIGINAL M8.6') && menu.tags.includes('EXPERT'),
@@ -151,12 +152,13 @@ await sleep(page, 300);
 const disposed = await ev(page, () => ({
   cards: document.querySelectorAll('.m94-card').length,
   canvases: document.querySelectorAll('canvas').length,
+  hubCanvases: document.querySelectorAll('.m96-hub-canvas').length,
   hudGone: document.querySelector('.hud') === null,
   pauseGone: document.querySelector('.m94-pause-menu') === null,
 }));
 log(
   'm941 MAIN MENU fully disposes the session',
-  disposed.cards === 2 && disposed.canvases === 0 &&
+  disposed.cards === 2 && disposed.canvases === 1 && disposed.hubCanvases === 1 &&
     disposed.hudGone === true && disposed.pauseGone === true,
   JSON.stringify(disposed),
 );

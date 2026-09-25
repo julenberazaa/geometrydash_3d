@@ -292,11 +292,12 @@ let descentFingerprint = null;
   const backAtMenu = await ev(page, () => ({
     cards: document.querySelectorAll('.m94-card').length,
     canvases: document.querySelectorAll('canvas').length,
+    hubCanvases: document.querySelectorAll('.m96-hub-canvas').length,
     hudGone: document.querySelector('.hud') === null,
   }));
   log(
     'm94 MAIN MENU disposes the session and shows the menu',
-    backAtMenu.cards === 2 && backAtMenu.canvases === 0 && backAtMenu.hudGone === true,
+    backAtMenu.cards === 2 && backAtMenu.canvases === 1 && backAtMenu.hubCanvases === 1 && backAtMenu.hudGone === true,
     JSON.stringify(backAtMenu),
   );
   await page.close();
@@ -394,8 +395,9 @@ let evolvedFingerprint = null;
   await waitMenu(page);
   const final = await ev(page, () => ({
     canvases: document.querySelectorAll('canvas').length,
+    hubCanvases: document.querySelectorAll('.m96-hub-canvas').length,
   }));
-  log('m94 final return disposes the rift session', final.canvases === 0, JSON.stringify(final));
+  log('m94 final return disposes the rift session', final.canvases === 1 && final.hubCanvases === 1, JSON.stringify(final));
   await page.close();
 }
 

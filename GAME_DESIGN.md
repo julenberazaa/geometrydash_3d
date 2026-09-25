@@ -24,9 +24,12 @@ see §1.1; classic runs keep the original no-checkpoint contract).
 ## 1.1 Practice checkpoints — CURRENT (M9.2, live toggle M9.4)
 
 Two production levels (THE DESCENT + GRAVITY RIFT, see §5) each
-offer two run modes behind a level/mode start selector (one screen:
-SELECT LEVEL → SELECT MODE → START; the START gesture also unlocks audio
-and starts the run; `?level=<id>` enters directly, `?mode=` preselects):
+offer two run modes behind a 3D island-hub start selector (M9.6: two
+animated islands — THE DESCENT / GRAVITY RIFT — plus an animated
+CLASSIC / CHECKPOINT slider and START; same semantics as the original
+SELECT LEVEL → SELECT MODE → START screen, the START gesture also
+unlocks audio and starts the run; `?level=<id>` enters directly,
+`?mode=` preselects):
 
 - **CLASSIC RUN:** the original contract — death restarts from the level
   origin, replays verify tick-for-tick, completions are official.
@@ -71,7 +74,10 @@ NEVER rotates and the camera NEVER rolls when gravity changes.
 
 - **Auto-forward:** the player always moves forward at level base speed
   (Test Level: 14 units/s along +Z). No manual longitudinal control.
-- **Jump:** `Space` is ALWAYS the jump key. The directional jump key depends
+- **Jump:** `Space` is ALWAYS the jump key. A pointer tap (mouse click /
+  touch tap on the scene — never on a UI control) is the SAME primary
+  action as `Space` (M9.6: shared edge semantics, identical in every
+  mode). The directional jump key depends
   on the current gravity surface:
   - Floor: `ArrowUp` or `Space` = fixed-impulse jump away from the floor.
   - Ceiling: `ArrowDown` or `Space` = fixed-impulse jump away from the
@@ -506,9 +512,16 @@ glyph) and mint-green Spider rings (surface-switch glyph), rendered on
   ceiling, leftWall ↔ rightWall), landing on the nearest valid opposite
   support within range and flipping gravity with it. Hold never repeats
   (edge only). A press on the exact mode-entry step counts as the first
-  snap (M9.3: no dead input, no double-press). A hazard in the transit
+  snap (M9.3: no dead input, no double-press). A press that finds no
+  valid support is remembered for 6 fixed ticks (M9.6: 50 ms deterministic
+  press forgiveness — the snap fires if support comes in range inside the
+  window; never invents input, clears on death/respawn/restart/mode-exit,
+  rides checkpoint snapshots, replay-safe). A hazard in the transit
   path kills (death wins — no magical pass-through); a solid in the way,
   or no support in range, ignores the press (never clip, never void-launch).
+  Every snap answers with a fast vertical energy beam + particle burst
+  connecting the exact start/end anchors (M9.6: presentation-only, the
+  camera keeps gliding — never a cut, never a snap).
 
 `Space` is the universal primary action in every mode (jump / thrust /
 surface-switch).

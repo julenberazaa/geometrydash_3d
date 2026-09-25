@@ -1,5 +1,7 @@
 import type { Game } from '../game/Game';
 import type { GravityMode, PlayerMode } from '../player/playerState';
+import type { IslandHub } from '../menu/islandHub';
+import type { LevelSelectView } from '../ui/LevelSelectView';
 import { parseReplay } from '../replay/replayFormat';
 
 // Expose for QA harnesses (evidence-capture sidecars read plain data from this).
@@ -205,12 +207,34 @@ declare global {
  * M9.4 menu-screen probes: just enough for QA harnesses to detect the
  * selector (screen + cards). Game sessions replace this with the full
  * probe set via `publishGameProbes`.
+ *
+ * M9.6: extended with the hub mirror (selection echo, beacon weights,
+ * hub readiness) plus programmatic selection (same state path as
+ * clicks — the main flow is still driven through real DOM clicks).
  */
-export const publishMenuProbes = (cardLevelIds: readonly string[]): void => {
+export const publishMenuProbes = (
+  cardLevelIds: readonly string[],
+  hub: IslandHub | null = null,
+  view: LevelSelectView | null = null,
+): void => {
   (window as unknown as { __gd3d?: unknown }).__gd3d = {
     screen: () => 'menu',
     levelId: () => null,
     menuCards: () => [...cardLevelIds],
+    selectedLevel: () => view?.selection.levelId ?? null,
+    selectedMode: () => view?.selection.mode ?? null,
+    hubReady: () => hub !== null,
+    hubCanvases: () => document.querySelectorAll('.m96-hub-canvas').length,
+    hubSelected: () => hub?.selectedLevelId ?? null,
+    hubBeacon: (levelId: string) => hub?.beaconLevel(levelId) ?? -1,
+    selectLevel: (levelId: string) => view?.select(levelId),
+    selectMode: (mode: 'classic' | 'checkpoint') => {
+      // Same mode state as the slider buttons (hub has no mode mirror).
+      const slider = document.querySelector('.m96-mode-slider');
+      const buttons = slider?.querySelectorAll('.m94-mode-button') ?? [];
+      const want = mode === 'checkpoint' ? 1 : 0;
+      (buttons[want] as HTMLButtonElement | undefined)?.click();
+    },
   };
 };
 

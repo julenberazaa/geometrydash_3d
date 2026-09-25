@@ -102,11 +102,12 @@ const menu = await ev(page, () => ({
   selectedCard: document.querySelector('.m94-card.m94-selected')?.dataset.levelId ?? null,
   selectedMode: document.querySelector('.m94-mode-button.m94-selected')?.textContent ?? null,
   canvases: document.querySelectorAll('canvas').length,
+  hubCanvases: document.querySelectorAll('.m96-hub-canvas').length,
 }));
 log(
   'm95 menu shows THE DESCENT (Zenith) + GRAVITY RIFT (rift preselected)',
   menu.cards.length === 2 && menu.cards.includes('the-descent') &&
-    menu.cards.includes('production-showcase-01') && menu.canvases === 0 &&
+    menu.cards.includes('production-showcase-01') && menu.canvases === 1 && menu.hubCanvases === 1 &&
     menu.titles.includes('THE DESCENT') && menu.titles.includes('GRAVITY RIFT') &&
     menu.tags.includes('ORIGINAL M8.6') && menu.tags.includes('EXPERT') &&
     menu.selectedCard === 'production-showcase-01' &&
@@ -290,11 +291,12 @@ await sleep(page, 300);
 const disposed1 = await ev(page, () => ({
   cards: document.querySelectorAll('.m94-card').length,
   canvases: document.querySelectorAll('canvas').length,
+  hubCanvases: document.querySelectorAll('.m96-hub-canvas').length,
   hudGone: document.querySelector('.hud') === null,
 }));
 log(
   'm95 MAIN MENU after THE DESCENT leaves zero residue',
-  disposed1.cards === 2 && disposed1.canvases === 0 && disposed1.hudGone === true,
+  disposed1.cards === 2 && disposed1.canvases === 1 && disposed1.hubCanvases === 1 && disposed1.hudGone === true,
   JSON.stringify(disposed1),
 );
 

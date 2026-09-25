@@ -1,9 +1,18 @@
 # M9.6 — Island Hub + Input Reliability + Spider Feel (follow-up polish)
 
-> Status: IN PROGRESS (branch `feature/m9-6-island-hub-input-spider-polish`,
-> from M9.5 HEAD `734e306`). Four goals, all audited first — no cosmetic
-> tweaks claimed as fixes. No merge to main, no force-push. Untracked
-> user MP3s at the repo root are preserved untouched.
+> Status: ENGINEERING COMPLETE (branch
+> `feature/m9-6-island-hub-input-spider-polish`, from M9.5 HEAD `734e306`).
+> Human gates (hub feel, Descent enrichment, spider feel, audible music)
+> remain OPEN — automation proves mechanics, never fun. No merge to main,
+> no force-push. Untracked user MP3s at the repo root preserved untouched.
+>
+> Evidence: `npm run verify` green (710 tests: +10 `inputPointer`, +8
+> `spiderSnap`); `browser-qa-m96.mjs` 15/15 green (hub, slider,
+> switching, menu return, pointer/spider reliability, beam, disposal,
+> audio budget, zero errors); migrated m94/m941/m942/m95 menu gates
+> green; both reference anchors tick-exact (Descent 14797, Rift 13799)
+> with replays VERIFIED. One in-gate misdiagnosis documented honestly
+> (B3 dead-hold staging, corrected — the game was right).
 
 ## 0. Source state (verified 2026-09-25)
 

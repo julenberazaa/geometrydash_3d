@@ -414,6 +414,154 @@ body {
   filter: brightness(1.1);
 }
 
+/* M9.6 island-hub menu: the 3D scene is the backdrop (canvas behind),
+   destination panels + the mode slider float over it. The menu root is
+   pointer-transparent so island clicks reach the hub canvas; every real
+   control re-enables hits. Legacy m94 hooks are untouched (browser gates). */
+.m96-hub-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: block;
+}
+
+.m94-menu {
+  background:
+    radial-gradient(1200px 420px at 50% -10%, rgba(180, 77, 255, 0.10), transparent 60%),
+    radial-gradient(900px 300px at 50% 115%, rgba(25, 230, 255, 0.08), transparent 60%),
+    linear-gradient(rgba(7, 4, 15, 0.05), rgba(7, 4, 15, 0.45));
+  pointer-events: none;
+  z-index: 1;
+  justify-content: flex-start;
+  padding-top: 2.5vh;
+  gap: 8px;
+}
+
+/* M9.6 hub stage: flexible vista window between the title and the
+   docked controls (the 3D islands own this band). */
+.m96-stage {
+  flex: 1 1 auto;
+  min-height: 12vh;
+  width: 100%;
+  pointer-events: none;
+}
+
+/* M9.6 docked controls: island panel | slider + start | island panel. */
+.m96-bottombar {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  max-width: 1180px;
+  padding: 0 3vw 2vh;
+}
+
+.m96-mid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 300px;
+}
+
+.m94-menu-title {
+  font-size: 30px;
+}
+
+.m96-island-panel {
+  width: 270px;
+}
+
+@media (max-width: 1000px) {
+  .m96-island-panel {
+    width: 210px;
+  }
+  .m96-island-panel .m94-card-blurb {
+    display: none;
+  }
+  .m96-mid {
+    min-width: 240px;
+  }
+}
+
+.m94-menu-title,
+.m94-menu-label {
+  text-shadow: 0 2px 12px rgba(7, 4, 15, 0.9), 0 0 22px rgba(125, 249, 255, 0.6);
+}
+
+.m96-island-panel {
+  pointer-events: auto;
+  background: rgba(8, 5, 20, 0.78);
+  backdrop-filter: blur(2px);
+}
+
+.m96-island-panel.m94-selected {
+  box-shadow: 0 0 26px var(--m94-accent), inset 0 0 18px rgba(125, 249, 255, 0.08);
+  transform: translateY(-3px);
+}
+
+.m96-destination-tag {
+  display: none;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.24em;
+  color: var(--m94-accent);
+  margin-top: 8px;
+}
+
+.m96-island-panel.m94-selected .m96-destination-tag {
+  display: block;
+}
+
+/* M9.6 animated run-mode slider: two legacy buttons + sliding thumb. */
+.m96-mode-slider {
+  position: relative;
+  pointer-events: auto;
+  background: rgba(8, 5, 20, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  padding: 6px;
+  isolation: isolate;
+}
+
+.m96-mode-slider .m94-mode-button {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  transition: color 180ms linear;
+}
+
+.m96-mode-slider .m94-mode-button.m94-selected {
+  border-color: transparent;
+  box-shadow: none;
+  color: #04121c;
+}
+
+.m96-mode-thumb {
+  position: absolute;
+  z-index: 0;
+  top: 6px;
+  bottom: 6px;
+  left: 6px;
+  width: calc(50% - 12px);
+  border-radius: 8px;
+  background: linear-gradient(90deg, #7df9ff, #54f0ff);
+  box-shadow: 0 0 18px rgba(125, 249, 255, 0.45);
+  transition: transform 220ms cubic-bezier(0.3, 1.2, 0.4, 1);
+}
+
+.m96-mode-slider.m96-checkpoint .m96-mode-thumb {
+  transform: translateX(calc(100% + 12px));
+}
+
+.m94-start-button {
+  pointer-events: auto;
+}
+
 /* M9.4 in-game pause menu (compact overlay, presentation only). */
 .m94-pause-menu {
   position: absolute;

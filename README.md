@@ -171,7 +171,7 @@ Individual: `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`.
 
 | Input | Floor | Ceiling |
 |---|---|---|
-| `Space` (hold = repeat) | Jump | Jump |
+| `Space` (hold = repeat), or click / tap the scene | Jump | Jump |
 | `↑` | Jump | Fast-fall (airborne) |
 | `↓` | Fast-fall (airborne) | Jump |
 | `←` / `→` | Lane target (one press = one lane, provisional) | Same — never mirrored |
@@ -183,20 +183,22 @@ Individual: `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`.
 | `F1` / `F2` / `F3` | Debug stats / collider wireframes / player hitbox | Same |
 | `F4` | Replay the last completed attempt (input ignored during playback; clean classic runs only — practice attempts are never official) | Same |
 
-Two production levels (M9.5, `feature/m9-5-descent-zenith-density-polish`
-— engineering complete, human descent-density + zenith-music gate OPEN):
+Two production levels (M9.6, `feature/m9-6-island-hub-input-spider-polish`
+— engineering complete, human hub + input + spider gate OPEN):
 THE DESCENT (`the-descent`, the M8.6 density-verticality foundation with
-the M9.5 surgical polish — 3 added Chompers, LOW weave, maze doors,
-foundry doors — ~123 s Hard, ♪ Zenith of the Path with moderate music
-sync) + GRAVITY RIFT (`production-showcase-01`, unchanged internal id,
-M9.3 route with Gravity Lessons, default card) behind one SELECT LEVEL →
-SELECT MODE → START screen; ESC/P or the ☰ MENU button opens the pause
-menu, MAIN MENU disposes the session and returns to the selector for a
-fresh map/mode START; checkpoint mode toggles live from the pause menu
-with a practice-taint contract (an attempt that ever armed checkpoints
-stays PRACTICE until a full restart), per-level ReplayV1 isolation, and
-full session disposal on return-to-menu (spec:
-`specs/milestones/M9_5_DESCENT_ZENITH_DENSITY_POLISH.md`).
+the M9.5 surgical polish plus the M9.6 Zone G island weave — ~123 s
+Hard, ♪ Zenith of the Path with moderate music sync) + GRAVITY RIFT
+(`production-showcase-01`, unchanged internal id, M9.3 route with
+Gravity Lessons, default card) behind a 3D island-hub selector (two
+animated islands + CLASSIC/CHECKPOINT slider + START — same semantics
+as SELECT LEVEL → SELECT MODE → START); ESC/P or the ☰ MENU button opens
+the pause menu, MAIN MENU disposes the session and returns to the hub
+for a fresh map/mode START; checkpoint mode toggles live from the pause
+menu with a practice-taint contract (an attempt that ever armed
+checkpoints stays PRACTICE until a full restart), per-level ReplayV1
+isolation, and full session disposal on return-to-menu (spec:
+`specs/milestones/M9_6_ISLAND_HUB_INPUT_SPIDER_POLISH.md`). Spider snaps
+carry a 6-tick press forgiveness plus an energy-beam transition.
 
 Interactions (M4): yellow pads launch on contact (no input); yellow orbs
 grant a mid-air jump on a Space/arrow press inside their window; blue orbs

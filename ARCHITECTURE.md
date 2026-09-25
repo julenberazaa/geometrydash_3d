@@ -7,8 +7,11 @@
 ## 1. Dependency direction
 
 ```text
-main.ts → AppController (M9.4 menu ↔ session lifecycle: LevelSelectView →
-  create Game → dispose → menu; one Game owns one LevelDefinition; level
+main.ts → AppController (M9.4 menu ↔ session lifecycle + M9.6 3D island
+  hub: IslandHub ⇄ LevelSelectView selection mirror → create Game →
+  dispose → menu; one Game owns one LevelDefinition; menu XOR session
+  canvas — the hub builds fresh on every menu entry and disposes on
+  every START, so exactly one renderer/canvas is ever alive; level
   changes never hot-swap content inside an active session)
   Game → InputSystem → GameSimulation → { CubeController, CollisionWorld, LevelRuntime }
   Game → ReplayCoordinator → GameSimulation (M5: recording/playback orchestration ABOVE the sim)
@@ -85,6 +88,16 @@ walls) while the horizontal arrows work the support — Left wall:
 Merge semantics match the historical ArrowUp+Space merge. Tests build
 physical snapshots directly — no browser needed. `Game` owns separate non-gameplay keys (`R` restart, `P`/`Escape`
 pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
+M9.6 pointer primary action (still this owner, still gravity-agnostic):
+`attachPointer(container)` maps pointerdown → the SAME `space` edge
+(first contact presses, last release releases; multi-touch tracked by
+pointer id) and pointerup/cancel → release; contacts starting on a
+`button` are UI gestures (ignored here — buttons blur themselves on
+activation so Space never re-fires them, fixing the post-menu spurious
+pause). Pointer shares the `space` edge state, so the replay codec,
+ReplayV1 and all tapes are byte-identical. `Game` attaches the pointer
+root per session and detaches on dispose; the window `blur` handler is
+named and removed on detach (the old anonymous closure leaked).
 
 ## 4. Player (`src/player/`)
 
@@ -133,7 +146,15 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   gravity + fast-fall + terminal from the frozen `CUBE_TUNING` — same
   world gravity, deliberately) but NEVER jumps; the primary press is
   consumed by the simulation as an opposite-surface snap (the controller
-  never touches the CollisionWorld).
+  never touches the CollisionWorld). M9.6: the sim records every snap
+  (`spiderSnapEventCount` + `lastSpiderSnapFrom/To` anchors) and every
+  ignored press (`spiderRejectCount` + `lastSpiderRejectReason`) —
+  presentation/QA only, excluded from the state hash and the level
+  fingerprint (teleport-anchor precedent) — and arms a 6-tick press
+  buffer (`spiderBufferTicksLeft`, cleared on death/respawn/restart/
+  mode-exit, carried in checkpoint snapshots) that re-attempts ONLY the
+  snap (never fabricates input, so pads/orbs/gravity never observe it).
+  Reference tapes (success-first-try presses) are provably unaffected.
 - `cubeTuning.ts`: ALL Cube gameplay magic numbers live here (see `GAME_DESIGN.md`
   §2 for values). Tune by playing, not by theory. NOTE (M4): forward speed is
   NOT tuning — the level's `baseForwardSpeed` × the simulation's speed
@@ -793,9 +814,25 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   4-material burst pool (the interaction pool is view-owned and cannot be
   shared); polls `isCheckpointActivated`, edge-detects
   `checkpointEventCount` for the section-accent-tinted burst + scale pop.
-  Hidden in classic runs (`setCheckpointsVisible`); empty-group rule keeps
-  checkpoint-less levels at zero extra children. Crystal visuals never
-  affect triggers (simulation-owned swept volumes).
+   Hidden in classic runs (`setCheckpointsVisible`); empty-group rule keeps
+   checkpoint-less levels at zero extra children. Crystal visuals never
+   affect triggers (simulation-owned swept volumes).
+- `IslandHub` (`src/menu/`, M9.6): the menu's own Three.js scene — Descent
+  island (teal tiers + waterfall + pool + floating-rock path) + Rift
+  island (basalt + lava cracks + spike ring + skull-abstract) + 5
+  stepping stones with flow pulses traveling toward the selected island
+  + water + motes + per-island beacon/ring rigs + raycast pick proxies.
+  Own renderer/canvas/rAF/materials (bounded ~50 draws, no post), own
+  lifecycle (start/stop/dispose — AppController builds on every menu
+  entry, disposes on every START; menu XOR session canvas). Selection
+  state stays in `LevelSelectView`; the hub only mirrors it. Menu probes
+  extended (`hubReady`, `hubSelected`, `hubBeacon`, programmatic select).
+- `SpiderBeamView` (`src/rendering/`, M9.6): the snap transition language
+  — pooled 2-slot vertical energy beam + spray + endpoint flashes between
+  the exact sim snap anchors, ~0.32 s decay, mint spider accent, owned
+  materials/geometries, edge-fired by `RendererHost` from
+  `spiderSnapEventCount` (silenced by `?fx=off`, cleared on respawn/
+  teleport, disposed with the host). The camera glide is untouched.
 - `Hud` mode selector (M9.2): two buttons inside the start gate (one click
   = mode + audio unlock + start; bare clicks/keys default classic) + a
   run-mode badge and a `CHECKPOINT i/N — NAME` progress line. CSS keeps the
@@ -804,6 +841,12 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   `☰ MENU` corner button (pointer-events re-enabled on the button only;
   `Hud.onMenuRequest` → `Game` opens the pause menu, same as ESC/P —
   presentation only, never gameplay input) and `Hud.dispose()`.
+  M9.6: every menu/HUD/pause button blurs itself on activation (a focused
+  native button re-fires on Space keyup — the post-menu spurious pause);
+  `LevelSelectView` stages destination panels + an animated CLASSIC/
+  CHECKPOINT slider over the hub (legacy `.m94-*` hooks kept for QA) and
+  mirrors selection into the hub via `onSelectionChange` (3D picks enter
+  through the same `select()` state).
 - `LevelView.updatePortals` (M9.2): outer portal rings breathe ±4% on a
   slow z-phased sine (delta-from-build, pause freezes, trigger bounds
   untouched). `EnvironmentView` M9.2 dressing (all cold-built, bounded):
@@ -1154,6 +1197,10 @@ in-page eye-velocity proof (no cut) |
 | M9.2 audio output path: every live voice is source → gain → destination, wired in order before start; wiring failure fails loud, never silent `playing` | `musicDirector` structural order test + fail-loud wiring test + graphReady pins + browser QA m92 graph assertion (never TRANSPORT PASS with no output path) |
  | M9.2 checkpoints: latest-wins activation, atomic full-state restore (incl. platform tick + elapsed anchor), classic bit-identity, R = checkpoint / Shift+R = full, session-scoped, replay-isolated | `checkpoints` tests + DESCENT 8/8 both-route activation pin + browser QA m92 checkpoint section |
 | M9.5 per-track rhythm: Gravity grid default (existing callers/pulse byte-identical); Zenith grid + restrained pulse scale resolve from the level's track; chomper runtime order is triggerZ-sorted | `zenithTrack` map/resolution/scale tests + `rhythmPulse` default-path + Zenith-grid tests + `descentZenithAlignment` + browser QA m95 pulse/graph proof |
+| M9.6 pointer primary action: taps drive the shared `space` edge (keyboard-identical downstream, replay-identical tapes); button contacts never become gameplay input; no leaked listeners across sessions | `inputPointer` tests (fake-root edges, multi-touch, UI-target exclusion, disabled parity, detach/blur removal) + browser QA m96 tap-jump + spider-edge proofs |
+| M9.6 focused buttons never re-fire gameplay Space (blur on activation) | Browser QA m96 C2 (Space after menu use jumps, never pauses) |
+| M9.6 spider snaps observable (count + travel anchors) and ignored presses counted with reasons; 6-tick press buffer re-attempts ONLY the snap, clears on death/respawn/restart/mode-exit, rides snapshots; reference tapes unaffected | `spiderSnap` tests (anchors, no-support/blocked, buffer fire/expiry, restart clear, snapshot carry, determinism) + both-route anchors tick-exact + replay VERIFIED + browser QA m96 beam/anchor proofs |
+| M9.6 hub: menu XOR session canvas (hub disposed on START, rebuilt on menu return); selection stays in LevelSelectView; legacy menu hooks intact | Browser QA m96 hub/slider/switching/disposal checks + migrated m94/m941/m942/m95 menu gates (m92 needs no canvas migration) |
 | No milestone passes with failing verification | `npm run verify` + `AGENTS.md` process rule |
 
 ## 11. Known non-defects / deferred perf notes

@@ -27,12 +27,20 @@ const blurButton = (event: Event): void => {
  * the session lifecycle). One coherent screen: SELECT LEVEL (cards) →
  * SELECT MODE (classic/checkpoint) → START. The START gesture is the
  * audio unlock; it must not leak gameplay input (the Game flushes it).
+ *
+ * M9.6: the screen floats over the 3D island hub (`IslandHub`): the cards
+ * are destination panels for the two islands (same DOM hooks, so legacy
+ * QA keeps working), the mode buttons live inside an animated slider, and
+ * island picks from the 3D scene select through the same state.
  */
 export class LevelSelectView {
   public onStart: ((levelId: string, mode: RunMode) => void) | null = null;
+  /** Mirrors every selection change into the 3D hub (AppController wires). */
+  public onSelectionChange: ((levelId: string, mode: RunMode) => void) | null = null;
 
   private readonly root: HTMLElement;
   private readonly cardButtons: HTMLButtonElement[] = [];
+  private readonly modeSlider: HTMLElement;
   private readonly classicButton: HTMLButtonElement;
   private readonly checkpointButton: HTMLButtonElement;
   private selectedLevelId: string;
@@ -57,11 +65,11 @@ export class LevelSelectView {
     levelLabel.className = 'm94-menu-label';
     levelLabel.textContent = 'SELECT LEVEL';
 
-    const cards = document.createElement('div');
-    cards.className = 'm94-cards';
     for (const entry of entries) {
       const card = document.createElement('button');
-      card.className = 'm94-card';
+      // M9.6: destination panel for a hub island. The legacy `m94-card`
+      // hook stays (browser gates), the island styling rides alongside.
+      card.className = 'm94-card m96-island-panel';
       card.style.setProperty('--m94-accent', entry.meta.accentCss);
       card.dataset.levelId = entry.meta.levelId;
 
@@ -80,13 +88,16 @@ export class LevelSelectView {
       const blurb = document.createElement('div');
       blurb.className = 'm94-card-blurb';
       blurb.textContent = entry.meta.blurb;
-      card.append(tag, name, sub, meta, blurb);
+      // M9.6 destination marker: visible only on the selected panel.
+      const dest = document.createElement('div');
+      dest.className = 'm96-destination-tag';
+      dest.textContent = '◆ ACTIVE DESTINATION';
+      card.append(tag, name, sub, meta, blurb, dest);
       card.addEventListener('click', (event) => {
         event.stopPropagation();
         blurButton(event);
         this.selectLevel(entry.meta.levelId);
       });
-      cards.appendChild(card);
       this.cardButtons.push(card);
     }
 
@@ -95,7 +106,14 @@ export class LevelSelectView {
     modeLabel.textContent = 'SELECT MODE';
 
     const modes = document.createElement('div');
-    modes.className = 'm94-modes';
+    // M9.6 animated run-mode slider: the two legacy mode buttons ride
+    // inside it (same hooks + same semantics), a sliding thumb shows the
+    // active side. Classic left, checkpoint right.
+    modes.className = 'm94-modes m96-mode-slider';
+    modes.setAttribute('role', 'group');
+    modes.setAttribute('aria-label', 'Run mode');
+    const thumb = document.createElement('div');
+    thumb.className = 'm96-mode-thumb';
     const classicButton = document.createElement('button');
     classicButton.className = 'm94-mode-button';
     classicButton.title = 'No checkpoint respawns. Official replay-enabled run.';
@@ -126,7 +144,7 @@ export class LevelSelectView {
       blurButton(event);
       this.selectMode('checkpoint');
     });
-    modes.append(classicButton, checkpointButton);
+    modes.append(thumb, classicButton, checkpointButton);
 
     const start = document.createElement('button');
     start.className = 'm94-start-button';
@@ -137,7 +155,25 @@ export class LevelSelectView {
       this.onStart?.(this.selectedLevelId, this.selectedMode);
     });
 
-    root.append(title, levelLabel, cards, modeLabel, modes, start);
+    // M9.6 hub staging: the 3D vista owns the upper stage; the controls
+    // dock in a bottom bar (island panel | mode slider + start | island
+    // panel). Legacy hooks/queries are class-based, so the regrouping is
+    // invisible to the browser gates. The empty `.m94-cards` shell stays
+    // out of the tree (panels are direct bottom-bar children).
+    const stage = document.createElement('div');
+    stage.className = 'm96-stage';
+    const bottomBar = document.createElement('div');
+    bottomBar.className = 'm96-bottombar';
+    const mid = document.createElement('div');
+    mid.className = 'm96-mid';
+    mid.append(modeLabel, modes, start);
+    const firstCard = this.cardButtons[0];
+    const secondCard = this.cardButtons[1];
+    if (firstCard !== undefined) bottomBar.appendChild(firstCard);
+    bottomBar.appendChild(mid);
+    if (secondCard !== undefined) bottomBar.appendChild(secondCard);
+    levelLabel.textContent = 'CHOOSE YOUR DESTINATION — CLICK AN ISLAND OR A PANEL';
+    root.append(title, levelLabel, stage, bottomBar);
     // Menu clicks are UI gestures, never gameplay input.
     root.addEventListener('click', (event) => {
       event.stopPropagation();
@@ -145,6 +181,7 @@ export class LevelSelectView {
     container.appendChild(root);
 
     this.root = root;
+    this.modeSlider = modes;
     this.classicButton = classicButton;
     this.checkpointButton = checkpointButton;
     this.refresh();
@@ -167,13 +204,25 @@ export class LevelSelectView {
   }
 
   private selectLevel(levelId: string): void {
+    if (this.selectedLevelId === levelId) return;
     this.selectedLevelId = levelId;
     this.refresh();
+    this.onSelectionChange?.(this.selectedLevelId, this.selectedMode);
+  }
+
+  /**
+   * M9.6 public selection path for 3D island picks (same state + same
+   * hub mirror as card clicks).
+   */
+  public select(levelId: string): void {
+    this.selectLevel(levelId);
   }
 
   private selectMode(mode: RunMode): void {
+    if (this.selectedMode === mode) return;
     this.selectedMode = mode;
     this.refresh();
+    this.onSelectionChange?.(this.selectedLevelId, this.selectedMode);
   }
 
   private refresh(): void {
@@ -182,5 +231,7 @@ export class LevelSelectView {
     }
     this.classicButton.classList.toggle('m94-selected', this.selectedMode === 'classic');
     this.checkpointButton.classList.toggle('m94-selected', this.selectedMode === 'checkpoint');
+    // M9.6 slider thumb: right side while checkpoint is armed.
+    this.modeSlider.classList.toggle('m96-checkpoint', this.selectedMode === 'checkpoint');
   }
 }
