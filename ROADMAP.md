@@ -701,6 +701,48 @@ intact); m93 in-page probes 12/12 green (spider 3/3, island count/id/decay,
 screenshots, zero errors). Human gates (feel, purple look, island feedback,
 audible music) remain OPEN — automation proves mechanics, never fun.
 
+## M9.4 — Level select + live practice-mode switching: ENGINEERING COMPLETE / HUMAN LEVEL-SELECT + LIVE-MODE GATE OPEN (feature/m9-4-level-select-live-practice-mode, NOT merged)
+
+M9.3 gameplay/presentation HUMAN-APPROVED in direction (no redesign).
+Game structure on the untouched M9.3 stack:
+
+- TWO independent production levels: `the-descent` (THE DESCENT — exact
+  M9.2 content from `ff1d584`, materialized as `THE_DESCENT_CLASSIC` with
+  only id/export/header changed, M9.2-era driver frozen alongside) +
+  `production-showcase-01` (id kept so replays/fingerprints stay valid;
+  user-facing title isolated as THE DESCENT — EVOLVED, display-only).
+  No shared mutable content (pinned); both declare the same 8 crystals +
+  the same Gravity Lessons track independently.
+- Start flow: bare URL → polished SELECT LEVEL → SELECT MODE → START
+  screen (EVOLVED + CLASSIC preselected, no auto-start — the START
+  gesture unlocks audio and begins tick 0); `?level=<id>` keeps direct
+  legacy entry; `?mode=` preselects on both paths.
+- Live switching: pause menu toggles CLASSIC/CHECKPOINT mid-attempt (no
+  reload) — crystals appear/disappear, earned snapshots retained but
+  unusable in Classic (death → origin), reusable on re-arm, music/camera/
+  position untouched by the toggle. Practice-taint contract
+  (`RunModeController`, headless-tested): an attempt that EVER armed
+  checkpoints stays PRACTICE until a full origin restart (Shift+R or
+  pause RESTART, always in the current mode); tainted Classic shows
+  CLASSIC CONTROLS — PRACTICE RUN; finish/F4 gate on `attemptKind`.
+- Sessions: one `Game` per selected level (`AppController`); LEVEL
+  SELECT disposes everything (canvas, listeners, loop, music, HUD,
+  replay) and the next START builds fresh. Cross-level replays rejected
+  both directions (pinned); both routes finish each level at tick 13799
+  with 0 deaths, replays VERIFIED.
+
+Proof: `npm run verify` green (682 tests: 658 M9.3 + 24 new);
+`scripts/browser-qa-m94.mjs` 22/22 green (full menu→sessions→toggle→
+return flow incl. spider one-press + contact-pulse M9.3 spots, zero
+console/page errors); `scripts/browser-qa-m92.mjs` 16/16 green on the
+menu flow (audio graph + checkpoints + fail-loud intact). Spec:
+`specs/milestones/M9_4_LEVEL_SELECT_AND_LIVE_PRACTICE_MODE.md`.
+Automation proves structure, never feel — do NOT mark PASS until the
+human plays the menu + live-switch gate. Known doc debt: pre-M9.4
+full-suite browser scripts that boot the bare URL (monolith m85 section,
+m86 boot) still assume immediate start + the old display name and need
+menu-flow migration; the systems they cover stay green in-suite.
+
 ## M9 — Gravity Lessons rhythm polish: ENGINEERING COMPLETE / HUMAN MUSIC-RHYTHM GAMEPLAY GATE OPEN (feature/m9-gravity-lessons-rhythm-polish, NOT merged)
 
 Human M8.6 verdict: POSITIVE after the camera corrective pass (level

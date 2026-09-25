@@ -152,8 +152,12 @@ npm run qa:browser   # browser QA alone (needs dev server on :5173, see QA_URL e
 Levels and replays:
 
 ```sh
-# Play the second (validation) level:
-http://localhost:5173/?level=validation-02
+# Bare URL opens the level/mode selector (no auto-start):
+http://localhost:5173/
+# Direct entry into a level (developer/debug path, tick-0 start gate):
+http://localhost:5173/?level=the-descent
+http://localhost:5173/?level=production-showcase-01
+# Preselect the run mode (?mode=classic|checkpoint) on either path.
 # Unknown ?level= ids fall back to the default with a logged reason.
 
 # Regenerate the committed golden replay ONLY intentionally
@@ -171,13 +175,23 @@ Individual: `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`.
 | `↑` | Jump | Fast-fall (airborne) |
 | `↓` | Fast-fall (airborne) | Jump |
 | `←` / `→` | Lane target (one press = one lane, provisional) | Same — never mirrored |
-| `R` | Instant restart | Instant restart (back to start gravity + speed; checkpoint runs restart from the latest crystal) |
-| `Shift+R` | (classic: same as `R`) | Checkpoint runs: full origin restart, progress cleared |
-| `C` / `2` | Start a CHECKPOINT RUN from the mode selector | Same |
-| `P` | Pause | Pause |
+| `R` | Instant restart (current mode: classic → origin, checkpoint → latest crystal) | Same |
+| `Shift+R` | FULL origin restart in the current mode (progress + practice taint cleared) | Same |
+| `C` / `2` | Pick CHECKPOINT at the gate / direct entry | Same |
+| `P` | Pause menu (resume · CLASSIC/CHECKPOINT live switch · restart · level select) | Same |
 | `M` | Mute music (presentation only) | Same |
 | `F1` / `F2` / `F3` | Debug stats / collider wireframes / player hitbox | Same |
-| `F4` | Replay the last completed attempt (input ignored during playback; classic runs only — checkpoint runs are practice) | Same |
+| `F4` | Replay the last completed attempt (input ignored during playback; clean classic runs only — practice attempts are never official) | Same |
+
+Two production levels (M9.4, `feature/m9-4-level-select-live-practice-mode`
+— engineering complete, human level-select + live-mode gate OPEN): THE
+DESCENT (`the-descent`, frozen M9.2 route) + THE DESCENT — EVOLVED
+(`production-showcase-01`, M9.3 route, default card) behind one
+SELECT LEVEL → SELECT MODE → START screen; checkpoint mode toggles live
+from the pause menu with a practice-taint contract (an attempt that ever
+armed checkpoints stays PRACTICE until a full restart), per-level
+ReplayV1 isolation, and full session disposal on return-to-menu (spec:
+`specs/milestones/M9_4_LEVEL_SELECT_AND_LIVE_PRACTICE_MODE.md`).
 
 Interactions (M4): yellow pads launch on contact (no input); yellow orbs
 grant a mid-air jump on a Space/arrow press inside their window; blue orbs

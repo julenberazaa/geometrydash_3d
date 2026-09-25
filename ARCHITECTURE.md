@@ -7,19 +7,37 @@
 ## 1. Dependency direction
 
 ```text
-main.ts → Game (composition root)
+main.ts → AppController (M9.4 menu ↔ session lifecycle: LevelSelectView →
+  create Game → dispose → menu; one Game owns one LevelDefinition; level
+  changes never hot-swap content inside an active session)
   Game → InputSystem → GameSimulation → { CubeController, CollisionWorld, LevelRuntime }
   Game → ReplayCoordinator → GameSimulation (M5: recording/playback orchestration ABOVE the sim)
+  Game → RunModeController (M9.4: pure classic/practice-taint machine —
+    the attemptKind answers officiality; the sim owns only snapshots)
+  Game → PauseMenuView (M9.4: resume / live mode switch / full restart /
+    level select; presentation only)
   Game → MusicDirector → Web Audio output (M9: presentation-owned transport;
     audio FOLLOWS sim time, never drives it — §10; M9.2: every live voice
     satisfies BUFFER SOURCE → MASTER GAIN → DESTINATION, wired via
     engine.connectSourceToGain BEFORE start — structural test + graphReady)
   Game → RendererHost → { LevelView, PlayerView, EnvironmentView, DebugView, ChaseCamera, CheckpointView (M9.2) }
   Game → Hud (M9.2: mode selector + checkpoint progress), DebugOverlay
-  Game owns the M9.2 run mode (classic/checkpoint): sim flag + crystal
-  visibility + checkpoint-aware music re-seek + R/Shift+R semantics.
+  Game owns the M9.4 run mode via RunModeController (classic/checkpoint +
+  practice taint): `setRunMode` live-switches mid-attempt (sim flag +
+  crystal visibility + HUD + partial-tape discard — position/music/camera
+  untouched), `fullRestart` re-opens a fresh origin attempt in the current
+  mode (progress + taint cleared, checkpoint mode re-armed), R follows the
+  current flag, Shift+R is always a full restart, finish/F4 gate on
+  `attemptKind` (tainted attempts show PRACTICE COMPLETE, never finalize
+  ReplayV1).
   Checkpoint snapshots live in GameSimulation (capture/restore); Game
-  never constructs them.
+  never constructs them. `restartRun()` disarms the sim flag (Game re-arms
+  on full restart); disarming alone retains earned snapshots (usable again
+  on re-arm — retention rule, pinned by `tests/livePracticeMode.test.ts`).
+  `Game.dispose()` removes the canvas, listeners, loop, music, HUD and
+  pause menu (return-to-menu leaves zero session residue).
+  Probes live in `src/app/gameProbes.ts` (menu probes: `screen`+cards;
+  session probes incl. `attemptKind`, `setRunMode`, `checkpointsVisible`).
 ```
 
 Hard boundary: **simulation never imports Three.js, DOM, or CSS.**
@@ -218,7 +236,13 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   default (`controller-test-01`); an unknown id falls back EXPLICITLY with a
   logged reason (never silent substitution). `main.ts` selects content via
   `?level=<id>`. Adding a level = one data file + one registry entry + zero
-  engine changes.
+  engine changes. M9.4: two production entries — `the-descent` (frozen M9.2
+  `THE_DESCENT_CLASSIC`, byte-exact historical content, independent arrays)
+  + `production-showcase-01` (evolved route, display name
+  `THE DESCENT — EVOLVED` via one isolated presentation-only const);
+  declarative card metadata in `src/content/levelMetadata.ts`
+  (id/tag/subtitle/difficulty/duration/accent — the selector derives from
+  it, no hardcoded if-button branches).
 - `advancedCube01.ts` (M7.2, `advanced-cube-01`, reworked in M7.3): the HARD
   second production Cube level — LOW/MID/HIGH floor bands + ceiling world,
   offset island pairs with mid-air transfers, a full-width maze jump-wall +

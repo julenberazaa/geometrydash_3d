@@ -392,6 +392,74 @@ let evolvedFingerprint = null;
   await page.close();
 }
 
+// --- M. Finish semantics: tainted finish is practice, clean finish is official. ---
+{
+  const page = await freshPage();
+  await page.goto(URL, { waitUntil: 'load', timeout: 60000 });
+  await waitMenu(page);
+  await page.locator('.m94-card', { hasText: '3D megastructure route' }).click();
+  await page.getByRole('button', { name: 'START' }).click();
+  await waitGame(page);
+  await page.waitForFunction(() => window.__gd3d.musicState() === 'playing', null, { timeout: 60000 });
+  // Taint without dying: classic -> checkpoint -> classic.
+  await ev(page, () => window.__gd3d.setRunMode('checkpoint'));
+  await ev(page, () => window.__gd3d.setRunMode('classic'));
+  await ev(page, () => window.__gd3d.debugTeleport(0, 0.55, 1780));
+  await page.waitForFunction(() => window.__gd3d.status() === 'finished', null, { timeout: 30000 });
+  const taintedFinish = await ev(page, () => ({
+    kind: window.__gd3d.attemptKind(),
+    msg: document.querySelector('.hud-message')?.textContent ?? null,
+    hasReplay: window.__gd3d.hasReplay(),
+  }));
+  log(
+    'm94 tainted finish is PRACTICE with no replay tape',
+    taintedFinish.kind === 'practice' && (taintedFinish.msg ?? '').includes('PRACTICE COMPLETE') && taintedFinish.hasReplay === false,
+    JSON.stringify(taintedFinish),
+  );
+  // Full restart clears the taint: the same shortcut finish is official.
+  await page.keyboard.press('Shift+KeyR');
+  await page.waitForFunction(() => window.__gd3d.status() === 'running', null, { timeout: 30000 });
+  await ev(page, () => window.__gd3d.debugTeleport(0, 0.55, 1780));
+  await page.waitForFunction(() => window.__gd3d.status() === 'finished', null, { timeout: 30000 });
+  const cleanFinish = await ev(page, () => ({
+    kind: window.__gd3d.attemptKind(),
+    msg: document.querySelector('.hud-message')?.textContent ?? null,
+    hasReplay: window.__gd3d.hasReplay(),
+    replayLevel: window.__gd3d.replayLevelId(),
+  }));
+  log(
+    'm94 clean-classic finish is official with a bound tape',
+    cleanFinish.kind === 'classic' && (cleanFinish.msg ?? '').includes('LEVEL COMPLETE') &&
+      cleanFinish.hasReplay === true && cleanFinish.replayLevel === 'production-showcase-01',
+    JSON.stringify(cleanFinish),
+  );
+  await page.close();
+}
+
+// --- N. Direct `?level=` + `?mode=` entry contract. ---
+{
+  const page = await freshPage();
+  await page.goto(`${URL}?level=the-descent&mode=checkpoint`, { waitUntil: 'load', timeout: 60000 });
+  await page.waitForFunction(() => window.__gd3d !== undefined && window.__gd3d.screen() === 'game', null, { timeout: 60000 });
+  const gated = await ev(page, () => ({
+    awaiting: window.__gd3d.awaitingStart(),
+    level: window.__gd3d.levelId(),
+  }));
+  await page.keyboard.press('Space');
+  await page.waitForFunction(() => window.__gd3d.musicState() === 'playing', null, { timeout: 60000 });
+  const entered = await ev(page, () => ({
+    mode: window.__gd3d.runMode(),
+    kind: window.__gd3d.attemptKind(),
+  }));
+  log(
+    'm94 ?level=+?mode= enters directly in the preselected mode',
+    gated.awaiting === true && gated.level === 'the-descent' &&
+      entered.mode === 'checkpoint' && entered.kind === 'practice',
+    JSON.stringify({ ...gated, ...entered }),
+  );
+  await page.close();
+}
+
 log('m94 zero console errors (all pages)', consoleErrors.length === 0, consoleErrors.slice(0, 3).join(' | '));
 log('m94 zero page errors (all pages)', pageErrors.length === 0, pageErrors.slice(0, 3).join(' | '));
 

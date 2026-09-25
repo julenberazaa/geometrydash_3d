@@ -21,26 +21,38 @@ data-driven levels. Lanes instead of free horizontal movement. No checkpoints,
 no Practice Mode initially (M9.2 adds an explicit opt-in practice mode —
 see §1.1; classic runs keep the original no-checkpoint contract).
 
-## 1.1 Practice checkpoints — CURRENT (M9.2)
+## 1.1 Practice checkpoints — CURRENT (M9.2, live toggle M9.4)
 
-THE DESCENT offers two run modes behind a minimal start selector
-(CLASSIC RUN / CHECKPOINT RUN — one click also unlocks audio and starts
-the run; `Space`/bare click defaults to classic, `C`/`2` picks
-checkpoint):
+Two production levels (THE DESCENT + THE DESCENT — EVOLVED, see §5) each
+offer two run modes behind a level/mode start selector (one screen:
+SELECT LEVEL → SELECT MODE → START; the START gesture also unlocks audio
+and starts the run; `?level=<id>` enters directly, `?mode=` preselects):
 
 - **CLASSIC RUN:** the original contract — death restarts from the level
   origin, replays verify tick-for-tick, completions are official.
 - **CHECKPOINT RUN (practice):** visible floating gem/crystal gates (one
-  per major segment, ~8 across THE DESCENT) save deterministic progress
-  when crossed. The next death auto-respawns from the latest activated
-  crystal — position, velocity, gravity, player mode, speed, lane intent,
-  used portals/pads/orbs, Chomper phases, moving-platform phase and music
-  time all restored — with the camera snapping to the revived pose. With
-  no crystal reached, death restarts from the origin. `R` restarts from
-  the current checkpoint, `Shift+R` fully restarts (progress cleared).
-  Checkpoint progress is session-scoped (reload resets it); checkpoint
-  runs are never official completions (`F4` replay stays classic-only;
-  finishing shows PRACTICE COMPLETE, never LEVEL COMPLETE).
+  per major segment, ~8 across each production level) save deterministic
+  progress when crossed. The next death auto-respawns from the latest
+  activated crystal — position, velocity, gravity, player mode, speed,
+  lane intent, used portals/pads/orbs, Chomper phases, moving-platform
+  phase and music time all restored — with the camera snapping to the
+  revived pose. With no crystal reached, death restarts from the origin.
+  `R` restarts from the current checkpoint, `Shift+R` fully restarts
+  (progress cleared). Checkpoint progress is session-scoped (reload
+  resets it); checkpoint runs are never official completions (`F4`
+  replay stays classic-only; finishing shows PRACTICE COMPLETE, never
+  LEVEL COMPLETE).
+
+**Live mode switching (M9.4):** the pause menu (`P`) offers CLASSIC /
+CHECKPOINT switching mid-attempt without reloading — crystals
+appear/disappear immediately, earned checkpoints stay cached but are
+unusable while Classic is active (death → origin), and re-arming
+Checkpoint makes the earned crystal usable again with no re-earning.
+Position, music and camera are untouched by the toggle itself.
+**Practice-taint rule:** once an attempt has EVER armed checkpoint mode
+it stays PRACTICE until a FULL level restart from the origin — switching
+back to Classic (even without dying) can never produce an official clean
+completion. Tainted Classic runs show CLASSIC CONTROLS — PRACTICE RUN.
 
 ## 2. The Cube — CURRENT
 
@@ -217,14 +229,20 @@ is a new data file plus zero engine changes. A level declares: geometry
 (solids/hazards), lanes, speeds, `finishZ`, void bounds (`deathY`, optional
 `deathYMax`), start gravity mode (default Floor), and gravity portals.
 
-Several levels ship (selected via `?level=<id>`, default THE DESCENT
-since M8.5):
+Several levels ship (bare URL opens the level/mode selector, default
+card THE DESCENT — EVOLVED; `?level=<id>` enters a level directly,
+`?mode=classic|checkpoint` preselects the run mode):
 
-- **THE DESCENT** (`production-showcase-01`, M8.5 level / M8.6 gameplay
-  rework, DEFAULT): the superproduction level — ~123 s, VERY HARD/EXPERT,
-  multi-route (multi-deck islands + two-deck labyrinth + teleport choice),
-  all modes/gravities, inverted Ship, wall Spider, Chompers, directed lava,
-  deterministic moving ferry/elevator islands, full 9-act arc.
+- **THE DESCENT — EVOLVED** (`production-showcase-01`, M9.3 route,
+  DEFAULT): the latest superproduction level — ~115 s, EXPERT,
+  Spider/ship traversal, Ship portal funnels + lateral 3D route, island
+  contact glow, the purple megastructure (multi-deck transfer slabs,
+  tower gates, bridge city, exit weave), all modes/gravities, Chompers,
+  directed lava, moving ferries, full 9-act arc.
+- **THE DESCENT** (`the-descent`, M9.2 route frozen in M9.4): the original
+  production route — ~115 s, Hard, same 9-act arc and 8 checkpoint gems
+  before the traversal/Spider/Ship/purple rework. Independent level data
+  (never a mutation of the evolved route).
 - **Test Level 01** (`controller-test-01`): the controller/gravity/
   interaction demo track with the M3 gravity section and the M4
   interaction section.
