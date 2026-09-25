@@ -89,6 +89,14 @@ declare global {
       burstActive: () => boolean;
       /** QA-only: Spider-swap camera glides armed (M8.2 smoothing proof). */
       swapGlideCount: () => number;
+      /** M9.6 spider-snap observability (sim-owned, presentation/QA only). */
+      spiderSnapCount: () => number;
+      lastSpiderSnap: () => { from: { x: number; y: number; z: number }; to: { x: number; y: number; z: number } } | null;
+      spiderRejectCount: () => number;
+      lastSpiderRejectReason: () => string | null;
+      /** M9.6 spider-beam presentation probes (never gameplay). */
+      spiderBeamActive: () => boolean;
+      spiderBeamPlays: () => number;
       /** QA-only: lava-motion checksum (M8.3 flow proof). */
       lavaMotion: () => string;
       // M6C1 visual-trigger observability (presentation only).
@@ -310,6 +318,19 @@ export const publishGameProbes = (game: Game): void => {
     fxResets: () => game['rendererHost'].fxResets,
     burstActive: () => game['rendererHost'].deathBurstActive,
     swapGlideCount: () => game['rendererHost'].swapGlideCount,
+    spiderSnapCount: () => game['simulation'].spiderSnapEventCount,
+    lastSpiderSnap: () => {
+      const sim = game['simulation'];
+      if (sim.spiderSnapEventCount === 0) return null;
+      return {
+        from: { ...sim.lastSpiderSnapFrom },
+        to: { ...sim.lastSpiderSnapTo },
+      };
+    },
+    spiderRejectCount: () => game['simulation'].spiderRejectCount,
+    lastSpiderRejectReason: () => game['simulation'].lastSpiderRejectReason,
+    spiderBeamActive: () => game['rendererHost'].spiderBeamActive,
+    spiderBeamPlays: () => game['rendererHost'].spiderBeamPlays,
     lavaMotion: () => game['rendererHost'].lavaMotionSample,
     // M6C1 probes: trigger state + resolved presentation (cold path).
     visualSectionId: () => game['rendererHost'].visualSectionId,

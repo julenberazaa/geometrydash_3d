@@ -14,6 +14,15 @@ export interface LevelSelectInitial {
 }
 
 /**
+ * M9.6: release button focus on activation (see Hud.blurButton — a focused
+ * button re-fires on Space keyup, which reads as dropped gameplay input).
+ */
+const blurButton = (event: Event): void => {
+  const target = event.currentTarget;
+  if (target instanceof HTMLButtonElement) target.blur();
+};
+
+/**
  * M9.4 level/mode start screen (presentation only — `AppController` owns
  * the session lifecycle). One coherent screen: SELECT LEVEL (cards) →
  * SELECT MODE (classic/checkpoint) → START. The START gesture is the
@@ -74,6 +83,7 @@ export class LevelSelectView {
       card.append(tag, name, sub, meta, blurb);
       card.addEventListener('click', (event) => {
         event.stopPropagation();
+        blurButton(event);
         this.selectLevel(entry.meta.levelId);
       });
       cards.appendChild(card);
@@ -108,10 +118,12 @@ export class LevelSelectView {
     checkpointButton.append(checkpointTitle, checkpointDesc);
     classicButton.addEventListener('click', (event) => {
       event.stopPropagation();
+      blurButton(event);
       this.selectMode('classic');
     });
     checkpointButton.addEventListener('click', (event) => {
       event.stopPropagation();
+      blurButton(event);
       this.selectMode('checkpoint');
     });
     modes.append(classicButton, checkpointButton);
@@ -121,6 +133,7 @@ export class LevelSelectView {
     start.textContent = 'START';
     start.addEventListener('click', (event) => {
       event.stopPropagation();
+      blurButton(event);
       this.onStart?.(this.selectedLevelId, this.selectedMode);
     });
 

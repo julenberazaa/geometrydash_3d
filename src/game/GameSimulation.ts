@@ -138,6 +138,8 @@ export interface SimulationCheckpointSnapshot {
   orbActivationCount: number;
   speedPortalCount: number;
   teleportEventCount: number;
+  /** M9.6 armed spider-press buffer ticks (transient 50 ms forgiveness). */
+  spiderBufferTicksLeft: number;
 }
 
 /** Stable record of the most recent interaction activation (VFX anchor). */
@@ -173,6 +175,19 @@ const SUPPORT_PROBE_DISTANCE = 0.03;
 const REST_SPEED_EPSILON = 0.05;
 /** Max spider opposite-surface snap distance (world units, along gravity). */
 const SPIDER_SNAP_MAX_DISTANCE = 14;
+/**
+ * M9.6 spider press forgiveness window (fixed ticks): a primary edge that
+ * finds no valid opposite support is remembered this long — later steps
+ * within the window re-attempt the snap as the player travels. Pure
+ * tick-derived input timing (replay-safe: derives from the input tape).
+ */
+const SPIDER_SNAP_BUFFER_TICKS = 6;
+
+/** Why the most recent spider press was ignored (feedback/QA, stable record). */
+export type SpiderRejectReason = 'no-support' | 'blocked';
+
+/** Internal spider-snap attempt result (policy lives in the wrappers). */
+type SpiderSnapOutcome = 'snapped' | 'ignored-no-support' | 'ignored-blocked' | 'died';
 
 /** Prebuilt frames per gravity mode — never allocated per step. */
 const FRAME_FLOOR = GameplayFrame.floor();
@@ -336,7 +351,30 @@ export class GameSimulation {
   public hasCheckpointEvent = false;
   /** Monotonic count of teleport activations this session (VFX/punch edge). */
   public teleportEventCount = 0;
-  /** Id of the most recent teleport activation THIS attempt (debug/QA). */
+  /**
+   * M9.6 spider-snap observability (presentation/QA only — excluded from
+   * the state hash and the level fingerprint, teleport-anchor precedent):
+   * monotonic snap count, the exact travel anchors of the latest snap
+   * (beam endpoints), monotonic ignored-press count + the latest reason.
+   * An ignored press reads exactly like a dropped input without these.
+   */
+  public spiderSnapEventCount = 0;
+  /** Start anchor of the most recent spider snap (beam tail, world space). */
+  public readonly lastSpiderSnapFrom: Vec3 = vec3();
+  /** Destination anchor of the most recent spider snap (beam head). */
+  public readonly lastSpiderSnapTo: Vec3 = vec3();
+  /** Monotonic count of ignored spider presses (no-support / blocked). */
+  public spiderRejectCount = 0;
+  /** Why the most recent spider press was ignored (stable record). */
+  public lastSpiderRejectReason: SpiderRejectReason | null = null;
+  /**
+   * M9.6 armed spider-press buffer (ticks left). Set by an ignored press
+   * edge, consumed by a snap or expiry, cleared on death/respawn/
+   * restart/mode-exit, carried in checkpoint snapshots. The buffer ONLY
+   * re-attempts `trySpiderSnap` — it never fabricates input, so pads,
+   * orbs and gravity logic never observe it.
+   */
+  private spiderBufferTicksLeft = 0;  /** Id of the most recent teleport activation THIS attempt (debug/QA). */
   public lastTeleportId: string | null = null;
   /** Exit anchor of the most recent teleport (VFX anchor, world space). */
   public readonly lastTeleport: Vec3 = vec3();
@@ -571,9 +609,16 @@ export class GameSimulation {
     //    BEFORE the controller so the step integrates from the destination.
     const logicalInput = interpretPhysicalInput(input, this.gravityModeValue);
     const jumpPressed = logicalInput.jump.pressedThisStep;
-    if (this.modeValue === 'spider' && jumpPressed) {
-      // Hazard in the snap path kills (death wins the step).
-      if (this.trySpiderSnap()) return;
+    if (this.modeValue === 'spider') {
+      if (jumpPressed) {
+        // Fresh press: immediate attempt; ignored presses arm the M9.6
+        // forgiveness buffer. Hazard in the snap path kills (death wins).
+        if (this.spiderPress()) return;
+      } else if (this.spiderBufferTicksLeft > 0) {
+        // Buffered press: re-attempt as the player travels into range.
+        this.spiderBufferTicksLeft -= 1;
+        if (this.spiderBufferedAttempt()) return;
+      }
     }
     this.shipThrusting = false;
     if (this.modeValue === 'ship') {
@@ -804,6 +849,8 @@ export class GameSimulation {
     this.gravityModeValue = this.level.startGravityMode;
     this.modeValue = 'cube';
     this.shipThrusting = false;
+    // M9.6: origin resets never inherit an armed spider press.
+    this.spiderBufferTicksLeft = 0;
     this.speedMultiplierValue = this.level.startSpeedMultiplier;
     this.usedInteractions.clear();
     this.usedTeleports.clear();
@@ -941,6 +988,7 @@ export class GameSimulation {
       orbActivationCount: this.orbActivationCount,
       speedPortalCount: this.speedPortalCount,
       teleportEventCount: this.teleportEventCount,
+      spiderBufferTicksLeft: this.spiderBufferTicksLeft,
     };
   }
 
@@ -1045,6 +1093,7 @@ export class GameSimulation {
     this.orbActivationCount = snap.orbActivationCount;
     this.speedPortalCount = snap.speedPortalCount;
     this.teleportEventCount = snap.teleportEventCount;
+    this.spiderBufferTicksLeft = snap.spiderBufferTicksLeft;
     copyVec3(this.prevPosition, this.player.position);
     this.deathHoldTicksLeft = 0;
     this.deathCause = null;
@@ -1181,7 +1230,7 @@ export class GameSimulation {
       }
     }
     if (jumpPressed && modeBefore !== 'spider' && this.modeValue === 'spider') {
-      return this.trySpiderSnap();
+      return this.spiderPress();
     }
     return false;
   }
@@ -1197,8 +1246,7 @@ export class GameSimulation {
    */
   private applyModeTransition(target: PlayerMode): void {
     if (this.modeValue === target) return;
-    this.modeValue = target;
-    this.player.playerMode = target;
+    this.modeValue = target;    this.player.playerMode = target;
     const g = this.gameplayFrame.gravityVector;
     const v = this.player.velocity;
     const alongG = v.x * g.x + v.y * g.y + v.z * g.z;
@@ -1208,16 +1256,47 @@ export class GameSimulation {
     this.player.grounded = false;
     this.player.supportColliderId = null;
     this.shipThrusting = false;
+    // M9.6: an armed spider press never survives a mode change (a stale
+    // press must not fire after re-entering spider later).
+    this.spiderBufferTicksLeft = 0;
     this.modeTransitionCount += 1;
   }
 
   /**
-   * Spider opposite-surface snap (M8C): on the primary press edge, the
-   * Spider teleports along −gravity (away from the current support) onto
-   * the nearest valid opposite support and flips to that gravity mode
-   * through the shared transition path.
+   * M9.6 fresh spider press edge (top-of-step AND mode-entry paths share
+   * this ONE implementation): immediate snap attempt; an ignored press
+   * arms the forgiveness buffer. Returns true when the snap path crossed
+   * a hazard (the caller must end the step — death wins).
+   */
+  private spiderPress(): boolean {
+    const outcome = this.attemptSpiderSnap();
+    if (outcome === 'died') return true;
+    if (outcome === 'snapped') {
+      this.spiderBufferTicksLeft = 0;
+      return false;
+    }
+    this.spiderRejectCount += 1;
+    this.lastSpiderRejectReason = outcome === 'ignored-blocked' ? 'blocked' : 'no-support';
+    this.spiderBufferTicksLeft = SPIDER_SNAP_BUFFER_TICKS;
+    return false;
+  }
+
+  /**
+   * M9.6 buffered spider re-attempt (one armed-press tick): success
+   * consumes the buffer, expiry is by counter in the caller. Never
+   * touches reject accounting (one press = one reject). Returns true on
+   * hazard death like `spiderPress`.
+   */
+  private spiderBufferedAttempt(): boolean {
+    const outcome = this.attemptSpiderSnap();
+    if (outcome === 'died') return true;
+    if (outcome === 'snapped') this.spiderBufferTicksLeft = 0;
+    return false;
+  }
+
+  /** Internal spider-snap outcome (the press/buffer wrappers own policy).
    *
-   * Contract (pinned):
+   * Contract (pinned, M8C + M9.6 anchors):
    * - destination = nearest blocking face ahead along −gravity within
    *   SPIDER_SNAP_MAX_DISTANCE whose footprint overlaps the player box
    *   (ties → first in world query order — deterministic per level);
@@ -1227,12 +1306,10 @@ export class GameSimulation {
    * - no valid support in range → press ignored (never a void launch);
    * - on success: position rests against the face, along-gravity velocity
    *   is zeroed (lane/forward flow preserved), support clears, gravity
-   *   flips to the opposite surface (floor ↔ ceiling, wall ↔ wall).
-   *
-   * Returns true when the snap path crossed a hazard (the caller must end
-   * the step — death wins).
+   *   flips to the opposite surface (floor ↔ ceiling, wall ↔ wall); the
+   *   travel anchors + snap count are recorded for the beam presentation.
    */
-  private trySpiderSnap(): boolean {
+  private attemptSpiderSnap(): SpiderSnapOutcome {
     const frame = this.gameplayFrame;
     const g = frame.gravityVector;
     // Search direction: away from the current support (opposite surface).
@@ -1285,7 +1362,7 @@ export class GameSimulation {
         support = c;
       }
     }
-    if (support === null) return false; // no valid opposite support: ignore
+    if (support === null) return 'ignored-no-support'; // no valid opposite support: ignore
 
     // Destination: resting against the support face.
     const dest = this.snapDest;
@@ -1310,16 +1387,20 @@ export class GameSimulation {
       if (!aabbOverlap(swept, box)) continue;
       if (c.kind === 'hazard') {
         this.die('hazard', c.id, null);
-        return true;
+        return 'died';
       }
       // Nearest face of the blocker along the search axis: strictly
       // inside the transit (short of the support plane) = real blockage.
       const nearFace = alongX ? (dx > 0 ? box.minX : box.maxX) : dy > 0 ? box.minY : box.maxY;
       const nearDistance = (nearFace - face) * (alongX ? dx : dy);
-      if (nearDistance < bestDistance - 0.01) return false; // ignore press
+      if (nearDistance < bestDistance - 0.01) return 'ignored-blocked'; // ignore press
     }
 
     // Commit: rest against the face, zero along-gravity velocity.
+    // M9.6: record the travel anchors BEFORE the commit overwrites them.
+    copyVec3(this.lastSpiderSnapFrom, p);
+    copyVec3(this.lastSpiderSnapTo, dest);
+    this.spiderSnapEventCount += 1;
     copyVec3(this.prevPosition, dest);
     copyVec3(this.player.position, dest);
     const v = this.player.velocity;
@@ -1330,7 +1411,7 @@ export class GameSimulation {
     this.player.grounded = false;
     this.player.supportColliderId = null;
     this.applyGravityTransition(oppositeGravityMode(this.gravityModeValue));
-    return false;
+    return 'snapped';
   }
 
   /**
@@ -1850,6 +1931,8 @@ export class GameSimulation {
     else this.lastContactNormal.x = this.lastContactNormal.y = this.lastContactNormal.z = 0;
     copyVec3(this.lastPreImpactVelocity, this.preMoveVelocity);
     this.deathHoldTicksLeft = DEATH_HOLD_TICKS;
+    // M9.6: the armed press dies with the attempt (never fires post-respawn).
+    this.spiderBufferTicksLeft = 0;
     this.events.onDeath?.();
   }
 }

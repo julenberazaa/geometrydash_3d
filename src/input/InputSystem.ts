@@ -159,6 +159,14 @@ export class InputSystem {
     laneRight: newMutableEdge(),
   };
 
+  /**
+   * M9.6 active pointer ids driving the shared `space` edge (multi-touch:
+   * first contact presses, last release releases — the same edge contract
+   * as keyboard Space, so taps are indistinguishable downstream).
+   */
+  private readonly pointerIds = new Set<number>();
+  private pointerRoot: HTMLElement | null = null;
+
   private enabled = true;
   private attached = false;
 
@@ -191,6 +199,51 @@ export class InputSystem {
     }
   };
 
+  /**
+   * M9.6 window-blur release (named so `detach()` removes it — the old
+   * anonymous closure leaked across sessions).
+   */
+  private readonly onBlur = (): void => {
+    this.releaseAll();
+  };
+
+  /**
+   * M9.6 pointer → primary-action mapping (mouse click / touch tap).
+   *
+   * Pointer contacts drive the SAME `space` edge state as keyboard Space:
+   * first contact presses, last release releases. Gravity interpretation
+   * stays inside the simulation (unchanged) — pointer, like Space, is the
+   * universal primary action (jump / thrust / surface-switch / orb).
+   *
+   * Contacts starting on a `button` (or inside one) are UI gestures, never
+   * gameplay input — they are ignored here (the button's own click handler
+   * owns them, and it blurs itself so Space never re-activates it).
+   */
+  private readonly onPointerDown = (event: PointerEvent): void => {
+    if (this.isUiTarget(event.target)) return;
+    event.preventDefault();
+    if (!this.enabled) return;
+    if (this.pointerIds.size === 0) {
+      const edge = this.edges.space;
+      if (!edge.held) {
+        edge.held = true;
+        edge.pressed = true;
+      }
+    }
+    this.pointerIds.add(event.pointerId);
+  };
+
+  private readonly onPointerUp = (event: PointerEvent): void => {
+    if (!this.pointerIds.has(event.pointerId)) return;
+    this.pointerIds.delete(event.pointerId);
+    if (this.pointerIds.size > 0) return;
+    const edge = this.edges.space;
+    if (edge.held) {
+      edge.held = false;
+      edge.released = true;
+    }
+  };
+
   /** Ignore game input entirely (e.g. pause menu open). */
   public setEnabled(enabled: boolean): void {
     this.enabled = enabled;
@@ -201,9 +254,7 @@ export class InputSystem {
     if (this.attached) return;
     target.addEventListener('keydown', this.onKeyDown, { passive: false });
     target.addEventListener('keyup', this.onKeyUp, { passive: false });
-    target.addEventListener('blur', () => {
-      this.releaseAll();
-    });
+    target.addEventListener('blur', this.onBlur);
     this.attached = true;
   }
 
@@ -211,7 +262,40 @@ export class InputSystem {
     if (!this.attached) return;
     target.removeEventListener('keydown', this.onKeyDown);
     target.removeEventListener('keyup', this.onKeyUp);
+    target.removeEventListener('blur', this.onBlur);
+    this.detachPointer();
     this.attached = false;
+  }
+
+  /**
+   * M9.6 gameplay-pointer root (the session container). Pointer taps on
+   * the canvas/scene act as the primary action; UI controls keep their
+   * own gestures (see `onPointerDown`). Detached with the session —
+   * never a cross-session listener.
+   */
+  public attachPointer(root: HTMLElement): void {
+    if (this.pointerRoot !== null) return;
+    this.pointerRoot = root;
+    root.addEventListener('pointerdown', this.onPointerDown, { passive: false });
+    root.addEventListener('pointerup', this.onPointerUp);
+    root.addEventListener('pointercancel', this.onPointerUp);
+  }
+
+  public detachPointer(): void {
+    if (this.pointerRoot === null) return;
+    this.pointerRoot.removeEventListener('pointerdown', this.onPointerDown);
+    this.pointerRoot.removeEventListener('pointerup', this.onPointerUp);
+    this.pointerRoot.removeEventListener('pointercancel', this.onPointerUp);
+    this.pointerRoot = null;
+    this.pointerIds.clear();
+  }
+
+  /** True when the contact started on (or inside) a UI control. */
+  private isUiTarget(target: EventTarget | null): boolean {
+    if (target === null) return false;
+    const elt = target as Partial<HTMLElement>;
+    if (typeof elt.closest !== 'function') return false;
+    return elt.closest('button') !== null;
   }
 
   /**
@@ -245,5 +329,8 @@ export class InputSystem {
       if (edgeState.held) edgeState.released = true;
       edgeState.held = false;
     }
+    // Pointer contacts are re-armed on next contact (blur/pause drops the
+    // gesture — the matching release may never arrive while disabled).
+    this.pointerIds.clear();
   }
 }

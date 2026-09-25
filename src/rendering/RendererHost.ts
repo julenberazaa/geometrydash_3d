@@ -12,6 +12,7 @@ import { DeathBurstView } from './DeathBurstView';
 import { InteractionView } from './InteractionView';
 import { CheckpointView } from './CheckpointView';
 import { ChomperView } from './ChomperView';
+import { SpiderBeamView } from './SpiderBeamView';
 import { MovingPlatformView } from './MovingPlatformView';
 import { EnvironmentView } from './EnvironmentView';
 import { MaterialLibrary } from './MaterialLibrary';
@@ -154,6 +155,13 @@ export class RendererHost {
   private readonly checkpointView: CheckpointView;
   /** M8D Chomper presentation (observes sim Chomper states). */
   private readonly chomperView: ChomperView;
+  /**
+   * M9.6 spider-swap energy beam (observes the sim snap edge + anchors —
+   * never writes gameplay; the camera glide still owns continuity).
+   */
+  private readonly spiderBeam: SpiderBeamView;
+  /** Last observed snap count (beam edge — mirrors lastSeenDeathId). */
+  private lastSeenSpiderSnaps = 0;
   /** M8.6 moving-platform presentation (observes sim platform states). */
   private readonly platformView: MovingPlatformView;
   /**
@@ -320,6 +328,9 @@ export class RendererHost {
     this.deathBurst = new DeathBurstView();
     this.scene.add(this.deathBurst.group);
 
+    this.spiderBeam = new SpiderBeamView();
+    this.scene.add(this.spiderBeam.group);
+
     // M6B motion language + gameplay juice (trail, bursts, streaks).
     // Independent toggle: `?fx=off` hides it with zero gameplay effect.
     this.vfx = new VfxSystem(this.theme);
@@ -422,6 +433,17 @@ export class RendererHost {
       this.fovKick = 5;
       this.heightKick = 0.4;
     }
+    // M9.6 spider-snap edge: fire the energy beam between the exact
+    // recorded travel anchors (same frame the camera glide arms — the
+    // move reads as one fast transition, never a cut). Silenced by
+    // `?fx=off` like every other juice layer (the snap itself is
+    // unaffected — presentation only).
+    if (sim.spiderSnapEventCount !== this.lastSeenSpiderSnaps) {
+      this.lastSeenSpiderSnaps = sim.spiderSnapEventCount;
+      if (this.vfx.isEnabled) {
+        this.spiderBeam.fire(sim.lastSpiderSnapFrom, sim.lastSpiderSnapTo);
+      }
+    }
     // Respawn edge (dead -> running) or manual-teleport (R while running):
     // snap the camera to the start frame — no backward swoosh, no stale kick.
     // M8.3: a Spider-context gravity swap ALSO displaces the player >5 u
@@ -458,6 +480,7 @@ export class RendererHost {
       this.fovKick = 0;
       this.heightKick = 0;
       this.deathBurst.clear();
+      this.spiderBeam.clear();
       this.cameraSnappedThisFrame = true;
     }
     this.prevStatus = sim.status;
@@ -493,6 +516,7 @@ export class RendererHost {
     this.applyEventPunch();
     this.debugView.updatePlayerBox(p, sim.halfExtents);
     this.deathBurst.update(renderDtSeconds);
+    this.spiderBeam.update(renderDtSeconds);
     this.interactionView.update(renderDtSeconds);
     this.checkpointView.update(renderDtSeconds);
     // M9.2 biome-mote drift (render-dt, in place; pause freezes via dt 0).
@@ -747,6 +771,7 @@ export class RendererHost {
   public setFxEnabled(enabled: boolean): void {
     this.vfx.setEnabled(enabled);
     this.contactPulse.setEnabled(enabled);
+    if (!enabled) this.spiderBeam.clear();
   }
 
   /** Live M6B burst particles (QA boundedness observability). */
@@ -1101,6 +1126,16 @@ export class RendererHost {
     return this.deathBurst.isActive;
   }
 
+  /** Live spider-beam slots (QA observability; 0 at rest). */
+  public get spiderBeamActive(): boolean {
+    return this.spiderBeam.activeCount > 0;
+  }
+
+  /** Cumulative spider-beam plays (QA observability; evidence). */
+  public get spiderBeamPlays(): number {
+    return this.spiderBeam.playCount;
+  }
+
   /** Active M4 activation rings (QA leak-guard observability). */
   public get interactionRingsActive(): number {
     return this.interactionView.activeRingCount;
@@ -1207,6 +1242,7 @@ export class RendererHost {
     this.platformView.dispose();
     this.playerViewInternal.dispose();
     this.deathBurst.dispose();
+    this.spiderBeam.dispose();
     this.vfx.dispose();
     this.contactPulse.releaseAll();
     this.debugView.dispose();

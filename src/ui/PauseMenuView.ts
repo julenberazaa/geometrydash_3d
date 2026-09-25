@@ -12,6 +12,15 @@ export interface PauseMenuCallbacks {
   onExitToMenu: () => void;
 }
 
+/**
+ * M9.6: release button focus on activation (see Hud.blurButton — a focused
+ * button re-fires on Space keyup, which reads as dropped gameplay input).
+ */
+const blurButton = (event: Event): void => {
+  const target = event.currentTarget;
+  if (target instanceof HTMLButtonElement) target.blur();
+};
+
 export class PauseMenuView {
   private readonly root: HTMLElement;
   private readonly classicButton: HTMLButtonElement;
@@ -46,10 +55,12 @@ export class PauseMenuView {
     checkpointButton.title = 'Crystals save progress. Practice runs only.';
     classicButton.addEventListener('click', (event) => {
       event.stopPropagation();
+      blurButton(event);
       this.callbacks.onModeSelect('classic');
     });
     checkpointButton.addEventListener('click', (event) => {
       event.stopPropagation();
+      blurButton(event);
       this.callbacks.onModeSelect('checkpoint');
     });
     modeRow.appendChild(classicButton);
@@ -73,14 +84,17 @@ export class PauseMenuView {
     menuButton.title = 'Stop this run and return to level + mode select.';
     resumeButton.addEventListener('click', (event) => {
       event.stopPropagation();
+      blurButton(event);
       this.callbacks.onResume();
     });
     restartButton.addEventListener('click', (event) => {
       event.stopPropagation();
+      blurButton(event);
       this.callbacks.onRestart();
     });
     menuButton.addEventListener('click', (event) => {
       event.stopPropagation();
+      blurButton(event);
       this.callbacks.onExitToMenu();
     });
     actionRow.appendChild(resumeButton);

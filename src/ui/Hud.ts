@@ -14,6 +14,18 @@ export interface HudElements {
 /** M9.2 run-mode selection (presentation only — Game owns the semantics). */
 export type RunModeSelect = 'classic' | 'checkpoint';
 
+/**
+ * M9.6: release button focus synchronously on activation. A focused native
+ * button re-fires on Space keyup — after opening the pause menu from the
+ * always-visible ☰ MENU button, the next gameplay Space press would both
+ * jump AND re-click MENU (spurious pause one press after every menu use).
+ * Blurring keeps keyboard operability (Tab re-focus still works).
+ */
+const blurButton = (event: Event): void => {
+  const target = event.currentTarget;
+  if (target instanceof HTMLButtonElement) target.blur();
+};
+
 export class Hud {
   public readonly els: HudElements;
   private readonly replayBadge: HTMLElement;
@@ -103,10 +115,12 @@ export class Hud {
     checkpointButton.title = 'Activated crystals save your progress.';
     classicButton.addEventListener('click', (event) => {
       event.stopPropagation();
+      blurButton(event);
       this.onModeSelect?.('classic');
     });
     checkpointButton.addEventListener('click', (event) => {
       event.stopPropagation();
+      blurButton(event);
       this.onModeSelect?.('checkpoint');
     });
     modeButtons.appendChild(classicButton);
@@ -121,6 +135,7 @@ export class Hud {
     menuButton.title = 'Open the pause menu (same as ESC)';
     menuButton.addEventListener('click', (event) => {
       event.stopPropagation();
+      blurButton(event);
       this.onMenuRequest?.();
     });
 

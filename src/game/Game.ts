@@ -230,6 +230,9 @@ export class Game {
     window.addEventListener('resize', this.onResize);
     window.addEventListener('keydown', this.onKeyDown);
     this.input.attach(window);
+    // M9.6 pointer primary action (click/tap = Space-equivalent press).
+    // UI controls opt out inside InputSystem (button targets ignored).
+    this.input.attachPointer(this.container);
     this.container.addEventListener('click', this.onClick);
     // M9.2 mode selector: the button clicks are the audio gesture (they
     // stopPropagation, so bare container clicks fall through to the pending
@@ -401,6 +404,9 @@ export class Game {
           this.gatePending = false;
           this.hud.setModeSelector(null);
           this.hud.setStartGate(null);
+          // M9.6: flush presses accumulated during the async music handoff
+          // so they cannot fire as a stale tick-0 jump/spider edge.
+          this.input.sample();
           this.loop.setPaused(false);
         } else {
           // LOUD failure: loop stays paused, overlay demands action.
