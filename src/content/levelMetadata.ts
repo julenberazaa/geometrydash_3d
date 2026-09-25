@@ -27,22 +27,22 @@ export interface LevelCardMeta {
 
 export const PRODUCTION_LEVEL_CARDS: readonly LevelCardMeta[] = [
   {
+    levelId: THE_DESCENT_CLASSIC.id,
+    tag: 'ORIGINAL',
+    subtitle: 'Original production route',
+    difficulty: 'Hard',
+    durationLabel: '~116 s',
+    accentCss: '#2dffc4',
+    blurb: 'The original production route before the extreme-density rebuild.',
+  },
+  {
     levelId: PRODUCTION_SHOWCASE_01.id,
     tag: 'EVOLVED ROUTE',
     subtitle: '3D megastructure route',
     difficulty: 'Expert',
     durationLabel: '~115 s',
     accentCss: '#b44dff',
-    blurb: 'Spider/ship traversal, portal funnels and the purple megastructure.',
-  },
-  {
-    levelId: THE_DESCENT_CLASSIC.id,
-    tag: 'ORIGINAL',
-    subtitle: 'Original production route',
-    difficulty: 'Hard',
-    durationLabel: '~115 s',
-    accentCss: '#2dffc4',
-    blurb: 'The M9.2 production route, frozen before the traversal rework.',
+    blurb: 'The modern high-density 3D version.',
   },
 ];
 

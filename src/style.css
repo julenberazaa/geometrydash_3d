@@ -233,6 +233,29 @@ body {
   white-space: nowrap;
 }
 
+/* M9.4.1 always-visible menu button: small, top-right, unobtrusive.
+   The HUD root is pointer-transparent; this button re-enables hits. */
+.hud-menu-button {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  pointer-events: auto;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: rgba(207, 233, 255, 0.8);
+  background: rgba(10, 6, 24, 0.6);
+  border: 1px solid rgba(207, 233, 255, 0.25);
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.hud-menu-button:hover {
+  color: #7df9ff;
+  border-color: rgba(125, 249, 255, 0.6);
+}
+
 /* M9.4 level-select start screen (DOM only — no WebGL preview). */
 .m94-menu {
   position: absolute;

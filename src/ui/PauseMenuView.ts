@@ -3,7 +3,7 @@ import type { RunMode } from '../game/runModeController';
 /**
  * M9.4 in-game pause menu (presentation only — `Game` owns the semantics).
  * Compact overlay: RUN MODE [CLASSIC | CHECKPOINT] switching without a
- * page reload, plus RESUME / RESTART LEVEL / LEVEL SELECT.
+ * page reload, plus RESUME / RESTART LEVEL / MAIN MENU.
  */
 export interface PauseMenuCallbacks {
   onResume: () => void;
@@ -69,7 +69,8 @@ export class PauseMenuView {
     restartButton.textContent = 'RESTART LEVEL';
     const menuButton = document.createElement('button');
     menuButton.className = 'm94-pause-action-button';
-    menuButton.textContent = 'LEVEL SELECT';
+    menuButton.textContent = 'MAIN MENU';
+    menuButton.title = 'Stop this run and return to level + mode select.';
     resumeButton.addEventListener('click', (event) => {
       event.stopPropagation();
       this.callbacks.onResume();

@@ -40,8 +40,9 @@ import { TEST_LEVEL } from './testLevel01';
 /**
  * M9.4 user-facing title of the evolved route (presentation only, trivial
  * to rename: `displayName` is fingerprint-excluded, so replays stay
- * compatible). The frozen original route is `THE_DESCENT_CLASSIC`
- * (`the-descent`, display name `THE DESCENT`).
+ * compatible). The original route is `THE_DESCENT_CLASSIC` (`the-descent`,
+ * display name `THE DESCENT` — the real pre-M8.6 M8.5 content since
+ * M9.4.1, which corrected M9.4's mistaken M9.2 freeze).
  */
 export const PRODUCTION_SHOWCASE_DISPLAY_NAME = 'THE DESCENT — EVOLVED';
 

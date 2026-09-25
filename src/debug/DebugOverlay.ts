@@ -19,4 +19,9 @@ export class DebugOverlay {
   public update(lines: string[]): void {
     this.el.textContent = lines.join('\n');
   }
+
+  /** M9.4.1 session disposal: remove the node (no hidden residue). */
+  public dispose(): void {
+    this.el.remove();
+  }
 }

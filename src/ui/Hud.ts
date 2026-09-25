@@ -26,6 +26,8 @@ export class Hud {
   private readonly modeButtons: HTMLElement;
   /** Wired by Game: button clicks select the run mode (audio gesture). */
   public onModeSelect: ((mode: RunModeSelect) => void) | null = null;
+  /** Wired by Game: the corner MENU button requests the pause menu. */
+  public onMenuRequest: (() => void) | null = null;
 
   constructor(container: HTMLElement) {
     const root = document.createElement('div');
@@ -70,7 +72,7 @@ export class Hud {
     const help = document.createElement('div');
     help.className = 'hud-help';
     help.textContent =
-      'SPACE/↑ jump · ←/→ lanes · ↓ fast-fall · R restart · P pause · M mute music · F1 debug info · F2 colliders · F3 player hitbox · F4 replay last attempt';
+      'SPACE/↑ jump · ←/→ lanes · ↓ fast-fall · R restart · P/ESC pause · M mute music · F1 debug info · F2 colliders · F3 player hitbox · F4 replay last attempt';
 
     // M9 start gate: minimal press-to-start overlay for music levels (the
     // first gesture unlocks audio + starts the sim from tick 0 together).
@@ -110,7 +112,20 @@ export class Hud {
     modeButtons.appendChild(classicButton);
     modeButtons.appendChild(checkpointButton);
 
+    // M9.4.1 always-visible menu button (small, top-right, never blocking
+    // gameplay): opens the pause menu, same as ESC/P. Keyboard-only pause
+    // is undiscoverable, so this is the explicit route to MAIN MENU.
+    const menuButton = document.createElement('button');
+    menuButton.className = 'hud-menu-button';
+    menuButton.textContent = '☰ MENU';
+    menuButton.title = 'Open the pause menu (same as ESC)';
+    menuButton.addEventListener('click', (event) => {
+      event.stopPropagation();
+      this.onMenuRequest?.();
+    });
+
     root.appendChild(top);
+    root.appendChild(menuButton);
     root.appendChild(message);
     root.appendChild(replayBadge);
     root.appendChild(modeBadge);
@@ -204,5 +219,10 @@ export class Hud {
 
   public setVisible(visible: boolean): void {
     this.els.root.style.display = visible ? 'block' : 'none';
+  }
+
+  /** M9.4.1 session disposal: remove every HUD node (no hidden residue). */
+  public dispose(): void {
+    this.els.root.remove();
   }
 }

@@ -114,7 +114,7 @@ export class AppController {
     return game;
   }
 
-  /** LEVEL SELECT from the pause menu: dispose the session, show the menu. */
+  /** MAIN MENU from the pause menu: dispose the session, show the menu. */
   private returnToMenu(): void {
     this.game?.dispose();
     this.game = null;

@@ -52,7 +52,7 @@ export interface GameSessionConfig {
    * its own mode-selector gate UI (the START gesture still unlocks audio).
    */
   menuManaged?: boolean;
-  /** M9.4 LEVEL SELECT from the pause menu (the AppController disposes). */
+  /** M9.4 MAIN MENU from the pause menu (the AppController disposes). */
   onExitToMenu?: () => void;
 }
 
@@ -235,6 +235,12 @@ export class Game {
     // mode). Skipped when an app-level menu already chose the mode.
     this.hud.onModeSelect = (mode): void => {
       this.startRun(mode);
+    };
+    // M9.4.1 corner MENU button: opens the pause menu (same as ESC/P).
+    // Ignored before the run starts and while paused (the pause menu owns
+    // RESUME there) — a menu click is never gameplay input.
+    this.hud.onMenuRequest = (): void => {
+      if (this.started && !this.paused && !this.gatePending) this.setPausedState(true);
     };
     if (this.startGated) {
       // M9 start gate: the level renders frozen at tick 0 under the
@@ -510,8 +516,10 @@ export class Game {
     this.rendererHost.dispose();
     this.deathSfx.dispose();
     this.music?.dispose();
-    this.hud.setVisible(false);
-    this.debugOverlay.setVisible(false);
+    // M9.4.1: remove session DOM (no hidden HUD/debug residue across
+    // menu returns — the next START builds a fresh Hud + DebugOverlay).
+    this.hud.dispose();
+    this.debugOverlay.dispose();
   }
 
   /**
@@ -577,6 +585,7 @@ export class Game {
         }
         break;
       case 'KeyP':
+      case 'Escape':
         if (!this.started) break;
         this.setPausedState(!this.paused);
         break;
