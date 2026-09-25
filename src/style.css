@@ -232,3 +232,233 @@ body {
   text-align: center;
   white-space: nowrap;
 }
+
+/* M9.4 level-select start screen (DOM only — no WebGL preview). */
+.m94-menu {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  pointer-events: auto;
+  background:
+    radial-gradient(1200px 500px at 50% -10%, rgba(180, 77, 255, 0.16), transparent 60%),
+    radial-gradient(900px 500px at 50% 115%, rgba(25, 230, 255, 0.12), transparent 60%),
+    #07040f;
+  color: #cfe9ff;
+  user-select: none;
+  z-index: 10;
+}
+
+.m94-menu-title {
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  color: #7df9ff;
+  text-shadow: 0 0 22px rgba(125, 249, 255, 0.6);
+}
+
+.m94-menu-label {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  color: rgba(207, 233, 255, 0.75);
+}
+
+.m94-cards {
+  display: flex;
+  gap: 16px;
+}
+
+.m94-card {
+  --m94-accent: #7df9ff;
+  width: 300px;
+  text-align: left;
+  font-family: inherit;
+  color: #cfe9ff;
+  background: rgba(10, 6, 24, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-left: 4px solid var(--m94-accent);
+  border-radius: 10px;
+  padding: 14px 16px;
+  cursor: pointer;
+}
+
+.m94-card:hover {
+  border-color: var(--m94-accent);
+}
+
+.m94-card.m94-selected {
+  border-color: var(--m94-accent);
+  box-shadow: 0 0 22px rgba(125, 249, 255, 0.25), inset 0 0 18px rgba(125, 249, 255, 0.06);
+}
+
+.m94-card-tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.24em;
+  color: var(--m94-accent);
+  border: 1px solid var(--m94-accent);
+  border-radius: 4px;
+  padding: 2px 8px;
+  margin-bottom: 8px;
+}
+
+.m94-card-title {
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.m94-card-subtitle {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: rgba(207, 233, 255, 0.7);
+  margin-top: 2px;
+}
+
+.m94-card-meta {
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: #ff9d00;
+  margin-top: 8px;
+}
+
+.m94-card-blurb {
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(207, 233, 255, 0.65);
+  margin-top: 6px;
+}
+
+.m94-modes {
+  display: flex;
+  gap: 12px;
+}
+
+.m94-mode-button {
+  width: 220px;
+  font-family: inherit;
+  text-align: center;
+  color: #cfe9ff;
+  background: rgba(10, 6, 24, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+.m94-mode-button.m94-selected {
+  border-color: #7df9ff;
+  box-shadow: 0 0 18px rgba(125, 249, 255, 0.35);
+}
+
+.m94-mode-checkpoint.m94-selected {
+  border-color: #54f0ff;
+  box-shadow: 0 0 18px rgba(84, 240, 255, 0.45);
+}
+
+.m94-mode-title {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+}
+
+.m94-mode-desc {
+  font-size: 11px;
+  color: rgba(207, 233, 255, 0.65);
+  margin-top: 4px;
+}
+
+.m94-start-button {
+  font-family: inherit;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.3em;
+  color: #04121c;
+  background: #7df9ff;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 54px 12px 64px;
+  cursor: pointer;
+  box-shadow: 0 0 24px rgba(125, 249, 255, 0.4);
+}
+
+.m94-start-button:hover {
+  filter: brightness(1.1);
+}
+
+/* M9.4 in-game pause menu (compact overlay, presentation only). */
+.m94-pause-menu {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  background: rgba(4, 10, 24, 0.92);
+  border: 1px solid rgba(125, 249, 255, 0.35);
+  border-radius: 10px;
+  padding: 20px 28px;
+  text-align: center;
+  color: #cfe9ff;
+  user-select: none;
+  z-index: 10;
+}
+
+.m94-pause-title {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 0.3em;
+  color: #7df9ff;
+  text-shadow: 0 0 16px rgba(125, 249, 255, 0.7);
+}
+
+.m94-pause-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  color: rgba(207, 233, 255, 0.7);
+  margin-top: 12px;
+}
+
+.m94-pause-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.m94-pause-mode-button,
+.m94-pause-action-button {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #cfe9ff;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.m94-pause-mode-button.m94-selected {
+  border-color: #54f0ff;
+  color: #04121c;
+  background: #54f0ff;
+  box-shadow: 0 0 14px rgba(84, 240, 255, 0.5);
+}
+
+.m94-pause-action-button:hover {
+  border-color: #7df9ff;
+}
+
+.m94-pause-note {
+  font-size: 11px;
+  color: rgba(207, 233, 255, 0.6);
+  margin-top: 10px;
+  max-width: 380px;
+}

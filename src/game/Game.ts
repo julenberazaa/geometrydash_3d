@@ -11,18 +11,16 @@ import { Hud } from '../ui/Hud';
 import { DebugOverlay } from '../debug/DebugOverlay';
 import { TEST_LEVEL } from '../content/levels/testLevel01';
 import { ReplayCoordinator, type ReplayVerification } from '../replay/ReplayCoordinator';
+import { RunModeController, type AttemptKind, type RunMode } from './runModeController';
+import { PauseMenuView } from '../ui/PauseMenuView';
 import type { LevelDefinition } from '../level/levelDefinition';
 
 /**
- * M9.2 run mode (presentation/session scope — never gameplay physics).
- * CLASSIC: death restarts from the level origin (current behavior).
- * CHECKPOINT: practice — death auto-respawns from the latest activated
- * crystal (GameSimulation snapshot), with music re-seeking to the
- * checkpoint time. Checkpoint runs are never official ReplayV1
- * completions. One concept, one owner: Game owns the MODE, the sim owns
- * the snapshot mechanics.
+ * M9.4 re-export: the run-mode vocabulary lives in `runModeController.ts`
+ * (single owner); existing importers keep working.
  */
-export type RunMode = 'classic' | 'checkpoint';
+export type { RunMode };
+export type { AttemptKind };
 
 /** M6D Game-level options (presentation/QA only — never gameplay). */
 export interface GameOptions {
@@ -41,9 +39,33 @@ export interface GameOptions {
 }
 
 /**
+ * M9.4 session config (menu/app scope — the chosen level+mode enter here).
+ */
+export interface GameSessionConfig {
+  /**
+   * Run mode the session starts in (menu selection or `?mode=`). Default
+   * classic. The session always opens a FRESH attempt in this mode.
+   */
+  startMode?: RunMode;
+  /**
+   * True when an app-level menu already chose level+mode: the Game skips
+   * its own mode-selector gate UI (the START gesture still unlocks audio).
+   */
+  menuManaged?: boolean;
+  /** M9.4 LEVEL SELECT from the pause menu (the AppController disposes). */
+  onExitToMenu?: () => void;
+}
+
+/**
  * Game: composition root. Wires input -> simulation -> renderer -> UI.
  * All gameplay runs inside GameSimulation via the FixedStepLoop; this class
  * contains no gameplay logic.
+ *
+ * M9.4: a Game instance owns exactly ONE selected LevelDefinition for one
+ * session. It owns the run mode + practice taint (via RunModeController —
+ * the sim owns only the snapshot mechanics), applies mode switches onto
+ * the sim flag + crystal visibility + HUD + replay lifecycle, and offers
+ * the pause menu (resume / live mode switch / full restart / exit).
  */
 export class Game {
   private readonly loop: FixedStepLoop;
@@ -70,8 +92,14 @@ export class Game {
    * the click starts immediately in the chosen mode).
    */
   private readonly modeSelect: boolean;
-  /** M9.2 active run mode (chosen at the gate; classic until chosen). */
-  private runMode: RunMode = 'classic';
+  /**
+   * M9.4 session mode + practice taint (single owner for the officiality
+   * question; the sim owns only the snapshot mechanics). `attemptKind`
+   * answers whether the current attempt may complete officially.
+   */
+  private readonly mode = new RunModeController();
+  private readonly sessionConfig: GameSessionConfig;
+  private readonly pauseMenu: PauseMenuView;
   private started = false;
   private gatePending = false;
   /**
@@ -103,7 +131,9 @@ export class Game {
     levelDef: LevelDefinition = TEST_LEVEL,
     rendererOptions: RendererOptions = {},
     gameOptions: GameOptions = {},
+    session: GameSessionConfig = {},
   ) {
+    this.sessionConfig = session;
     // M6D frame profiler (DEBUG/PERF-only, above gameplay): off by default
     // (`?perf=1` enables) — one branch per frame when disabled.
     this.perfEnabled = gameOptions.perfEnabled ?? false;
@@ -119,6 +149,12 @@ export class Game {
     this.startGated = this.music !== null || this.modeSelect;
     // Non-gated levels are "started" from tick 0 (legacy immediate start).
     this.started = !this.startGated;
+    // M9.4: the session opens a FRESH attempt in the selected mode (menu
+    // choice or `?mode=`; default classic). The sim flag + crystal
+    // visibility mirror it from tick 0.
+    const startMode = session.startMode ?? 'classic';
+    this.mode.beginAttempt(startMode);
+    this.pendingMode = startMode;
     this.music?.preload();
     this.simulation = new GameSimulation(levelDef, {
       onJump: () => {
@@ -133,9 +169,10 @@ export class Game {
         this.deathSfx.play();
       },
       onFinish: () => {
-        // M9.2: checkpoint-mode completions are PRACTICE, never official
-        // clean runs — the partial tape is discarded (F4 stays classic).
-        if (this.runMode === 'checkpoint') {
+        // M9.4: practice-tainted attempts are NEVER official clean runs —
+        // the partial tape is discarded (F4 stays clean-classic-only) and
+        // the banner says PRACTICE COMPLETE.
+        if (this.mode.attemptKind === 'practice') {
           this.replay.discardRecording();
           this.hud.setMessage('PRACTICE COMPLETE — press R to run again');
         } else {
@@ -143,13 +180,32 @@ export class Game {
         }
       },
     });
+    if (this.mode.runMode === 'checkpoint') this.simulation.setCheckpointRespawnEnabled(true);
     // Replay orchestration lives ABOVE the simulation: the coordinator picks
     // the live-vs-tape input source each fixed tick and verifies playback.
     // GameSimulation never knows replay exists.
     this.replay = new ReplayCoordinator(this.simulation);
     this.rendererHost = new RendererHost(container, this.simulation, rendererOptions);
+    this.rendererHost.setCheckpointsVisible(startMode === 'checkpoint');
     this.hud = new Hud(container);
     this.debugOverlay = new DebugOverlay(container);
+    this.pauseMenu = new PauseMenuView(container, {
+      onResume: () => {
+        if (this.started) this.setPausedState(false);
+      },
+      onModeSelect: (mode) => {
+        this.setRunMode(mode);
+        if (this.paused) this.pauseMenu.refresh(this.mode.runMode, this.mode.practiceTainted);
+      },
+      onRestart: () => {
+        if (!this.started) return;
+        this.fullRestart();
+        this.setPausedState(false);
+      },
+      onExitToMenu: () => {
+        this.sessionConfig.onExitToMenu?.();
+      },
+    });
 
     this.loop = new FixedStepLoop(
       {
@@ -175,24 +231,25 @@ export class Game {
     this.input.attach(window);
     this.container.addEventListener('click', this.onClick);
     // M9.2 mode selector: the button clicks are the audio gesture (they
-    // stopPropagation, so bare container clicks fall through to classic).
+    // stopPropagation, so bare container clicks fall through to the pending
+    // mode). Skipped when an app-level menu already chose the mode.
     this.hud.onModeSelect = (mode): void => {
       this.startRun(mode);
     };
     if (this.startGated) {
-      // M9 start gate: THE DESCENT renders frozen at tick 0 under the
+      // M9 start gate: the level renders frozen at tick 0 under the
       // press-to-start overlay — gameplay and music begin together on the
       // first gesture, never seconds apart.
       this.loop.setPaused(true);
-      if (this.modeSelect) {
-        // Crystals stay hidden until a checkpoint run is actually chosen
-        // (classic keeps the clean look, zero confusion).
-        this.rendererHost.setCheckpointsVisible(false);
-        this.hud.setModeSelector('THE DESCENT — SELECT RUN');
-      } else {
+      if (this.modeSelect && !session.menuManaged) {
+        this.hud.setModeSelector(`${levelDef.displayName} — SELECT RUN`);
+      } else if (!session.menuManaged) {
         this.hud.setStartGate('PRESS SPACE / CLICK TO START');
       }
+      // Menu-managed sessions show no gate text: the menu overlay covers
+      // the frozen tick-0 scene until the START gesture starts the run.
     }
+    this.refreshModePresentation();
   }
 
   public start(): void {
@@ -231,7 +288,64 @@ export class Game {
 
   /** M9.2 active run mode (QA observability). */
   public get activeRunMode(): RunMode {
-    return this.runMode;
+    return this.mode.runMode;
+  }
+
+  /** M9.4 officiality of the current attempt (QA observability + HUD). */
+  public get attemptKind(): AttemptKind {
+    return this.mode.attemptKind;
+  }
+
+  /**
+   * M9.4 menu-gesture start: the app-level START click already chose
+   * (level, mode) — this performs the audio unlock + run start inside that
+   * same user gesture (autoplay policy), like the legacy gate buttons.
+   */
+  public startFromMenuGesture(): void {
+    this.startRun(this.mode.runMode);
+  }
+
+  /**
+   * M9.4 LIVE mode switch (pause menu / QA): toggles checkpoint mode
+   * mid-attempt without reloading. Arming checkpoint mode taints the
+   * attempt as PRACTICE (permanent until a full restart); disarming never
+   * un-taints. Position, music and camera are untouched — only the sim
+   * flag, crystal visibility, HUD and replay eligibility change. Earned
+   * checkpoint snapshots stay cached in the sim (retention rule) but are
+   * unusable while classic is active. Ignored before start, during the
+   * audio handoff, and during replay playback.
+   */
+  public setRunMode(mode: RunMode): void {
+    if (!this.started || this.gatePending || this.replay.isPlaying) return;
+    const changed = this.mode.setMode(mode);
+    const checkpoint = this.mode.runMode === 'checkpoint';
+    this.simulation.setCheckpointRespawnEnabled(checkpoint);
+    this.rendererHost.setCheckpointsVisible(checkpoint);
+    if (changed && checkpoint) {
+      // The attempt is now practice: the in-progress partial tape must
+      // never finalize into a hybrid classic+practice recording.
+      this.replay.discardRecording();
+    }
+    this.refreshModePresentation();
+  }
+
+  /**
+   * M9.4 FULL restart from the origin in the CURRENTLY selected mode
+   * (Shift+R / pause RESTART LEVEL): clears checkpoint progress, clears
+   * the practice taint, and opens a fresh attempt. Classic restarts clean;
+   * checkpoint restarts practice.
+   */
+  public fullRestart(): void {
+    if (this.replay.isPlaying) this.replay.abortReplay();
+    else this.replay.discardRecording();
+    this.simulation.restartRun();
+    const mode = this.mode.runMode;
+    this.mode.beginAttempt(mode);
+    this.simulation.setCheckpointRespawnEnabled(mode === 'checkpoint');
+    this.rendererHost.setCheckpointsVisible(mode === 'checkpoint');
+    if (!this.silentStart) this.music?.restart();
+    this.refreshModePresentation();
+    this.hud.setMessage('');
   }
 
   /**
@@ -291,17 +405,34 @@ export class Game {
   }
 
   /**
-   * M9.2: apply the chosen run mode (sim flag + crystal visibility + HUD).
-   * Single owner for mode application — gate, silent and music-off paths
-   * all converge here.
+   * M9.4: apply the chosen run mode for a FRESH attempt (sim flag +
+   * crystal visibility + HUD). Single owner for fresh-attempt mode
+   * application — gate, silent and music-off paths all converge here.
+   * (Mid-attempt switches go through `setRunMode`, never here.)
    */
   private applyRunMode(mode: RunMode): void {
-    this.runMode = mode;
-    const checkpoint = mode === 'checkpoint';
-    this.simulation.setCheckpointRespawnEnabled(checkpoint);
-    this.rendererHost.setCheckpointsVisible(checkpoint);
-    this.hud.setModeBadge(checkpoint ? 'CHECKPOINT MODE · R checkpoint · SHIFT+R full restart' : null);
-    if (!checkpoint) this.hud.setCheckpointProgress(null);
+    this.mode.beginAttempt(mode);
+    this.simulation.setCheckpointRespawnEnabled(mode === 'checkpoint');
+    this.rendererHost.setCheckpointsVisible(mode === 'checkpoint');
+    this.refreshModePresentation();
+  }
+
+  /**
+   * M9.4 HUD mode presentation (single owner): checkpoint runs show the
+   * checkpoint badge; clean classic shows nothing; practice-tainted
+   * classic shows an honest PRACTICE banner so it can never be mistaken
+   * for an official run.
+   */
+  private refreshModePresentation(): void {
+    if (this.mode.runMode === 'checkpoint') {
+      this.hud.setModeBadge('CHECKPOINT MODE · R checkpoint · SHIFT+R full restart');
+    } else if (this.mode.practiceTainted) {
+      this.hud.setModeBadge('CLASSIC CONTROLS — PRACTICE RUN');
+      this.hud.setCheckpointProgress(null);
+    } else {
+      this.hud.setModeBadge(null);
+      this.hud.setCheckpointProgress(null);
+    }
   }
 
   /**
@@ -334,7 +465,7 @@ export class Game {
   private restartMusicForSimTime(): void {
     const director = this.music;
     if (director === null || this.silentStart) return;
-    if (this.runMode === 'checkpoint') {
+    if (this.mode.runMode === 'checkpoint') {
       director.startAt(targetMusicTime(this.simulation.elapsedSimTime, this.trackOffset));
     } else {
       director.restart();
@@ -343,7 +474,7 @@ export class Game {
 
   private onClick = (): void => {
     this.deathSfx.ensure();
-    this.startRun('classic');
+    this.startRun(this.pendingMode);
   };
 
   public get totalJumps(): number {
@@ -375,11 +506,33 @@ export class Game {
     window.removeEventListener('keydown', this.onKeyDown);
     this.input.detach(window);
     this.container.removeEventListener('click', this.onClick);
+    this.pauseMenu.dispose();
     this.rendererHost.dispose();
     this.deathSfx.dispose();
     this.music?.dispose();
     this.hud.setVisible(false);
     this.debugOverlay.setVisible(false);
+  }
+
+  /**
+   * M9.4 pause with menu (single owner for the paused state): freezes the
+   * sim loop, music, input and camera smoothing; the mode choice happens
+   * frozen and RESUME continues at identical elapsedSimTime.
+   */
+  private setPausedState(paused: boolean): void {
+    this.paused = paused;
+    this.loop.setPaused(paused);
+    if (paused) {
+      this.music?.pause();
+      this.pauseMenu.show(this.mode.runMode, this.mode.practiceTainted);
+    } else {
+      // Resume audio BEFORE the sim so both continue from the same
+      // deterministic position (residual drift self-corrects below).
+      this.pauseMenu.hide();
+      this.music?.resume();
+    }
+    this.input.setEnabled(!paused);
+    this.hud.setMessage(paused ? 'PAUSED' : '');
   }
 
   private onResize = (): void => {
@@ -389,12 +542,13 @@ export class Game {
   private onKeyDown = (event: KeyboardEvent): void => {
     // First gesture unlocks the (guarded, optional) death blip.
     this.deathSfx.ensure();
-    // M9.2: the unlocking press only starts audio + sim (the edge is
+    // M9.4: the unlocking press only starts audio + sim (the edge is
     // flushed in startRun so it never becomes gameplay input). Space picks
-    // CLASSIC (legacy); C / 2 picks CHECKPOINT RUN. N is the EXPLICIT
-    // silent start, honored only from the latched failure state.
+    // the pending mode (classic default, `?mode=` preselect); C / 2 picks
+    // CHECKPOINT RUN. N is the EXPLICIT silent start, honored only from
+    // the latched failure state.
     if (event.code === 'Space' || event.code === 'ArrowUp' || event.code === 'Digit1') {
-      this.startRun('classic');
+      this.startRun(this.pendingMode);
     }
     if (event.code === 'KeyC' || event.code === 'Digit2') this.startRun('checkpoint');
     if (event.code === 'KeyN') this.startWithoutMusic();
@@ -403,34 +557,28 @@ export class Game {
       case 'KeyR':
         // The start gate owns pre-start input (no restart before tick 0).
         if (!this.started) break;
-        // Manual restart ends the current context: abort an active playback,
-        // otherwise discard the partial live tape, then restart the attempt.
-        if (this.replay.isPlaying) this.replay.abortReplay();
-        else this.replay.discardRecording();
-        if (event.shiftKey && this.runMode === 'checkpoint') {
-          // M9.2 Shift+R: full origin restart, checkpoint progress cleared.
-          this.simulation.restartRun();
-          if (!this.silentStart) this.music?.restart();
+        if (event.shiftKey) {
+          // M9.4 Shift+R (both modes): FULL origin restart in the CURRENT
+          // mode — progress cleared, practice taint cleared, fresh attempt.
+          this.fullRestart();
         } else {
+          // Manual restart ends the current context: abort an active
+          // playback, otherwise discard the partial live tape, then restart
+          // the attempt.
+          if (this.replay.isPlaying) this.replay.abortReplay();
+          else this.replay.discardRecording();
           // R restarts from the latest checkpoint in checkpoint mode
           // (sim routes it), from the origin in classic.
           this.simulation.restart();
           // R-from-running produces no dead→running edge, so restart music
           // explicitly (checkpoint-aware: re-seeks to the checkpoint time).
           this.restartMusicForSimTime();
+          this.hud.setMessage('');
         }
-        this.hud.setMessage('');
         break;
       case 'KeyP':
         if (!this.started) break;
-        this.paused = !this.paused;
-        if (this.paused) this.music?.pause();
-        this.loop.setPaused(this.paused);
-        // Resume audio BEFORE the sim so both continue from the same
-        // deterministic position (residual drift self-corrects below).
-        if (!this.paused) this.music?.resume();
-        this.input.setEnabled(!this.paused);
-        this.hud.setMessage(this.paused ? 'PAUSED' : '');
+        this.setPausedState(!this.paused);
         break;
       case 'KeyM':
         // M9 presentation-only music mute toggle (gameplay untouched).
@@ -456,11 +604,11 @@ export class Game {
         // Ignored while a playback is already active.
         event.preventDefault();
         if (!this.started) break;
-        // M9.2: checkpoint runs are practice, never official completions —
-        // F4 stays a classic-run feature (a restore discontinuity is not
+        // M9.4: practice-tainted attempts are never official completions —
+        // F4 stays a clean-classic feature (a restore discontinuity is not
         // an input and could never verify anyway).
-        if (this.runMode === 'checkpoint') {
-          this.hud.setMessage('CHECKPOINT RUNS ARE PRACTICE — REPLAY DISABLED');
+        if (this.mode.attemptKind === 'practice') {
+          this.hud.setMessage('PRACTICE ATTEMPT — REPLAY DISABLED');
           break;
         }
         const last = this.replay.lastReplay;
@@ -532,7 +680,7 @@ export class Game {
     });
     this.hud.setReplayBadge(this.replay.hudBadge);
     // M9.2 checkpoint progress readout (checkpoint runs only).
-    if (this.runMode === 'checkpoint') {
+    if (this.mode.runMode === 'checkpoint') {
       const { activeIndex, total } = this.simulation.checkpointProgress();
       const activeId = this.simulation.activeCheckpointId;
       const label =
