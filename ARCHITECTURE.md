@@ -274,7 +274,13 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   VERIFIED (`tests/helpers/multimodeGauntletScript.ts`).
 - `theDescentClassic.ts` (M9.4.2: the EXACT M8.6 density-verticality
   content from `e5b0d86`, `the-descent`, "THE DESCENT", tag `ORIGINAL
-  M8.6`, deliberately NO `musicTrack`): the classic high-mobility
+  M8.6`, deliberately NO `musicTrack` — M9.4 had wrongly frozen the M9.2
+  snapshot here, M9.4.1 had wrongly stored the M8.5 simple route; M9.5:
+  the M8.6 foundation plus surgical density polish — 3 added Chompers
+  (`ps-chomp-deck/lower/shaft`, 8 total at the ≤8 cap), the LOW
+  under-deck weave (244/254), upper/lower maze doors (599/610/600),
+  foundry-exit doors (1093/1104, replacing the 1100 hop) — and the
+  `musicTrack` binding to Zenith of the Path, offset 0): the classic high-mobility
   descent — forge ascent, multi-deck skybridge islands with a lateral
   ferry + elevator branch, two-deck maze-runner with a ferry pair,
   compact four-way gravity spire, Chomper foundry, extreme Ship abyss
@@ -284,8 +290,10 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   (123.31 s), 0 deaths, replay VERIFIED, on BOTH the primary and
   alternate routes (`tests/helpers/theDescentClassicScript.ts`, metrics
   in `tests/helpers/routeMetrics.ts`, contracts in
-  `tests/theDescentClassic.test.ts`, in-page gate in
-  `scripts/browser-qa-m86.mjs` now booting `?level=the-descent`).
+  `tests/theDescentClassic.test.ts`, moderate Zenith alignment in
+  `tests/descentZenithAlignment.test.ts`, in-page gates in
+  `scripts/browser-qa-m95.mjs` + the ported `scripts/browser-qa-m86.mjs`
+  mirror).
 - `productionShowcase01.ts` (modern route, `production-showcase-01`,
   display name "GRAVITY RIFT" — M9 retime + M9.1 radical rebuild + M9.2
   audio/checkpoints/visual + M9.3 traversal/spider/ship/purple on top
@@ -373,7 +381,14 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   preallocated state array, activation (player Z), the swept
   Chomper-vs-player lethal test (both sides sweep — no tunneling either
   direction, lethal in EVERY phase under id `chomper-<id>`), and the
-  respawn reset. Aim (player X) is captured once at activation and never
+  respawn reset. RUNTIME ORDER (load-time invariant): `levelRuntime`
+  sorts `level.chompers` by `triggerZ` — `sim.level.chompers[i]` and
+  `sim.chomperStates[i]` share that sorted order (the sim, the driver,
+  the probes and the ChomperView all index it consistently), while
+  `def.chompers` keeps definition order for the fingerprint. Any code
+  hardcoding chomper indices against definition order is wrong
+  (M9.5 precedent: the m86 in-page mirror did — fixed to sorted
+  indices). Aim (player X) is captured once at activation and never
   re-homed; the lunge is linear over authored ticks. `ChomperView`
   (owned by `RendererHost`) observes sim states only — M8.3 voxel lava
   chain-chomp anatomy (single mottled magma head-ball + hot-yellow voxel
@@ -719,6 +734,22 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   presentation (MusicDirector targets, rhythm pulses, alignment tooling)
   reads it. `MusicTrackRef` on `LevelDefinition` binds a track to a level
   (presentation-only: never fingerprinted, never replayed).
+- `zenithTrack.ts` (`src/audio/`, M9.5): the authored Zenith of the Path
+  timeline as pure data + pure beat/section math (120 BPM grid, offset
+  0.03 s, 10 arrangement sections, anchors, 127.713 s duration) — same
+  API shape as `musicTrack.ts`, which stays Gravity-only and untouched.
+  Also owns the per-track rhythm resolution: `TrackGrid`
+  (beatOffset/beatPeriod/beatAtTime/sectionAtTime),
+  `gridForAudioPath()` (Gravity default — trackless levels and every
+  existing caller byte-identical) and `pulseScaleForAudioPath()`
+  (Rift 1.0 = full M9.1 overdrive legs, Descent 0.55 = cleaner
+  response). `rhythmPulse.evaluate/update` take an optional grid
+  (default Gravity); `RendererHost` resolves grid + scale from the
+  level's `musicTrack.audioPath` and scales every pulse/impact leg
+  (FP-exact at 1.0, so Gravity behavior is byte-identical);
+  `Game.musicStatusLine` resolves the same grid for its section/beat
+  readout. THE DESCENT declares Zenith offset 0; GRAVITY RIFT keeps
+  Gravity Lessons.
 - `MusicDirector` (`src/audio/`, M9): the ONE presentation owner of music
   transport (Web Audio buffer source: load/decode/readiness, play, pause
   as stop + offset record, resume, restart at origin, cut with short fade,
@@ -1007,6 +1038,21 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   errors. Transport/graph pass ≠ human audible pass (open gate).
 - M9.2 visual evidence: `qa/screenshots/m92-biome-*` (per-biome stills,
   local-only) + the m91 BEFORE set for comparisons.
+- `scripts/browser-qa-m95.mjs` (M9.5, 14 checks, system Chrome): menu
+  (Zenith card copy), Descent CLASSIC Zenith graph wired (buffer ≈
+  127.71, exactly one fetch) + Zenith-grid pulse proof, headless-tape
+  injection finishing in-page REPLAY VERIFIED (8/8 Chompers spent),
+  new-zone probes/screenshots, pause/resume + live-switch (no
+  restart/seek) + menu disposal, Descent CHECKPOINT cp-forge + Zenith
+  re-seek, Rift regression (graph + seek), repeat-switch isolation,
+  zero console/page errors (`qa/screenshots/m95-*`).
+- M9.5 legacy-gate migrations: `browser-qa-m94/m941/m942.mjs` assert the
+  Zenith behavior on Descent (graph wired, target preserved across
+  toggles, per-session fetch); `browser-qa-m92.mjs` stays Rift-only;
+  `browser-qa-m86.mjs` ports the M9.5 driver policy (incl. sorted
+  chomper indices) — its full live-input run is environment-flaky on
+  SwiftShader (proven by a pristine-HEAD control run failing the same
+  way), so the deterministic in-page proof is the m95 tape injection.
 
 ## 10. Invariant matrix
 
@@ -1106,7 +1152,8 @@ in-page eye-velocity proof (no cut) |
 | Event punch envelope peaks/decays/composes by max with family tints; contact skid grounded-only, Floor/Ceiling-relative, speed-scaled, timeline-calmed, reset-safe; worst-case event volume << burst pool; sim trigger-free; punch excluded from replays; `?triggers=off` holds the envelope at rest | `eventPunch` tests + browser QA m6c2 section (peak/tint/rest-restore proofs, skid floor+ceiling, fallback split, replay proof, 26/8/3 guards) |
 | Timeline section identity position-driven; state never accumulates/drifts; bloom ⇒ contract, exposure ⇒ 0.5..2; player/hazard stable; sequence excluded from fingerprint; sim trigger-free; transitions add zero draws/materials/geometries; `?triggers=off` restores exact base; nothing timeline in replays | `visualTimeline` tests + browser QA m6c1 section (interpolation bounds, identity pins, reset/replay proofs, 26/8/3 guards, fallback matrix) |
 | M9.2 audio output path: every live voice is source → gain → destination, wired in order before start; wiring failure fails loud, never silent `playing` | `musicDirector` structural order test + fail-loud wiring test + graphReady pins + browser QA m92 graph assertion (never TRANSPORT PASS with no output path) |
-| M9.2 checkpoints: latest-wins activation, atomic full-state restore (incl. platform tick + elapsed anchor), classic bit-identity, R = checkpoint / Shift+R = full, session-scoped, replay-isolated | `checkpoints` tests + DESCENT 8/8 both-route activation pin + browser QA m92 checkpoint section |
+ | M9.2 checkpoints: latest-wins activation, atomic full-state restore (incl. platform tick + elapsed anchor), classic bit-identity, R = checkpoint / Shift+R = full, session-scoped, replay-isolated | `checkpoints` tests + DESCENT 8/8 both-route activation pin + browser QA m92 checkpoint section |
+| M9.5 per-track rhythm: Gravity grid default (existing callers/pulse byte-identical); Zenith grid + restrained pulse scale resolve from the level's track; chomper runtime order is triggerZ-sorted | `zenithTrack` map/resolution/scale tests + `rhythmPulse` default-path + Zenith-grid tests + `descentZenithAlignment` + browser QA m95 pulse/graph proof |
 | No milestone passes with failing verification | `npm run verify` + `AGENTS.md` process rule |
 
 ## 11. Known non-defects / deferred perf notes

@@ -1,20 +1,24 @@
 /**
- * M9.4.2 browser gate (dev tool, not shipped) — M8.6 THE DESCENT (no music)
+ * M9.4.2 browser gate (dev tool, not shipped) — M8.6 THE DESCENT
  * + GRAVITY RIFT rename + menu/session/audio switching with a real browser.
+ *
+ * M9.5: THE DESCENT now plays Zenith of the Path (no longer silent) and
+ * carries the surgical density polish. This gate is migrated to the Zenith
+ * behavior; the full M9.5 human flow (incl. tape-injection finish proof +
+ * new-zone spot checks) lives in browser-qa-m95.mjs.
  *
  * 1. Bare URL shows MAIN MENU: exactly THE DESCENT (ORIGINAL M8.6) +
  *    GRAVITY RIFT (EXPERT); GRAVITY RIFT + CLASSIC preselected.
- * 2. THE DESCENT + CLASSIC + START: run starts with NO audio fetch, NO
- *    decode, NO music graph (musicState none) — silence is content, not
- *    failure; the canvas/HUD/input session is exactly one.
+ * 2. THE DESCENT + CLASSIC + START: run starts with the wired Zenith
+ *    graph (buffer ≈ 127.71) — exactly one Zenith fetch.
  * 3. ☰ MENU pauses; RESUME continues; ESC → CHECKPOINT live-switch (no
- *    music change possible); MAIN MENU disposes to zero residue.
+ *    music restart/seek on toggle); MAIN MENU disposes to zero residue.
  * 4. GRAVITY RIFT + CHECKPOINT + START: Gravity Lessons plays with a
  *    wired graph; cp-forge activates; death restores it with a music
  *    re-seek to the checkpoint anchor; MAIN MENU stops the music.
  * 5. Repeat switch DESCENT → menu → RIFT → menu → DESCENT: exactly one
  *    session alive at a time, fingerprints stable per level, music
- *    none → playing → none → none (never two transports).
+ *    Zenith → Lessons → Zenith (never two transports).
  * 6. Zero console/page errors.
  *
  * Usage: QA_URL=http://localhost:5174/ node scripts/browser-qa-m942.mjs
@@ -95,12 +99,12 @@ log(
   JSON.stringify(menu),
 );
 
-// --- 2. THE DESCENT + CLASSIC + START: silence is content. ---
-const audioBefore = audioRequests.length;
+// --- 2. THE DESCENT + CLASSIC + START: Zenith plays, wired graph. ---
 await page.locator('.m94-card', { hasText: 'ORIGINAL M8.6' }).click();
 await page.locator('.m94-modes').getByRole('button', { name: 'CLASSIC' }).click();
 await page.getByRole('button', { name: 'START' }).click();
 await waitGame();
+await page.waitForFunction(() => window.__gd3d.musicState() === 'playing', null, { timeout: 60000 });
 await page.waitForFunction(() => window.__gd3d.playerPosition().z > -3, null, { timeout: 30000 });
 await sleep(page, 800);
 const descent = await ev(page, () => ({
@@ -109,44 +113,52 @@ const descent = await ev(page, () => ({
   mode: window.__gd3d.runMode(),
   kind: window.__gd3d.attemptKind(),
   music: window.__gd3d.musicState(),
-  ctx: window.__gd3d.musicContextState(),
+  created: window.__gd3d.musicSourceCreated(),
+  source: window.__gd3d.musicSourceConnected(),
+  gain: window.__gd3d.musicGainConnected(),
   ready: window.__gd3d.musicGraphReady(),
+  buffer: window.__gd3d.musicBufferDuration(),
   fp: window.__gd3d.replayLevelFingerprint(),
 }));
 const descentFp = descent.fp;
 const descentShape = await sessionShape();
+const zenithFetches = audioRequests.filter((u) => u.includes('Zenith_of_the_Path')).length;
 log(
-  'm942 THE DESCENT CLASSIC starts with zero audio (no fetch, no graph)',
+  'm942 THE DESCENT CLASSIC starts with the wired Zenith graph (exactly one fetch)',
   descent.level === 'the-descent' && descent.name === 'THE DESCENT' &&
     descent.mode === 'classic' && descent.kind === 'classic' &&
-    descent.music === 'none' && descent.ctx === 'none' && descent.ready === false &&
-    audioRequests.length === audioBefore &&
+    descent.music === 'playing' && descent.created && descent.source &&
+    descent.gain && descent.ready &&
+    Math.abs(descent.buffer - 127.71) < 0.6 && zenithFetches === 1 &&
     descentShape.canvases === 1 && descentShape.huds === 1,
-  JSON.stringify({ ...descent, fp: descentFp.slice(0, 12), audio: audioRequests.length - audioBefore, ...descentShape }),
+  JSON.stringify({ ...descent, fp: descentFp.slice(0, 12), zenithFetches, ...descentShape }),
 );
 
-// --- 3. Pause / live-switch / MAIN MENU on the trackless level. ---
+// --- 3. Pause / live-switch / MAIN MENU on the Zenith level. ---
 await page.locator('.hud-menu-button').click();
 await pauseOpen();
 await page.locator('.m94-pause-menu').getByRole('button', { name: 'RESUME' }).click();
 await page.waitForFunction(() => window.__gd3d.playerPosition().z > -3, null, { timeout: 30000 });
 await page.keyboard.press('Escape');
 await pauseOpen();
+const targetBeforeSwitch = await ev(page, () => window.__gd3d.musicTargetTime());
 await page.locator('.m94-pause-menu').getByRole('button', { name: 'CHECKPOINT' }).click();
 const descentSwitched = await ev(page, () => ({
   mode: window.__gd3d.runMode(),
   kind: window.__gd3d.attemptKind(),
   visible: window.__gd3d.checkpointsVisible(),
   music: window.__gd3d.musicState(),
+  target: window.__gd3d.musicTargetTime(),
 }));
 await page.locator('.m94-pause-menu').getByRole('button', { name: 'RESUME' }).click();
 await page.waitForFunction(() => window.__gd3d.playerPosition().z > -3, null, { timeout: 30000 });
 log(
-  'm942 trackless live-switch taints practice with crystals, still no audio',
+  'm942 live-switch taints practice with crystals, music untouched by the toggle',
   descentSwitched.mode === 'checkpoint' && descentSwitched.kind === 'practice' &&
-    descentSwitched.visible === true && descentSwitched.music === 'none' &&
-    audioRequests.length === audioBefore,
-  JSON.stringify({ ...descentSwitched, audio: audioRequests.length - audioBefore }),
+    descentSwitched.visible === true &&
+    (descentSwitched.music === 'playing' || descentSwitched.music === 'paused') &&
+    Math.abs(descentSwitched.target - targetBeforeSwitch) < 1.0,
+  JSON.stringify(descentSwitched),
 );
 await page.keyboard.press('Escape');
 await pauseOpen();
@@ -159,10 +171,9 @@ const disposed1 = await ev(page, () => ({
   hudGone: document.querySelector('.hud') === null,
 }));
 log(
-  'm942 MAIN MENU after THE DESCENT leaves zero residue and zero audio',
-  disposed1.cards === 2 && disposed1.canvases === 0 && disposed1.hudGone === true &&
-    audioRequests.length === audioBefore,
-  JSON.stringify({ ...disposed1, audio: audioRequests.length - audioBefore }),
+  'm942 MAIN MENU after THE DESCENT leaves zero residue',
+  disposed1.cards === 2 && disposed1.canvases === 0 && disposed1.hudGone === true,
+  JSON.stringify(disposed1),
 );
 
 // --- 4. GRAVITY RIFT + CHECKPOINT + START: music plays, checkpoint seeks. ---
@@ -224,11 +235,13 @@ log(
 );
 
 // --- 5. Repeat switch: sessions stay single, fingerprints stable. ---
-// GRAVITY RIFT fetched its track exactly once; THE DESCENT must add none.
-const audioAfterRift = audioRequests.length;
+// Each level fetched its track exactly once; returning to a level must
+// not fetch again nor leave two transports.
+const zenithAfterRift = audioRequests.filter((u) => u.includes('Zenith_of_the_Path')).length;
 await page.locator('.m94-card', { hasText: 'ORIGINAL M8.6' }).click();
 await page.getByRole('button', { name: 'START' }).click();
 await waitGame();
+await page.waitForFunction(() => window.__gd3d.musicState() === 'playing', null, { timeout: 60000 });
 await page.waitForFunction(() => window.__gd3d.playerPosition().z > -3, null, { timeout: 30000 });
 const backDescent = await ev(page, () => ({
   level: window.__gd3d.levelId(),
@@ -241,11 +254,11 @@ await pauseOpen();
 await page.locator('.m94-pause-menu').getByRole('button', { name: 'MAIN MENU' }).click();
 await waitMenu();
 log(
-  'm942 repeat switch keeps one session, stable fingerprint, no leaked soundtrack',
-  backDescent.level === 'the-descent' && backDescent.music === 'none' &&
+  'm942 repeat switch keeps one session, stable fingerprint, Zenith refetched once per session',
+  backDescent.level === 'the-descent' && backDescent.music === 'playing' &&
     backDescent.fp === descentFp &&
     backShape.canvases === 1 && backShape.huds === 1 && backShape.pauseMenus === 1 &&
-    audioAfterRift === audioBefore + 1 && audioRequests.length === audioAfterRift,
+    audioRequests.filter((u) => u.includes('Zenith_of_the_Path')).length === zenithAfterRift + 1,
   JSON.stringify({ ...backDescent, fp: backDescent.fp.slice(0, 12), ...backShape, audio: audioRequests }),
 );
 

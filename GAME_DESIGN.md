@@ -248,16 +248,22 @@ card GRAVITY RIFT; `?level=<id>` enters a level directly,
   tower gates, bridge city, exit weave), all modes/gravities, Chompers,
   directed lava, moving ferries, full 9-act arc. Built for the track
   Gravity Lessons (see §7.9).
-- **THE DESCENT** (`the-descent`, M9.4.2 original): the EXACT M8.6
-  production route — the density-verticality redesign (finish z=1790,
+- **THE DESCENT** (`the-descent`, M9.5): the M8.6 production route with
+  the M9.5 surgical density polish — 3 added Chomper encounters (deck /
+  lower / shaft lunges), a LOW-road under-deck lane weave, upper + lower
+  maze doors, foundry-exit doors replacing one hop (finish z=1790,
   ~123 s, Hard), before the M9/M9.1 transformation into the modern
   level. M9.4 froze the M9.2 snapshot here by mistake; M9.4.1 stored
   the M8.5 simple route by mistake; M9.4.2 restored the true M8.6
   content from Git history with 8 checkpoint gems authored for its own
   geometry. Independent level data (never a mutation of the modern
-  route). NO music — the level declares no track and starts
-  immediately from the START gesture; checkpoint restores re-seek
-  nothing. "No music" is intentional content, never an audio failure.
+  route). Plays **Zenith of the Path** (120 BPM, offset 0 — the attempt
+  starts at the first track sample; the finish lands just before the
+  finale's final peak and cuts; checkpoint restores re-seek to the
+  restored sim time). Musical synchronization is deliberately MODERATE:
+  the level keeps its M8.6 timing (no retime); only the new edits and a
+  few structural moments sit near strong musical moments — gameplay
+  readability always wins over beat purity.
 - **Test Level 01** (`controller-test-01`): the controller/gravity/
   interaction demo track with the M3 gravity section and the M4
   interaction section.

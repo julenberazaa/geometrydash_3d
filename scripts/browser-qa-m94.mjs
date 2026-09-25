@@ -4,9 +4,9 @@
  *
  * A. Bare URL shows the level-select menu (2 cards, GRAVITY RIFT preselected,
  *    CLASSIC preselected, no auto-start).
- * B. THE DESCENT + CHECKPOINT + START: session starts with NO music graph
- *    (trackless level — musicState none, runMode checkpoint, attemptKind
- *    practice, crystals visible).
+ * B. THE DESCENT + CHECKPOINT + START: session starts with the wired
+ *    Zenith graph (M9.5 — musicState playing, runMode checkpoint,
+ *    attemptKind practice, crystals visible).
  * C. M9.3 spot: island-contact pulse fires live after the start landing.
  * D. cp-forge activates 1/8 via the crystal volume.
  * E. Pause menu opens (P): overlay visible, sim + music frozen.
@@ -112,13 +112,14 @@ let descentFingerprint = null;
   );
   await page.screenshot({ path: 'qa/screenshots/m94-menu.png' });
 
-  // --- B. THE DESCENT + CHECKPOINT + START (no music on this level). ---
+  // --- B. THE DESCENT + CHECKPOINT + START (Zenith plays on this level). ---
   await page.locator('.m94-card', { hasText: 'ORIGINAL M8.6' }).click();
   await page.locator('.m94-mode-checkpoint').click();
   await page.getByRole('button', { name: 'START' }).click();
   await waitGame(page);
-  // Trackless level: no music state, no graph — the run starts immediately.
-  await page.waitForFunction(() => window.__gd3d.musicState() === 'none', null, { timeout: 30000 });
+  // M9.5: THE DESCENT declares Zenith of the Path — the gesture starts
+  // the run with a wired source→gain→destination graph (buffer ≈127.71).
+  await page.waitForFunction(() => window.__gd3d.musicState() === 'playing', null, { timeout: 60000 });
   await sleep(page, 800);
   const g = await graph(page);
   const started = await ev(page, () => ({
@@ -128,12 +129,14 @@ let descentFingerprint = null;
     visible: window.__gd3d.checkpointsVisible(),
     count: window.__gd3d.checkpointCount(),
     fp: window.__gd3d.replayLevelFingerprint(),
+    buffer: window.__gd3d.musicBufferDuration(),
   }));
   descentFingerprint = started.fp;
-  const graphAbsent =
-    g.created === false && g.source === false && g.gain === false &&
-    g.ready === false && g.state === 'none';
-  log('m94 THE DESCENT CHECKPOINT starts with no music graph', graphAbsent, JSON.stringify(g));
+  const graphWired =
+    g.created === true && g.source === true && g.gain === true &&
+    g.ready === true && g.state === 'playing' &&
+    Math.abs(started.buffer - 127.71) < 0.6;
+  log('m94 THE DESCENT CHECKPOINT starts with the wired Zenith graph', graphWired, JSON.stringify({ ...g, buffer: started.buffer }));
   log(
     'm94 session identity (level/mode/taint/crystals)',
     started.level === 'the-descent' && started.mode === 'checkpoint' &&
@@ -186,7 +189,7 @@ let descentFingerprint = null;
   );
   await page.screenshot({ path: 'qa/screenshots/m94-pause-menu.png' });
 
-  // --- F. Pause-menu switch to CLASSIC: taint banner, crystals hide, still no music. ---
+  // --- F. Pause-menu switch to CLASSIC: taint banner, crystals hide, music target untouched. ---
   const targetBefore = await ev(page, () => window.__gd3d.musicTargetTime());
   await page.locator('.m94-pause-menu').getByRole('button', { name: 'CLASSIC' }).click();
   const switched = await ev(page, () => ({
@@ -197,11 +200,11 @@ let descentFingerprint = null;
     target: window.__gd3d.musicTargetTime(),
   }));
   log(
-    'm94 CLASSIC switch taints (practice banner, crystals hidden, no music transport)',
+    'm94 CLASSIC switch taints (practice banner, crystals hidden, music target preserved)',
     switched.mode === 'classic' && switched.kind === 'practice' &&
       switched.visible === false &&
       (switched.badge ?? '').includes('PRACTICE RUN') &&
-      switched.target === -1 && targetBefore === -1,
+      switched.target === targetBefore,
     JSON.stringify(switched),
   );
 
@@ -440,7 +443,7 @@ let evolvedFingerprint = null;
   await page.close();
 }
 
-// --- N. Direct `?level=` + `?mode=` entry contract (trackless level). ---
+// --- N. Direct `?level=` + `?mode=` entry contract (Zenith level). ---
 {
   const page = await freshPage();
   await page.goto(`${URL}?level=the-descent&mode=checkpoint`, { waitUntil: 'load', timeout: 60000 });
@@ -450,12 +453,12 @@ let evolvedFingerprint = null;
     level: window.__gd3d.levelId(),
   }));
   await page.keyboard.press('Space');
-  // No music on THE DESCENT: the gesture starts the run immediately with
-  // musicState none (never 'playing', never a gate fetch).
+  // M9.5: THE DESCENT declares Zenith — the gesture starts the run with
+  // musicState playing (fail-loud gate still applies on audio failure).
   await page.waitForFunction(
-    () => window.__gd3d.awaitingStart() === false && window.__gd3d.musicState() === 'none',
+    () => window.__gd3d.awaitingStart() === false && window.__gd3d.musicState() === 'playing',
     null,
-    { timeout: 30000 },
+    { timeout: 60000 },
   );
   const entered = await ev(page, () => ({
     mode: window.__gd3d.runMode(),
@@ -463,9 +466,9 @@ let evolvedFingerprint = null;
     music: window.__gd3d.musicState(),
   }));
   log(
-    'm94 ?level=+?mode= enters directly in the preselected mode (no music)',
+    'm94 ?level=+?mode= enters directly in the preselected mode (Zenith playing)',
     gated.awaiting === true && gated.level === 'the-descent' &&
-      entered.mode === 'checkpoint' && entered.kind === 'practice' && entered.music === 'none',
+      entered.mode === 'checkpoint' && entered.kind === 'practice' && entered.music === 'playing',
     JSON.stringify({ ...gated, ...entered }),
   );
   await page.close();

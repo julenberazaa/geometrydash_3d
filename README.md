@@ -183,11 +183,12 @@ Individual: `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`.
 | `F1` / `F2` / `F3` | Debug stats / collider wireframes / player hitbox | Same |
 | `F4` | Replay the last completed attempt (input ignored during playback; clean classic runs only — practice attempts are never official) | Same |
 
-Two production levels (M9.4.2, `feature/m9-4-2-m86-descent-gravity-rift`
-— engineering complete, human M8.6-descent + gravity-rift gate OPEN): THE
-DESCENT (`the-descent`, the EXACT M8.6 density-verticality route from
-e5b0d86, ~123 s Hard, NO music — M9.4.2 corrected M9.4.1's mistaken M8.5
-content) + GRAVITY RIFT (`production-showcase-01`, unchanged internal id,
+Two production levels (M9.5, `feature/m9-5-descent-zenith-density-polish`
+— engineering complete, human descent-density + zenith-music gate OPEN):
+THE DESCENT (`the-descent`, the M8.6 density-verticality foundation with
+the M9.5 surgical polish — 3 added Chompers, LOW weave, maze doors,
+foundry doors — ~123 s Hard, ♪ Zenith of the Path with moderate music
+sync) + GRAVITY RIFT (`production-showcase-01`, unchanged internal id,
 M9.3 route with Gravity Lessons, default card) behind one SELECT LEVEL →
 SELECT MODE → START screen; ESC/P or the ☰ MENU button opens the pause
 menu, MAIN MENU disposes the session and returns to the selector for a
@@ -195,7 +196,7 @@ fresh map/mode START; checkpoint mode toggles live from the pause menu
 with a practice-taint contract (an attempt that ever armed checkpoints
 stays PRACTICE until a full restart), per-level ReplayV1 isolation, and
 full session disposal on return-to-menu (spec:
-`specs/milestones/M9_4_2_M86_DESCENT_GRAVITY_RIFT.md`).
+`specs/milestones/M9_5_DESCENT_ZENITH_DENSITY_POLISH.md`).
 
 Interactions (M4): yellow pads launch on contact (no input); yellow orbs
 grant a mid-air jump on a Space/arrow press inside their window; blue orbs

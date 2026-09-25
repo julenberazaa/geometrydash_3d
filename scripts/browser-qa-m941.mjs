@@ -4,8 +4,8 @@
  * MENU is reachable from any active run.
  *
  * 1. Bare URL shows MAIN MENU (exactly two production cards).
- * 2. THE DESCENT (M8.6) + CLASSIC + START → the historical level
- *    id/fingerprint, with NO music.
+ * 2. THE DESCENT (M9.5) + CLASSIC + START → the polished level
+ *    id/fingerprint, with Zenith playing.
  * 3. ☰ MENU button opens the pause menu; RESUME continues.
  * 4. ESC opens the pause menu; switch to CHECKPOINT → tainted practice,
  *    crystals visible; resume.
@@ -14,7 +14,7 @@
  * 7. Activate cp-forge → death restores it (with music re-seek).
  * 8. ESC → switch CLASSIC → resume + die → origin.
  * 9. ESC → MAIN MENU → THE DESCENT + START again → descent fingerprint,
- *    single canvas/HUD/pause-menu, still no audio (no duplicates).
+ *    single canvas/HUD/pause-menu, Zenith rewired (no duplicates).
  * 10. Zero console/page errors.
  *
  * Usage: QA_URL=http://localhost:5174/ node scripts/browser-qa-m941.mjs
@@ -85,12 +85,12 @@ log(
   JSON.stringify(menu),
 );
 
-// --- 2. THE DESCENT (M8.6) + CLASSIC + START — no music on this level. ---
+// --- 2. THE DESCENT (M9.5) + CLASSIC + START — Zenith plays on this level. ---
 await page.locator('.m94-card', { hasText: 'ORIGINAL M8.6' }).click();
 await page.locator('.m94-modes').getByRole('button', { name: 'CLASSIC' }).click();
 await page.getByRole('button', { name: 'START' }).click();
 await waitGame();
-await page.waitForFunction(() => window.__gd3d.musicState() === 'none', null, { timeout: 30000 });
+await page.waitForFunction(() => window.__gd3d.musicState() === 'playing', null, { timeout: 60000 });
 await sleep(page, 800);
 const original = await ev(page, () => ({
   level: window.__gd3d.levelId(),
@@ -100,17 +100,18 @@ const original = await ev(page, () => ({
   visible: window.__gd3d.checkpointsVisible(),
   count: window.__gd3d.checkpointCount(),
   music: window.__gd3d.musicState(),
+  ready: window.__gd3d.musicGraphReady(),
   finishZ: window.__gd3d.playerPosition().z,
   fp: window.__gd3d.replayLevelFingerprint(),
   canvases: document.querySelectorAll('canvas').length,
 }));
 const originalFp = original.fp;
 log(
-  'm941 M8.6 DESCENT CLASSIC starts the historical level with no music',
+  'm941 M9.5 DESCENT CLASSIC starts the polished level with Zenith playing',
   original.level === 'the-descent' && original.name === 'THE DESCENT' &&
     original.mode === 'classic' && original.kind === 'classic' &&
     original.visible === false && original.count === 8 && original.canvases === 1 &&
-    original.music === 'none',
+    original.music === 'playing' && original.ready === true,
   JSON.stringify({ ...original, fp: originalFp.slice(0, 12) }),
 );
 
@@ -209,7 +210,7 @@ log(
   JSON.stringify(backAtOrigin),
 );
 
-// --- 9. ESC → MAIN MENU → THE DESCENT again: same fingerprint, no duplicates, still no audio. ---
+// --- 9. ESC → MAIN MENU → THE DESCENT again: same fingerprint, no duplicates, Zenith restarts. ---
 await page.keyboard.press('Escape');
 await pauseOpen();
 await page.locator('.m94-pause-menu').getByRole('button', { name: 'MAIN MENU' }).click();
@@ -218,7 +219,7 @@ await page.locator('.m94-card', { hasText: 'ORIGINAL M8.6' }).click();
 await page.locator('.m94-modes').getByRole('button', { name: 'CLASSIC' }).click();
 await page.getByRole('button', { name: 'START' }).click();
 await waitGame();
-await page.waitForFunction(() => window.__gd3d.musicState() === 'none', null, { timeout: 30000 });
+await page.waitForFunction(() => window.__gd3d.musicState() === 'playing', null, { timeout: 60000 });
 await sleep(page, 800);
 const again = await ev(page, () => ({
   level: window.__gd3d.levelId(),
@@ -235,12 +236,12 @@ const again = await ev(page, () => ({
     ready: window.__gd3d.musicGraphReady(),
   },
 }));
-const graphAbsent = !again.graph.created && !again.graph.source && !again.graph.gain && !again.graph.ready;
+const graphWired = again.graph.created && again.graph.source && again.graph.gain && again.graph.ready;
 log(
-  'm941 DESCENT restart is identical with no audio and no duplicate session residue',
+  'm941 DESCENT restart is identical with Zenith rewired and no duplicate session residue',
   again.level === 'the-descent' && again.fp === originalFp &&
     again.canvases === 1 && again.huds === 1 && again.pauseMenus === 1 &&
-    again.menuButtons === 1 && graphAbsent && again.music === 'none',
+    again.menuButtons === 1 && graphWired && again.music === 'playing',
   JSON.stringify({ ...again, fp: again.fp.slice(0, 12) }),
 );
 

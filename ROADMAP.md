@@ -814,6 +814,62 @@ mechanics, tuning, visuals, audio graph, camera, replay untouched):
   music) and GRAVITY RIFT as the harder modern evolution, plus the
   menu/switch/audio flow with sound on.
 
+## M9.5 — THE DESCENT Zenith density polish: ENGINEERING COMPLETE / HUMAN DESCENT-DENSITY + ZENITH-MUSIC GATE OPEN (feature/m9-5-descent-zenith-density-polish, NOT merged)
+
+Human verdict on the M8.6 level: good, but the path is sometimes boring
+and too straight. Surgical polish (NOT a rebuild — the M8.6 foundation,
+acts, portals, speeds, checkpoints, camera, Ship/Spider mechanics all
+preserved; the 14797-tick / 123.31 s anchor holds tick-exact both
+variants):
+
+- Straight-route audit (measured, both variants, per-40 u bins): the
+  120 u LOW-road/MID-deck run (~8.6 s, 0 primary lane edges), the maze
+  decks (~8.6 s, ~1 lane), the foundry exit (0 lanes) and the spire
+  exit (0 lanes). Ship/Spider/teleports/320–360/opening deliberately
+  untouched (documented reasons).
+- 6 local edits in 4 zones: Chomper A over the MID deck (trigger 283,
+  timed jump, telegraph into the drop-A entry) + LOW under-deck
+  lane-only weave (244/254 — jumps head-bump, so taps are mandatory);
+  upper maze doors (599/610, unjumpable, CENTER→LEFT→CENTER composing
+  with the 597/609/623 jumps) + lower door (600) + lower Chomper
+  (trigger 601, the 606.5 jump load-bearing); foundry doors (1093/1104
+  replacing the 1100 hop, recentered for the ship ring); shaft Chomper
+  (trigger 871, the pre-shaft jump load-bearing). Chompers 5→8 (cap),
+  hazards 77→84, solids 175→178.
+- Before→after (primary / alternate): lanes 62→68 / 70→78, reversals
+  44→48 / 43→49, Σ|ΔX| 197.8→213.4 / 209.5→234.9, jumps 97→98 / 93→93,
+  supports unchanged, max gaps unchanged, duration identical.
+  Difficulty guardrails held (single-tap weaves, 0.75 u door margins
+  matching the maze precedent, no Spider/Ship hardening).
+- Music: `Zenith_of_the_Path.mp3` (127.713 s, 44.1 kHz stereo 192 kbps,
+  measured 120 BPM grid offset +0.03 s, 10-section map) ships at
+  `public/audio/` (byte-identical copy); THE DESCENT declares it
+  (offset 0) through the existing MusicDirector architecture
+  (source→gain→destination, gesture gate, pause/resume, checkpoint
+  seek, finish cut — the 4.4 s tail never plays). New `zenithTrack.ts`
+  (Gravity file untouched) + per-track pulse grid with a Descent
+  restraint scale (0.55 vs Rift 1.0, FP-exact at 1.0). Moderate sync:
+  new-lunge errors −130/+87/−30 ms, majors median 67 ms max 147 ms
+  (pinned), finish −222 ms reported (cut, not forced).
+- Proof: `npm run verify` green (698 tests: +7 zenithTrack, +2 Descent
+  alignment, re-pinned Descent census/metrics); both references finish
+  0 deaths + replay VERIFIED with all 8 Chompers spent; 8/8 checkpoints
+  both variants; camera sweeps green; `browser-qa-m95.mjs` 14/14 green
+  (Zenith graph + pulse, in-page tape-injection finish REPLAY
+  VERIFIED, new-zone probes/screenshots, pause/switch/disposal,
+  Descent + Rift checkpoint seeks, zero errors) with
+  `qa/screenshots/m95-*` evidence; migrated `m94` 25/25, `m941` 11/11,
+  `m942` 10/10, `m92` 16/16 green; `m86` staged sections green (its
+  full live-input run is SwiftShader-flaky — proven by a pristine-HEAD
+  control failing the same way; deterministic in-page proof is the m95
+  tape injection). Historical M8.6 replays of THE DESCENT correctly go
+  stale (gameplay changed); GRAVITY RIFT fingerprint/route/music
+  unchanged (all its gates green).
+- Spec: `specs/milestones/M9_5_DESCENT_ZENITH_DENSITY_POLISH.md`.
+  Automation proves mechanics, never fun — do NOT mark PASS until the
+  human plays THE DESCENT (fewer boring stretches? monsters fair?
+  Zenith connected?) with sound on.
+
 ## M9 — Gravity Lessons rhythm polish: ENGINEERING COMPLETE / HUMAN MUSIC-RHYTHM GAMEPLAY GATE OPEN (feature/m9-gravity-lessons-rhythm-polish, NOT merged)
 
 Human M8.6 verdict: POSITIVE after the camera corrective pass (level

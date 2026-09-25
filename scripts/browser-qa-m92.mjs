@@ -19,8 +19,8 @@
  *    mode, speed); music re-seeks to the checkpoint time (NOT 0); camera
  *    snapped near the player; cp-skybridge latest-wins; R restarts at the
  *    checkpoint; Shift+R returns to the origin with progress cleared.
- *    (THE DESCENT has no music since M9.4.2 — its no-audio checkpoint
- *    proof lives in browser-qa-m942.mjs.)
+  *    (THE DESCENT plays Zenith of the Path since M9.5 — its checkpoint
+  *    + seek proof lives in browser-qa-m95.mjs.)
  * E. ?music=off matrix: menu still gates audio; CHECKPOINT START starts
  *    silent checkpoint mode; default START starts silent classic.
  * F. FAIL-LOUD preserved via direct `?level=` entry: blocked asset ->
