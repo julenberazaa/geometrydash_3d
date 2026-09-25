@@ -2,21 +2,27 @@
  * M9.2 browser gate (dev tool, not shipped) — audio graph + checkpoint
  * practice mode proof with a real browser (system Chrome).
  *
+ * M9.4: the bare URL shows the LEVEL SELECT menu (2 cards + mode select +
+ * START); the tick-0 gate assertions below go through the menu (select
+ * THE DESCENT, pick the mode, START). `?level=` still enters directly
+ * with the legacy press-to-start overlay (section F proves it).
+ *
  * A. Asset: GET /audio/Gravity_Lessons.mp3 -> HTTP 200 + expected bytes.
- * B. Selector: bare URL shows THE DESCENT mode selector (CLASSIC RUN +
- *    CHECKPOINT RUN buttons); the gate holds the sim at tick 0.
- * C. CLASSIC RUN click: transport live + STRUCTURAL GRAPH assertion
- *    (sourceCreated + sourceConnected + gainConnected + effectiveGain > 0
- *    + graphReady) — never again TRANSPORT PASS with no output path.
- *    runMode classic, music target/actual advance with the sim clock.
- * D. CHECKPOINT RUN click: runMode checkpoint; teleport to cp-forge ->
+ * B. Menu: bare URL shows the selector (THE DESCENT + EVOLVED cards,
+ *    EVOLVED/CLASSIC preselected, no auto-start).
+ * C. Menu CLASSIC START on THE DESCENT: transport live + STRUCTURAL GRAPH
+ *    assertion (sourceCreated + sourceConnected + gainConnected +
+ *    effectiveGain > 0 + graphReady) — never again TRANSPORT PASS with no
+ *    output path. runMode classic, music target/actual advance.
+ * D. Menu CHECKPOINT START: runMode checkpoint; teleport to cp-forge ->
  *    activates 1/8; kill -> auto-respawn AT cp-forge (z, mode, speed);
  *    music re-seeks to the checkpoint time (NOT 0); camera snapped near
  *    the player; cp-skybridge latest-wins; R restarts at the checkpoint;
  *    Shift+R returns to the origin with progress cleared.
- * E. ?music=off matrix: selector still gates; CHECKPOINT click starts
- *    silent checkpoint mode; bare click starts silent classic.
- * F. FAIL-LOUD preserved: blocked asset -> gate latches, sim frozen.
+ * E. ?music=off matrix: menu still gates audio; CHECKPOINT START starts
+ *    silent checkpoint mode; default START starts silent classic.
+ * F. FAIL-LOUD preserved via direct `?level=` entry: blocked asset ->
+ *    gate latches, sim frozen.
  * G. Zero console/page errors on every page except the expected blocked
  *    mp3 noise on the abort page.
  *
@@ -77,23 +83,26 @@ const graph = (p) => ev(p, () => ({
   });
   log('m92 asset HTTP 200 + byte size', asset.status === 200 && asset.bytes === EXPECTED_BYTES, JSON.stringify(asset));
 
-  // --- B. Selector gate holds at tick 0. ---
-  const gate = await ev(page, () => ({
-    awaiting: window.__gd3d.awaitingStart(),
-    z: window.__gd3d.playerPosition().z,
-    checkpoints: window.__gd3d.checkpointCount(),
-    classicVisible: document.querySelector('.hud-mode-button')?.offsetParent !== null,
-    buttons: document.querySelectorAll('.hud-mode-button').length,
+  // --- B. Menu selector on the bare URL (no auto-start). ---
+  const menu = await ev(page, () => ({
+    screen: window.__gd3d.screen(),
+    cards: document.querySelectorAll('.m94-card').length,
+    selectedCard: document.querySelector('.m94-card.m94-selected')?.dataset.levelId ?? null,
+    titles: [...document.querySelectorAll('.m94-card-title')].map((e) => e.textContent),
   }));
   log(
-    'm92 mode selector holds at tick 0',
-    gate.awaiting === true && Math.abs(gate.z + 4) < 0.01 && gate.checkpoints === 8 && gate.buttons === 2,
-    JSON.stringify(gate),
+    'm92 menu selector holds before start',
+    menu.screen === 'menu' && menu.cards === 2 &&
+      menu.selectedCard === 'production-showcase-01' &&
+      menu.titles.includes('THE DESCENT') && menu.titles.includes('THE DESCENT — EVOLVED'),
+    JSON.stringify(menu),
   );
   await page.screenshot({ path: 'qa/screenshots/m92-selector.png' });
 
-  // --- C. CLASSIC RUN: transport + structural graph assertion. ---
-  await page.getByRole('button', { name: 'CLASSIC RUN' }).click();
+  // --- C. Menu CLASSIC START on THE DESCENT: transport + structural graph. ---
+  await page.locator('.m94-card', { hasText: 'Original production route' }).click();
+  await page.getByRole('button', { name: 'START' }).click();
+  await page.waitForFunction(() => window.__gd3d.screen() === 'game', null, { timeout: 60000 });
   await page.waitForFunction(() => window.__gd3d.musicState() === 'playing', null, { timeout: 60000 });
   await sleep(page, 500);
   const g = await graph(page);
@@ -122,8 +131,11 @@ const graph = (p) => ev(p, () => ({
   page.on('console', (msg) => { if (msg.type() === 'error') mainConsoleErrors.push(msg.text()); });
   page.on('pageerror', (err) => mainPageErrors.push(String(err)));
   await page.goto(URL, { waitUntil: 'load', timeout: 60000 });
-  await page.waitForFunction(() => window.__gd3d !== undefined, null, { timeout: 60000 });
-  await page.getByRole('button', { name: 'CHECKPOINT RUN' }).click();
+  await page.waitForFunction(() => window.__gd3d !== undefined && window.__gd3d.screen() === 'menu', null, { timeout: 60000 });
+  await page.locator('.m94-card', { hasText: 'Original production route' }).click();
+  await page.locator('.m94-mode-checkpoint').click();
+  await page.getByRole('button', { name: 'START' }).click();
+  await page.waitForFunction(() => window.__gd3d.screen() === 'game', null, { timeout: 60000 });
   await page.waitForFunction(() => window.__gd3d.musicState() === 'playing', null, { timeout: 60000 });
   const started = await ev(page, () => ({
     mode: window.__gd3d.runMode(),
@@ -133,8 +145,15 @@ const graph = (p) => ev(p, () => ({
 
   // Step just inside cp-forge (spikes at 160/164 kill idle runners, so
   // land past them at z=166 and walk into the volume entry at ~167.5).
-  await ev(page, () => window.__gd3d.debugTeleport(0, 0.55, 166));
-  await page.waitForFunction(() => window.__gd3d.activeCheckpointId() === 'cp-forge', null, { timeout: 30000 });
+  // Place only while still at the origin: re-placing every poll would yank
+  // the runner back and freeze progress (M9.4 lesson).
+  await page.waitForFunction(() => {
+    if (window.__gd3d.activeCheckpointId() === 'cp-forge') return true;
+    if (window.__gd3d.status() === 'running' && window.__gd3d.playerPosition().z < 160) {
+      window.__gd3d.debugTeleport(0, 0.55, 166);
+    }
+    return false;
+  }, null, { timeout: 60000 });
   const cp1 = await ev(page, () => ({
     active: window.__gd3d.activeCheckpointId(),
     progress: window.__gd3d.checkpointProgress(),
@@ -182,8 +201,14 @@ const graph = (p) => ev(p, () => ({
   await page.keyboard.press('KeyP');
 
   // Latest-wins: jump to cp-skybridge, die, respawn there instead.
-  await ev(page, () => window.__gd3d.debugTeleport(3.7, 0.55, 392));
-  await page.waitForFunction(() => window.__gd3d.activeCheckpointId() === 'cp-skybridge', null, { timeout: 30000 });
+  // (Guarded placement: only while far away, so the runner walks in.)
+  await page.waitForFunction(() => {
+    if (window.__gd3d.activeCheckpointId() === 'cp-skybridge') return true;
+    if (window.__gd3d.status() === 'running' && window.__gd3d.playerPosition().z < 388) {
+      window.__gd3d.debugTeleport(3.7, 0.55, 392);
+    }
+    return false;
+  }, null, { timeout: 60000 });
   await ev(page, () => {
     const p = window.__gd3d.playerPosition();
     window.__gd3d.debugTeleport(p.x, -100, p.z);
@@ -232,19 +257,21 @@ const graph = (p) => ev(p, () => ({
   await page.close();
 }
 
-// --- E. ?music=off matrix: selector gates, clicks start silent. ---
+// --- E. ?music=off matrix: menu gates audio, START begins silent runs. ---
 {
   const page = await browser.newPage();
   page.on('console', (msg) => { if (msg.type() === 'error') mainConsoleErrors.push(msg.text()); });
   page.on('pageerror', (err) => mainPageErrors.push(String(err)));
   await page.goto(`${URL}?music=off`, { waitUntil: 'load', timeout: 60000 });
-  await page.waitForFunction(() => window.__gd3d !== undefined, null, { timeout: 60000 });
+  await page.waitForFunction(() => window.__gd3d !== undefined && window.__gd3d.screen() === 'menu', null, { timeout: 60000 });
   const gated = await ev(page, () => ({
-    awaiting: window.__gd3d.awaitingStart(),
-    buttons: document.querySelectorAll('.hud-mode-button').length,
+    cards: document.querySelectorAll('.m94-card').length,
   }));
-  log('m92 ?music=off still gates on the selector', gated.awaiting === true && gated.buttons === 2, JSON.stringify(gated));
-  await page.getByRole('button', { name: 'CHECKPOINT RUN' }).click();
+  log('m92 ?music=off still opens the menu first', gated.cards === 2, JSON.stringify(gated));
+  await page.locator('.m94-card', { hasText: 'Original production route' }).click();
+  await page.locator('.m94-mode-checkpoint').click();
+  await page.getByRole('button', { name: 'START' }).click();
+  await page.waitForFunction(() => window.__gd3d.screen() === 'game', null, { timeout: 60000 });
   await page.waitForFunction(() => window.__gd3d.playerPosition().z > -3, null, { timeout: 30000 });
   const silentCp = await ev(page, () => ({
     awaiting: window.__gd3d.awaitingStart(),
@@ -261,29 +288,31 @@ const graph = (p) => ev(p, () => ({
 
   const page2 = await browser.newPage();
   await page2.goto(`${URL}?music=off`, { waitUntil: 'load', timeout: 60000 });
-  await page2.waitForFunction(() => window.__gd3d !== undefined, null, { timeout: 60000 });
-  // Bare container click (bottom-right corner, far from the mode buttons).
-  await page2.mouse.click(1200, 650);
+  await page2.waitForFunction(() => window.__gd3d !== undefined && window.__gd3d.screen() === 'menu', null, { timeout: 60000 });
+  // Default START (EVOLVED preselected, CLASSIC preselected).
+  await page2.getByRole('button', { name: 'START' }).click();
+  await page2.waitForFunction(() => window.__gd3d.screen() === 'game', null, { timeout: 60000 });
   await page2.waitForFunction(() => window.__gd3d.playerPosition().z > -3, null, { timeout: 30000 });
   const silentClassic = await ev(page2, () => ({
+    level: window.__gd3d.levelId(),
     mode: window.__gd3d.runMode(),
     music: window.__gd3d.musicState(),
   }));
   log(
-    'm92 ?music=off bare click starts silent classic',
-    silentClassic.mode === 'classic' && silentClassic.music === 'none',
+    'm92 ?music=off default START is silent evolved classic',
+    silentClassic.level === 'production-showcase-01' && silentClassic.mode === 'classic' && silentClassic.music === 'none',
     JSON.stringify(silentClassic),
   );
   await page2.close();
 }
 
-// --- F. FAIL-LOUD preserved with the selector present. ---
+// --- F. FAIL-LOUD preserved via direct `?level=` entry. ---
 {
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
   await page.route('**/audio/Gravity_Lessons.mp3', (route) => route.abort('failed'));
-  await page.goto(URL, { waitUntil: 'load', timeout: 60000 });
-  await page.waitForFunction(() => window.__gd3d !== undefined, null, { timeout: 60000 });
+  await page.goto(`${URL}?level=production-showcase-01`, { waitUntil: 'load', timeout: 60000 });
+  await page.waitForFunction(() => window.__gd3d !== undefined && window.__gd3d.screen() === 'game', null, { timeout: 60000 });
   await page.keyboard.press('Space');
   await page.waitForFunction(() => window.__gd3d.startGateFailed() === true, null, { timeout: 30000 });
   const failed = await ev(page, () => ({

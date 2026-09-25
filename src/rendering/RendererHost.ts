@@ -1101,6 +1101,11 @@ export class RendererHost {
     this.checkpointView.group.visible = visible;
   }
 
+  /** M9.4 QA observability: crystal visibility follows the current mode. */
+  public get areCheckpointsVisible(): boolean {
+    return this.checkpointView.group.visible;
+  }
+
   /**
    * Debug-only burst replay (QA photography aid). Re-fires the REAL pooled
    * burst at the recorded death position without touching simulation state.

@@ -183,6 +183,8 @@ declare global {
       lastCheckpointId: () => string | null;
       isCheckpointActivated: (id: string) => boolean;
       checkpointBurstsActive: () => number;
+      /** M9.4 crystal visibility follows the current run mode. */
+      checkpointsVisible: () => boolean;
       /** M9.2 QA-only: arm/disarm checkpoint auto-respawn without the gate. */
       setCheckpointRespawnEnabled: (enabled: boolean) => void;
       /** M9.2 QA-only: full origin restart (Shift+R path). */
@@ -420,6 +422,8 @@ export const publishGameProbes = (game: Game): void => {
     lastCheckpointId: (): string | null => game.gameSimulation.lastCheckpointId,
     isCheckpointActivated: (id: string): boolean => game.gameSimulation.isCheckpointActivated(id),
     checkpointBurstsActive: (): number => game['rendererHost'].checkpointBurstsActive,
+    /** M9.4 crystal visibility follows the current run mode. */
+    checkpointsVisible: (): boolean => game['rendererHost'].areCheckpointsVisible,
     setCheckpointRespawnEnabled: (enabled: boolean): void => {
       game.gameSimulation.setCheckpointRespawnEnabled(enabled);
       game['rendererHost'].setCheckpointsVisible(enabled);
