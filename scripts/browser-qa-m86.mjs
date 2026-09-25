@@ -133,8 +133,8 @@ const fresh = async (url) => {
   await waitReady();
   await page.waitForTimeout(2000);
   // Direct entry holds at the press-to-start gate: one Space gesture
-  // starts the run (THE DESCENT has no music, so it starts immediately;
-  // the edge is flushed by the gate and never becomes gameplay input).
+  // starts the run (M9.5: the gesture also unlocks Zenith audio; the
+  // edge is flushed by the gate and never becomes gameplay input).
   await page.keyboard.press('Space');
   await page.waitForTimeout(500);
   for (let i = 0; i < 8; i++) {
