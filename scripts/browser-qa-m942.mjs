@@ -195,7 +195,7 @@ log(
 await page.waitForFunction(() => {
   if (window.__gd3d.activeCheckpointId() === 'cp-forge') return true;
   if (window.__gd3d.status() === 'running' && window.__gd3d.playerPosition().z < 160) {
-    window.__gd3d.debugTeleport(0, 0.55, 164);
+    window.__gd3d.debugTeleport(0, 0.55, 166);
   }
   return false;
 }, null, { timeout: 60000 });

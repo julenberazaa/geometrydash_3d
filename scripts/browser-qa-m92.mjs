@@ -146,14 +146,14 @@ const graph = (p) => ev(p, () => ({
   log('m92 CHECKPOINT run starts with graph ready', started.mode === 'checkpoint' && started.ready === true, JSON.stringify(started));
 
   // Step just inside cp-forge (GRAVITY RIFT crystal at z=170 on the
-  // forge runway — land at z=164 and walk into the volume entry at
-  // ~167.5).
+  // forge runway — the proven M9.4.1 spot at z=166 walks into the volume
+  // entry at ~167.5; z=164 sits in a gap).
   // Place only while still at the origin: re-placing every poll would yank
   // the runner back and freeze progress (M9.4 lesson).
   await page.waitForFunction(() => {
     if (window.__gd3d.activeCheckpointId() === 'cp-forge') return true;
     if (window.__gd3d.status() === 'running' && window.__gd3d.playerPosition().z < 160) {
-      window.__gd3d.debugTeleport(0, 0.55, 164);
+      window.__gd3d.debugTeleport(0, 0.55, 166);
     }
     return false;
   }, null, { timeout: 60000 });
