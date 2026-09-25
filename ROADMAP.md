@@ -743,6 +743,39 @@ full-suite browser scripts that boot the bare URL (monolith m85 section,
 m86 boot) still assume immediate start + the old display name and need
 menu-flow migration; the systems they cover stay green in-suite.
 
+## M9.4.1 — Original THE DESCENT + main-menu return: ENGINEERING COMPLETE / HUMAN ORIGINAL-LEVEL + MAIN-MENU GATE OPEN (feature/m9-4-1-original-descent-menu-fix, NOT merged)
+
+Corrective pass over M9.4 (no gameplay redesign — M9.3/M9.4 mechanics,
+tuning, visuals, audio, camera, replay untouched):
+
+- M9.4 MISTAKE CORRECTED: `the-descent` was the frozen M9.2 snapshot
+  (post-M8.6 super-difficult content). It is now the REAL pre-M8.6 M8.5
+  production route, byte-extracted from `34db456` (last M8.5 state before
+  the `e5b0d86` M8.6 overhaul) with only id/export/header + M9 music
+  binding (background, NOT beat-mapped) + 8 crystals authored for its own
+  geometry. Diff-vs-history verified.
+- Proof: recovered M8.5 driver finishes tick-exact at the historical
+  13955 anchor (116.29 s) on both variants with 0 deaths on the current
+  engine, replay VERIFIED; metrics match the M8.6 audit (67 action
+  events / 30 jumps / 12 lanes / 0 fast-fall / 32 supports / Σ|ΔY| 206.6
+  / Σ|ΔX| 89.4) against 917 / 88 / 577.0 evolved. Provenance suite pins
+  it (`tests/theDescentClassic.test.ts`, 13 tests).
+- MAIN MENU from any run: `ESC` pauses like `P`; pause button renamed to
+  MAIN MENU; always-visible ☰ MENU corner button; MAIN MENU disposes the
+  session to zero residue (HUD/debug DOM now removed, browser-pinned) and
+  returns to the startup selector for a fresh map/mode START. Live
+  CLASSIC↔CHECKPOINT switching + practice-taint contract preserved on
+  both maps.
+- QA: `npm run verify` green (686 tests); `browser-qa-m941.mjs` NEW (§29
+  human flow); `browser-qa-m94.mjs` migrated (original coordinates, MAIN
+  MENU, HUD-removal); `browser-qa-m92.mjs` migrated (original crystals);
+  monolith bare-URL boots → explicit levels (M6 → test level, 24g M8.5
+  gate → `the-descent`); `browser-qa-m86.mjs` → explicit evolved entry.
+  Spec: `specs/milestones/M9_4_1_ORIGINAL_DESCENT_AND_MAIN_MENU_FIX.md`.
+  Automation proves structure, never feel/fun — do NOT mark PASS until
+  the human plays ORIGINAL vs EVOLVED plus the ESC → MAIN MENU →
+  switch → START flow with sound on.
+
 ## M9 — Gravity Lessons rhythm polish: ENGINEERING COMPLETE / HUMAN MUSIC-RHYTHM GAMEPLAY GATE OPEN (feature/m9-gravity-lessons-rhythm-polish, NOT merged)
 
 Human M8.6 verdict: POSITIVE after the camera corrective pass (level

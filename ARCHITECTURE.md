@@ -15,7 +15,8 @@ main.ts → AppController (M9.4 menu ↔ session lifecycle: LevelSelectView →
   Game → RunModeController (M9.4: pure classic/practice-taint machine —
     the attemptKind answers officiality; the sim owns only snapshots)
   Game → PauseMenuView (M9.4: resume / live mode switch / full restart /
-    level select; presentation only)
+    MAIN MENU — M9.4.1 renamed the LEVEL SELECT button and added ESC as a
+    pause key alongside P; presentation only)
   Game → MusicDirector → Web Audio output (M9: presentation-owned transport;
     audio FOLLOWS sim time, never drives it — §10; M9.2: every live voice
     satisfies BUFFER SOURCE → MASTER GAIN → DESTINATION, wired via
@@ -34,8 +35,10 @@ main.ts → AppController (M9.4 menu ↔ session lifecycle: LevelSelectView →
   never constructs them. `restartRun()` disarms the sim flag (Game re-arms
   on full restart); disarming alone retains earned snapshots (usable again
   on re-arm — retention rule, pinned by `tests/livePracticeMode.test.ts`).
-  `Game.dispose()` removes the canvas, listeners, loop, music, HUD and
-  pause menu (return-to-menu leaves zero session residue).
+  `Game.dispose()` removes the canvas, listeners, loop, music, HUD DOM,
+  debug-overlay DOM and pause menu (M9.4.1: `Hud.dispose()` /
+  `DebugOverlay.dispose()` remove the nodes instead of hiding them —
+  return-to-menu leaves zero session residue).
   Probes live in `src/app/gameProbes.ts` (menu probes: `screen`+cards;
   session probes incl. `attemptKind`, `setRunMode`, `checkpointsVisible`).
 ```
@@ -80,7 +83,7 @@ is vertical, so `laneLeft/laneRight = Down/Up` (Up increments on BOTH
 walls) while the horizontal arrows work the support — Left wall:
 `jump = Space ∪ ArrowRight`, `fastFall = ArrowLeft`; Right wall mirrored.
 Merge semantics match the historical ArrowUp+Space merge. Tests build
-physical snapshots directly — no browser needed. `Game` owns separate non-gameplay keys (`R` restart, `P`
+physical snapshots directly — no browser needed. `Game` owns separate non-gameplay keys (`R` restart, `P`/`Escape`
 pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
 
 ## 4. Player (`src/player/`)
@@ -236,13 +239,15 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   default (`controller-test-01`); an unknown id falls back EXPLICITLY with a
   logged reason (never silent substitution). `main.ts` selects content via
   `?level=<id>`. Adding a level = one data file + one registry entry + zero
-  engine changes. M9.4: two production entries — `the-descent` (frozen M9.2
-  `THE_DESCENT_CLASSIC`, byte-exact historical content, independent arrays)
-  + `production-showcase-01` (evolved route, display name
-  `THE DESCENT — EVOLVED` via one isolated presentation-only const);
-  declarative card metadata in `src/content/levelMetadata.ts`
-  (id/tag/subtitle/difficulty/duration/accent — the selector derives from
-  it, no hardcoded if-button branches).
+  engine changes. M9.4: two production entries — `the-descent` (M9.4.1: the
+  REAL M8.5 pre-M8.6 content from `34db456`, byte-exact historical gameplay
+  plus M9 music binding + 8 crystals authored for its geometry — M9.4 had
+  wrongly frozen the M9.2 snapshot here) + `production-showcase-01`
+  (evolved route, display name `THE DESCENT — EVOLVED` via one isolated
+  presentation-only const); declarative card metadata in
+  `src/content/levelMetadata.ts` (id/tag/subtitle/difficulty/duration/
+  accent — the selector derives from it, no hardcoded if-button branches;
+  M9.4.1: ORIGINAL card first, EVOLVED default-selected).
 - `advancedCube01.ts` (M7.2, `advanced-cube-01`, reworked in M7.3): the HARD
   second production Cube level — LOW/MID/HIGH floor bands + ceiling world,
   offset island pairs with mid-air transfers, a full-width maze jump-wall +
@@ -750,7 +755,10 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   = mode + audio unlock + start; bare clicks/keys default classic) + a
   run-mode badge and a `CHECKPOINT i/N — NAME` progress line. CSS keeps the
   HUD root pointer-transparent except the gate (canvas keeps container
-  clicks; buttons stopPropagation).
+  clicks; buttons stopPropagation). M9.4.1 adds the always-visible
+  `☰ MENU` corner button (pointer-events re-enabled on the button only;
+  `Hud.onMenuRequest` → `Game` opens the pause menu, same as ESC/P —
+  presentation only, never gameplay input) and `Hud.dispose()`.
 - `LevelView.updatePortals` (M9.2): outer portal rings breathe ±4% on a
   slow z-phased sine (delta-from-build, pause freezes, trigger bounds
   untouched). `EnvironmentView` M9.2 dressing (all cold-built, bounded):

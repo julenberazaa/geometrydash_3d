@@ -43,7 +43,8 @@ and starts the run; `?level=<id>` enters directly, `?mode=` preselects):
   replay stays classic-only; finishing shows PRACTICE COMPLETE, never
   LEVEL COMPLETE).
 
-**Live mode switching (M9.4):** the pause menu (`P`) offers CLASSIC /
+**Live mode switching (M9.4):** the pause menu (`P` or `ESC`, or the
+always-visible ☰ MENU corner button) offers CLASSIC /
 CHECKPOINT switching mid-attempt without reloading — crystals
 appear/disappear immediately, earned checkpoints stay cached but are
 unusable while Classic is active (death → origin), and re-arming
@@ -51,8 +52,15 @@ Checkpoint makes the earned crystal usable again with no re-earning.
 Position, music and camera are untouched by the toggle itself.
 **Practice-taint rule:** once an attempt has EVER armed checkpoint mode
 it stays PRACTICE until a FULL level restart from the origin — switching
-back to Classic (even without dying) can never produce an official clean
-completion. Tainted Classic runs show CLASSIC CONTROLS — PRACTICE RUN.
+ back to Classic (even without dying) can never produce an official clean
+ completion. Tainted Classic runs show CLASSIC CONTROLS — PRACTICE RUN.
+
+**Main-menu return (M9.4.1):** at any time during a run, `ESC`/`P` (or
+☰ MENU) opens the pause menu, whose MAIN MENU button stops and fully
+disposes the current session (music, renderer, HUD, replay, checkpoint
+state — zero residue, no page reload) and returns to the same startup
+selector: choose THE DESCENT or THE DESCENT — EVOLVED, choose CLASSIC
+or CHECKPOINT, START a fresh session.
 
 ## 2. The Cube — CURRENT
 
@@ -239,10 +247,15 @@ card THE DESCENT — EVOLVED; `?level=<id>` enters a level directly,
   contact glow, the purple megastructure (multi-deck transfer slabs,
   tower gates, bridge city, exit weave), all modes/gravities, Chompers,
   directed lava, moving ferries, full 9-act arc.
-- **THE DESCENT** (`the-descent`, M9.2 route frozen in M9.4): the original
-  production route — ~115 s, Hard, same 9-act arc and 8 checkpoint gems
-  before the traversal/Spider/Ship/purple rework. Independent level data
-  (never a mutation of the evolved route).
+- **THE DESCENT** (`the-descent`, M9.4.1 original): the REAL original
+  production route — the last pre-M8.6 M8.5 content (finish z=1750,
+  ~116 s, Hard), before the extreme-density/verticality rebuild. M9.4
+  froze the M9.2 snapshot here by mistake (already super-difficult);
+  M9.4.1 restored the true original from Git history with 8 checkpoint
+  gems authored for its own geometry. Independent level data (never a
+  mutation of the evolved route). Gravity Lessons plays as background
+  music — the original is NOT beat-mapped and its geometry was never
+  distorted for sync.
 - **Test Level 01** (`controller-test-01`): the controller/gravity/
   interaction demo track with the M3 gravity section and the M4
   interaction section.

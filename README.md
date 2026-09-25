@@ -178,20 +178,23 @@ Individual: `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`.
 | `R` | Instant restart (current mode: classic → origin, checkpoint → latest crystal) | Same |
 | `Shift+R` | FULL origin restart in the current mode (progress + practice taint cleared) | Same |
 | `C` / `2` | Pick CHECKPOINT at the gate / direct entry | Same |
-| `P` | Pause menu (resume · CLASSIC/CHECKPOINT live switch · restart · level select) | Same |
+| `P` / `ESC` | Pause menu (resume · CLASSIC/CHECKPOINT live switch · restart · MAIN MENU; the ☰ MENU corner button opens it too) | Same |
 | `M` | Mute music (presentation only) | Same |
 | `F1` / `F2` / `F3` | Debug stats / collider wireframes / player hitbox | Same |
 | `F4` | Replay the last completed attempt (input ignored during playback; clean classic runs only — practice attempts are never official) | Same |
 
-Two production levels (M9.4, `feature/m9-4-level-select-live-practice-mode`
-— engineering complete, human level-select + live-mode gate OPEN): THE
-DESCENT (`the-descent`, frozen M9.2 route) + THE DESCENT — EVOLVED
-(`production-showcase-01`, M9.3 route, default card) behind one
-SELECT LEVEL → SELECT MODE → START screen; checkpoint mode toggles live
+Two production levels (M9.4.1, `feature/m9-4-1-original-descent-menu-fix`
+— engineering complete, human original-level + main-menu gate OPEN): THE
+DESCENT (`the-descent`, the REAL original M8.5 pre-M8.6 route, ~116 s
+Hard — M9.4.1 corrected M9.4's mistaken M9.2 freeze) + THE DESCENT —
+EVOLVED (`production-showcase-01`, M9.3 route, default card) behind one
+SELECT LEVEL → SELECT MODE → START screen; ESC/P or the ☰ MENU button
+opens the pause menu, MAIN MENU disposes the session and returns to the
+selector for a fresh map/mode START; checkpoint mode toggles live
 from the pause menu with a practice-taint contract (an attempt that ever
 armed checkpoints stays PRACTICE until a full restart), per-level
 ReplayV1 isolation, and full session disposal on return-to-menu (spec:
-`specs/milestones/M9_4_LEVEL_SELECT_AND_LIVE_PRACTICE_MODE.md`).
+`specs/milestones/M9_4_1_ORIGINAL_DESCENT_AND_MAIN_MENU_FIX.md`).
 
 Interactions (M4): yellow pads launch on contact (no input); yellow orbs
 grant a mid-air jump on a Space/arrow press inside their window; blue orbs
