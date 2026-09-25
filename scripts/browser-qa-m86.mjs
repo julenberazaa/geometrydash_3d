@@ -1,9 +1,15 @@
 /**
  * M8.6 browser QA gate (dev tool, not shipped).
- * Focused showcase gate for THE DESCENT rework: staged environment captures,
- * moving-platform + Chomper probes, a full real-input in-page reference run
- * (real KeyboardEvents through the real InputSystem; CDP only observes),
- * in-page REPLAY VERIFIED, and a resource/console audit.
+ * Focused EVOLVED-showcase gate for THE DESCENT rework: staged environment
+ * captures, moving-platform + Chomper probes, a full real-input in-page
+ * reference run (real KeyboardEvents through the real InputSystem; CDP
+ * only observes), in-page REPLAY VERIFIED, and a resource/console audit.
+ *
+ * M9.4.1: boots the EVOLVED route explicitly
+ * (`?level=production-showcase-01`) — the bare URL holds the main menu
+ * since M9.4, and the M8.5 content has its own gate at `the-descent`
+ * (monolith section 24g). Also corrects the stale display-name assertion
+ * (the evolved title is THE DESCENT — EVOLVED since M9.4).
  *
  * Usage: node scripts/browser-qa-m86.mjs   (requires dev server on :5173)
  */
@@ -14,6 +20,8 @@ import crypto from 'node:crypto';
 import nodeChildProcess from 'node:child_process';
 
 const URL = process.env.QA_URL ?? 'http://localhost:5173/';
+// M9.4.1: the EVOLVED route under test (bare URL holds the main menu).
+const EVOLVED_URL = `${URL}?level=production-showcase-01`;
 const OUT_DIR = path.resolve('qa/screenshots');
 fs.mkdirSync(OUT_DIR, { recursive: true });
 
@@ -65,7 +73,7 @@ const safeGoto = async (url) => {
     await waitReady();
   }
 };
-await safeGoto(URL);
+await safeGoto(EVOLVED_URL);
 await waitReady();
 await page.waitForTimeout(2000);
 
@@ -150,11 +158,11 @@ const live = async (rounds = 4) => {
   }
 };
 
-// --- A. Boot contract: default level + override ---
-await fresh(URL);
+// --- A. Boot contract: evolved direct entry + override ---
+await fresh(EVOLVED_URL);
 {
   const b = await probe();
-  log('m86 default level is THE DESCENT', b.id === 'production-showcase-01' && b.name === 'THE DESCENT',
+  log('m86 evolved entry is THE DESCENT — EVOLVED', b.id === 'production-showcase-01' && b.name === 'THE DESCENT — EVOLVED',
     `id=${b.id} name=${b.name}`);
 }
 await fresh(`${URL}?level=multimode-gauntlet-01`);
@@ -162,7 +170,7 @@ await fresh(`${URL}?level=multimode-gauntlet-01`);
   const b = await probe();
   log('m86 explicit ?level= override still works', b.id === 'multimode-gauntlet-01', `id=${b.id}`);
 }
-await fresh(URL);
+await fresh(EVOLVED_URL);
 
 // --- B. 16 staged evidence captures (one per DoD beat) ---
 const stages = [
@@ -209,7 +217,7 @@ await freeze(0, 0.55, 370);
 }
 
 // --- D. Chomper telegraph on approach ---
-await fresh(URL);
+await fresh(EVOLVED_URL);
 await page.evaluate(() => window.__gd3d.debugTeleport(0, 0.55, 945));
 await page.keyboard.press('KeyP');
 await page.waitForTimeout(250);

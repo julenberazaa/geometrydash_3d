@@ -18,9 +18,9 @@
  * I. R restarts at the checkpoint; Shift+R full-restarts (progress
  *    cleared, fresh practice attempt in checkpoint mode).
  * J. CLASSIC + Shift+R clears the taint (fresh clean classic attempt).
- * K. LEVEL SELECT returns to the menu (session disposed: no canvas, music
- *    stopped); a fresh EVOLVED + CLASSIC session starts cleanly with its
- *    own level id/fingerprint.
+ * K. MAIN MENU returns to the menu (session disposed: no canvas, no HUD,
+ *    music stopped); a fresh EVOLVED + CLASSIC session starts cleanly with
+ *    its own level id/fingerprint.
  * L. M9.3 spot: spider ring + one-press snap work in-page on the evolved
  *    route; pause-switch to CHECKPOINT taints (music target preserved);
  *    cp-forge restores after death; return to menu.
@@ -148,11 +148,12 @@ let descentFingerprint = null;
   // The idle runner dies and re-runs at the origin on its own, and a
   // teleport mid-death-hold is ignored — but re-placing EVERY poll would
   // yank the runner back and freeze progress. So place only while still
-  // at the origin (z < 160), then let it walk into the volume freely.
+  // at the origin (z < 10), then let it walk into the volume freely.
+  // (M9.4.1: the ORIGINAL M8.5 cp-forge sits at z=15 — land at z=11.)
   await page.waitForFunction(() => {
     if (window.__gd3d.activeCheckpointId() === 'cp-forge') return true;
-    if (window.__gd3d.status() === 'running' && window.__gd3d.playerPosition().z < 160) {
-      window.__gd3d.debugTeleport(0, 0.55, 166);
+    if (window.__gd3d.status() === 'running' && window.__gd3d.playerPosition().z < 10) {
+      window.__gd3d.debugTeleport(0, 0.55, 11);
     }
     return false;
   }, null, { timeout: 60000 });
@@ -230,7 +231,7 @@ let descentFingerprint = null;
   const restored = await killAndWaitRunning(page);
   log(
     'm94 re-armed checkpoint restores cp-forge without re-earning',
-    restored.active === 'cp-forge' && Math.abs(restored.z - 170) < 8,
+    restored.active === 'cp-forge' && Math.abs(restored.z - 15) < 8,
     JSON.stringify(restored),
   );
 
@@ -243,7 +244,7 @@ let descentFingerprint = null;
   }));
   log(
     'm94 R restarts from the checkpoint',
-    Math.abs(afterR.z - 170) < 10 && afterR.active === 'cp-forge',
+    Math.abs(afterR.z - 15) < 10 && afterR.active === 'cp-forge',
     JSON.stringify(afterR),
   );
   await page.keyboard.press('Shift+KeyR');
@@ -276,20 +277,20 @@ let descentFingerprint = null;
     JSON.stringify(clean),
   );
 
-  // --- K. LEVEL SELECT returns to the menu with the session disposed. ---
+  // --- K. MAIN MENU returns to the menu with the session disposed. ---
   await page.keyboard.press('KeyP');
   await page.waitForFunction(() => document.querySelector('.m94-pause-menu')?.style.display === 'block', null, { timeout: 10000 });
-  await page.locator('.m94-pause-menu').getByRole('button', { name: 'LEVEL SELECT' }).click();
+  await page.locator('.m94-pause-menu').getByRole('button', { name: 'MAIN MENU' }).click();
   await waitMenu(page);
   await sleep(page, 300);
   const backAtMenu = await ev(page, () => ({
     cards: document.querySelectorAll('.m94-card').length,
     canvases: document.querySelectorAll('canvas').length,
-    hudVisible: document.querySelector('.hud')?.style.display ?? null,
+    hudGone: document.querySelector('.hud') === null,
   }));
   log(
-    'm94 LEVEL SELECT disposes the session and shows the menu',
-    backAtMenu.cards === 2 && backAtMenu.canvases === 0,
+    'm94 MAIN MENU disposes the session and shows the menu',
+    backAtMenu.cards === 2 && backAtMenu.canvases === 0 && backAtMenu.hudGone === true,
     JSON.stringify(backAtMenu),
   );
   await page.close();
@@ -383,7 +384,7 @@ let evolvedFingerprint = null;
   // --- Return to menu; session disposed. ---
   await page.keyboard.press('KeyP');
   await page.waitForFunction(() => document.querySelector('.m94-pause-menu')?.style.display === 'block', null, { timeout: 10000 });
-  await page.locator('.m94-pause-menu').getByRole('button', { name: 'LEVEL SELECT' }).click();
+  await page.locator('.m94-pause-menu').getByRole('button', { name: 'MAIN MENU' }).click();
   await waitMenu(page);
   const final = await ev(page, () => ({
     canvases: document.querySelectorAll('canvas').length,

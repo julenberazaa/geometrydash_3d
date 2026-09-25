@@ -3,6 +3,8 @@ import { GameSimulation } from '../src/game/GameSimulation';
 import type { LevelDefinition } from '../src/level/levelDefinition';
 import { TEST_LEVEL } from '../src/content/levels/testLevel01';
 import { THE_DESCENT_CLASSIC } from '../src/content/levels/theDescentClassic';
+import { PRODUCTION_SHOWCASE_01 } from '../src/content/levels/productionShowcase01';
+import { TheDescentClassicDriver } from './helpers/theDescentClassicScript';
 import { idleInput } from './helpers/simulation';
 
 /**
@@ -139,7 +141,7 @@ describe('M9.4 live checkpoint toggle (simulation)', () => {
   });
 
   it('both production levels expose 8 valid checkpoint crystals', () => {
-    for (const def of [THE_DESCENT_CLASSIC]) {
+    for (const def of [THE_DESCENT_CLASSIC, PRODUCTION_SHOWCASE_01]) {
       expect((def.checkpoints ?? []).length).toBe(8);
     }
     // Earned progress is per-simulation: two sessions never share it.
@@ -148,5 +150,32 @@ describe('M9.4 live checkpoint toggle (simulation)', () => {
     a.setCheckpointRespawnEnabled(true);
     activate(a, 'cp-a');
     expect(b.activeCheckpointId).toBeNull();
+  });
+
+  it('original M8.5 geometry: real-route crystal earn + retention matrix', { timeout: 60000 }, () => {
+    // Earn cp-forge by walking the REAL original route (not debugPlaceAt):
+    // the crystal must sit on the intended line of the M8.5 content.
+    const sim = new GameSimulation(THE_DESCENT_CLASSIC);
+    sim.setCheckpointRespawnEnabled(true);
+    const driver = new TheDescentClassicDriver('primary');
+    let guard = 0;
+    while (sim.activeCheckpointId !== 'cp-forge' && guard++ < 3000) {
+      if (sim.status !== 'running') break;
+      sim.update(driver.nextInput(sim.player.position.z, sim));
+    }
+    expect(sim.activeCheckpointId).toBe('cp-forge');
+    // Checkpoint death restores the crystal, not the origin.
+    killAndRespawn(sim);
+    expect(Math.abs(sim.player.position.z - 15)).toBeLessThan(6);
+    // Disarm mid-attempt: snapshot retained but death goes to the origin.
+    sim.setCheckpointRespawnEnabled(false);
+    expect(sim.activeCheckpointId).toBe('cp-forge');
+    killAndRespawn(sim);
+    expect(sim.player.position.z).toBeCloseTo(-4, 1);
+    // Re-arm: the earned crystal restores without re-earning.
+    sim.setCheckpointRespawnEnabled(true);
+    killAndRespawn(sim);
+    expect(sim.activeCheckpointId).toBe('cp-forge');
+    expect(Math.abs(sim.player.position.z - 15)).toBeLessThan(6);
   });
 });

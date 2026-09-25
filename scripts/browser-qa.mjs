@@ -1727,7 +1727,20 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     }
   };
 
-  // M5a: default level is the M8.5 showcase; legacy geometry pins explicitly.
+  // M5a: the bare URL is the MAIN MENU (no auto-start since M9.4 — the
+  // boot contract moved to the selector); the default production level is
+  // still production-showcase-01 (resolved below and via fallback).
+  const m5menu = await page.evaluate(() => ({
+    screen: window.__gd3d.screen(),
+    cards: window.__gd3d.menuCards(),
+  }));
+  log('m5 bare URL holds the main menu (2 production cards)',
+    m5menu.screen === 'menu' && m5menu.cards.length === 2 &&
+    m5menu.cards.includes('the-descent') && m5menu.cards.includes('production-showcase-01'),
+    JSON.stringify(m5menu));
+  await safeGoto(`${URL}?level=production-showcase-01`);
+  await waitReady();
+  await page.waitForTimeout(2000);
   const m5Level = await page.evaluate(() => window.__gd3d.levelId());
   log('m5 default level loads (production-showcase-01)', m5Level === 'production-showcase-01', m5Level);
   await safeGoto(`${URL}?level=controller-test-01`);
@@ -2216,7 +2229,8 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   await page.waitForTimeout(500);
 
   // Fallback path: ?post=off stays playable (same scene, direct render).
-  await safeGoto(`${URL}?post=off`);
+  // M9.4.1: explicit test-level entry (bare flag URLs now hold the menu).
+  await safeGoto(`${URL}?post=off&level=controller-test-01`);
   await waitReady();
   await page.waitForTimeout(2000);
   const m6aFallback = await page.evaluate(() => ({
@@ -2316,7 +2330,8 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     `on=${m6bTrailFrozen.trail} off=${m6bFxOff.trail} back=${m6bFxBack.trail}`);
 
   // ?fx=off page: gameplay advances, juice stays at zero.
-  await safeGoto(`${URL}?fx=off`);
+  // M9.4.1: explicit test-level entry (bare flag URLs now hold the menu).
+  await safeGoto(`${URL}?fx=off&level=controller-test-01`);
   await waitReady();
   await page.waitForTimeout(2000);
   const m6bOffFlag = await fx();
@@ -2526,7 +2541,8 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   // fresh ?post=off page (~30 fps headless instead of ~8: an 80 ms press
   // reliably spans rendered frames). Emission is post-independent — the
   // same update path fires the burst with the composer on or off.
-  await safeGoto(`${URL}?post=off`);
+  // M9.4.1: explicit test-level entry (bare flag URLs now hold the menu).
+  await safeGoto(`${URL}?post=off&level=controller-test-01`);
   await waitReady();
   await page.waitForTimeout(2000);
   let m6bOrbOk = false;
@@ -2721,7 +2737,8 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     `children ${m6bResStart.children}->${m6bResEnd.children}, mats ${m6bResStart.mats}->${m6bResEnd.mats}, trail=${m6bResEnd.trail}`);
 
   // Post x FX matrix: every combination stays playable.
-  await safeGoto(`${URL}?post=off&fx=on`);
+  // M9.4.1: explicit test-level entry (bare flag URLs now hold the menu).
+  await safeGoto(`${URL}?post=off&fx=on&level=controller-test-01`);
   await waitReady();
   await page.waitForTimeout(2000);
   const m6bNoPost = await page.evaluate(() => ({
@@ -2732,7 +2749,7 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   log('m6b post OFF + fx ON works (streaks/trail without composer)',
     m6bNoPost.post === false && m6bNoPost.trail > 0 && m6bNoPost.z > 5,
     `post=${m6bNoPost.post} trail=${m6bNoPost.trail} z=${m6bNoPost.z.toFixed(1)}`);
-  await safeGoto(`${URL}?post=off&fx=off`);
+  await safeGoto(`${URL}?post=off&fx=off&level=controller-test-01`);
   await waitReady();
   await page.waitForTimeout(2000);
   const m6bMinimal = await page.evaluate(() => ({
@@ -3024,7 +3041,8 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
     `mats=${m6c1ResEnd.mats} geos=${m6c1ResEnd.geos} passes=${m6c1ResEnd.passes} children=${m6c1Base.children}->${m6c1ResEnd.children}`);
 
   // ?triggers=off: the exact M6A+M6B baseline, then the evidence pair.
-  await safeGoto(`${URL}?triggers=off`);
+  // M9.4.1: explicit test-level entry (bare flag URLs now hold the menu).
+  await safeGoto(`${URL}?triggers=off&level=controller-test-01`);
   await waitReady();
   await page.waitForTimeout(2000);
   await startGravityRun(8);
@@ -3081,7 +3099,8 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   await tlResume();
 
   // Fallback matrix: post-off + triggers, fx-off + triggers, all-off.
-  await safeGoto(`${URL}?post=off`);
+  // M9.4.1: explicit test-level entry (bare flag URLs now hold the menu).
+  await safeGoto(`${URL}?post=off&level=controller-test-01`);
   await waitReady();
   await page.waitForTimeout(2000);
   await startGravityRun(148);
@@ -3090,7 +3109,8 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   log('m6c1 post OFF + triggers ON still walks sections',
     m6c1NoPost.section === 'gravity-descent' && m6c1NoPostBloom === null,
     `section=${m6c1NoPost.section} bloom=${m6c1NoPostBloom}`);
-  await safeGoto(`${URL}?fx=off`);
+  // M9.4.1: explicit test-level entry (bare flag URLs now hold the menu).
+  await safeGoto(`${URL}?fx=off&level=controller-test-01`);
   await waitReady();
   await page.waitForTimeout(2000);
   await startGravityRun(290);
@@ -3099,7 +3119,8 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   log('m6c1 fx OFF + triggers ON still walks sections',
     m6c1NoFx.section === 'interaction-run' && m6c1NoFxAdv > 290,
     `section=${m6c1NoFx.section} z=${m6c1NoFxAdv.toFixed(1)}`);
-  await safeGoto(`${URL}?post=off&fx=off&triggers=off`);
+  // M9.4.1: explicit test-level entry (bare flag URLs now hold the menu).
+  await safeGoto(`${URL}?post=off&fx=off&triggers=off&level=controller-test-01`);
   await waitReady();
   await page.waitForTimeout(2000);
   const m6c1Min0 = await page.evaluate(() => ({
@@ -3352,7 +3373,8 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
   await page.waitForTimeout(300);
 
   // fx=off split: pad still simulates, particles + skid silent, game runs.
-  await safeGoto(`${URL}?fx=off`);
+  // M9.4.1: explicit test-level entry (bare flag URLs now hold the menu).
+  await safeGoto(`${URL}?fx=off&level=controller-test-01`);
   await waitReady();
   await page.waitForTimeout(2000);
   await page.keyboard.press('KeyR');
@@ -6370,18 +6392,23 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
 }
 
 // --- 24g. M8.5 PRODUCTION SHOWCASE GATE ---
+// M9.4.1: the M8.5 content now lives at `the-descent` (the REAL original);
+// the driver policy below IS the M8.5 policy (jumps/taps/presses, chomper
+// triggers 810/850/885/1680, orb ids, teleport z-band), so this gate runs
+// against the original level. The evolved route has its own gates
+// (browser-qa-m86/m94/m941).
 {
-  // Default load (no ?level=) is THE DESCENT.
-  await m8fresh(URL);
+  // Explicit original-level entry (the bare URL holds the main menu).
+  await m8fresh(`${URL}?level=the-descent`);
   const m85boot = await m8probe();
-  log('m85 default level is the showcase', m85boot.id === 'production-showcase-01' && m85boot.name === 'THE DESCENT',
+  log('m85 original level is THE DESCENT', m85boot.id === 'the-descent' && m85boot.name === 'THE DESCENT',
     `id=${m85boot.id} name=${m85boot.name}`);
   // Legacy explicit routes still resolve.
   await m8fresh(`${URL}?level=multimode-gauntlet-01`);
   const m85legacy = await m8probe();
   log('m85 explicit ?level= override still works', m85legacy.id === 'multimode-gauntlet-01',
     `id=${m85legacy.id}`);
-  await m8fresh(URL);
+  await m8fresh(`${URL}?level=the-descent`);
 
   // Staged environment frames (one identity per act).
   await m8freeze(0, 1.5, 10);
@@ -6442,8 +6469,9 @@ log('m4 portal-down-2 returns the run to the floor runway', m4BackDown !== null,
 
   // Full real-input reference run: in-page driver (real KeyboardEvents
   // through the real InputSystem; CDP only observes), mirroring the
-  // automated ShowcaseDriver primary policy. Deaths re-arm the plan.
-  await m8fresh(`${URL}?level=production-showcase-01&post=off&fx=off&triggers=off`);
+  // automated TheDescentClassicDriver primary policy on the ORIGINAL level.
+  // Deaths re-arm the plan.
+  await m8fresh(`${URL}?level=the-descent&post=off&fx=off&triggers=off`);
   await page.setViewportSize({ width: 960, height: 540 });
   const m85baseAttempts = await page.evaluate(() => window.__gd3d.attempts());
   await page.evaluate(() => {

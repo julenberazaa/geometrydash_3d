@@ -17,7 +17,7 @@
  * D. Menu CHECKPOINT START: runMode checkpoint; teleport to cp-forge ->
  *    activates 1/8; kill -> auto-respawn AT cp-forge (z, mode, speed);
  *    music re-seeks to the checkpoint time (NOT 0); camera snapped near
- *    the player; cp-skybridge latest-wins; R restarts at the checkpoint;
+ *    the player; cp-islands latest-wins; R restarts at the checkpoint;
  *    Shift+R returns to the origin with progress cleared.
  * E. ?music=off matrix: menu still gates audio; CHECKPOINT START starts
  *    silent checkpoint mode; default START starts silent classic.
@@ -143,14 +143,15 @@ const graph = (p) => ev(p, () => ({
   }));
   log('m92 CHECKPOINT run starts with graph ready', started.mode === 'checkpoint' && started.ready === true, JSON.stringify(started));
 
-  // Step just inside cp-forge (spikes at 160/164 kill idle runners, so
-  // land past them at z=166 and walk into the volume entry at ~167.5).
+  // Step just inside cp-forge (M9.4.1: the ORIGINAL M8.5 crystal sits at
+  // z=15 on the forge runway — land at z=11 and walk into the volume
+  // entry at ~12.5).
   // Place only while still at the origin: re-placing every poll would yank
   // the runner back and freeze progress (M9.4 lesson).
   await page.waitForFunction(() => {
     if (window.__gd3d.activeCheckpointId() === 'cp-forge') return true;
-    if (window.__gd3d.status() === 'running' && window.__gd3d.playerPosition().z < 160) {
-      window.__gd3d.debugTeleport(0, 0.55, 166);
+    if (window.__gd3d.status() === 'running' && window.__gd3d.playerPosition().z < 10) {
+      window.__gd3d.debugTeleport(0, 0.55, 11);
     }
     return false;
   }, null, { timeout: 60000 });
@@ -194,18 +195,19 @@ const graph = (p) => ev(p, () => ({
   // time rather than song 0 or the pre-death time; exact elapsed restore
   // is pinned headless in tests/checkpoints.test.ts).
   const respawnOk =
-    restored.active === 'cp-forge' && Math.abs(restored.z - 170) < 8 &&
+    restored.active === 'cp-forge' && Math.abs(restored.z - 15) < 8 &&
     restored.mode === 'cube' && restored.speed === 1 &&
     Math.abs(restored.target - cp1.anchor) < 2.5 && eyeDist < 20 && Math.abs(restored.up - 1) < 0.01;
   log('m92 death respawns at cp-forge with music+camera', respawnOk, JSON.stringify({ ...restored, anchor: cp1.anchor, eyeDist: eyeDist.toFixed(1) }));
   await page.keyboard.press('KeyP');
 
-  // Latest-wins: jump to cp-skybridge, die, respawn there instead.
+  // Latest-wins: jump to cp-islands (M9.4.1: the ORIGINAL second crystal
+  // at z=219 — land at z=216 and walk in), die, respawn there instead.
   // (Guarded placement: only while far away, so the runner walks in.)
   await page.waitForFunction(() => {
-    if (window.__gd3d.activeCheckpointId() === 'cp-skybridge') return true;
-    if (window.__gd3d.status() === 'running' && window.__gd3d.playerPosition().z < 388) {
-      window.__gd3d.debugTeleport(3.7, 0.55, 392);
+    if (window.__gd3d.activeCheckpointId() === 'cp-islands') return true;
+    if (window.__gd3d.status() === 'running' && window.__gd3d.playerPosition().z < 210) {
+      window.__gd3d.debugTeleport(-1.3, 0.55, 216);
     }
     return false;
   }, null, { timeout: 60000 });
@@ -214,7 +216,7 @@ const graph = (p) => ev(p, () => ({
     window.__gd3d.debugTeleport(p.x, -100, p.z);
   });
   await page.waitForFunction(
-    () => window.__gd3d.status() === 'running' && Math.abs(window.__gd3d.playerPosition().z - 395) < 8,
+    () => window.__gd3d.status() === 'running' && Math.abs(window.__gd3d.playerPosition().z - 219) < 8,
     null,
     { timeout: 30000 },
   );
@@ -223,7 +225,7 @@ const graph = (p) => ev(p, () => ({
     z: window.__gd3d.playerPosition().z,
     progress: window.__gd3d.checkpointProgress(),
   }));
-  log('m92 latest checkpoint wins (cp-skybridge)', cp2.active === 'cp-skybridge' && cp2.progress.activeIndex === 2, JSON.stringify(cp2));
+  log('m92 latest checkpoint wins (cp-islands)', cp2.active === 'cp-islands' && cp2.progress.activeIndex === 2, JSON.stringify(cp2));
 
   // R restarts at the checkpoint (not the origin).
   const attemptsBefore = await ev(page, () => window.__gd3d.attempts());
@@ -236,7 +238,7 @@ const graph = (p) => ev(p, () => ({
   }));
   log(
     'm92 R restarts from the checkpoint',
-    Math.abs(afterR.z - 395) < 10 && afterR.active === 'cp-skybridge' && afterR.attempts === attemptsBefore + 1,
+    Math.abs(afterR.z - 219) < 10 && afterR.active === 'cp-islands' && afterR.attempts === attemptsBefore + 1,
     JSON.stringify(afterR),
   );
 
