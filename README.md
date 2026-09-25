@@ -183,18 +183,19 @@ Individual: `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`.
 | `F1` / `F2` / `F3` | Debug stats / collider wireframes / player hitbox | Same |
 | `F4` | Replay the last completed attempt (input ignored during playback; clean classic runs only — practice attempts are never official) | Same |
 
-Two production levels (M9.4.1, `feature/m9-4-1-original-descent-menu-fix`
-— engineering complete, human original-level + main-menu gate OPEN): THE
-DESCENT (`the-descent`, the REAL original M8.5 pre-M8.6 route, ~116 s
-Hard — M9.4.1 corrected M9.4's mistaken M9.2 freeze) + THE DESCENT —
-EVOLVED (`production-showcase-01`, M9.3 route, default card) behind one
-SELECT LEVEL → SELECT MODE → START screen; ESC/P or the ☰ MENU button
-opens the pause menu, MAIN MENU disposes the session and returns to the
-selector for a fresh map/mode START; checkpoint mode toggles live
-from the pause menu with a practice-taint contract (an attempt that ever
-armed checkpoints stays PRACTICE until a full restart), per-level
-ReplayV1 isolation, and full session disposal on return-to-menu (spec:
-`specs/milestones/M9_4_1_ORIGINAL_DESCENT_AND_MAIN_MENU_FIX.md`).
+Two production levels (M9.4.2, `feature/m9-4-2-m86-descent-gravity-rift`
+— engineering complete, human M8.6-descent + gravity-rift gate OPEN): THE
+DESCENT (`the-descent`, the EXACT M8.6 density-verticality route from
+e5b0d86, ~123 s Hard, NO music — M9.4.2 corrected M9.4.1's mistaken M8.5
+content) + GRAVITY RIFT (`production-showcase-01`, unchanged internal id,
+M9.3 route with Gravity Lessons, default card) behind one SELECT LEVEL →
+SELECT MODE → START screen; ESC/P or the ☰ MENU button opens the pause
+menu, MAIN MENU disposes the session and returns to the selector for a
+fresh map/mode START; checkpoint mode toggles live from the pause menu
+with a practice-taint contract (an attempt that ever armed checkpoints
+stays PRACTICE until a full restart), per-level ReplayV1 isolation, and
+full session disposal on return-to-menu (spec:
+`specs/milestones/M9_4_2_M86_DESCENT_GRAVITY_RIFT.md`).
 
 Interactions (M4): yellow pads launch on contact (no input); yellow orbs
 grant a mid-air jump on a Space/arrow press inside their window; blue orbs

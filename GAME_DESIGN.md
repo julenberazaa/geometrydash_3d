@@ -23,7 +23,7 @@ see §1.1; classic runs keep the original no-checkpoint contract).
 
 ## 1.1 Practice checkpoints — CURRENT (M9.2, live toggle M9.4)
 
-Two production levels (THE DESCENT + THE DESCENT — EVOLVED, see §5) each
+Two production levels (THE DESCENT + GRAVITY RIFT, see §5) each
 offer two run modes behind a level/mode start selector (one screen:
 SELECT LEVEL → SELECT MODE → START; the START gesture also unlocks audio
 and starts the run; `?level=<id>` enters directly, `?mode=` preselects):
@@ -59,7 +59,7 @@ it stays PRACTICE until a FULL level restart from the origin — switching
 ☰ MENU) opens the pause menu, whose MAIN MENU button stops and fully
 disposes the current session (music, renderer, HUD, replay, checkpoint
 state — zero residue, no page reload) and returns to the same startup
-selector: choose THE DESCENT or THE DESCENT — EVOLVED, choose CLASSIC
+selector: choose THE DESCENT or GRAVITY RIFT, choose CLASSIC
 or CHECKPOINT, START a fresh session.
 
 ## 2. The Cube — CURRENT
@@ -238,24 +238,26 @@ is a new data file plus zero engine changes. A level declares: geometry
 `deathYMax`), start gravity mode (default Floor), and gravity portals.
 
 Several levels ship (bare URL opens the level/mode selector, default
-card THE DESCENT — EVOLVED; `?level=<id>` enters a level directly,
+card GRAVITY RIFT; `?level=<id>` enters a level directly,
 `?mode=classic|checkpoint` preselects the run mode):
 
-- **THE DESCENT — EVOLVED** (`production-showcase-01`, M9.3 route,
+- **GRAVITY RIFT** (`production-showcase-01`, M9.3 route,
   DEFAULT): the latest superproduction level — ~115 s, EXPERT,
   Spider/ship traversal, Ship portal funnels + lateral 3D route, island
   contact glow, the purple megastructure (multi-deck transfer slabs,
   tower gates, bridge city, exit weave), all modes/gravities, Chompers,
-  directed lava, moving ferries, full 9-act arc.
-- **THE DESCENT** (`the-descent`, M9.4.1 original): the REAL original
-  production route — the last pre-M8.6 M8.5 content (finish z=1750,
-  ~116 s, Hard), before the extreme-density/verticality rebuild. M9.4
-  froze the M9.2 snapshot here by mistake (already super-difficult);
-  M9.4.1 restored the true original from Git history with 8 checkpoint
-  gems authored for its own geometry. Independent level data (never a
-  mutation of the evolved route). Gravity Lessons plays as background
-  music — the original is NOT beat-mapped and its geometry was never
-  distorted for sync.
+  directed lava, moving ferries, full 9-act arc. Built for the track
+  Gravity Lessons (see §7.9).
+- **THE DESCENT** (`the-descent`, M9.4.2 original): the EXACT M8.6
+  production route — the density-verticality redesign (finish z=1790,
+  ~123 s, Hard), before the M9/M9.1 transformation into the modern
+  level. M9.4 froze the M9.2 snapshot here by mistake; M9.4.1 stored
+  the M8.5 simple route by mistake; M9.4.2 restored the true M8.6
+  content from Git history with 8 checkpoint gems authored for its own
+  geometry. Independent level data (never a mutation of the modern
+  route). NO music — the level declares no track and starts
+  immediately from the START gesture; checkpoint restores re-seek
+  nothing. "No music" is intentional content, never an audio failure.
 - **Test Level 01** (`controller-test-01`): the controller/gravity/
   interaction demo track with the M3 gravity section and the M4
   interaction section.
@@ -566,9 +568,9 @@ Public editor, backend, persistence. See `ROADMAP.md`.
 (Pads, orbs, speed portals and the trigger infrastructure shipped in M4 —
 §6.1. Ship/Spider modes, wall gravity and moving hazards ship in M8.)
 
-## 7.9 Music-driven precision routing — CURRENT (M9)
+## 7.9 Music-driven precision routing — CURRENT (M9, GRAVITY RIFT only)
 
-THE DESCENT is built for the track Gravity Lessons (120 BPM, beat 0 at
+GRAVITY RIFT is built for the track Gravity Lessons (120 BPM, beat 0 at
 0.06 s, final impact beat 230 at 115.06 s) and the reference route lands
 its finish on that impact (~115 s). Permanent rules:
 

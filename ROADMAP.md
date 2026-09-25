@@ -776,6 +776,44 @@ tuning, visuals, audio, camera, replay untouched):
   the human plays ORIGINAL vs EVOLVED plus the ESC → MAIN MENU →
   switch → START flow with sound on.
 
+## M9.4.2 — M8.6 THE DESCENT + GRAVITY RIFT rename: ENGINEERING COMPLETE / HUMAN M8.6-DESCENT + GRAVITY-RIFT GATE OPEN (feature/m9-4-2-m86-descent-gravity-rift, NOT merged)
+
+Second corrective pass (no gameplay redesign — current engine,
+mechanics, tuning, visuals, audio graph, camera, replay untouched):
+
+- M9.4.1 MISTAKE CORRECTED: `the-descent` held the M8.5 SIMPLE route
+  (30 jumps / 12 lanes / 0 fast-fall / 32 supports). It now carries the
+  EXACT M8.6 density-verticality content from `e5b0d86` (byte-exact
+  `git show` + export/id renames + provenance headers only), with 8
+  crystals authored for the M8.6 geometry from simulation evidence and
+  deliberately NO `musicTrack` (no fetch, no decode, no MusicDirector,
+  no seek — silence is content, never failure).
+- Proof: verbatim M8.6 driver finishes tick-exact 14797 (123.31 s) both
+  variants with 0 deaths on the current engine (zero repair — the M9.3
+  spider fix needs no workaround); metrics match the M8.6 audit
+  (97/93 jumps, 62/70 lanes, 144/35 fast-fall, 79/76 supports,
+  Σ|ΔY| 557.5/505.0, Σ|ΔX| 197.8/209.5);   provenance suite pins the
+  M8.6 census + the M8.5 negative contract (16 tests).
+- Modern route renamed in user-facing UI only: `THE DESCENT — EVOLVED`
+  → **GRAVITY RIFT** (internal id `production-showcase-01` kept —
+  replays/fingerprints/URLs compatible; gameplay, music, checkpoints
+  untouched). Cards: THE DESCENT / ORIGINAL M8.6 (~123 s, no music) +
+  GRAVITY RIFT / EXPERT (~115 s, Gravity Lessons); GRAVITY RIFT stays
+  the default.
+- QA: `npm run verify` green; `browser-qa-m942.mjs` NEW (menu, no-audio
+  descent start/switch/disposal, rift music + checkpoint seek,
+  repeat-switch isolation); `browser-qa-m92.mjs` → GRAVITY RIFT gate
+  (rift crystals cp-forge z=170 / cp-skybridge z=395);
+  `browser-qa-m94/m941.mjs` migrated (M8.6 cp-forge z=60, no-music
+  assertions, new titles/tags); `browser-qa-m86.mjs` → boots the M8.6
+  `the-descent` route; monolith §24g M8.5 policy gate retired (§24g
+  pointer; M8.5 content no longer exists).
+  Spec: `specs/milestones/M9_4_2_M86_DESCENT_GRAVITY_RIFT.md`.
+  Automation proves structure, never feel/fun — do NOT mark PASS until
+  the human recognizes THE DESCENT as the remembered M8.6 level (no
+  music) and GRAVITY RIFT as the harder modern evolution, plus the
+  menu/switch/audio flow with sound on.
+
 ## M9 — Gravity Lessons rhythm polish: ENGINEERING COMPLETE / HUMAN MUSIC-RHYTHM GAMEPLAY GATE OPEN (feature/m9-gravity-lessons-rhythm-polish, NOT merged)
 
 Human M8.6 verdict: POSITIVE after the camera corrective pass (level

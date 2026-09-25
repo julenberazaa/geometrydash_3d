@@ -239,15 +239,17 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   default (`controller-test-01`); an unknown id falls back EXPLICITLY with a
   logged reason (never silent substitution). `main.ts` selects content via
   `?level=<id>`. Adding a level = one data file + one registry entry + zero
-  engine changes. M9.4: two production entries — `the-descent` (M9.4.1: the
-  REAL M8.5 pre-M8.6 content from `34db456`, byte-exact historical gameplay
-  plus M9 music binding + 8 crystals authored for its geometry — M9.4 had
-  wrongly frozen the M9.2 snapshot here) + `production-showcase-01`
-  (evolved route, display name `THE DESCENT — EVOLVED` via one isolated
-  presentation-only const); declarative card metadata in
-  `src/content/levelMetadata.ts` (id/tag/subtitle/difficulty/duration/
-  accent — the selector derives from it, no hardcoded if-button branches;
-  M9.4.1: ORIGINAL card first, EVOLVED default-selected).
+   engine changes. M9.4: two production entries — `the-descent` (M9.4.2: the
+   EXACT M8.6 density-verticality content from `e5b0d86`, byte-exact
+   historical gameplay plus 8 crystals authored for its geometry and
+   deliberately NO `musicTrack` — M9.4 had wrongly frozen the M9.2
+   snapshot here, M9.4.1 had wrongly stored the M8.5 simple route) +
+   `production-showcase-01` (modern route, display name `GRAVITY RIFT`
+   via one isolated presentation-only const — internal id unchanged, so
+   replays/fingerprints/URLs stay compatible); declarative card metadata in
+   `src/content/levelMetadata.ts` (id/tag/subtitle/difficulty/duration/
+   accent — the selector derives from it, no hardcoded if-button branches;
+   M9.4.2: ORIGINAL M8.6 card first, GRAVITY RIFT default-selected).
 - `advancedCube01.ts` (M7.2, `advanced-cube-01`, reworked in M7.3): the HARD
   second production Cube level — LOW/MID/HIGH floor bands + ceiling world,
   offset island pairs with mid-air transfers, a full-width maze jump-wall +
@@ -270,19 +272,31 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
   two-Chomper biome, Ship corridor, Spider snaps, trap islands; scripted
   real-input playthrough finishes at tick 10321 (86.0 s), 0 deaths, replay
   VERIFIED (`tests/helpers/multimodeGauntletScript.ts`).
-- `productionShowcase01.ts` (M8.5 level, M8.6 gameplay rework,
-  `production-showcase-01`, "THE DESCENT"): the DEFAULT level — a ~2-minute
-  superproduction arc (forge ascent, multi-deck skybridge islands with a
-  lateral ferry + elevator branch, two-deck maze-runner with a ferry pair,
-  compact four-way gravity spire, Chomper foundry, extreme Ship abyss with
-  a sustained inverted segment, hard Spider spire with wall snaps,
+- `theDescentClassic.ts` (M9.4.2: the EXACT M8.6 density-verticality
+  content from `e5b0d86`, `the-descent`, "THE DESCENT", tag `ORIGINAL
+  M8.6`, deliberately NO `musicTrack`): the classic high-mobility
+  descent — forge ascent, multi-deck skybridge islands with a lateral
+  ferry + elevator branch, two-deck maze-runner with a ferry pair,
+  compact four-way gravity spire, Chomper foundry, extreme Ship abyss
+  with a sustained inverted segment, hard Spider spire with wall snaps,
   teleport-choice void terminal, everything-remix core finale, 5 moving
-  platforms); scripted real-input playthroughs finish at tick 14797
-  (123.31 s), 0 deaths, replay VERIFIED, on BOTH the primary and alternate
-  routes (`tests/helpers/showcaseScript.ts`, metrics in
-  `tests/helpers/routeMetrics.ts`, contracts in `tests/showcase.test.ts` +
-  `tests/showcaseDensity.test.ts`, in-page gate in
-  `scripts/browser-qa-m86.mjs`).
+  platforms; scripted real-input playthroughs finish at tick 14797
+  (123.31 s), 0 deaths, replay VERIFIED, on BOTH the primary and
+  alternate routes (`tests/helpers/theDescentClassicScript.ts`, metrics
+  in `tests/helpers/routeMetrics.ts`, contracts in
+  `tests/theDescentClassic.test.ts`, in-page gate in
+  `scripts/browser-qa-m86.mjs` now booting `?level=the-descent`).
+- `productionShowcase01.ts` (modern route, `production-showcase-01`,
+  display name "GRAVITY RIFT" — M9 retime + M9.1 radical rebuild + M9.2
+  audio/checkpoints/visual + M9.3 traversal/spider/ship/purple on top
+  of the M8.6 arc): the DEFAULT level — the same 9-act skeleton
+  re-authored to EXPERT density with Ship funnels + 3D diagonal, the
+  purple megastructure and ContactPulse, bound to Gravity Lessons;
+  scripted real-input playthroughs finish at tick 13799 (115.0 s),
+  0 deaths, replay VERIFIED, on BOTH routes
+  (`tests/helpers/showcaseScript.ts`, contracts in
+  `tests/showcase.test.ts` + `tests/showcaseDensity.test.ts`, in-page
+  gates in `scripts/browser-qa-m92/m94/m941.mjs`).
 
 ## 7. Simulation (`src/game/`)
 
