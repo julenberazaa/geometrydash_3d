@@ -23,22 +23,23 @@ import { ShowcaseDriver } from './helpers/showcaseScript';
 import { collectRouteMetrics } from './helpers/routeMetrics';
 
 /**
- * M9.4.2 THE DESCENT contract (`the-descent`):
- * - the EXACT M8.6 density-verticality production route from Git revision
- *   e5b0d86 (NOT the M8.5 simple route M9.4.1 stored here — M8.5 is 30
- *   jumps / 12 lanes / 0 fast-fall / 32 supports; M8.6 is ~97 skill
- *   jumps / ~62 lane edges / deliberate fast-fall / ~79 supports)
+ * M9.5 THE DESCENT contract (`the-descent`):
+ * - the M8.6 density-verticality production route (M9.4.2 provenance) plus
+ *   the M9.5 SURGICAL polish: +3 Chompers (deck/lower/shaft), the LOW
+ *   under-deck weave, upper/lower maze doors, foundry-exit doors replacing
+ *   one hop (−1 spike). Foundation systems (portals/pads/orbs/teleports/
+ *   platforms/checkpoints/music binding) otherwise unchanged.
  * - registered as an independent production level (own id, GRAVITY RIFT
  *   stays the default, card metadata derives from the registry data)
  * - content independent from GRAVITY RIFT (no shared mutable arrays;
  *   distinct gameplay fingerprint)
  * - valid authoring (sourced/contained lava, bounded portals, 8 crystals
- *   authored for THIS M8.6 geometry, NO music declaration)
- * - the recovered M8.6 driver still completes it on the current engine
- *   with zero deaths at the historical 14797-tick anchor, and the tape
- *   replays VERIFIED
+ *   authored for the M8.6 geometry, Zenith music declaration)
+ * - the M9.5 reference driver completes it on the current engine with
+ *   zero deaths at the preserved 14797-tick anchor, and the tape replays
+ *   VERIFIED
  */
-describe('M9.4.2 THE DESCENT (exact M8.6 route)', () => {
+describe('M9.5 THE DESCENT (M8.6 foundation + Zenith density polish)', () => {
   it('is registered with its own level id', () => {
     expect(registeredLevelIds()).toContain('the-descent');
     expect(THE_DESCENT_CLASSIC.id).toBe('the-descent');
@@ -84,10 +85,14 @@ describe('M9.4.2 THE DESCENT (exact M8.6 route)', () => {
     );
   });
 
-  it('provenance: carries the exact M8.6 content signature', () => {
-    // Finish + interaction census from e5b0d86: the M8.6 route ends at
-    // z=1790 with 16 gravity / 6 speed / 6 mode portals, 3 teleports,
-    // 5 pads, 3 jump orbs, 2 gravity orbs, 5 chompers, 5 platforms.
+  it('provenance: carries the M8.6 content signature plus the M9.5 surgical additions', () => {
+    // Finish + interaction census: the M8.6 route ends at z=1790 with 16
+    // gravity / 6 speed / 6 mode portals, 3 teleports, 5 pads, 3 jump
+    // orbs, 2 gravity orbs, 5 platforms — all unchanged. M9.5 adds 3
+    // Chompers (deck/lower/shaft → 8 total, at the ≤8 cap), 3 anchor
+    // pillars (→ 178 solids) and +7 net hazards (LOW weave pair, upper
+    // door trio, lower door, foundry door pair, minus the replaced 1100
+    // hop → 84).
     expect(THE_DESCENT_CLASSIC.finishZ).toBe(1790);
     expect((THE_DESCENT_CLASSIC.movingPlatforms ?? []).map((p) => p.id)).toEqual([
       'ps-lift-void',
@@ -141,6 +146,9 @@ describe('M9.4.2 THE DESCENT (exact M8.6 route)', () => {
       'ps-chomp-ceil',
       'ps-chomp-low',
       'ps-chomp-final',
+      'ps-chomp-deck',
+      'ps-chomp-lower',
+      'ps-chomp-shaft',
     ]);
     expect((THE_DESCENT_CLASSIC.jumpPads ?? []).map((p) => p.id)).toEqual([
       'ps-pad-sky',
@@ -158,29 +166,32 @@ describe('M9.4.2 THE DESCENT (exact M8.6 route)', () => {
       'ps-gorb-spire',
       'ps-gorb-spire-back',
     ]);
-    // Raw content volume: the M8.6 redesign is dense (M8.5: 100/32).
-    expect(THE_DESCENT_CLASSIC.solids.length).toBe(175);
-    expect(THE_DESCENT_CLASSIC.hazards.length).toBe(77);
+    // Raw content volume: the M8.6 redesign is dense (M8.5: 100/32);
+    // M9.5 adds 3 pillars + 7 net hazards on top.
+    expect(THE_DESCENT_CLASSIC.solids.length).toBe(178);
+    expect(THE_DESCENT_CLASSIC.hazards.length).toBe(84);
   });
 
-  it('provenance: primary route density matches the M8.6 audit', { timeout: 120000 }, () => {
-    // Measured M8.6 primary route (e5b0d86 density contract): 97 skill
-    // jumps, 62 lane edges, deliberate fast-fall, 79 distinct supports,
-    // sum|dY| 557.5, sum|dX| 197.8. Exact pins: swapping in any other
-    // snapshot trips them.
+  it('M9.5: primary route density (M8.6 foundation + surgical polish)', { timeout: 120000 }, () => {
+    // Measured M9.5 primary route: M8.6 was 97 skill jumps / 62 lane
+    // edges / 44 reversals / 79 supports / sum|dY| 557.5 / sum|dX| 197.8.
+    // The polish adds laterals (upper doors + foundry doors + reactive
+    // deck jump) while the 14797-tick anchor holds. Exact pins: swapping
+    // in any other snapshot trips them.
     const driver = new TheDescentClassicDriver('primary');
     const m = collectRouteMetrics(THE_DESCENT_CLASSIC, (z, sim) =>
       driver.nextInput(z, sim),
     );
     expect(m.status).toBe('finished');
     expect(m.ticks).toBe(14797);
-    expect(m.cubeJumpEdges).toBe(97);
-    expect(m.laneEdges).toBe(62);
+    expect(m.cubeJumpEdges).toBe(98);
+    expect(m.laneEdges).toBe(68);
+    expect(m.xReversals).toBe(48);
     expect(m.fastFallHeld).toBe(144);
     expect(m.distinctSupports).toBe(79);
-    expect(m.supportChanges).toBe(208);
-    expect(m.sumDy).toBeCloseTo(557.5, 1);
-    expect(m.sumDx).toBeCloseTo(197.8, 1);
+    expect(m.supportChanges).toBe(207);
+    expect(m.sumDy).toBeCloseTo(553.2, 1);
+    expect(m.sumDx).toBeCloseTo(213.4, 1);
     expect(m.gravityTransitions).toBe(30);
     expect(m.modeTransitions).toBe(6);
     expect(m.spiderPresses).toBe(17);
@@ -196,9 +207,11 @@ describe('M9.4.2 THE DESCENT (exact M8.6 route)', () => {
     expect(m.platformSupports).toContain('platform-ps-lift-void');
   });
 
-  it('provenance: alternate route density matches the M8.6 audit', { timeout: 120000 }, () => {
-    // Measured M8.6 LOW technical line: 93 skill jumps, 70 lane edges,
-    // 76 supports, sum|dY| 505.0, sum|dX| 209.5.
+  it('M9.5: alternate route density (M8.6 foundation + surgical polish)', { timeout: 120000 }, () => {
+    // Measured M9.5 LOW technical line: M8.6 was 93 skill jumps / 70
+    // lane edges / 43 reversals / 76 supports / sum|dY| 505.0 /
+    // sum|dX| 209.5. The polish adds laterals (LOW weave + lower door +
+    // foundry doors; the 594 hop is subsumed) while the anchor holds.
     const driver = new TheDescentClassicDriver('alternate');
     const m = collectRouteMetrics(THE_DESCENT_CLASSIC, (z, sim) =>
       driver.nextInput(z, sim),
@@ -206,12 +219,13 @@ describe('M9.4.2 THE DESCENT (exact M8.6 route)', () => {
     expect(m.status).toBe('finished');
     expect(m.ticks).toBe(14797);
     expect(m.cubeJumpEdges).toBe(93);
-    expect(m.laneEdges).toBe(70);
+    expect(m.laneEdges).toBe(78);
+    expect(m.xReversals).toBe(49);
     expect(m.fastFallHeld).toBe(35);
     expect(m.distinctSupports).toBe(76);
-    expect(m.supportChanges).toBe(209);
-    expect(m.sumDy).toBeCloseTo(505.0, 1);
-    expect(m.sumDx).toBeCloseTo(209.5, 1);
+    expect(m.supportChanges).toBe(206);
+    expect(m.sumDy).toBeCloseTo(494.1, 1);
+    expect(m.sumDx).toBeCloseTo(234.9, 1);
     expect(m.gravityTransitions).toBe(30);
     expect(m.modeTransitions).toBe(6);
     expect(m.spiderPresses).toBe(17);
@@ -284,14 +298,15 @@ describe('M9.4.2 THE DESCENT (exact M8.6 route)', () => {
     expect(PRODUCTION_SHOWCASE_01.musicTrack?.audioPath).toBe('/audio/Gravity_Lessons.mp3');
   });
 
-  it('completes the M8.6 reference route with zero deaths', { timeout: 60000 }, () => {
+  it('completes the M9.5 reference route with zero deaths', { timeout: 60000 }, () => {
     const sim = new GameSimulation(THE_DESCENT_CLASSIC);
     const { ticks, modes, gravities } = driveTheDescentClassicToFinish(sim);
     expect(sim.status).toBe('finished');
     expect(sim.attempts).toBe(1);
-    // Historical anchor: the M8.6 reference route finishes at tick 14797
-    // (123.31 s) — reproduced tick-exact on the current engine with zero
-    // driver repair.
+    // Preserved anchor: the M8.6 reference route finished at tick 14797
+    // (123.31 s); the M9.5 surgical edits are time-neutral (no portal or
+    // speed moved), so the anchor holds tick-exact with zero driver
+    // repair beyond the new challenges.
     expect(ticks).toBe(14797);
     expect([...modes].sort()).toEqual(['cube', 'ship', 'spider']);
     expect([...gravities].sort()).toEqual(['ceiling', 'floor', 'leftWall', 'rightWall']);
@@ -315,7 +330,7 @@ describe('M9.4.2 THE DESCENT (exact M8.6 route)', () => {
     for (const st of sim.chomperStates) expect(st.phase).toBe('spent');
   });
 
-  it('all 8 crystals activate on both M8.6 routes, trajectory untouched', { timeout: 180000 }, () => {
+  it('all 8 crystals activate on both M9.5 routes, trajectory untouched', { timeout: 180000 }, () => {
     for (const variant of ['primary', 'alternate'] as const) {
       const sim = new GameSimulation(THE_DESCENT_CLASSIC);
       sim.setCheckpointRespawnEnabled(true);
@@ -373,7 +388,7 @@ describe('M9.4.2 THE DESCENT (exact M8.6 route)', () => {
     expect(Math.abs(sim.player.position.z - 60)).toBeLessThan(6);
   });
 
-  it('replays the M8.6 completion tape VERIFIED', { timeout: 60000 }, () => {
+  it('replays the M9.5 completion tape VERIFIED', { timeout: 60000 }, () => {
     const sim = new GameSimulation(THE_DESCENT_CLASSIC);
     const coordinator = new ReplayCoordinator(sim);
     const driver = new TheDescentClassicDriver('primary');

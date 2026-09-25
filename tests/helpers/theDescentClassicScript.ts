@@ -11,6 +11,12 @@
  *
  * M9.4.2 CORRECTION: the previous file content was the M8.5-era driver
  * (30-jump policy) — wrong for the M8.6 level the human asked for.
+ *
+ * M9.5 SURGICAL UPDATE: taps/jumps for the 6 local density edits only
+ * (Zone A LOW weave + deck Chomper (reactive), Zone B upper/lower doors +
+ * lower Chomper, Zone D foundry doors replacing two hops, Zone F shaft
+ * Chomper (reactive)). The historical route character is preserved; every
+ * behavior change is reported in the M9.5 spec.
  */
 import type { PhysicalInputSnapshot } from '../../src/input/InputSystem';
 import type { GameSimulation } from '../../src/game/GameSimulation';
@@ -127,7 +133,9 @@ export class TheDescentClassicDriver {
       1042.5, // A5 lava strip
       1066, // A5 post spike
       1077, // foundry-exit rhythm hop (open center lane)
-      1087.5, 1097.5, // ship-approach rhythm hops
+      // M9.5 Zone D: the ship-approach hops are replaced by maze doors
+      // (1093 door lane 2, 1104 door lane 0) — jumps removed, taps added
+      // below (trunk: both variants run the center line here).
       869.5, 879.5, // spire-entry rhythm hops
       427, 439, // maze-approach rhythm hops
       520, 534, 548, // lower-deck rhythm hops (open road / upper flight)
@@ -161,12 +169,18 @@ export class TheDescentClassicDriver {
       ...trunkJumps.filter((z) => z !== 1550.5),
       172.5, 182.5, 192.5, 202.5, 212.5, 227.5, 270, // islands + gap hop + LOW road
       242, 256, // LOW road rhythm hops (open slabs)
+      // M9.5 Zone A: the under-deck weave (244 lane 0, 254 lane 1) is
+      // lane-only — jumps unchanged, taps added below.
       313, 326, 338.5, // LOW ground-route spike rhythm (lane-neutral hops)
       376, // ferry board jump
       401, // ferry exit jump
       412, // far-runway spike
       460, 485, // maze spike rhythm (lane-neutral, preserves weave lanes)
-      559, 583, 594, 604.5, 621, // lower-deck spike + exit gap (take off!)
+      559, 583, 606.5, 621, // lower-deck spike + exit gap (take off!)
+      // M9.5 Zone B: the 594 rhythm hop is removed (off-path once the
+      // lower door displaces the line to lane 0) — taps added below.
+      // 606.5 (not 604.5): the flight must cross the 612 lunge line above
+      // its 1.2 top — a 604.5 takeoff arrives 0.15 too low (proven).
       1507, // gantry approach spike (lane 2)
       1543, 1553, 1565, // LOW deck holes + spike
       1587, // reconnect hop spike (shared runway)
@@ -220,6 +234,13 @@ export class TheDescentClassicDriver {
       { atZ: 1705, dir: 'right' },
       // A9 wall burst (UP past the y-1 spike, hold lane 2 to the high gate).
       { atZ: 1722, dir: 'up' },
+      // M9.5 Zone D: foundry-exit maze doors (both variants, center line).
+      // Door lane 2 at 1093, door lane 0 at 1104, recenter for the ship
+      // ring by ~1112 (ring volume x ±1.5).
+      { atZ: 1082, dir: 'right' },
+      { atZ: 1097, dir: 'left' },
+      { atZ: 1099, dir: 'left' },
+      { atZ: 1108, dir: 'right' },
       // Wall-exit recenter (lane 2 → lane 1 for the spider ring).
       { atZ: 1736, dir: 'left' },
       // Finale Chomper lane dodge (lane 1 → lane 0, short lunge).
@@ -232,6 +253,10 @@ export class TheDescentClassicDriver {
       // A2 MID deck spikes.
       { atZ: 286, dir: 'right' },
       { atZ: 296, dir: 'left' },
+      // M9.5 Zone B: upper-deck maze doors (door lane 2 at 599, door
+      // lane 1 at 610 — unjumpable, composes with the 597/609/623 jumps).
+      { atZ: 594, dir: 'right' },
+      { atZ: 604, dir: 'left' },
       // A3 maze doors + rhythm spikes (lane 1, lane 1, lane 0, lane 2).
       { atZ: 468, dir: 'left' },
       { atZ: 476, dir: 'right' },
@@ -250,6 +275,15 @@ export class TheDescentClassicDriver {
       ...trunkTaps,
       // A2 LOW split (land the LOW road, then slide clear of the pad).
       { atZ: 215, dir: 'left' },
+      // M9.5 Zone A: under-deck lane-only weave (244 lane 0, 254 lane 1 —
+      // jumps would head-bump the traverse, so these taps are mandatory).
+      { atZ: 238, dir: 'right' },
+      { atZ: 250, dir: 'left' },
+      // M9.5 Zone B: lower-deck maze door (door lane 0 at 600) + recenter
+      // for the load-bearing 604.5 jump past the lower Chomper.
+      { atZ: 593, dir: 'left' },
+      { atZ: 595, dir: 'left' },
+      { atZ: 602, dir: 'right' },
       // A2 LOW road weave (open road, lane-neutral pair).
       { atZ: 285, dir: 'left' },
       { atZ: 297, dir: 'right' },

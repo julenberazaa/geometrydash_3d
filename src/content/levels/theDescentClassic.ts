@@ -465,20 +465,21 @@ export const THE_DESCENT_CLASSIC: LevelDefinition = {
       halfExtents: { x: 0.8, y: 0.45, z: 0.8 },
       chainAnchor: { x: 10, y: 7, z: 292 },
     },
-    // M9.5 #7 (Zone B): lunge across the lower maze deck (trigger 603 so
-    // the committed lunge meets the 612 crossing near x≈0 — the existing
-    // 604.5 jump clears it, grounded runners die). The upper deck line
-    // passes 4.3 u above, unaffected.
+    // M9.5 #7 (Zone B): lunge across the lower maze deck (trigger 601 so
+    // the committed lunge starts on the drop-B grid (+90 ms to beat 87)
+    // and meets the 610 crossing near x≈0 — the 606.5 jump clears it,
+    // grounded runners die). The upper deck line passes 4.3 u above,
+    // unaffected.
     {
       id: 'ps-chomp-lower',
-      dormant: { x: -8, y: 0.75, z: 612 },
-      triggerZ: 603,
+      dormant: { x: -8, y: 0.75, z: 610 },
+      triggerZ: 601,
       lungeDirection: 1,
       lungeDistance: 16,
       telegraphTicks: 48,
       lungeTicks: 60,
       halfExtents: { x: 0.8, y: 0.45, z: 0.8 },
-      chainAnchor: { x: -10, y: 2.5, z: 612 },
+      chainAnchor: { x: -10, y: 2.5, z: 610 },
     },
     // M9.5 #8 (Zone F): lunge across the spire-exit runway (trigger 871
     // so the committed lunge meets the 884 crossing at x≈−1.1 — the
@@ -752,7 +753,7 @@ export const THE_DESCENT_CLASSIC: LevelDefinition = {
     // M9.5 chain-anchor pillars for the new Chompers (off-route
     // silhouettes, same pattern — never on a rider line).
     { center: { x: 10, y: 5, z: 292 }, halfExtents: { x: 1, y: 5, z: 1.5 } },
-    { center: { x: -10, y: 0, z: 612 }, halfExtents: { x: 1, y: 5, z: 1.5 } },
+    { center: { x: -10, y: 0, z: 610 }, halfExtents: { x: 1, y: 5, z: 1.5 } },
     { center: { x: 10, y: 0, z: 884 }, halfExtents: { x: 1, y: 5, z: 1.5 } },
 
     // ================= ACT 6 SHIP ABYSS (1110..1330) =================
