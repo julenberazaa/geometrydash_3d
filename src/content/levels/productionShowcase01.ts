@@ -36,9 +36,18 @@ import { TEST_LEVEL } from './testLevel01';
  * sourced/contained contract (see `lavaAuthoring.ts`); moving platforms
  * obey `movingPlatformAuthoring.ts` (≤ 8, axis x|y, peak ≤ 0.12 u/tick).
  */
+
+/**
+ * M9.4 user-facing title of the evolved route (presentation only, trivial
+ * to rename: `displayName` is fingerprint-excluded, so replays stay
+ * compatible). The frozen original route is `THE_DESCENT_CLASSIC`
+ * (`the-descent`, display name `THE DESCENT`).
+ */
+export const PRODUCTION_SHOWCASE_DISPLAY_NAME = 'THE DESCENT — EVOLVED';
+
 export const PRODUCTION_SHOWCASE_01: LevelDefinition = {
   id: 'production-showcase-01',
-  displayName: 'THE DESCENT',
+  displayName: PRODUCTION_SHOWCASE_DISPLAY_NAME,
   start: { x: 0, y: 1.5, z: -4 },
   startLaneIndex: 1,
   laneCenters: [2.6, 0, -2.6],

@@ -12,10 +12,11 @@ import { VERTICAL_SLICE_01 } from './levels/verticalSlice01';
 import { ADVANCED_CUBE_01 } from './levels/advancedCube01';
 import { MULTIMODE_GAUNTLET_01 } from './levels/multimodeGauntlet01';
 import { PRODUCTION_SHOWCASE_01 } from './levels/productionShowcase01';
+import { THE_DESCENT_CLASSIC } from './levels/theDescentClassic';
 
 export const DEFAULT_LEVEL_ID = PRODUCTION_SHOWCASE_01.id;
 
-const LEVELS: readonly LevelDefinition[] = [TEST_LEVEL, VALIDATION_LEVEL_02, VERTICAL_SLICE_01, ADVANCED_CUBE_01, MULTIMODE_GAUNTLET_01, PRODUCTION_SHOWCASE_01];
+const LEVELS: readonly LevelDefinition[] = [TEST_LEVEL, VALIDATION_LEVEL_02, VERTICAL_SLICE_01, ADVANCED_CUBE_01, MULTIMODE_GAUNTLET_01, PRODUCTION_SHOWCASE_01, THE_DESCENT_CLASSIC];
 
 const REGISTRY: ReadonlyMap<string, LevelDefinition> = new Map(
   LEVELS.map((level) => [level.id, level]),
