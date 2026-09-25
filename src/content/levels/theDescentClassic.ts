@@ -450,6 +450,52 @@ export const THE_DESCENT_CLASSIC: LevelDefinition = {
       halfExtents: { x: 0.8, y: 0.45, z: 0.8 },
       chainAnchor: { x: -10, y: 2.5, z: 1758 },
     },
+    // M9.5 #6 (Zone A): lunge across the MID deck run (trigger 283 so the
+    // committed lunge meets the deck crossing at x≈0 — grounded runners
+    // must jump ~288; telegraph builds into the drop-A entry). The LOW
+    // line passes 4.7 u below, unaffected.
+    {
+      id: 'ps-chomp-deck',
+      dormant: { x: 8, y: 5.25, z: 292 },
+      triggerZ: 283,
+      lungeDirection: -1,
+      lungeDistance: 16,
+      telegraphTicks: 48,
+      lungeTicks: 60,
+      halfExtents: { x: 0.8, y: 0.45, z: 0.8 },
+      chainAnchor: { x: 10, y: 7, z: 292 },
+    },
+    // M9.5 #7 (Zone B): lunge across the lower maze deck (trigger 603 so
+    // the committed lunge meets the 612 crossing near x≈0 — the existing
+    // 604.5 jump clears it, grounded runners die). The upper deck line
+    // passes 4.3 u above, unaffected.
+    {
+      id: 'ps-chomp-lower',
+      dormant: { x: -8, y: 0.75, z: 612 },
+      triggerZ: 603,
+      lungeDirection: 1,
+      lungeDistance: 16,
+      telegraphTicks: 48,
+      lungeTicks: 60,
+      halfExtents: { x: 0.8, y: 0.45, z: 0.8 },
+      chainAnchor: { x: -10, y: 2.5, z: 612 },
+    },
+    // M9.5 #8 (Zone F): lunge across the spire-exit runway (trigger 871
+    // so the committed lunge meets the 884 crossing at x≈−1.1 — the
+    // existing pre-shaft jump (879.5) clears it; late or grounded runners
+    // meet the lunge). Checkpoint cp-spire (880) restores before the
+    // trigger fires fresh with a full telegraph (audited safe).
+    {
+      id: 'ps-chomp-shaft',
+      dormant: { x: 8, y: 0.75, z: 884 },
+      triggerZ: 871,
+      lungeDirection: -1,
+      lungeDistance: 16,
+      telegraphTicks: 48,
+      lungeTicks: 60,
+      halfExtents: { x: 0.8, y: 0.45, z: 0.8 },
+      chainAnchor: { x: 10, y: 2.5, z: 884 },
+    },
   ],
   movingPlatforms: [
     // ACT 8: drop-onto elevator under the HIGH deck hole (phase-free
@@ -703,6 +749,11 @@ export const THE_DESCENT_CLASSIC: LevelDefinition = {
     { center: { x: -10, y: 0, z: 995 }, halfExtents: { x: 1, y: 5, z: 1.5 } },
     { center: { x: 10, y: 8, z: 1015 }, halfExtents: { x: 1, y: 5, z: 1.5 } },
     { center: { x: 10, y: 0, z: 1052 }, halfExtents: { x: 1, y: 5, z: 1.5 } },
+    // M9.5 chain-anchor pillars for the new Chompers (off-route
+    // silhouettes, same pattern — never on a rider line).
+    { center: { x: 10, y: 5, z: 292 }, halfExtents: { x: 1, y: 5, z: 1.5 } },
+    { center: { x: -10, y: 0, z: 612 }, halfExtents: { x: 1, y: 5, z: 1.5 } },
+    { center: { x: 10, y: 0, z: 884 }, halfExtents: { x: 1, y: 5, z: 1.5 } },
 
     // ================= ACT 6 SHIP ABYSS (1110..1330) =================
     // Landing runway before the gate + exit runway.
@@ -862,6 +913,12 @@ export const THE_DESCENT_CLASSIC: LevelDefinition = {
     // LOW road spike (alternate weaves here — open sky, never under the
     // floating traverse, so the jump never head-bumps into it).
     { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 230 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // M9.5 Zone A: under-deck lane-only weave (the MID traverse floats
+    // 2 u above — jumps head-bump, so lane moves are the ONLY option).
+    // 244 blocks lane 0, 254 blocks lane 1: lane 0 → lane 1 → lane 0.
+    // The HIGH line rides 4.8 u above, unaffected.
+    { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 244 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 254 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     // LOW branch weave spikes (open sky before the floating deck — the
     // alternate stays lane 0 throughout, hopping the lane-0 spike).
     { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 266 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
@@ -899,9 +956,22 @@ export const THE_DESCENT_CLASSIC: LevelDefinition = {
     { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 4.75, z: 552 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: 0, y: 4.75, z: 600 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: 0, y: 4.75, z: 612 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // M9.5 Zone B: upper-deck maze doors (unjumpable 4.5..7.5 walls — the
+    // reference gap-flights pass only through the door lane). Door lane 2
+    // at 599, door lane 1 at 610: center → lane 2 → center. Composes with
+    // the existing 597/609/623 jump rhythm (0.75 u lateral margins, same
+    // as the maze doors). The lower line passes below, unaffected.
+    { kind: 'killFront', visual: 'block', center: { x: 1.3, y: 6, z: 599 }, halfExtents: { x: 2.6, y: 1.5, z: 0.5 } },
+    { kind: 'killFront', visual: 'block', center: { x: 2.6, y: 6, z: 610 }, halfExtents: { x: 1.3, y: 1.5, z: 0.5 } },
+    { kind: 'killFront', visual: 'block', center: { x: -2.6, y: 6, z: 610 }, halfExtents: { x: 1.3, y: 1.5, z: 0.5 } },
     // Lower-deck spike timing (under the upper deck).
     { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 570 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 594 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // M9.5 Zone B: lower-deck maze door (unjumpable 0..3 wall, door lane
+    // 0 — two taps from the lane-2 line, one tap back). Pairs with the
+    // lower Chomper (612): the weave feeds the load-bearing 604.5 jump.
+    // The upper line rides 3.5+ u above, unaffected.
+    { kind: 'killFront', visual: 'block', center: { x: -1.3, y: 1.5, z: 600 }, halfExtents: { x: 2.6, y: 1.5, z: 0.5 } },
     // 2× exit weave gates (single-lane blocks, one-tap line at speed:
     // lane 1 through 700, lane 0 through 706 + 712).
     { kind: 'killFront', visual: 'block', center: { x: 2.6, y: 1.5, z: 700 }, halfExtents: { x: 1.3, y: 1.5, z: 0.5 } },
@@ -941,7 +1011,12 @@ export const THE_DESCENT_CLASSIC: LevelDefinition = {
     { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 1080 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     // Ship-approach rhythm hops (both routes run center here).
     { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 1090 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
-    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 1100 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // M9.5 Zone D: the second hop is REPLACED by maze doors (unjumpable
+    // 0..3 walls). Door lane 2 at 1093, door lane 0 at 1104: center →
+    // lane 2 → lane 0 → center, recentered by ~1112 for the ship ring
+    // (volume x ±1.5). The kept 1090 hop is off-path approach texture.
+    { kind: 'killFront', visual: 'block', center: { x: 1.3, y: 1.5, z: 1093 }, halfExtents: { x: 2.6, y: 1.5, z: 0.5 } },
+    { kind: 'killFront', visual: 'block', center: { x: -1.3, y: 1.5, z: 1104 }, halfExtents: { x: 2.6, y: 1.5, z: 0.5 } },
 
     // ================= ACT 7 =================
     // Temple ceiling spike (forces a lane move on the ceiling run).
