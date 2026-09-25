@@ -57,6 +57,12 @@ import {
   type RhythmPulse,
 } from '../visuals/rhythmPulse';
 import { targetMusicTime } from '../audio/musicTrack';
+import {
+  GRAVITY_GRID,
+  gridForAudioPath,
+  pulseScaleForAudioPath,
+  type TrackGrid,
+} from '../audio/zenithTrack';
 
 /**
  * RendererHost — THE ONLY module allowed to own WebGLRenderer and apply
@@ -114,6 +120,14 @@ export class RendererHost {
   private readonly rhythmImpact: RhythmImpactState = makeRhythmImpactState();
   private readonly rhythmActive: boolean;
   private readonly rhythmTrackOffset: number;
+  /**
+   * M9.5 per-track rhythm: which beat grid/sections the pulse evaluates
+   * (resolved from the level's declared track; Gravity default) and the
+   * track's pulse restraint scale (Rift 1.0 = full M9.1 overdrive legs,
+   * Descent 0.55 = cleaner response — presentation only).
+   */
+  private readonly rhythmGrid: TrackGrid = GRAVITY_GRID;
+  private readonly rhythmPulseScale: number = 1.0;
   /** Previous Chomper phases for the lunge→impact punch edge (fixed, ≤8). */
   private readonly lastChomperPhases: string[];
   /** Current resolved visual state (caller-owned scratch, reused per frame). */
@@ -257,6 +271,8 @@ export class RendererHost {
     const track = simulation.level.def.musicTrack ?? null;
     this.rhythmActive = track !== null;
     this.rhythmTrackOffset = track?.trackOffset ?? 0;
+    this.rhythmGrid = gridForAudioPath(track?.audioPath);
+    this.rhythmPulseScale = pulseScaleForAudioPath(track?.audioPath);
     this.lastChomperPhases = simulation.chomperStates.map((s) => s.phase);
     this.visualState = makeVisualState();
     resetVisualState(this.theme, this.visualState);
@@ -818,8 +834,8 @@ export class RendererHost {
       return;
     }
     const musicTime = targetMusicTime(this.simulation.elapsedSimTime, this.rhythmTrackOffset);
-    evaluateRhythmPulse(musicTime, this.rhythmPulse);
-    updateRhythmImpact(this.rhythmImpact, musicTime, renderDtSeconds);
+    evaluateRhythmPulse(musicTime, this.rhythmPulse, this.rhythmGrid);
+    updateRhythmImpact(this.rhythmImpact, musicTime, renderDtSeconds, this.rhythmGrid);
   }
 
   /**
@@ -925,9 +941,13 @@ export class RendererHost {
     const impact = this.rhythmImpact.energy;
     // M9.1 overdrive: hotter pulse legs (still re-clamped in-contract;
     // smooth decays preserved, no strobe — see rhythmPulse.ts).
-    const pulseBloom = pulse.beat * 0.09 + pulse.downbeat * 0.15 + impact * 0.18;
-    const pulseExposure = pulse.beat * 0.045 + pulse.downbeat * 0.075 + impact * 0.09;
-    const pulseEnv = pulse.beat * 0.22 + pulse.drop * 0.38 + impact * 0.45;
+    // M9.5 restraint: the track's pulse scale (Rift 1.0, Descent 0.55)
+    // multiplies every pulse/impact leg — at 1.0 the math is FP-exact,
+    // so Gravity behavior is byte-identical.
+    const k = this.rhythmPulseScale;
+    const pulseBloom = k * (pulse.beat * 0.09 + pulse.downbeat * 0.15 + impact * 0.18);
+    const pulseExposure = k * (pulse.beat * 0.045 + pulse.downbeat * 0.075 + impact * 0.09);
+    const pulseEnv = k * (pulse.beat * 0.22 + pulse.drop * 0.38 + impact * 0.45);
     this.environmentView.applyVisualState(
       s.background,
       s.fogColor,
@@ -939,14 +959,14 @@ export class RendererHost {
     // accent (clamped — beams stay subordinate by construction).
     const bed = Math.min(0.55, Math.max(0, (s.environmentIntensity - 1) * 0.8));
     this.environmentView.setEnergyRays(
-      Math.min(1, bed + pulse.beat * 0.35 + pulse.downbeat * 0.5 + impact * 0.7),
+      Math.min(1, bed + k * (pulse.beat * 0.35 + pulse.downbeat * 0.5 + impact * 0.7)),
       s.routeAccent,
     );
     this.post.setBloomParams(s.bloomStrength + pulseBloom, s.bloomRadius, s.bloomThreshold);
     this.renderer.toneMappingExposure = Math.min(2, Math.max(0.5, s.exposure + pulseExposure));
     this.vfx.setIntensity(
-      Math.min(2, s.vfxIntensity * (1 + pulse.beat * 0.3 + pulse.drop * 0.45)),
-      Math.min(2, s.streakIntensity * (1 + pulse.downbeat * 0.3 + impact * 0.3)),
+      Math.min(2, s.vfxIntensity * (1 + k * (pulse.beat * 0.3 + pulse.drop * 0.45))),
+      Math.min(2, s.streakIntensity * (1 + k * (pulse.downbeat * 0.3 + impact * 0.3))),
     );
   }
 

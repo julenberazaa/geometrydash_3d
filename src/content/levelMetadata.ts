@@ -33,7 +33,7 @@ export const PRODUCTION_LEVEL_CARDS: readonly LevelCardMeta[] = [
     difficulty: 'Hard',
     durationLabel: '~123 s',
     accentCss: '#2dffc4',
-    blurb: 'The original M8.6 high-mobility descent — islands, gravity, Ship and Spider. No music.',
+    blurb: 'The original M8.6 high-mobility descent — islands, gravity, Ship and Spider. ♪ Zenith of the Path.',
   },
   {
     levelId: PRODUCTION_SHOWCASE_01.id,
@@ -42,7 +42,7 @@ export const PRODUCTION_LEVEL_CARDS: readonly LevelCardMeta[] = [
     difficulty: 'Expert',
     durationLabel: '~115 s',
     accentCss: '#b44dff',
-    blurb: 'The modern high-density 3D rhythm gauntlet. Gravity Lessons.',
+    blurb: 'The modern high-density 3D rhythm gauntlet. ♪ Gravity Lessons.',
   },
 ];
 

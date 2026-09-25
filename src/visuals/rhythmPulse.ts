@@ -1,9 +1,7 @@
 import {
-  GRAVITY_LESSONS_BEAT_OFFSET,
-  GRAVITY_LESSONS_BEAT_PERIOD,
-  sectionAtTime,
   type MusicEnergy,
 } from '../audio/musicTrack';
+import { GRAVITY_GRID, type TrackGrid } from '../audio/zenithTrack';
 
 /**
  * Rhythm pulse controller (M9) — deterministic music-reactive visual
@@ -45,8 +43,9 @@ const ENERGY_TIER: Record<MusicEnergy, number> = {
   outro: 0.3,
 };
 
-/** Sections whose entry fires the impact envelope. */
-const IMPACT_SECTIONS: ReadonlySet<string> = new Set(['drop-a', 'drop-b', 'climax']);
+/** Sections whose entry fires the impact envelope. 'finale' is Zenith-only
+ * (Gravity Lessons has no such id, so Gravity behavior is unchanged). */
+const IMPACT_SECTIONS: ReadonlySet<string> = new Set(['drop-a', 'drop-b', 'climax', 'finale']);
 
 /** Caller-owned per-frame pulse levels (reused scratch, zero allocation). */
 export interface RhythmPulse {
@@ -76,8 +75,8 @@ export const makeRhythmImpactState = (): RhythmImpactState => ({
   lastSectionId: null,
 });
 
-const decaySince = (musicTime: number, period: number, rate: number): number => {
-  const rel = musicTime - GRAVITY_LESSONS_BEAT_OFFSET;
+const decaySince = (musicTime: number, period: number, rate: number, beatOffset: number): number => {
+  const rel = musicTime - beatOffset;
   const phase = rel - Math.floor(rel / period) * period;
   const since = phase < 0 ? phase + period : phase;
   return Math.exp(-since * rate);
@@ -85,14 +84,20 @@ const decaySince = (musicTime: number, period: number, rate: number): number => 
 
 /**
  * Evaluate the beat-grid envelopes at a deterministic music time into
- * caller-owned `out`. Pure function of time (pause/replay-safe).
+ * caller-owned `out`. Pure function of time (pause/replay-safe). The
+ * optional grid selects the track's beat grid + section map (M9.5);
+ * omitted = Gravity Lessons (existing callers byte-identical).
  */
-export const evaluateRhythmPulse = (musicTimeSeconds: number, out: RhythmPulse): void => {
+export const evaluateRhythmPulse = (
+  musicTimeSeconds: number,
+  out: RhythmPulse,
+  grid: TrackGrid = GRAVITY_GRID,
+): void => {
   const t = Math.max(0, musicTimeSeconds);
-  out.eighth = decaySince(t, GRAVITY_LESSONS_BEAT_PERIOD / 2, 9);
-  out.beat = decaySince(t, GRAVITY_LESSONS_BEAT_PERIOD, 7);
-  out.downbeat = decaySince(t, GRAVITY_LESSONS_BEAT_PERIOD * 4, 5);
-  const section = sectionAtTime(t);
+  out.eighth = decaySince(t, grid.beatPeriod / 2, 9, grid.beatOffset);
+  out.beat = decaySince(t, grid.beatPeriod, 7, grid.beatOffset);
+  out.downbeat = decaySince(t, grid.beatPeriod * 4, 5, grid.beatOffset);
+  const section = grid.sectionAtTime(t);
   out.sectionId = section.id;
   const tier = ENERGY_TIER[section.energy];
   out.drop = tier * (0.4 + 0.6 * out.beat);
@@ -107,8 +112,9 @@ export const updateRhythmImpact = (
   state: RhythmImpactState,
   musicTimeSeconds: number,
   dtSeconds: number,
+  grid: TrackGrid = GRAVITY_GRID,
 ): void => {
-  const section = sectionAtTime(Math.max(0, musicTimeSeconds)).id;
+  const section = grid.sectionAtTime(Math.max(0, musicTimeSeconds)).id;
   if (state.lastSectionId !== section) {
     state.lastSectionId = section;
     if (IMPACT_SECTIONS.has(section)) state.energy = 1;

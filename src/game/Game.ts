@@ -6,7 +6,8 @@ import { GameSimulation } from './GameSimulation';
 import { RendererHost, type RendererOptions } from '../rendering/RendererHost';
 import { DeathSfx } from '../audio/deathSfx';
 import { MusicDirector } from '../audio/MusicDirector';
-import { beatAtTime, sectionAtTime, targetMusicTime } from '../audio/musicTrack';
+import { targetMusicTime } from '../audio/musicTrack';
+import { gridForAudioPath } from '../audio/zenithTrack';
 import { Hud } from '../ui/Hud';
 import { DebugOverlay } from '../debug/DebugOverlay';
 import { TEST_LEVEL } from '../content/levels/testLevel01';
@@ -728,8 +729,11 @@ export class Game {
     if (director === null) return 'music: — (level declares no track)';
     const probe = director.probe();
     const target = targetMusicTime(this.simulation.elapsedSimTime, this.trackOffset);
-    const section = sectionAtTime(target);
-    const beat = beatAtTime(target);
+    // M9.5: section/beat resolve on the level's own track grid (Gravity
+    // default keeps Rift output identical; Zenith names its own sections).
+    const grid = gridForAudioPath(this.simulation.level.def.musicTrack?.audioPath);
+    const section = grid.sectionAtTime(target);
+    const beat = grid.beatAtTime(target);
     return (
       `music: ${probe.state}${probe.muted ? ' muted' : ''} | target ${target.toFixed(2)}s` +
       ` | actual ${probe.actualTime.toFixed(2)}s | drift ${probe.driftMs.toFixed(0)}ms` +

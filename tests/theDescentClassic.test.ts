@@ -261,7 +261,7 @@ describe('M9.4.2 THE DESCENT (exact M8.6 route)', () => {
     expect(validatePortalBounds(THE_DESCENT_CLASSIC)).toEqual([]);
   });
 
-  it('authors 8 checkpoint crystals for its own M8.6 geometry and declares NO music', () => {
+  it('authors 8 checkpoint crystals for its own M8.6 geometry and declares the Zenith track', () => {
     const ids = (THE_DESCENT_CLASSIC.checkpoints ?? []).map((c) => c.id);
     expect(ids).toEqual([
       'cp-forge',
@@ -273,10 +273,12 @@ describe('M9.4.2 THE DESCENT (exact M8.6 route)', () => {
       'cp-temple',
       'cp-remix',
     ]);
-    // HARD REQUIREMENT: THE DESCENT has no music — not muted, not
-    // gain-0, not disabled-after-startup. The level simply declares no
-    // track, so no audio asset is fetched and no MusicDirector exists.
-    expect(THE_DESCENT_CLASSIC.musicTrack).toBeUndefined();
+    // M9.5: THE DESCENT declares the Zenith of the Path track (offset 0)
+    // through the same level-driven binding as GRAVITY RIFT (presentation-
+    // only: never fingerprinted, never replayed). The sim owns only the
+    // snapshot mechanics — music seek on restore is Game-owned.
+    expect(THE_DESCENT_CLASSIC.musicTrack?.audioPath).toBe('/audio/Zenith_of_the_Path.mp3');
+    expect(THE_DESCENT_CLASSIC.musicTrack?.trackOffset).toBe(0);
     // GRAVITY RIFT keeps its Gravity Lessons binding (background proof
     // that music-optionality is per level, not global).
     expect(PRODUCTION_SHOWCASE_01.musicTrack?.audioPath).toBe('/audio/Gravity_Lessons.mp3');
@@ -343,10 +345,11 @@ describe('M9.4.2 THE DESCENT (exact M8.6 route)', () => {
     }
   });
 
-  it('checkpoint restore works with no music transport involved', { timeout: 60000 }, () => {
+  it('checkpoint restore works with music seek owned by Game (sim stays pure)', { timeout: 60000 }, () => {
     // Earn cp-forge on the real M8.6 route, then die: the sim restores
-    // the crystal snapshot with no music seek possible (the level
-    // declares no track — restore is purely simulation state).
+    // the crystal snapshot as pure simulation state (music re-seek to the
+    // checkpoint sim time is Game-owned via restartMusicForSimTime —
+    // the sim never touches audio).
     const sim = new GameSimulation(THE_DESCENT_CLASSIC);
     sim.setCheckpointRespawnEnabled(true);
     const driver = new TheDescentClassicDriver('primary');
@@ -357,8 +360,8 @@ describe('M9.4.2 THE DESCENT (exact M8.6 route)', () => {
     }
     expect(sim.activeCheckpointId).toBe('cp-forge');
     // Void-kill and step through the death hold: the sim auto-respawns
-    // from the crystal snapshot with no music seek possible (the level
-    // declares no track — restore is purely simulation state).
+    // from the crystal snapshot (pure simulation state — Game re-seeks
+    // Zenith of the Path to the restored sim time above the sim).
     const p = sim.player.position;
     sim.debugPlaceAt(p.x, -100, p.z);
     sim.update(idleInput);
