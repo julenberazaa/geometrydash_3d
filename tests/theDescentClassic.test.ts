@@ -176,8 +176,11 @@ describe('M9.5 THE DESCENT (M8.6 foundation + Zenith density polish)', () => {
     // Measured M9.5 primary route: M8.6 was 97 skill jumps / 62 lane
     // edges / 44 reversals / 79 supports / sum|dY| 557.5 / sum|dX| 197.8.
     // The polish adds laterals (upper doors + foundry doors + reactive
-    // deck jump) while the 14797-tick anchor holds. Exact pins: swapping
-    // in any other snapshot trips them.
+    // deck jump) while the 14797-tick anchor holds. M9.6 Zone G adds the
+    // island weave (180.5/190.5 ride lane 0: +2 lane edges, +5.2 lateral
+    // travel — exactly one out-and-back; reversals stay 48 because the
+    // return pre-flips the sign the 286 tap used to flip). Exact pins:
+    // swapping in any other snapshot trips them.
     const driver = new TheDescentClassicDriver('primary');
     const m = collectRouteMetrics(THE_DESCENT_CLASSIC, (z, sim) =>
       driver.nextInput(z, sim),
@@ -185,13 +188,13 @@ describe('M9.5 THE DESCENT (M8.6 foundation + Zenith density polish)', () => {
     expect(m.status).toBe('finished');
     expect(m.ticks).toBe(14797);
     expect(m.cubeJumpEdges).toBe(98);
-    expect(m.laneEdges).toBe(68);
+    expect(m.laneEdges).toBe(70);
     expect(m.xReversals).toBe(48);
     expect(m.fastFallHeld).toBe(144);
     expect(m.distinctSupports).toBe(79);
     expect(m.supportChanges).toBe(207);
     expect(m.sumDy).toBeCloseTo(553.2, 1);
-    expect(m.sumDx).toBeCloseTo(213.4, 1);
+    expect(m.sumDx).toBeCloseTo(218.6, 1);
     expect(m.gravityTransitions).toBe(30);
     expect(m.modeTransitions).toBe(6);
     expect(m.spiderPresses).toBe(17);
@@ -212,6 +215,9 @@ describe('M9.5 THE DESCENT (M8.6 foundation + Zenith density polish)', () => {
     // lane edges / 43 reversals / 76 supports / sum|dY| 505.0 /
     // sum|dX| 209.5. The polish adds laterals (LOW weave + lower door +
     // foundry doors; the 594 hop is subsumed) while the anchor holds.
+    // M9.6 Zone G adds the island weave (+2 lane edges, +5.2 travel;
+    // reversals 49 → 51: the weave turnaround plus the re-armed 215
+    // split switch).
     const driver = new TheDescentClassicDriver('alternate');
     const m = collectRouteMetrics(THE_DESCENT_CLASSIC, (z, sim) =>
       driver.nextInput(z, sim),
@@ -219,13 +225,13 @@ describe('M9.5 THE DESCENT (M8.6 foundation + Zenith density polish)', () => {
     expect(m.status).toBe('finished');
     expect(m.ticks).toBe(14797);
     expect(m.cubeJumpEdges).toBe(93);
-    expect(m.laneEdges).toBe(78);
-    expect(m.xReversals).toBe(49);
+    expect(m.laneEdges).toBe(80);
+    expect(m.xReversals).toBe(51);
     expect(m.fastFallHeld).toBe(35);
     expect(m.distinctSupports).toBe(76);
     expect(m.supportChanges).toBe(206);
     expect(m.sumDy).toBeCloseTo(494.1, 1);
-    expect(m.sumDx).toBeCloseTo(234.9, 1);
+    expect(m.sumDx).toBeCloseTo(240.1, 1);
     expect(m.gravityTransitions).toBe(30);
     expect(m.modeTransitions).toBe(6);
     expect(m.spiderPresses).toBe(17);

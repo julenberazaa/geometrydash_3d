@@ -191,6 +191,12 @@ export class TheDescentClassicDriver {
       { atZ: 60, dir: 'right' },
       { atZ: 69, dir: 'left' },
       { atZ: 81, dir: 'left' },
+      // M9.6 Zone G: island weave (180.5/190.5 ride lane 0) — out on the
+      // open-road approach (12 u to settle), back during the 192.5 flight
+      // for the center 199.5 island. Both variants take these islands
+      // identically, so the taps live in the shared trunk.
+      { atZ: 169, dir: 'left' },
+      { atZ: 193.5, dir: 'right' },
       // Deck-end drop: combined jump + recenter — the catcher island is
       // center-only (x ±1.3), so the flight carries the lane back to 1.
       { atZ: 89, dir: 'right', withJump: true },

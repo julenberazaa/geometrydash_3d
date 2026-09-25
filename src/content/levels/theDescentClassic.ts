@@ -614,8 +614,13 @@ export const THE_DESCENT_CLASSIC: LevelDefinition = {
     // ================= ACT 2 SKYBRIDGE ISLANDS (170..430) =================
     { center: { x: 0, y: -0.5, z: 173 }, halfExtents: { x: 5.4, y: 0.5, z: 3 } },
     // LOW island chain (lane 1, gaps 2–3 u) + long landing island.
-    { center: { x: 0, y: -0.5, z: 180.5 }, halfExtents: { x: 1.3, y: 0.5, z: 3.5 } },
-    { center: { x: 0, y: -0.5, z: 190.5 }, halfExtents: { x: 1.3, y: 0.5, z: 3.5 } },
+    // M9.6 Zone G: the 180.5/190.5 islands ride lane 0 (+2.6) — a gentle
+    // out-and-back weave breaking the longest same-lane island run. Same
+    // island sizes/gaps (offset landings only, teeter-tolerant), both
+    // reference lines take them identically; the 199.5/207 islands stay
+    // center so the stairs/LOW split need no retiming.
+    { center: { x: 2.6, y: -0.5, z: 180.5 }, halfExtents: { x: 1.3, y: 0.5, z: 3.5 } },
+    { center: { x: 2.6, y: -0.5, z: 190.5 }, halfExtents: { x: 1.3, y: 0.5, z: 3.5 } },
     { center: { x: 0, y: -0.5, z: 199.5 }, halfExtents: { x: 1.3, y: 0.5, z: 2.5 } },
     { center: { x: 0, y: -0.5, z: 207 }, halfExtents: { x: 1.3, y: 0.5, z: 5 } },
     // LOW road under the stairs/MID line (alternate route + stacked cross).
