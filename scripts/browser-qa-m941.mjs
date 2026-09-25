@@ -1,19 +1,20 @@
 /**
  * M9.4.1 browser gate (dev tool, not shipped) — the §29 human flow:
- * ORIGINAL vs EVOLVED are really different levels, and MAIN MENU is
- * reachable from any active run.
+ * M8.6 THE DESCENT vs GRAVITY RIFT are really different levels, and MAIN
+ * MENU is reachable from any active run.
  *
  * 1. Bare URL shows MAIN MENU (exactly two production cards).
- * 2. ORIGINAL + CLASSIC + START → the historical level id/fingerprint.
+ * 2. THE DESCENT (M8.6) + CLASSIC + START → the historical level
+ *    id/fingerprint, with NO music.
  * 3. ☰ MENU button opens the pause menu; RESUME continues.
  * 4. ESC opens the pause menu; switch to CHECKPOINT → tainted practice,
  *    crystals visible; resume.
  * 5. ESC → MAIN MENU → session fully disposed (no canvas, no HUD).
- * 6. EVOLVED + CHECKPOINT + START → current level id/fingerprint (!= original).
- * 7. Activate cp-forge → death restores it.
+ * 6. GRAVITY RIFT + CHECKPOINT + START → current level id/fingerprint (!= descent).
+ * 7. Activate cp-forge → death restores it (with music re-seek).
  * 8. ESC → switch CLASSIC → resume + die → origin.
- * 9. ESC → MAIN MENU → ORIGINAL + START again → original fingerprint,
- *    single canvas/HUD/pause-menu, wired audio (no duplicates).
+ * 9. ESC → MAIN MENU → THE DESCENT + START again → descent fingerprint,
+ *    single canvas/HUD/pause-menu, still no audio (no duplicates).
  * 10. Zero console/page errors.
  *
  * Usage: QA_URL=http://localhost:5174/ node scripts/browser-qa-m941.mjs
@@ -79,17 +80,17 @@ log(
   menu.cards.length === 2 && menu.cards.includes('the-descent') &&
     menu.cards.includes('production-showcase-01') && menu.canvases === 0 &&
     (menu.probeCards ?? []).length === 2 &&
-    menu.titles.includes('THE DESCENT') && menu.titles.includes('THE DESCENT — EVOLVED') &&
-    menu.tags.includes('ORIGINAL') && menu.tags.includes('EVOLVED ROUTE'),
+    menu.titles.includes('THE DESCENT') && menu.titles.includes('GRAVITY RIFT') &&
+    menu.tags.includes('ORIGINAL M8.6') && menu.tags.includes('EXPERT'),
   JSON.stringify(menu),
 );
 
-// --- 2. ORIGINAL + CLASSIC + START. ---
-await page.locator('.m94-card', { hasText: 'Original production route' }).click();
+// --- 2. THE DESCENT (M8.6) + CLASSIC + START — no music on this level. ---
+await page.locator('.m94-card', { hasText: 'ORIGINAL M8.6' }).click();
 await page.locator('.m94-modes').getByRole('button', { name: 'CLASSIC' }).click();
 await page.getByRole('button', { name: 'START' }).click();
 await waitGame();
-await page.waitForFunction(() => window.__gd3d.musicState() === 'playing', null, { timeout: 60000 });
+await page.waitForFunction(() => window.__gd3d.musicState() === 'none', null, { timeout: 30000 });
 await sleep(page, 800);
 const original = await ev(page, () => ({
   level: window.__gd3d.levelId(),
@@ -98,16 +99,18 @@ const original = await ev(page, () => ({
   kind: window.__gd3d.attemptKind(),
   visible: window.__gd3d.checkpointsVisible(),
   count: window.__gd3d.checkpointCount(),
+  music: window.__gd3d.musicState(),
   finishZ: window.__gd3d.playerPosition().z,
   fp: window.__gd3d.replayLevelFingerprint(),
   canvases: document.querySelectorAll('canvas').length,
 }));
 const originalFp = original.fp;
 log(
-  'm941 ORIGINAL CLASSIC starts the historical level',
+  'm941 M8.6 DESCENT CLASSIC starts the historical level with no music',
   original.level === 'the-descent' && original.name === 'THE DESCENT' &&
     original.mode === 'classic' && original.kind === 'classic' &&
-    original.visible === false && original.count === 8 && original.canvases === 1,
+    original.visible === false && original.count === 8 && original.canvases === 1 &&
+    original.music === 'none',
   JSON.stringify({ ...original, fp: originalFp.slice(0, 12) }),
 );
 
@@ -157,8 +160,8 @@ log(
   JSON.stringify(disposed),
 );
 
-// --- 6. EVOLVED + CHECKPOINT + START. ---
-await page.locator('.m94-card', { hasText: '3D megastructure route' }).click();
+// --- 6. GRAVITY RIFT + CHECKPOINT + START. ---
+await page.locator('.m94-card', { hasText: 'GRAVITY RIFT' }).click();
 await page.locator('.m94-mode-checkpoint').click();
 await page.getByRole('button', { name: 'START' }).click();
 await waitGame();
@@ -172,13 +175,13 @@ const evolved = await ev(page, () => ({
   fp: window.__gd3d.replayLevelFingerprint(),
 }));
 log(
-  'm941 EVOLVED CHECKPOINT is a different level session',
-  evolved.level === 'production-showcase-01' && evolved.name === 'THE DESCENT — EVOLVED' &&
+  'm941 RIFT CHECKPOINT is a different level session',
+  evolved.level === 'production-showcase-01' && evolved.name === 'GRAVITY RIFT' &&
     evolved.mode === 'checkpoint' && evolved.kind === 'practice' && evolved.fp !== originalFp,
   JSON.stringify({ ...evolved, fp: evolved.fp.slice(0, 12) }),
 );
 
-// --- 7. Evolved cp-forge activates; death restores it. ---
+// --- 7. Rift cp-forge activates; death restores it. ---
 await page.waitForFunction(() => {
   if (window.__gd3d.activeCheckpointId() === 'cp-forge') return true;
   if (window.__gd3d.status() === 'running' && window.__gd3d.playerPosition().z < 160) {
@@ -188,7 +191,7 @@ await page.waitForFunction(() => {
 }, null, { timeout: 60000 });
 const evolvedCp = await killAndWaitRunning(page);
 log(
-  'm941 evolved checkpoint death restores cp-forge',
+  'm941 rift checkpoint death restores cp-forge',
   evolvedCp.active === 'cp-forge' && Math.abs(evolvedCp.z - 170) < 8,
   JSON.stringify(evolvedCp),
 );
@@ -206,19 +209,20 @@ log(
   JSON.stringify(backAtOrigin),
 );
 
-// --- 9. ESC → MAIN MENU → ORIGINAL again: same fingerprint, no duplicates. ---
+// --- 9. ESC → MAIN MENU → THE DESCENT again: same fingerprint, no duplicates, still no audio. ---
 await page.keyboard.press('Escape');
 await pauseOpen();
 await page.locator('.m94-pause-menu').getByRole('button', { name: 'MAIN MENU' }).click();
 await waitMenu();
-await page.locator('.m94-card', { hasText: 'Original production route' }).click();
+await page.locator('.m94-card', { hasText: 'ORIGINAL M8.6' }).click();
 await page.locator('.m94-modes').getByRole('button', { name: 'CLASSIC' }).click();
 await page.getByRole('button', { name: 'START' }).click();
 await waitGame();
-await page.waitForFunction(() => window.__gd3d.musicState() === 'playing', null, { timeout: 60000 });
+await page.waitForFunction(() => window.__gd3d.musicState() === 'none', null, { timeout: 30000 });
 await sleep(page, 800);
 const again = await ev(page, () => ({
   level: window.__gd3d.levelId(),
+  music: window.__gd3d.musicState(),
   fp: window.__gd3d.replayLevelFingerprint(),
   canvases: document.querySelectorAll('canvas').length,
   huds: document.querySelectorAll('.hud').length,
@@ -231,12 +235,12 @@ const again = await ev(page, () => ({
     ready: window.__gd3d.musicGraphReady(),
   },
 }));
-const graphOk = again.graph.created && again.graph.source && again.graph.gain && again.graph.ready;
+const graphAbsent = !again.graph.created && !again.graph.source && !again.graph.gain && !again.graph.ready;
 log(
-  'm941 ORIGINAL restart is identical with no duplicate session residue',
+  'm941 DESCENT restart is identical with no audio and no duplicate session residue',
   again.level === 'the-descent' && again.fp === originalFp &&
     again.canvases === 1 && again.huds === 1 && again.pauseMenus === 1 &&
-    again.menuButtons === 1 && graphOk,
+    again.menuButtons === 1 && graphAbsent && again.music === 'none',
   JSON.stringify({ ...again, fp: again.fp.slice(0, 12) }),
 );
 

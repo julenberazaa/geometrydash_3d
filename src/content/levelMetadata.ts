@@ -11,7 +11,7 @@ import { THE_DESCENT_CLASSIC } from './levels/theDescentClassic';
 export interface LevelCardMeta {
   /** Registry id of the `LevelDefinition` this card starts. */
   levelId: string;
-  /** Short badge shown on the card (e.g. ORIGINAL / EVOLVED ROUTE). */
+  /** Short badge shown on the card (e.g. ORIGINAL M8.6 / EXPERT). */
   tag: string;
   /** One-line route description. */
   subtitle: string;
@@ -28,21 +28,21 @@ export interface LevelCardMeta {
 export const PRODUCTION_LEVEL_CARDS: readonly LevelCardMeta[] = [
   {
     levelId: THE_DESCENT_CLASSIC.id,
-    tag: 'ORIGINAL',
-    subtitle: 'Original production route',
+    tag: 'ORIGINAL M8.6',
+    subtitle: 'The classic high-mobility descent',
     difficulty: 'Hard',
-    durationLabel: '~116 s',
+    durationLabel: '~123 s',
     accentCss: '#2dffc4',
-    blurb: 'The original production route before the extreme-density rebuild.',
+    blurb: 'The original M8.6 high-mobility descent — islands, gravity, Ship and Spider. No music.',
   },
   {
     levelId: PRODUCTION_SHOWCASE_01.id,
-    tag: 'EVOLVED ROUTE',
-    subtitle: '3D megastructure route',
+    tag: 'EXPERT',
+    subtitle: 'High-density 3D gravity gauntlet',
     difficulty: 'Expert',
     durationLabel: '~115 s',
     accentCss: '#b44dff',
-    blurb: 'The modern high-density 3D version.',
+    blurb: 'The modern high-density 3D rhythm gauntlet. Gravity Lessons.',
   },
 ];
 

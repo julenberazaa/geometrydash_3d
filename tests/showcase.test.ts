@@ -30,7 +30,7 @@ import { ShowcaseDriver, driveShowcaseToFinish } from './helpers/showcaseScript'
  *   gaps, missed spider snaps and missed teleport rings all fail by
  *   geometry (never arbitrary)
  */
-describe('M8.6 production showcase', () => {
+describe('GRAVITY RIFT production route (production-showcase-01)', () => {
   it('is registered with its own gameplay identity', () => {
     expect(registeredLevelIds()).toContain('production-showcase-01');
     expect(computeLevelFingerprint(PRODUCTION_SHOWCASE_01)).not.toBe(

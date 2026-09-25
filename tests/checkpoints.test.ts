@@ -308,7 +308,7 @@ describe('checkpoint practice mode (M9.2)', () => {
     expect(sim.player.position.z).toBeCloseTo(RUNWAY.start.z, 9);
   });
 
-  it('THE DESCENT: all 8 crystals activate on both reference routes, trajectory untouched', () => {
+  it('GRAVITY RIFT: all 8 crystals activate on both reference routes, trajectory untouched', () => {
     for (const variant of ['primary', 'alternate'] as const) {
       const sim = new GameSimulation(PRODUCTION_SHOWCASE_01);
       sim.setCheckpointRespawnEnabled(true);

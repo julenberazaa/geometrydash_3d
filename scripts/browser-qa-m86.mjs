@@ -1,15 +1,15 @@
 /**
  * M8.6 browser QA gate (dev tool, not shipped).
- * Focused EVOLVED-showcase gate for THE DESCENT rework: staged environment
+ * Focused M8.6-content gate for THE DESCENT: staged environment
  * captures, moving-platform + Chomper probes, a full real-input in-page
  * reference run (real KeyboardEvents through the real InputSystem; CDP
  * only observes), in-page REPLAY VERIFIED, and a resource/console audit.
  *
- * M9.4.1: boots the EVOLVED route explicitly
- * (`?level=production-showcase-01`) — the bare URL holds the main menu
- * since M9.4, and the M8.5 content has its own gate at `the-descent`
- * (monolith section 24g). Also corrects the stale display-name assertion
- * (the evolved title is THE DESCENT — EVOLVED since M9.4).
+ * M9.4.2: boots the EXACT M8.6 route at `?level=the-descent` (the-descent
+ * now carries the e5b0d86 content; the modern GRAVITY RIFT route has its
+ * own gates: browser-qa-m94/m941/m92). Direct entry needs one Space
+ * gesture to start the run (press-to-start gate); THE DESCENT declares
+ * no music, so the gesture starts it immediately with no audio handoff.
  *
  * Usage: node scripts/browser-qa-m86.mjs   (requires dev server on :5173)
  */
@@ -20,8 +20,8 @@ import crypto from 'node:crypto';
 import nodeChildProcess from 'node:child_process';
 
 const URL = process.env.QA_URL ?? 'http://localhost:5173/';
-// M9.4.1: the EVOLVED route under test (bare URL holds the main menu).
-const EVOLVED_URL = `${URL}?level=production-showcase-01`;
+// M9.4.2: the EXACT M8.6 route under test (bare URL holds the main menu).
+const DESCENT_URL = `${URL}?level=the-descent`;
 const OUT_DIR = path.resolve('qa/screenshots');
 fs.mkdirSync(OUT_DIR, { recursive: true });
 
@@ -73,7 +73,7 @@ const safeGoto = async (url) => {
     await waitReady();
   }
 };
-await safeGoto(EVOLVED_URL);
+await safeGoto(DESCENT_URL);
 await waitReady();
 await page.waitForTimeout(2000);
 
@@ -126,6 +126,11 @@ const fresh = async (url) => {
   await safeGoto(url);
   await waitReady();
   await page.waitForTimeout(2000);
+  // Direct entry holds at the press-to-start gate: one Space gesture
+  // starts the run (THE DESCENT has no music, so it starts immediately;
+  // the edge is flushed by the gate and never becomes gameplay input).
+  await page.keyboard.press('Space');
+  await page.waitForTimeout(500);
   for (let i = 0; i < 8; i++) {
     await page.keyboard.press('KeyR');
     await page.waitForTimeout(600);
@@ -158,11 +163,11 @@ const live = async (rounds = 4) => {
   }
 };
 
-// --- A. Boot contract: evolved direct entry + override ---
-await fresh(EVOLVED_URL);
+// --- A. Boot contract: M8.6 direct entry + override ---
+await fresh(DESCENT_URL);
 {
   const b = await probe();
-  log('m86 evolved entry is THE DESCENT — EVOLVED', b.id === 'production-showcase-01' && b.name === 'THE DESCENT — EVOLVED',
+  log('m86 M8.6 entry is THE DESCENT at the-descent', b.id === 'the-descent' && b.name === 'THE DESCENT',
     `id=${b.id} name=${b.name}`);
 }
 await fresh(`${URL}?level=multimode-gauntlet-01`);
@@ -170,7 +175,7 @@ await fresh(`${URL}?level=multimode-gauntlet-01`);
   const b = await probe();
   log('m86 explicit ?level= override still works', b.id === 'multimode-gauntlet-01', `id=${b.id}`);
 }
-await fresh(EVOLVED_URL);
+await fresh(DESCENT_URL);
 
 // --- B. 16 staged evidence captures (one per DoD beat) ---
 const stages = [
@@ -217,7 +222,7 @@ await freeze(0, 0.55, 370);
 }
 
 // --- D. Chomper telegraph on approach ---
-await fresh(EVOLVED_URL);
+await fresh(DESCENT_URL);
 await page.evaluate(() => window.__gd3d.debugTeleport(0, 0.55, 945));
 await page.keyboard.press('KeyP');
 await page.waitForTimeout(250);
@@ -244,7 +249,7 @@ await page.keyboard.press('KeyP');
 // so the counted run drops to 320x180: control timing is what is under
 // test, not pixels.
 await page.setViewportSize({ width: 320, height: 180 });
-await fresh(`${URL}?level=production-showcase-01&post=off&fx=off&triggers=off`);
+await fresh(`${URL}?level=the-descent&post=off&fx=off&triggers=off`);
 await page.evaluate(() => {
   if (window.__m86driver) clearInterval(window.__m86driver);
   window.__m86done = null;

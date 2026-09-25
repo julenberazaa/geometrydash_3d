@@ -2,10 +2,11 @@
  * M9.4 browser gate (dev tool, not shipped) — level select + live
  * practice-mode switching with a real browser (system Chrome).
  *
- * A. Bare URL shows the level-select menu (2 cards, EVOLVED preselected,
+ * A. Bare URL shows the level-select menu (2 cards, GRAVITY RIFT preselected,
  *    CLASSIC preselected, no auto-start).
- * B. THE DESCENT + CHECKPOINT + START: session starts (music graph wired,
- *    runMode checkpoint, attemptKind practice, crystals visible).
+ * B. THE DESCENT + CHECKPOINT + START: session starts with NO music graph
+ *    (trackless level — musicState none, runMode checkpoint, attemptKind
+ *    practice, crystals visible).
  * C. M9.3 spot: island-contact pulse fires live after the start landing.
  * D. cp-forge activates 1/8 via the crystal volume.
  * E. Pause menu opens (P): overlay visible, sim + music frozen.
@@ -19,9 +20,9 @@
  *    cleared, fresh practice attempt in checkpoint mode).
  * J. CLASSIC + Shift+R clears the taint (fresh clean classic attempt).
  * K. MAIN MENU returns to the menu (session disposed: no canvas, no HUD,
- *    music stopped); a fresh EVOLVED + CLASSIC session starts cleanly with
+ *    music stopped); a fresh GRAVITY RIFT + CLASSIC session starts cleanly with
  *    its own level id/fingerprint.
- * L. M9.3 spot: spider ring + one-press snap work in-page on the evolved
+ * L. M9.3 spot: spider ring + one-press snap work in-page on the rift
  *    route; pause-switch to CHECKPOINT taints (music target preserved);
  *    cp-forge restores after death; return to menu.
  * M. Zero console/page errors on every page.
@@ -101,22 +102,23 @@ let descentFingerprint = null;
     z: null,
   }));
   log(
-    'm94 menu renders with 2 cards, EVOLVED + CLASSIC preselected',
+    'm94 menu renders with 2 cards, GRAVITY RIFT + CLASSIC preselected',
     menu.cards === 2 &&
       menu.selectedCard === 'production-showcase-01' &&
       (menu.selectedMode ?? '').includes('CLASSIC') &&
       menu.titles.includes('THE DESCENT') &&
-      menu.titles.includes('THE DESCENT — EVOLVED'),
+      menu.titles.includes('GRAVITY RIFT'),
     JSON.stringify(menu),
   );
   await page.screenshot({ path: 'qa/screenshots/m94-menu.png' });
 
-  // --- B. THE DESCENT + CHECKPOINT + START. ---
-  await page.locator('.m94-card', { hasText: 'Original production route' }).click();
+  // --- B. THE DESCENT + CHECKPOINT + START (no music on this level). ---
+  await page.locator('.m94-card', { hasText: 'ORIGINAL M8.6' }).click();
   await page.locator('.m94-mode-checkpoint').click();
   await page.getByRole('button', { name: 'START' }).click();
   await waitGame(page);
-  await page.waitForFunction(() => window.__gd3d.musicState() === 'playing', null, { timeout: 60000 });
+  // Trackless level: no music state, no graph — the run starts immediately.
+  await page.waitForFunction(() => window.__gd3d.musicState() === 'none', null, { timeout: 30000 });
   await sleep(page, 800);
   const g = await graph(page);
   const started = await ev(page, () => ({
@@ -128,10 +130,10 @@ let descentFingerprint = null;
     fp: window.__gd3d.replayLevelFingerprint(),
   }));
   descentFingerprint = started.fp;
-  const graphOk =
-    g.created === true && g.source === true && g.gain === true &&
-    g.eff > 0 && g.ready === true && g.state === 'playing' && g.ctx === 'running';
-  log('m94 THE DESCENT CHECKPOINT starts with wired graph', graphOk, JSON.stringify(g));
+  const graphAbsent =
+    g.created === false && g.source === false && g.gain === false &&
+    g.ready === false && g.state === 'none';
+  log('m94 THE DESCENT CHECKPOINT starts with no music graph', graphAbsent, JSON.stringify(g));
   log(
     'm94 session identity (level/mode/taint/crystals)',
     started.level === 'the-descent' && started.mode === 'checkpoint' &&
@@ -148,12 +150,13 @@ let descentFingerprint = null;
   // The idle runner dies and re-runs at the origin on its own, and a
   // teleport mid-death-hold is ignored — but re-placing EVERY poll would
   // yank the runner back and freeze progress. So place only while still
-  // at the origin (z < 10), then let it walk into the volume freely.
-  // (M9.4.1: the ORIGINAL M8.5 cp-forge sits at z=15 — land at z=11.)
+  // at the origin (z < 50), then let it settle into the volume.
+  // (M9.4.2: the M8.6 cp-forge sits at z=60 on the stairs deck, y=5.05 —
+  // teleport straight onto the proven standing state.)
   await page.waitForFunction(() => {
     if (window.__gd3d.activeCheckpointId() === 'cp-forge') return true;
-    if (window.__gd3d.status() === 'running' && window.__gd3d.playerPosition().z < 10) {
-      window.__gd3d.debugTeleport(0, 0.55, 11);
+    if (window.__gd3d.status() === 'running' && window.__gd3d.playerPosition().z < 50) {
+      window.__gd3d.debugTeleport(0, 5.05, 60);
     }
     return false;
   }, null, { timeout: 60000 });
@@ -183,7 +186,7 @@ let descentFingerprint = null;
   );
   await page.screenshot({ path: 'qa/screenshots/m94-pause-menu.png' });
 
-  // --- F. Pause-menu switch to CLASSIC: taint banner, crystals hide, no seek. ---
+  // --- F. Pause-menu switch to CLASSIC: taint banner, crystals hide, still no music. ---
   const targetBefore = await ev(page, () => window.__gd3d.musicTargetTime());
   await page.locator('.m94-pause-menu').getByRole('button', { name: 'CLASSIC' }).click();
   const switched = await ev(page, () => ({
@@ -194,11 +197,11 @@ let descentFingerprint = null;
     target: window.__gd3d.musicTargetTime(),
   }));
   log(
-    'm94 CLASSIC switch taints (practice banner, crystals hidden, no seek)',
+    'm94 CLASSIC switch taints (practice banner, crystals hidden, no music transport)',
     switched.mode === 'classic' && switched.kind === 'practice' &&
       switched.visible === false &&
       (switched.badge ?? '').includes('PRACTICE RUN') &&
-      Math.abs(switched.target - targetBefore) < 0.05,
+      switched.target === -1 && targetBefore === -1,
     JSON.stringify(switched),
   );
 
@@ -217,7 +220,7 @@ let descentFingerprint = null;
     JSON.stringify(retained),
   );
 
-  // --- H. Running toggle back to CHECKPOINT (no music seek) → death restores cp-forge. ---
+  // --- H. Running toggle back to CHECKPOINT (nothing to seek) → death restores cp-forge. ---
   const t0 = await ev(page, () => window.__gd3d.musicTargetTime());
   await ev(page, () => window.__gd3d.setRunMode('checkpoint'));
   await sleep(page, 600);
@@ -231,7 +234,7 @@ let descentFingerprint = null;
   const restored = await killAndWaitRunning(page);
   log(
     'm94 re-armed checkpoint restores cp-forge without re-earning',
-    restored.active === 'cp-forge' && Math.abs(restored.z - 15) < 8,
+    restored.active === 'cp-forge' && Math.abs(restored.z - 60) < 8,
     JSON.stringify(restored),
   );
 
@@ -244,7 +247,7 @@ let descentFingerprint = null;
   }));
   log(
     'm94 R restarts from the checkpoint',
-    Math.abs(afterR.z - 15) < 10 && afterR.active === 'cp-forge',
+    Math.abs(afterR.z - 60) < 10 && afterR.active === 'cp-forge',
     JSON.stringify(afterR),
   );
   await page.keyboard.press('Shift+KeyR');
@@ -296,13 +299,13 @@ let descentFingerprint = null;
   await page.close();
 }
 
-// --- K2/EVOLVED session on a second page (fresh session, own identity). ---
+// --- K2/RIFT session on a second page (fresh session, own identity). ---
 let evolvedFingerprint = null;
 {
   const page = await freshPage();
   await page.goto(URL, { waitUntil: 'load', timeout: 60000 });
   await waitMenu(page);
-  await page.locator('.m94-card', { hasText: '3D megastructure route' }).click();
+  await page.locator('.m94-card', { hasText: 'GRAVITY RIFT' }).click();
   await page.getByRole('button', { name: 'START' }).click();
   await waitGame(page);
   await page.waitForFunction(() => window.__gd3d.musicState() === 'playing', null, { timeout: 60000 });
@@ -319,10 +322,10 @@ let evolvedFingerprint = null;
   }));
   evolvedFingerprint = started.fp;
   const graphOk = g.created === true && g.source === true && g.gain === true && g.eff > 0 && g.ready === true;
-  log('m94 EVOLVED CLASSIC starts clean with wired graph', graphOk, JSON.stringify(g));
+  log('m94 RIFT CLASSIC starts clean with wired graph', graphOk, JSON.stringify(g));
   log(
-    'm94 evolved session has its own identity (no leakage)',
-    started.level === 'production-showcase-01' && started.name === 'THE DESCENT — EVOLVED' &&
+    'm94 rift session has its own identity (no leakage)',
+    started.level === 'production-showcase-01' && started.name === 'GRAVITY RIFT' &&
       started.mode === 'classic' && started.kind === 'classic' && started.visible === false &&
       started.fp !== descentFingerprint && started.canvases === 1,
     JSON.stringify({ ...started, fp: started.fp.slice(0, 12), descent: (descentFingerprint ?? '').slice(0, 12) }),
@@ -358,7 +361,7 @@ let evolvedFingerprint = null;
     target: window.__gd3d.musicTargetTime(),
   }));
   log(
-    'm94 evolved pause-switch taints practice (music untouched)',
+    'm94 rift pause-switch taints practice (music untouched)',
     tainted.mode === 'checkpoint' && tainted.kind === 'practice' && tainted.visible === true &&
       Math.abs(tainted.target - t0) < 0.05,
     JSON.stringify(tainted),
@@ -376,7 +379,7 @@ let evolvedFingerprint = null;
   }, null, { timeout: 60000 });
   const restored = await killAndWaitRunning(page);
   log(
-    'm94 evolved checkpoint death restores cp-forge',
+    'm94 rift checkpoint death restores cp-forge',
     restored.active === 'cp-forge' && Math.abs(restored.z - 170) < 8,
     JSON.stringify(restored),
   );
@@ -389,7 +392,7 @@ let evolvedFingerprint = null;
   const final = await ev(page, () => ({
     canvases: document.querySelectorAll('canvas').length,
   }));
-  log('m94 final return disposes the evolved session', final.canvases === 0, JSON.stringify(final));
+  log('m94 final return disposes the rift session', final.canvases === 0, JSON.stringify(final));
   await page.close();
 }
 
@@ -398,7 +401,7 @@ let evolvedFingerprint = null;
   const page = await freshPage();
   await page.goto(URL, { waitUntil: 'load', timeout: 60000 });
   await waitMenu(page);
-  await page.locator('.m94-card', { hasText: '3D megastructure route' }).click();
+  await page.locator('.m94-card', { hasText: 'GRAVITY RIFT' }).click();
   await page.getByRole('button', { name: 'START' }).click();
   await waitGame(page);
   await page.waitForFunction(() => window.__gd3d.musicState() === 'playing', null, { timeout: 60000 });
@@ -437,7 +440,7 @@ let evolvedFingerprint = null;
   await page.close();
 }
 
-// --- N. Direct `?level=` + `?mode=` entry contract. ---
+// --- N. Direct `?level=` + `?mode=` entry contract (trackless level). ---
 {
   const page = await freshPage();
   await page.goto(`${URL}?level=the-descent&mode=checkpoint`, { waitUntil: 'load', timeout: 60000 });
@@ -447,15 +450,22 @@ let evolvedFingerprint = null;
     level: window.__gd3d.levelId(),
   }));
   await page.keyboard.press('Space');
-  await page.waitForFunction(() => window.__gd3d.musicState() === 'playing', null, { timeout: 60000 });
+  // No music on THE DESCENT: the gesture starts the run immediately with
+  // musicState none (never 'playing', never a gate fetch).
+  await page.waitForFunction(
+    () => window.__gd3d.awaitingStart() === false && window.__gd3d.musicState() === 'none',
+    null,
+    { timeout: 30000 },
+  );
   const entered = await ev(page, () => ({
     mode: window.__gd3d.runMode(),
     kind: window.__gd3d.attemptKind(),
+    music: window.__gd3d.musicState(),
   }));
   log(
-    'm94 ?level=+?mode= enters directly in the preselected mode',
+    'm94 ?level=+?mode= enters directly in the preselected mode (no music)',
     gated.awaiting === true && gated.level === 'the-descent' &&
-      entered.mode === 'checkpoint' && entered.kind === 'practice',
+      entered.mode === 'checkpoint' && entered.kind === 'practice' && entered.music === 'none',
     JSON.stringify({ ...gated, ...entered }),
   );
   await page.close();

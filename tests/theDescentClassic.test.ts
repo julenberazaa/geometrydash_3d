@@ -18,25 +18,27 @@ import {
   TheDescentClassicDriver,
   driveTheDescentClassicToFinish,
 } from './helpers/theDescentClassicScript';
+import { idleInput } from './helpers/simulation';
 import { ShowcaseDriver } from './helpers/showcaseScript';
 import { collectRouteMetrics } from './helpers/routeMetrics';
 
 /**
- * M9.4.1 original-level contract (THE DESCENT, `the-descent`):
- * - the REAL pre-M8.6 M8.5 production route from Git revision 34db456
- *   (NOT the M9.2 snapshot M9.4 froze by mistake — M9.2 is already
- *   post-M8.6 super-difficult content)
- * - registered as an independent production level (own id, default stays
- *   the evolved route, card metadata derives from the registry data)
- * - content independent from the evolved route (no shared mutable arrays;
- *   distinct gameplay fingerprint; drastically lower density)
+ * M9.4.2 THE DESCENT contract (`the-descent`):
+ * - the EXACT M8.6 density-verticality production route from Git revision
+ *   e5b0d86 (NOT the M8.5 simple route M9.4.1 stored here — M8.5 is 30
+ *   jumps / 12 lanes / 0 fast-fall / 32 supports; M8.6 is ~97 skill
+ *   jumps / ~62 lane edges / deliberate fast-fall / ~79 supports)
+ * - registered as an independent production level (own id, GRAVITY RIFT
+ *   stays the default, card metadata derives from the registry data)
+ * - content independent from GRAVITY RIFT (no shared mutable arrays;
+ *   distinct gameplay fingerprint)
  * - valid authoring (sourced/contained lava, bounded portals, 8 crystals
- *   authored for THIS geometry, own background-music declaration)
- * - the recovered M8.5 driver still completes it on the current engine
- *   with zero deaths at the historical 13955-tick anchor, and the tape
+ *   authored for THIS M8.6 geometry, NO music declaration)
+ * - the recovered M8.6 driver still completes it on the current engine
+ *   with zero deaths at the historical 14797-tick anchor, and the tape
  *   replays VERIFIED
  */
-describe('M9.4.1 THE DESCENT (original M8.5 route)', () => {
+describe('M9.4.2 THE DESCENT (exact M8.6 route)', () => {
   it('is registered with its own level id', () => {
     expect(registeredLevelIds()).toContain('the-descent');
     expect(THE_DESCENT_CLASSIC.id).toBe('the-descent');
@@ -46,10 +48,13 @@ describe('M9.4.1 THE DESCENT (original M8.5 route)', () => {
     expect(getLevel('the-descent')).toBe(THE_DESCENT_CLASSIC);
   });
 
-  it('leaves the evolved route as the default level', () => {
+  it('leaves GRAVITY RIFT as the default level with a stable internal id', () => {
     expect(DEFAULT_LEVEL_ID).toBe('production-showcase-01');
     expect(resolveLevel(null).level.id).toBe('production-showcase-01');
-    expect(PRODUCTION_SHOWCASE_01.displayName).toBe('THE DESCENT — EVOLVED');
+    // User-facing rename only: the internal id never changed (replay /
+    // fingerprint / URL compatibility), the display name is GRAVITY RIFT.
+    expect(PRODUCTION_SHOWCASE_01.id).toBe('production-showcase-01');
+    expect(PRODUCTION_SHOWCASE_01.displayName).toBe('GRAVITY RIFT');
   });
 
   it('is covered by declarative card metadata', () => {
@@ -59,46 +64,63 @@ describe('M9.4.1 THE DESCENT (original M8.5 route)', () => {
     for (const card of PRODUCTION_LEVEL_CARDS) {
       expect(getLevel(card.levelId)?.id, card.levelId).toBe(card.levelId);
     }
+    const descent = PRODUCTION_LEVEL_CARDS.find((c) => c.levelId === 'the-descent');
+    const rift = PRODUCTION_LEVEL_CARDS.find((c) => c.levelId === 'production-showcase-01');
+    expect(descent?.tag).toBe('ORIGINAL M8.6');
+    expect(rift?.tag).toBe('EXPERT');
   });
 
-  it('shares no mutable content with the evolved route', () => {
+  it('shares no mutable content with GRAVITY RIFT', () => {
     expect(THE_DESCENT_CLASSIC).not.toBe(PRODUCTION_SHOWCASE_01);
     expect(THE_DESCENT_CLASSIC.solids).not.toBe(PRODUCTION_SHOWCASE_01.solids);
     expect(THE_DESCENT_CLASSIC.hazards).not.toBe(PRODUCTION_SHOWCASE_01.hazards);
     expect(THE_DESCENT_CLASSIC.gravityPortals).not.toBe(PRODUCTION_SHOWCASE_01.gravityPortals);
     expect(THE_DESCENT_CLASSIC.checkpoints).not.toBe(PRODUCTION_SHOWCASE_01.checkpoints);
     expect(THE_DESCENT_CLASSIC.laneCenters).not.toBe(PRODUCTION_SHOWCASE_01.laneCenters);
-    // Gameplay identity differs (M8.6+ re-authored the route twice over).
+    // Gameplay identity differs (the modern route was re-authored twice
+    // over: M9 retime + M9.1 rebuild + M9.3 surgery).
     expect(computeLevelFingerprint(THE_DESCENT_CLASSIC)).not.toBe(
       computeLevelFingerprint(PRODUCTION_SHOWCASE_01),
     );
   });
 
-  it('provenance: carries the M8.5 content signature, not M8.6/M9.2', () => {
-    // Finish + interaction census: the original ends at z=1750 with the
-    // M8.5 portal/chomper census; the evolved route ends at z=1790 with
-    // strictly more of everything (funnels, ferries, extra Chomper).
-    expect(THE_DESCENT_CLASSIC.finishZ).toBe(1750);
-    expect(PRODUCTION_SHOWCASE_01.finishZ).toBe(1790);
-    expect((THE_DESCENT_CLASSIC.movingPlatforms ?? []).length).toBe(0);
-    expect((PRODUCTION_SHOWCASE_01.movingPlatforms ?? []).length).toBeGreaterThan(0);
+  it('provenance: carries the exact M8.6 content signature', () => {
+    // Finish + interaction census from e5b0d86: the M8.6 route ends at
+    // z=1790 with 16 gravity / 6 speed / 6 mode portals, 3 teleports,
+    // 5 pads, 3 jump orbs, 2 gravity orbs, 5 chompers, 5 platforms.
+    expect(THE_DESCENT_CLASSIC.finishZ).toBe(1790);
+    expect((THE_DESCENT_CLASSIC.movingPlatforms ?? []).map((p) => p.id)).toEqual([
+      'ps-lift-void',
+      'ps-ferry-void',
+      'ps-ferry-maze-a',
+      'ps-ferry-maze-b',
+      'ps-ferry-chomp',
+    ]);
     expect((THE_DESCENT_CLASSIC.gravityPortals ?? []).map((p) => p.id)).toEqual([
-      'ps-wall-left',
-      'ps-ceiling',
-      'ps-wall-right',
-      'ps-floor-again',
-      'ps-ship-invert',
-      'ps-ship-revert',
-      'ps-temple-wall',
-      'ps-temple-floor',
-      'ps-final-wall',
-      'ps-final-floor',
+      'ps-spire-up',
+      'ps-spire-wall',
+      'ps-spire-right',
+      'ps-spire-down',
+      'ps-foundry-up',
+      'ps-foundry-down',
+      'ps-abyss-invert',
+      'ps-abyss-revert',
+      'ps-abyss-invert2',
+      'ps-abyss-revert2',
+      'ps-climb-wall',
+      'ps-climb-floor',
+      'ps-remix-up',
+      'ps-remix-down',
+      'ps-remix-wall',
+      'ps-remix-floor',
     ]);
     expect((THE_DESCENT_CLASSIC.modePortals ?? []).map((p) => p.id)).toEqual([
       'ps-ship-on',
       'ps-ship-off',
       'ps-spider-on',
       'ps-spider-off',
+      'ps-remix-spider-on',
+      'ps-remix-spider-off',
     ]);
     expect((THE_DESCENT_CLASSIC.teleportPortals ?? []).map((p) => p.id)).toEqual([
       'ps-teleport-high',
@@ -106,103 +128,176 @@ describe('M9.4.1 THE DESCENT (original M8.5 route)', () => {
       'ps-teleport-maw',
     ]);
     expect((THE_DESCENT_CLASSIC.speedPortals ?? []).map((p) => p.id)).toEqual([
-      'ps-speed-2x',
-      'ps-speed-1x',
+      'ps-speed-maze',
+      'ps-speed-spire',
+      'ps-speed-remix',
+      'ps-speed-calm',
+      'ps-speed-remix2',
+      'ps-speed-calm2',
     ]);
-    expect((THE_DESCENT_CLASSIC.chompers ?? []).length).toBe(4);
-    expect((PRODUCTION_SHOWCASE_01.chompers ?? []).length).toBeGreaterThan(4);
-    expect((THE_DESCENT_CLASSIC.jumpPads ?? []).length).toBe(2);
-    expect((THE_DESCENT_CLASSIC.jumpOrbs ?? []).length).toBe(2);
-    // Raw content volume: the original is a fraction of the evolved route.
-    expect(THE_DESCENT_CLASSIC.solids.length).toBe(100);
-    expect(THE_DESCENT_CLASSIC.hazards.length).toBe(32);
-    expect(THE_DESCENT_CLASSIC.solids.length).toBeLessThan(
-      PRODUCTION_SHOWCASE_01.solids.length,
-    );
-    expect(THE_DESCENT_CLASSIC.hazards.length).toBeLessThan(
-      PRODUCTION_SHOWCASE_01.hazards.length,
-    );
+    expect((THE_DESCENT_CLASSIC.chompers ?? []).map((c) => c.id)).toEqual([
+      'ps-chomp-ferry',
+      'ps-chomp-weave',
+      'ps-chomp-ceil',
+      'ps-chomp-low',
+      'ps-chomp-final',
+    ]);
+    expect((THE_DESCENT_CLASSIC.jumpPads ?? []).map((p) => p.id)).toEqual([
+      'ps-pad-sky',
+      'ps-pad-ridge',
+      'ps-pad-maze',
+      'ps-pad-high',
+      'ps-pad-shaft',
+    ]);
+    expect((THE_DESCENT_CLASSIC.jumpOrbs ?? []).map((o) => o.id)).toEqual([
+      'ps-orb-sky',
+      'ps-orb-terminal-a',
+      'ps-orb-terminal-b',
+    ]);
+    expect((THE_DESCENT_CLASSIC.gravityOrbs ?? []).map((o) => o.id)).toEqual([
+      'ps-gorb-spire',
+      'ps-gorb-spire-back',
+    ]);
+    // Raw content volume: the M8.6 redesign is dense (M8.5: 100/32).
+    expect(THE_DESCENT_CLASSIC.solids.length).toBe(175);
+    expect(THE_DESCENT_CLASSIC.hazards.length).toBe(77);
   });
 
-  it('provenance: route density matches the M8.5 audit, far below evolved', () => {
-    // M8.6 flatness audit (measured M8.5 primary route): ~60 action events,
-    // ~30 jump edges, ~12 lane edges, 0 fast-fall, 32 distinct supports,
-    // sum|dY| ~206.6, sum|dX| ~89.4. Someone swapping in a later
-    // super-difficult snapshot trips every one of these.
-    const primaryDriver = new TheDescentClassicDriver('primary');
-    const primary = collectRouteMetrics(THE_DESCENT_CLASSIC, (z, sim) =>
-      primaryDriver.nextInput(z, sim),
+  it('provenance: primary route density matches the M8.6 audit', { timeout: 120000 }, () => {
+    // Measured M8.6 primary route (e5b0d86 density contract): 97 skill
+    // jumps, 62 lane edges, deliberate fast-fall, 79 distinct supports,
+    // sum|dY| 557.5, sum|dX| 197.8. Exact pins: swapping in any other
+    // snapshot trips them.
+    const driver = new TheDescentClassicDriver('primary');
+    const m = collectRouteMetrics(THE_DESCENT_CLASSIC, (z, sim) =>
+      driver.nextInput(z, sim),
     );
-    expect(primary.status).toBe('finished');
-    expect(primary.ticks).toBe(13955);
-    expect(primary.actionEvents).toBe(67);
-    expect(primary.jumpEdges).toBe(30);
-    expect(primary.laneEdges).toBe(12);
-    expect(primary.fastFallHeld).toBe(0);
-    expect(primary.distinctSupports).toBe(32);
-    expect(primary.supportChanges).toBe(78);
-    expect(primary.sumDy).toBeCloseTo(206.6, 1);
-    expect(primary.sumDx).toBeCloseTo(89.4, 1);
-    expect(primary.gravityTransitions).toBe(16);
-    expect(primary.modeTransitions).toBe(4);
+    expect(m.status).toBe('finished');
+    expect(m.ticks).toBe(14797);
+    expect(m.cubeJumpEdges).toBe(97);
+    expect(m.laneEdges).toBe(62);
+    expect(m.fastFallHeld).toBe(144);
+    expect(m.distinctSupports).toBe(79);
+    expect(m.supportChanges).toBe(208);
+    expect(m.sumDy).toBeCloseTo(557.5, 1);
+    expect(m.sumDx).toBeCloseTo(197.8, 1);
+    expect(m.gravityTransitions).toBe(30);
+    expect(m.modeTransitions).toBe(6);
+    expect(m.spiderPresses).toBe(17);
+    expect(m.pads).toBe(5);
+    expect(m.orbs).toBe(5);
+    expect(m.yRange).toBeGreaterThanOrEqual(12);
+    expect(m.bandsVisited).toBeGreaterThanOrEqual(8);
+    expect(m.maxActionGapTicks).toBeLessThanOrEqual(180);
+    // The maze ferry pair + void ferry + Chomper ferry ride, plus the
+    // HIGH elevator on the primary line.
+    expect(m.platformSupports.length).toBeGreaterThanOrEqual(4);
+    expect(m.platformSupportTicks).toBeGreaterThan(100);
+    expect(m.platformSupports).toContain('platform-ps-lift-void');
+  });
 
-    const alternateDriver = new TheDescentClassicDriver('alternate');
-    const alternate = collectRouteMetrics(THE_DESCENT_CLASSIC, (z, sim) =>
-      alternateDriver.nextInput(z, sim),
+  it('provenance: alternate route density matches the M8.6 audit', { timeout: 120000 }, () => {
+    // Measured M8.6 LOW technical line: 93 skill jumps, 70 lane edges,
+    // 76 supports, sum|dY| 505.0, sum|dX| 209.5.
+    const driver = new TheDescentClassicDriver('alternate');
+    const m = collectRouteMetrics(THE_DESCENT_CLASSIC, (z, sim) =>
+      driver.nextInput(z, sim),
     );
-    expect(alternate.status).toBe('finished');
-    expect(alternate.ticks).toBe(13955);
-    expect(alternate.fastFallHeld).toBe(0);
-    expect(alternate.distinctSupports).toBe(32);
-    expect(alternate.jumpEdges).toBeLessThan(40);
-    expect(alternate.laneEdges).toBeLessThan(25);
-    expect(alternate.actionEvents).toBeLessThan(90);
+    expect(m.status).toBe('finished');
+    expect(m.ticks).toBe(14797);
+    expect(m.cubeJumpEdges).toBe(93);
+    expect(m.laneEdges).toBe(70);
+    expect(m.fastFallHeld).toBe(35);
+    expect(m.distinctSupports).toBe(76);
+    expect(m.supportChanges).toBe(209);
+    expect(m.sumDy).toBeCloseTo(505.0, 1);
+    expect(m.sumDx).toBeCloseTo(209.5, 1);
+    expect(m.gravityTransitions).toBe(30);
+    expect(m.modeTransitions).toBe(6);
+    expect(m.spiderPresses).toBe(17);
+    expect(m.pads).toBe(1);
+    expect(m.orbs).toBe(2);
+    expect(m.maxActionGapTicks).toBeLessThanOrEqual(180);
+    expect(m.platformSupports.length).toBeGreaterThanOrEqual(4);
+    expect(m.platformSupportTicks).toBeGreaterThan(100);
+  });
 
-    // And the evolved route lives on another planet density-wise.
-    const evolvedDriver = new ShowcaseDriver('primary');
-    const evolved = collectRouteMetrics(PRODUCTION_SHOWCASE_01, (z, sim) =>
-      evolvedDriver.nextInput(z, sim),
-    );
-    expect(evolved.status).toBe('finished');
-    expect(evolved.actionEvents).toBeGreaterThan(500);
-    expect(evolved.distinctSupports).toBeGreaterThan(64);
-    expect(evolved.actionEvents).toBeGreaterThan(primary.actionEvents * 5);
+  it('provenance: this is NOT the M8.5 simple version', { timeout: 120000 }, () => {
+    // M8.5 baseline (the exact mistake that happened twice — M9.4 froze
+    // M9.2 here, M9.4.1 stored M8.5 here): 30 jumps, 12 lane edges,
+    // 0 deliberate fast-fall, 32 supports, sum|dY| 206.6, sum|dX| 89.4.
+    // Every M8.6 floor below sits far above the M8.5 ceiling.
+    const M85 = {
+      jumpEdges: 30,
+      laneEdges: 12,
+      fastFallHeld: 0,
+      distinctSupports: 32,
+      sumDy: 206.6,
+      sumDx: 89.4,
+    };
+    for (const variant of ['primary', 'alternate'] as const) {
+      const driver = new TheDescentClassicDriver(variant);
+      const m = collectRouteMetrics(THE_DESCENT_CLASSIC, (z, sim) =>
+        driver.nextInput(z, sim),
+      );
+      expect(m.status).toBe('finished');
+      expect(m.cubeJumpEdges, `${variant} jumps above M8.5`).toBeGreaterThanOrEqual(85);
+      expect(M85.jumpEdges).toBeLessThan(85);
+      expect(m.laneEdges, `${variant} lanes above M8.5`).toBeGreaterThanOrEqual(50);
+      expect(M85.laneEdges).toBeLessThan(50);
+      expect(m.fastFallHeld, `${variant} fast-fall above M8.5`).toBeGreaterThan(M85.fastFallHeld);
+      expect(m.distinctSupports, `${variant} supports above M8.5`).toBeGreaterThanOrEqual(64);
+      expect(M85.distinctSupports).toBeLessThan(64);
+      expect(m.sumDy, `${variant} vertical travel above M8.5`).toBeGreaterThanOrEqual(400);
+      expect(M85.sumDy).toBeLessThan(400);
+      expect(m.sumDx, `${variant} lateral travel above M8.5`).toBeGreaterThanOrEqual(150);
+      expect(M85.sumDx).toBeLessThan(150);
+    }
   });
 
   it('authors only sourced/contained lava with bounded portals', () => {
     expect(validateLavaAuthoring(THE_DESCENT_CLASSIC)).toEqual([]);
-    expect((THE_DESCENT_CLASSIC.lava ?? []).length).toBeGreaterThan(0);
+    expect((THE_DESCENT_CLASSIC.lava ?? []).length).toBe(21);
     expect(validatePortalBounds(THE_DESCENT_CLASSIC)).toEqual([]);
   });
 
-  it('authors 8 checkpoint crystals for its own geometry + background music', () => {
+  it('authors 8 checkpoint crystals for its own M8.6 geometry and declares NO music', () => {
     const ids = (THE_DESCENT_CLASSIC.checkpoints ?? []).map((c) => c.id);
     expect(ids).toEqual([
       'cp-forge',
-      'cp-islands',
-      'cp-labyrinth',
-      'cp-cathedral',
-      'cp-canyon',
-      'cp-reactor',
+      'cp-skybridge',
+      'cp-maze',
+      'cp-spire',
+      'cp-foundry',
+      'cp-abyss',
       'cp-temple',
-      'cp-core',
+      'cp-remix',
     ]);
-    // Background music only: the M8.5 route predates M9 rhythm authoring
-    // and is NOT beat-mapped (geometry untouched for sync).
-    expect(THE_DESCENT_CLASSIC.musicTrack?.audioPath).toBe('/audio/Gravity_Lessons.mp3');
-    expect(THE_DESCENT_CLASSIC.musicTrack?.trackOffset).toBe(0);
+    // HARD REQUIREMENT: THE DESCENT has no music — not muted, not
+    // gain-0, not disabled-after-startup. The level simply declares no
+    // track, so no audio asset is fetched and no MusicDirector exists.
+    expect(THE_DESCENT_CLASSIC.musicTrack).toBeUndefined();
+    // GRAVITY RIFT keeps its Gravity Lessons binding (background proof
+    // that music-optionality is per level, not global).
+    expect(PRODUCTION_SHOWCASE_01.musicTrack?.audioPath).toBe('/audio/Gravity_Lessons.mp3');
   });
 
-  it('completes the recovered M8.5 reference route with zero deaths', { timeout: 60000 }, () => {
+  it('completes the M8.6 reference route with zero deaths', { timeout: 60000 }, () => {
     const sim = new GameSimulation(THE_DESCENT_CLASSIC);
     const { ticks, modes, gravities } = driveTheDescentClassicToFinish(sim);
     expect(sim.status).toBe('finished');
     expect(sim.attempts).toBe(1);
-    // Historical anchor: the M8.5 reference route finishes at tick 13955
-    // (116.29 s) — reproduced tick-exact on the current engine.
-    expect(ticks).toBe(13955);
+    // Historical anchor: the M8.6 reference route finishes at tick 14797
+    // (123.31 s) — reproduced tick-exact on the current engine with zero
+    // driver repair.
+    expect(ticks).toBe(14797);
     expect([...modes].sort()).toEqual(['cube', 'ship', 'spider']);
     expect([...gravities].sort()).toEqual(['ceiling', 'floor', 'leftWall', 'rightWall']);
+    for (const st of sim.chomperStates) expect(st.phase).toBe('spent');
+    expect(sim.isTeleportUsed('ps-teleport-high')).toBe(true);
+    expect(sim.isTeleportUsed('ps-teleport-maw')).toBe(true);
+    expect(sim.isTeleportUsed('ps-teleport-low')).toBe(false);
+    expect(sim.speedMultiplier).toBe(1);
   });
 
   it('completes the alternate route with zero deaths', { timeout: 60000 }, () => {
@@ -210,10 +305,15 @@ describe('M9.4.1 THE DESCENT (original M8.5 route)', () => {
     const { ticks } = driveTheDescentClassicToFinish(sim, new TheDescentClassicDriver('alternate'));
     expect(sim.status).toBe('finished');
     expect(sim.attempts).toBe(1);
-    expect(ticks).toBe(13955);
+    expect(ticks).toBe(14797);
+    // Alternate route takes the low teleport + the maw hop (never high).
+    expect(sim.isTeleportUsed('ps-teleport-low')).toBe(true);
+    expect(sim.isTeleportUsed('ps-teleport-maw')).toBe(true);
+    expect(sim.isTeleportUsed('ps-teleport-high')).toBe(false);
+    for (const st of sim.chomperStates) expect(st.phase).toBe('spent');
   });
 
-  it('all 8 crystals activate on both M8.5 routes, trajectory untouched', { timeout: 120000 }, () => {
+  it('all 8 crystals activate on both M8.6 routes, trajectory untouched', { timeout: 180000 }, () => {
     for (const variant of ['primary', 'alternate'] as const) {
       const sim = new GameSimulation(THE_DESCENT_CLASSIC);
       sim.setCheckpointRespawnEnabled(true);
@@ -228,22 +328,49 @@ describe('M9.4.1 THE DESCENT (original M8.5 route)', () => {
       }
       expect(sim.status).toBe('finished');
       // Checkpoint detection never perturbs the trajectory.
-      expect(tick).toBe(13955);
+      expect(tick).toBe(14797);
       expect(activated).toEqual([
         'cp-forge',
-        'cp-islands',
-        'cp-labyrinth',
-        'cp-cathedral',
-        'cp-canyon',
-        'cp-reactor',
+        'cp-skybridge',
+        'cp-maze',
+        'cp-spire',
+        'cp-foundry',
+        'cp-abyss',
         'cp-temple',
-        'cp-core',
+        'cp-remix',
       ]);
       expect(sim.checkpointProgress()).toEqual({ activeIndex: 8, total: 8 });
     }
   });
 
-  it('replays the original-route completion tape VERIFIED', { timeout: 60000 }, () => {
+  it('checkpoint restore works with no music transport involved', { timeout: 60000 }, () => {
+    // Earn cp-forge on the real M8.6 route, then die: the sim restores
+    // the crystal snapshot with no music seek possible (the level
+    // declares no track — restore is purely simulation state).
+    const sim = new GameSimulation(THE_DESCENT_CLASSIC);
+    sim.setCheckpointRespawnEnabled(true);
+    const driver = new TheDescentClassicDriver('primary');
+    let guard = 0;
+    while (sim.activeCheckpointId !== 'cp-forge' && guard++ < 3000) {
+      if (sim.status !== 'running') break;
+      sim.update(driver.nextInput(sim.player.position.z, sim));
+    }
+    expect(sim.activeCheckpointId).toBe('cp-forge');
+    // Void-kill and step through the death hold: the sim auto-respawns
+    // from the crystal snapshot with no music seek possible (the level
+    // declares no track — restore is purely simulation state).
+    const p = sim.player.position;
+    sim.debugPlaceAt(p.x, -100, p.z);
+    sim.update(idleInput);
+    expect(sim.status).toBe('dead');
+    let hold = 0;
+    while (sim.status !== 'running' && hold++ < 200) sim.update(idleInput);
+    expect(sim.status).toBe('running');
+    expect(sim.activeCheckpointId).toBe('cp-forge');
+    expect(Math.abs(sim.player.position.z - 60)).toBeLessThan(6);
+  });
+
+  it('replays the M8.6 completion tape VERIFIED', { timeout: 60000 }, () => {
     const sim = new GameSimulation(THE_DESCENT_CLASSIC);
     const coordinator = new ReplayCoordinator(sim);
     const driver = new TheDescentClassicDriver('primary');
@@ -257,7 +384,7 @@ describe('M9.4.1 THE DESCENT (original M8.5 route)', () => {
     expect(sim.status).toBe('finished');
   });
 
-  it('rejects cross-level replays in both directions', { timeout: 120000 }, () => {
+  it('rejects cross-level replays in both directions', { timeout: 180000 }, () => {
     // Record a finished tape on each production level.
     const classicSim = new GameSimulation(THE_DESCENT_CLASSIC);
     const classicCoordinator = new ReplayCoordinator(classicSim);
@@ -268,22 +395,22 @@ describe('M9.4.1 THE DESCENT (original M8.5 route)', () => {
     const classicTape = classicCoordinator.lastReplay;
     expect(classicTape?.outcome.status).toBe('finished');
 
-    const evolvedSim = new GameSimulation(PRODUCTION_SHOWCASE_01);
-    const evolvedCoordinator = new ReplayCoordinator(evolvedSim);
-    const evolvedDriver = new ShowcaseDriver('primary');
-    recordAttempt(evolvedSim, evolvedCoordinator, () =>
-      evolvedDriver.nextInput(evolvedSim.player.position.z, evolvedSim),
+    const riftSim = new GameSimulation(PRODUCTION_SHOWCASE_01);
+    const riftCoordinator = new ReplayCoordinator(riftSim);
+    const riftDriver = new ShowcaseDriver('primary');
+    recordAttempt(riftSim, riftCoordinator, () =>
+      riftDriver.nextInput(riftSim.player.position.z, riftSim),
     );
-    const evolvedTape = evolvedCoordinator.lastReplay;
-    expect(evolvedTape?.outcome.status).toBe('finished');
+    const riftTape = riftCoordinator.lastReplay;
+    expect(riftTape?.outcome.status).toBe('finished');
 
-    // A THE DESCENT tape is never playable against the evolved route.
+    // A THE DESCENT tape is never playable against GRAVITY RIFT.
     const crossSim = new GameSimulation(PRODUCTION_SHOWCASE_01);
     const crossCoordinator = new ReplayCoordinator(crossSim);
     expect(crossCoordinator.startReplay(classicTape).ok).toBe(false);
-    // And an evolved tape is never accepted for THE DESCENT.
+    // And a GRAVITY RIFT tape is never accepted for THE DESCENT.
     const crossSim2 = new GameSimulation(THE_DESCENT_CLASSIC);
     const crossCoordinator2 = new ReplayCoordinator(crossSim2);
-    expect(crossCoordinator2.startReplay(evolvedTape).ok).toBe(false);
+    expect(crossCoordinator2.startReplay(riftTape).ok).toBe(false);
   });
 });

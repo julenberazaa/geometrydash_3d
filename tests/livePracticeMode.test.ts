@@ -152,9 +152,10 @@ describe('M9.4 live checkpoint toggle (simulation)', () => {
     expect(b.activeCheckpointId).toBeNull();
   });
 
-  it('original M8.5 geometry: real-route crystal earn + retention matrix', { timeout: 60000 }, () => {
-    // Earn cp-forge by walking the REAL original route (not debugPlaceAt):
-    // the crystal must sit on the intended line of the M8.5 content.
+  it('original M8.6 geometry: real-route crystal earn + retention matrix', { timeout: 60000 }, () => {
+    // Earn cp-forge by walking the REAL M8.6 route (not debugPlaceAt):
+    // the crystal must sit on the intended line of the M8.6 content
+    // (forge stairs, z=60).
     const sim = new GameSimulation(THE_DESCENT_CLASSIC);
     sim.setCheckpointRespawnEnabled(true);
     const driver = new TheDescentClassicDriver('primary');
@@ -166,7 +167,7 @@ describe('M9.4 live checkpoint toggle (simulation)', () => {
     expect(sim.activeCheckpointId).toBe('cp-forge');
     // Checkpoint death restores the crystal, not the origin.
     killAndRespawn(sim);
-    expect(Math.abs(sim.player.position.z - 15)).toBeLessThan(6);
+    expect(Math.abs(sim.player.position.z - 60)).toBeLessThan(6);
     // Disarm mid-attempt: snapshot retained but death goes to the origin.
     sim.setCheckpointRespawnEnabled(false);
     expect(sim.activeCheckpointId).toBe('cp-forge');
@@ -176,6 +177,6 @@ describe('M9.4 live checkpoint toggle (simulation)', () => {
     sim.setCheckpointRespawnEnabled(true);
     killAndRespawn(sim);
     expect(sim.activeCheckpointId).toBe('cp-forge');
-    expect(Math.abs(sim.player.position.z - 15)).toBeLessThan(6);
+    expect(Math.abs(sim.player.position.z - 60)).toBeLessThan(6);
   });
 });

@@ -15,7 +15,7 @@ import { collectRouteMetrics } from './helpers/routeMetrics';
  * values with margin; human feel remains authority (metrics detect
  * emptiness, never certify fun).
  */
-describe('M8.6 showcase density contract', () => {
+describe('GRAVITY RIFT density contract (production-showcase-01)', () => {
   it('primary route: input density far above the M8.5 baseline', { timeout: 60000 }, () => {
     const driver = new ShowcaseDriver('primary');
     const m = collectRouteMetrics(PRODUCTION_SHOWCASE_01, (z, sim) =>
