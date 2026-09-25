@@ -11,6 +11,12 @@
  * gesture to start the run (press-to-start gate); THE DESCENT declares
  * no music, so the gesture starts it immediately with no audio handoff.
  *
+ * M9.5: THE DESCENT carries the surgical density polish (3 new Chompers,
+ * LOW weave, maze doors, foundry doors) + Zenith of the Path music. The
+ * in-page mirror below ports the M9.5 unit-driver policy (taps/jumps +
+ * sorted chomper indices); the gesture now also starts Zenith audio.
+ * Full-route proof also exists via tape injection (browser-qa-m95).
+ *
  * Usage: node scripts/browser-qa-m86.mjs   (requires dev server on :5173)
  */
 import { chromium } from 'playwright';
@@ -301,7 +307,8 @@ await page.evaluate(() => {
       // far slab runs 965..1000 — firing as late as 961.5 still lands it
       // (961.5 + 8.8 jump reach ≈ 970), same margin class as the 401 exit.
       [933, 2], [957, 1, 4.5], [1042.5, 2], [1066, 2], [1077, 2, 8],
-      [1087.5, 2, 8], [1097.5, 2, 8],
+      // M9.5 Zone D: the ship-approach hops are replaced by maze doors
+      // (taps below) — 1087.5/1097.5 removed, like the unit driver.
       [1318, 1.5, 8],
       [1503.5, 2], [1542, 2], [1558, 2], [1577.5, 1], [1587, 1],
       [1633, 2], [1642, 2], [1651, 2], [1660.5, 0.5], [1767.5, 2],
@@ -315,6 +322,9 @@ await page.evaluate(() => {
       [89.5, 'ArrowRight', 0.5],
       [118, 'ArrowRight', 3], [126, 'ArrowLeft', 3],
       [286, 'ArrowRight', 3], [296, 'ArrowLeft', 3],
+      // M9.5 Zone B: upper-deck maze doors (door lane 2 at 599, door
+      // lane 1 at 610 — same taps as the unit driver).
+      [594, 'ArrowRight', 3], [604, 'ArrowLeft', 3],
       [468, 'ArrowLeft', 3], [476, 'ArrowRight', 3], [498, 'ArrowRight', 3], [520, 'ArrowLeft', 3],
       // The 700 tap is a POST-gate swing (lane 1 through the 700 gate,
       // THEN left for the 708/712 lane-0 line — same as the unit driver,
@@ -341,6 +351,9 @@ await page.evaluate(() => {
       // swing must not start before the block face, like the 700 tap).
       [975, 'ArrowRight', 1, 0], [977, 'ArrowRight', 1, 1], [984.5, 'ArrowLeft', 2],
       [1018, 'ArrowLeft', 3], [1025, 'ArrowRight', 3], [1048, 'ArrowRight', 0.5], [1056, 'ArrowLeft', 0.5],
+      // M9.5 Zone D: foundry-exit maze doors (door lane 2 at 1093, door
+      // lane 0 at 1104, recenter for the ship ring by ~1112 — unit line).
+      [1082, 'ArrowRight', 2], [1097, 'ArrowLeft', 1.5], [1099, 'ArrowLeft', 1.5], [1108, 'ArrowRight', 2],
       [1172, 'ArrowRight', 2], [1186, 'ArrowLeft', 2], [1274, 'ArrowLeft', 2], [1280, 'ArrowRight', 2],
       [1352, 'ArrowLeft', 3], [1366, 'ArrowRight', 3],
       [1463, 'ArrowUp', 2], [1475, 'ArrowDown', 2],
@@ -360,7 +373,7 @@ await page.evaluate(() => {
     presses: [1344, 1356, 1364, 1376, 1384, 1396, [1400.1, -0.5], 1414, 1424, 1430, 1435, 1445, 1452, 1472, 1482, 1743, 1749]
       .map((e) => (typeof e === 'number' ? { z: e, lead: 1.5, done: false } : { z: e[0], lead: e[1], done: false })),
     ff: [[359, 364], [1572, 1580], [1613, 1618]],
-    jumpedCh: [false, false, false],
+    jumpedCh: [false, false, false, false, false, false, false, false],
     mazeStage: 0,
     ferryTapWall: 0,
     lastFerry: null,
@@ -712,10 +725,14 @@ await page.evaluate(() => {
         }
       }
     }
-    // Reactive Chomper jumps (ferry/weave/ceil — low/final are lane dodges).
+    // Reactive Chomper jumps (ferry/weave/ceil + the M9.5 deck/lower/
+    // shaft — low/final are lane dodges). Runtime chomper order is
+    // triggerZ-sorted (M9.5: deck=0, lower=1, shaft=2, ferry=3, weave=4,
+    // ceil=5; low/final skipped), NOT definition order.
     const ch = g.chompers();
-    const chTrig = [940, 985, 1005];
-    for (let i = 0; i < 3; i++) {
+    const chTrig = [283, 601, 871, 940, 985, 1005, -1, -1];
+    for (let i = 0; i < 8; i++) {
+      if (chTrig[i] < 0) continue;
       const s = ch[i];
       if (s !== undefined && (s.phase === 'telegraph' || s.phase === 'lunging') && !plan.jumpedCh[i] && z >= chTrig[i] + 2.5) {
         plan.jumpedCh[i] = true;
