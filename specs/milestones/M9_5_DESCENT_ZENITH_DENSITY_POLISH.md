@@ -151,22 +151,33 @@ gravity spire combos, foundry core (already dense), final remix
 - Track offset 0 (sim t ≈ track t). Natural alignment: forge entry↔
   intro, z~280↔drop-a 20.03, z~560↔drop-b 40.03, spire↔climax 56.03,
   ship burst↔build 92.03, terminal↔finale 108.03, finish 123.31 ≈
-  final peak 123.78 (−0.47 s… see alignment table; finish CUT with
-  0.09 s fade per existing semantics, tail silence never plays).
+  final peak 123.78. Finish CUT with 0.09 s fade per existing semantics;
+  the tail silence never plays.
 - No time-stretch, no speed change, no loop. Song 4.4 s longer than
   the run: clean finish-cut (existing `director.cut()` on finish).
-- Major anchors (sim-time from driver telemetry vs track; target
-  ±100–150 ms for majors, looser for secondary):
+- Major anchors (MEASURED, primary reference vs Zenith grid, offset 0;
+  pinned in `tests/descentZenithAlignment.test.ts`):
 
-| Game event | sim t | track t | anchor | err |
-|---|---|---|---|---|
-| Chomper A lunge (z 292) | ~21.14 | 21.14 | grid 21.04 | +100 ms |
-| Upper doors (z 599/610) | ~43.1/44.0 | = | grid 43.03/44.03 | +70/−30 ms |
-| Chomper B lunge (z 612) | ~44.0 | = | grid 44.03 | −30 ms |
-| Chomper F lunge (z 884) | ~62.6 | = | grid 62.53/62.79 | +70/−190 ms |
-| Finish (z 1790) | 123.31 | = | final peak 123.78 | −470 ms (secondary; cut, reported honestly) |
+| Game event | sim t | Zenith beat | err |
+|---|---|---|---|
+| pad-sky | 19.50 | 39 (19.53) | −30 ms |
+| Chomper A lunge (z 292) | 20.90 | 42 (21.03) | −130 ms |
+| pad-ridge | 21.97 | 44 (22.03) | −63 ms |
+| orb-sky | 24.08 | 48 (24.03) | +53 ms |
+| pad-maze | 38.08 | 76 (38.03) | +45 ms |
+| Chomper B lunge (z 610) | 43.62 | 87 (43.53) | +87 ms |
+| Chomper F lunge (z 884) | 62.00 | 124 (62.03) | −30 ms |
+| ship-on | 78.88 | 158 (79.03) | −147 ms |
+| spider-on | 94.60 | 189 (94.53) | +70 ms |
+| spider-off | 106.38 | 213 (106.53) | −147 ms |
+| teleport-high | 107.85 | 216 (108.03) | −180 ms (loose, documented) |
+| finish (z 1790) | 123.31 | 247 (123.53) | −222 ms (reported, not forced — finish is a cut) |
 
-(Times confirmed/adjusted against real telemetry during implementation.)
+Majors (new lunges + structural): median 67 ms, max 147 ms (target
+±100–150 ms). Mapped max 222 ms (finish). Alternate route agrees on
+all shared anchors. Everything else keeps its M8.6 timing against a
+different grid — moderate sync makes no claim there (nearest-beat
+errors up to ~±230 ms, reported by the same tooling).
 
 ## 7. Checkpoint safety audit (new hazards vs 8 crystals)
 

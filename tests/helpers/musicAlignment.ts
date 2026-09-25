@@ -2,7 +2,7 @@ import { GameSimulation } from '../../src/game/GameSimulation';
 import type { LevelDefinition } from '../../src/level/levelDefinition';
 import type { PhysicalInputSnapshot } from '../../src/input/InputSystem';
 import { interpretPhysicalInput } from '../../src/input/InputSystem';
-import { beatAtTime, beatTime } from '../../src/audio/musicTrack';
+import { GRAVITY_GRID, type TrackGrid } from '../../src/audio/zenithTrack';
 
 /**
  * M9 music-alignment telemetry (test-side only — pure observation, no
@@ -131,20 +131,23 @@ export const collectMusicEvents = (
  * Align events to the beat grid. `authoredBeats` maps event id (or
  * `${type}:${id}`) to the intended beat index; events without a mapping
  * report the nearest-beat error only (diagnostic, never a contract).
+ * The optional grid selects the track (M9.5); omitted = Gravity Lessons
+ * (existing callers byte-identical).
  */
 export const alignEvents = (
   events: readonly MusicEvent[],
   authoredBeats: Readonly<Record<string, number>> = {},
+  grid: TrackGrid = GRAVITY_GRID,
 ): AlignedEvent[] =>
   events.map((e) => {
-    const nearestBeat = beatAtTime(e.time);
+    const nearestBeat = grid.beatAtTime(e.time);
     const authoredBeat = authoredBeats[e.id] ?? authoredBeats[`${e.type}:${e.id}`] ?? null;
     return {
       ...e,
       nearestBeat,
-      beatError: e.time - beatTime(nearestBeat),
+      beatError: e.time - (grid.beatOffset + nearestBeat * grid.beatPeriod),
       authoredBeat,
-      authoredError: authoredBeat === null ? null : e.time - beatTime(authoredBeat),
+      authoredError: authoredBeat === null ? null : e.time - (grid.beatOffset + authoredBeat * grid.beatPeriod),
     };
   });
 
