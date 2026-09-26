@@ -5,6 +5,7 @@ import { TheDescentClassicDriver } from './helpers/theDescentClassicScript';
 import { ShowcaseDriver } from './helpers/showcaseScript';
 import { analyzeRouteOpenness, collectTrajectory, M91_RECOVERY_WINDOWS } from './helpers/routeOpenness';
 import { idleInput } from './helpers/simulation';
+import { auditSightlines, SIGHTLINE_THRESHOLDS } from './helpers/sightline';
 
 describe('THE DESCENT route density', () => {
   for (const variant of ['primary', 'alternate'] as const) {
@@ -50,5 +51,20 @@ describe('THE DESCENT route density', () => {
       recoveryWindows: M91_RECOVERY_WINDOWS,
     });
     expect(report.openFraction).toBeLessThan(0.12);
+  });
+
+  it('new lower-route and ferry-approach threats have advance notice', { timeout: 120000 }, () => {
+    const report = auditSightlines(THE_DESCENT_CLASSIC, new TheDescentClassicDriver('alternate'));
+    for (const id of [
+      'door@1.3,1.5,552', 'spike@-2.6,0.25,564',
+      'door@2.6,1.5,640', 'door@-2.6,1.5,640',
+      'spike@0,0.25,644',
+      'door@2.6,1.5,652', 'door@-2.6,1.5,652',
+    ]) {
+      const verdict = report.verdicts.find((v) => v.id === id);
+      expect(verdict, `${id} is authored`).toBeDefined();
+      expect(verdict?.seenAtZ, `${id} is visible`).not.toBeNull();
+      expect(verdict?.sightTime, `${id} has decision lead`).toBeGreaterThanOrEqual(SIGHTLINE_THRESHOLDS.decision);
+    }
   });
 });
