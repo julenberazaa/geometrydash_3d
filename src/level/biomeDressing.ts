@@ -204,6 +204,60 @@ const pickSpec = (mix: PropSpec[], rand: () => number): PropSpec => {
   return mix[mix.length - 1] as PropSpec;
 };
 
+/** Deliberate off-route landmarks: water needs visible sources and banks,
+ * while the later overgrown temple needs clustered stone and roots. These
+ * sit among the seeded scatter, never on a regular ground-tile interval. */
+const placeOvergrownLandmarks = (
+  row: DressingRow,
+  groundAt: (z: number) => number | null,
+  rand: () => number,
+  out: DressInstance[],
+): number => {
+  if ((row.biome !== 'garden' && row.biome !== 'temple') || row.density <= 0) return 0;
+  const garden = row.biome === 'garden';
+  const centers = garden ? [0.16, 0.48, 0.83] : [0.28, 0.73];
+  let placed = 0;
+  const add = (
+    prop: DressProp, x: number, y: number, z: number,
+    sx: number, sy: number, sz: number,
+  ): void => {
+    out.push({
+      biome: row.biome, prop, x, y, z, sx, sy, sz,
+      ry: 0, rz: 0, glow: false, color: BIOME_BODY[row.biome],
+    });
+    placed++;
+  };
+  for (let i = 0; i < centers.length; i++) {
+    const center = centers[i];
+    if (center === undefined) continue;
+    const z = row.z0 + (row.z1 - row.z0) * (center + (rand() - 0.5) * 0.09);
+    const ground = groundAt(z) ?? row.baseY;
+    if (ground === undefined) continue;
+    // Both banks appear in the garden. The third landmark varies by seed;
+    // jitter and unequal spacing keep the assembly from reading as a stamp.
+    const side = i === 0 ? -1 : i === 1 ? 1 : rand() < 0.5 ? -1 : 1;
+    if (garden) {
+      const height = 6.5 + rand() * 3;
+      add('fall', side * 9.0, ground + height / 2, z,
+        2.1 + rand() * 0.9, height, 0.45);
+      add('slab', side * 9.0, ground + height + 0.18, z - 0.3,
+        3.8, 0.36, 2.5);
+      add('rock', side * 8.4, ground + 1.3, z - 2.8,
+        2.5, 2.6, 2.1);
+    } else {
+      add('pillar', side * 12.7, ground + 4.3, z,
+        1.7, 8.6, 1.7);
+      add('slab', side * 11.1, ground + 0.22, z - 2.4,
+        3.3, 0.44, 2.8);
+    }
+    add('foliage', side * (garden ? 10.5 : 16.2), ground + 2.15, z + 3.3,
+      2.6, 4.3, 1.7);
+    add('strand', side * (garden ? 9.3 : 15.1), ground + 2.9, z + 3.3,
+      0.24, 4.5, 0.24);
+  }
+  return placed;
+};
+
 /**
  * Deterministic placement for all rows. Same input → same instances
  * (seeded per row). Never inside the corridor, never unanchored floats
@@ -217,10 +271,11 @@ export const placeBiomeDressing = (
   for (const row of rows) {
     const rand = mulberry32(row.seed);
     const mix = BIOME_MIX[row.biome];
-    const count = Math.min(
+    const landmarks = placeOvergrownLandmarks(row, groundAt, rand, out);
+    const count = Math.max(0, Math.min(
       40,
       Math.round(((row.z1 - row.z0) / 10) * clamp01(row.density) * 1.6),
-    );
+    ) - landmarks);
     for (let i = 0; i < count; i++) {
       const spec = pickSpec(mix, rand);
       const side = rand() < 0.5 ? -1 : 1;

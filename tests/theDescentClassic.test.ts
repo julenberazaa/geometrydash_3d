@@ -277,8 +277,23 @@ describe('M9.5 THE DESCENT (M8.6 foundation + Zenith density polish)', () => {
 
   it('authors only sourced/contained lava with bounded portals', () => {
     expect(validateLavaAuthoring(THE_DESCENT_CLASSIC)).toEqual([]);
-    expect((THE_DESCENT_CLASSIC.lava ?? []).length).toBe(21);
+    expect((THE_DESCENT_CLASSIC.lava ?? []).length).toBe(22);
     expect(validatePortalBounds(THE_DESCENT_CLASSIC)).toEqual([]);
+  });
+
+  it('connects the cavern vent to its basin outside the outer playable lane', () => {
+    const lava = THE_DESCENT_CLASSIC.lava ?? [];
+    const source = lava.find((volume) => volume.id === 'ps-spire-strip-src');
+    const fall = lava.find((volume) => volume.id === 'ps-spire-strip-fall');
+    const pool = lava.find((volume) => volume.id === 'ps-spire-strip');
+    expect(source?.role).toBe('source');
+    expect(fall?.role).toBe('fall');
+    expect(pool?.role).toBe('pool');
+    if (!source || !fall || !pool) return;
+
+    expect(fall.center.y + fall.halfExtents.y).toBeGreaterThanOrEqual(source.center.y - source.halfExtents.y);
+    expect(fall.center.y - fall.halfExtents.y).toBeLessThanOrEqual(pool.center.y + pool.halfExtents.y);
+    expect(fall.center.x - fall.halfExtents.x).toBeGreaterThan(2.6 + 0.55);
   });
 
   it('authors 8 checkpoint crystals for its own M8.6 geometry and declares the Zenith track', () => {

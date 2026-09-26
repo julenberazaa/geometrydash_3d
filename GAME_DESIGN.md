@@ -261,7 +261,8 @@ card GRAVITY RIFT; `?level=<id>` enters a level directly,
 - **THE DESCENT** (`the-descent`, M9.5): the M8.6 production route with
   the M9.5 surgical density polish — 3 added Chomper encounters (deck /
   lower / shaft lunges), a LOW-road under-deck lane weave, upper + lower
-  maze doors, foundry-exit doors replacing one hop (finish z=1790,
+  maze doors, foundry-exit doors replacing one hop, and a later lower-maze
+  door→jump and center-hop commitment at the maze exit (finish z=1790,
   ~123 s, Hard), before the M9/M9.1 transformation into the modern
   level. M9.4 froze the M9.2 snapshot here by mistake; M9.4.1 stored
   the M8.5 simple route by mistake; M9.4.2 restored the true M8.6

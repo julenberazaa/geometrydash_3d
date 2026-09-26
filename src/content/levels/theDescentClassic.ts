@@ -570,6 +570,7 @@ export const THE_DESCENT_CLASSIC: LevelDefinition = {
     // ACT 4 spire lava strip (jumped on the gravity-orb ceiling traverse).
     { id: 'ps-spire-strip', center: { x: 0, y: 0.1, z: 911.5 }, halfExtents: { x: 4, y: 0.6, z: 3.5 }, role: 'pool' },
     { id: 'ps-spire-strip-src', center: { x: 4.2, y: 2.9, z: 911.5 }, halfExtents: { x: 0.9, y: 0.5, z: 0.9 }, role: 'source' },
+    { id: 'ps-spire-strip-fall', center: { x: 4.2, y: 1.5, z: 911.5 }, halfExtents: { x: 0.6, y: 1, z: 0.8 }, role: 'fall' },
     // ACT 5 foundry side pools + river between decks.
     { id: 'ps-foundry-west', center: { x: -8.5, y: -3.2, z: 1000 }, halfExtents: { x: 3, y: 0.8, z: 50 }, role: 'pool' },
     { id: 'ps-foundry-east', center: { x: 8.5, y: -3.2, z: 1000 }, halfExtents: { x: 3, y: 0.8, z: 50 }, role: 'pool' },
