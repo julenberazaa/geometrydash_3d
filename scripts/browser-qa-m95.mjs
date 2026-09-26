@@ -34,7 +34,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const URL = process.env.QA_URL ?? 'http://localhost:5174/';
-const TAPE = 'C:/Users/Julen/AppData/Local/Temp/opencode/m95-descent-primary-tape.json';
+// QA_TAPE override: point at a current-content tape after intentional
+// gameplay changes (the M9.5 file correctly goes stale by fingerprint).
+const TAPE = process.env.QA_TAPE ?? 'C:/Users/Julen/AppData/Local/Temp/opencode/m95-descent-primary-tape.json';
 const OUT_DIR = path.resolve('qa/screenshots');
 
 const results = [];

@@ -1,9 +1,19 @@
 # M9.6.1 — Descent Telegraphing + Biome Overhaul (fairness first)
 
-> Status: IN PROGRESS (branch
-> `feature/m9-6-1-descent-telegraphing-biome-overhaul`, from M9.6 HEAD
-> `322b55f`). No merge to main, no force-push. Untracked user MP3s
-> preserved untouched.
+> Status: ENGINEERING COMPLETE (branch
+> `feature/m9-6-1-descent-telegraphing-biome-overhaul`). Human gates
+> (readability feel, art direction, audible music) remain OPEN —
+> automation proves mechanics, never art or fun. No merge to main,
+> no force-push. Untracked user MP3s preserved untouched.
+>
+> Evidence: `npm run verify` green (64 files / 737 tests: +4
+> telegraphing, +11 biomeDressing, +6 doorGaps, edgeLines re-pinned);
+> `browser-qa-m961.mjs` 6/6 green (hub regression, 6 markers + 209
+> dressing instances, gap/marker/biome stills, current-tape REPLAY
+> VERIFIED 8/8 Chompers spent, perf flat vs Rift, zero errors);
+> legacy m95 14/14 + m96 15/15 + m94 25/25 + m941 11/11 + m942 10/10 +
+> m92 16/16 green on the final tree. M9.5 tape correctly stale after
+> Zone G (fingerprint contract working — fresh tape generated).
 
 ## 0. Source state (verified 2026-09-26)
 

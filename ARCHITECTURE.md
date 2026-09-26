@@ -226,8 +226,12 @@ named and removed on detach (the old anonymous closure leaked).
   pingpong tick-derived poses — see `movingPlatformSystem.ts` +
   `movingPlatformAuthoring.ts` + the dynamic-solid contract in §5/§7),
   `visualSetpieces?` (M7.2
-  guardian + M7.3 lava: presentation-only decorative kind/center/extents —
-  never gameplay, never fingerprinted),
+  guardian + M7.3 lava + M9.6.1 `snapmark` (forced-spider-snap diamond)
+  + M9.6.1 `fall` (waterfall sheets + pool): presentation-only
+  decorative kind/center/extents — never gameplay, never fingerprinted),
+  `visualDressing?` (M9.6.1: per-act biome rows z0/z1/biome/density/
+  seed/accent/baseY — seeded route-adjacent midground dressing, opt-in
+  per level, never gameplay, never fingerprinted),
   solids, hazards (each with presentation-only `visual` + `mount`
   floor/ceiling hints — never gameplay, never fingerprinted), theme,
   `visualSequence?` (M6C1), `rhythmCues?` (M7.1 beat-ready markers —
@@ -833,6 +837,27 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   materials/geometries, edge-fired by `RendererHost` from
   `spiderSnapEventCount` (silenced by `?fx=off`, cleared on respawn/
   teleport, disposed with the host). The camera glide is untouched.
+- `doorGaps.ts` (`src/level/`, M9.6.1): pure door-gap geometry (same-z
+  gate grouping + committable openings ≥2.0 u across the corridor span,
+  corridor rule single-owned) — consumed by LevelView gap frames and
+  the auditor; THREE-free, unit-tested.
+- Door gap frames (M9.6.1, `LevelView` merged edge lines): one bright
+  white-cyan rectangle per opening (third paint range — constant, never
+  re-tinted; dynamic accent + warm ranges untouched), zero new draws /
+  materials / geometries.
+- `biomeDressing.ts` (`src/level/`, M9.6.1): pure seeded midground
+  placement (9 biome vocabularies, corridor clearance, caps) +
+  `routeGroundAt` terrain query; `EnvironmentView` bakes it once into
+  TWO static InstancedMeshes (solid silhouettes + glow accents, 2
+  draws, zero per-frame work, view-owned materials, shared unit box).
+  Opt-in per level via `visualDressing` (Descent declares, Rift keeps
+  its exact look). Snap-zone diamonds batch into the glow instancing
+  (0 extra draws); the waterfall (`fall` setpiece) is 2 sheets + pool
+  with 1 owned material pulsing in the lava update path.
+- `sightline.ts` (`tests/helpers/`, M9.6.1): the headless telegraphing
+  auditor (resolved-eye frustum + occlusion per tick, on-line filter,
+  walk-off R-drop verdicts, spider destination readability) behind
+  `tests/telegraphing.test.ts` — the executable GAME_DESIGN §7.10.
 - `Hud` mode selector (M9.2): two buttons inside the start gate (one click
   = mode + audio unlock + start; bare clicks/keys default classic) + a
   run-mode badge and a `CHECKPOINT i/N — NAME` progress line. CSS keeps the
@@ -1092,10 +1117,23 @@ fixed-tick PHYSICAL input tape plus verification evidence.
 - M9.5 legacy-gate migrations: `browser-qa-m94/m941/m942.mjs` assert the
   Zenith behavior on Descent (graph wired, target preserved across
   toggles, per-session fetch); `browser-qa-m92.mjs` stays Rift-only;
-  `browser-qa-m86.mjs` ports the M9.5 driver policy (incl. sorted
   chomper indices) — its full live-input run is environment-flaky on
   SwiftShader (proven by a pristine-HEAD control run failing the same
   way), so the deterministic in-page proof is the m95 tape injection.
+- `scripts/browser-qa-m961.mjs` (M9.6.1, system Chrome): hub/menu
+  regression, 6 snapmarks + bounded dressing probes, gap-frame
+  legibility stills (A1/maze/foundry), spider snap-marker stills,
+  per-act biome stills (human-judged from the PNGs), current-content
+  tape injection finishing in-page REPLAY VERIFIED (8/8 Chompers
+  spent — gameplay-identity proof for the visual pass), perf vs the
+  Rift control (dressing ≈ +6 draws, +0 geometries), zero console/page
+  errors (`qa/screenshots/m961-*`).
+- M9.6.1 telegraphing QA: `tests/helpers/sightline.ts` (resolved-eye
+  frustum + occlusion auditor) + `tests/telegraphing.test.ts`
+  (both-route rule pins) + `tests/doorGaps.test.ts` (pure gap geometry)
+  + gap-frame paint pins in `tests/edgeLines.test.ts` + snapmark
+  coverage. M9.6.1 dressing QA: `tests/biomeDressing.test.ts`
+  (determinism, bounds, caps, vocabulary, fingerprint-neutrality).
 
 ## 10. Invariant matrix
 
@@ -1201,6 +1239,8 @@ in-page eye-velocity proof (no cut) |
 | M9.6 focused buttons never re-fire gameplay Space (blur on activation) | Browser QA m96 C2 (Space after menu use jumps, never pauses) |
 | M9.6 spider snaps observable (count + travel anchors) and ignored presses counted with reasons; 6-tick press buffer re-attempts ONLY the snap, clears on death/respawn/restart/mode-exit, rides snapshots; reference tapes unaffected | `spiderSnap` tests (anchors, no-support/blocked, buffer fire/expiry, restart clear, snapshot carry, determinism) + both-route anchors tick-exact + replay VERIFIED + browser QA m96 beam/anchor proofs |
 | M9.6 hub: menu XOR session canvas (hub disposed on START, rebuilt on menu return); selection stays in LevelSelectView; legacy menu hooks intact | Browser QA m96 hub/slider/switching/disposal checks + migrated m94/m941/m942/m95 menu gates (m92 needs no canvas migration) |
+| M9.6.1 telegraphing: on-line threats read in time (decision 0.7 / action 0.5 / routing 0.4 / drop-lead 0.2 / chomper 0.7, sequenced-door exception); door gaps framed; blind forced snaps marked; walk-offs fair | `sightline` auditor + `telegraphing` both-route pins + `doorGaps` units + gap-frame paint pins + snapmark coverage + browser QA m961 readability/completion shots |
+| M9.6.1 dressing: seeded route-adjacent midground, corridor-clear, capped, static instanced (2 draws, 0 hot allocs), opt-in per level, fingerprint-neutral | `biomeDressing` units (determinism, bounds, caps, vocab, fingerprint) + browser QA m961 biome stills + perf-vs-Rift guard |
 | No milestone passes with failing verification | `npm run verify` + `AGENTS.md` process rule |
 
 ## 11. Known non-defects / deferred perf notes

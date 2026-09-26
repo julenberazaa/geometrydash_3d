@@ -972,4 +972,7 @@ GOAL C input audit+fix, GOAL D spider feel) — audited first, then fixed:
   Rift route/music/fingerprint untouched. Spec:
   `specs/milestones/M9_6_ISLAND_HUB_INPUT_SPIDER_POLISH.md`. Automation
   proves mechanics, never fun/feel — do NOT mark PASS until the human
-  plays the hub flow, the enriched Descent, and the spider with sound on.
+  plays the hub flow, the enriched Descent, and the spider with sound on.
+## M9.6.1 — Descent Telegraphing + Biome Overhaul: IN PROGRESS (feature/m9-6-1-descent-telegraphing-biome-overhaul, NOT merged)
+
+Fairness/readability pass + biome/detail upgrade starting with THE DESCENT, on the M9.6 stack. GAME_DESIGN §7.10 visibility contract (decision 0.7 s / action 0.5 s / routing 0.4 s / drop-lead 0.2 s / chomper 0.7 s, sequenced-door exception), enforced headlessly on both reference routes (sightline auditor + telegraphing pins). Fixes: door gap frames in the merged edge lines (0 new draws), 6 snap-zone markers for the blind forced spider snaps (5 mandatory + 1 optional, proven by skip-tests), walk-off/drop/pad/portal rules pinned (no geometry moves — all fair by shaping/coverage). Rendering: seeded biome dressing (9 vocabularies, corridor-clear, 2 static draws, opt-in per level) + skybridge waterfall; Descent declares 9 biome acts, Rift untouched; fingerprint-neutral by construction. Spec: specs/milestones/M9_6_1_DESCENT_TELEGRAPHING_BIOME_OVERHAUL.md. Automation proves mechanics, never art direction or fun — do NOT mark PASS until the human plays the readability flow and tours the biomes with sound on.
