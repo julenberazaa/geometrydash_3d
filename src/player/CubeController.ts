@@ -115,7 +115,9 @@ export class CubeController {
     //    Impulse ALONG +surfaceNormal, replacing the along-gravity component
     //    entirely: identical launch velocity every single time.
     // ------------------------------------------------------------------
-    if (state.grounded && input.jump.held) {
+    // A complete down/up between fixed steps still carries a press edge.
+    // Honor it once; held input retains the existing repeat-on-landing rule.
+    if (state.grounded && (input.jump.held || input.jump.pressedThisStep)) {
       const n = frame.surfaceNormal;
       const alongG =
         state.velocity.x * g.x + state.velocity.y * g.y + state.velocity.z * g.z;

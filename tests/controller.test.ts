@@ -24,6 +24,20 @@ describe('GameSimulation — auto forward travel', () => {
 });
 
 describe('Jump determinism', () => {
+  it('honors a completed tap between fixed steps exactly once', () => {
+    const { sim } = makeGroundedSim();
+    const before = sim.player.position.y;
+    sim.update({
+      ...idleInput,
+      space: { held: false, pressedThisStep: true, releasedThisStep: true },
+    });
+    expect(sim.player.grounded).toBe(false);
+    expect(sim.player.velocity.y).toBeCloseTo(13.2, 3);
+    expect(sim.player.position.y).toBeGreaterThan(before);
+    // The next idle step must not apply another launch impulse.
+    sim.update(idleInput);
+    expect(sim.player.velocity.y).toBeLessThan(13.2);
+  });
   it('same inputs produce identical trajectory step by step', () => {
     const a = makeGroundedSim().sim;
     const b = makeGroundedSim().sim;

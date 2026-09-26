@@ -92,6 +92,8 @@ NEVER rotates and the camera NEVER rolls when gravity changes.
     away from the wall, then gravity pulls back right.
   No variable-height hold behavior. Holding jump causes an immediate re-jump
   after every valid landing (hold-to-repeat), never a mid-air extra jump.
+  A complete press/release between two fixed steps still launches once
+  from valid support through its recorded press edge.
   - Impulse 13.2 u/s, gravity 42 u/s² → apex ≈ 2.07 units, airtime ≈ 0.63 s,
     forward distance ≈ 8.8 units (identical on every surface, mirrored
     along gravity).
