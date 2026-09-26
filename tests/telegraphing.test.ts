@@ -9,6 +9,8 @@ import {
 import { LevelView } from '../src/rendering/LevelView';
 import { loadLevel } from '../src/level/levelRuntime';
 import { makeTestLibrary } from './helpers/visuals';
+import { GameSimulation } from '../src/game/GameSimulation';
+import { holdJump } from './helpers/simulation';
 
 /**
  * M9.6.1 telegraphing contract (GAME_DESIGN §7.10) — executable pins on
@@ -120,6 +122,23 @@ const checkRoute = (report: SightlineReport, variant: string): void => {
 };
 
 describe('M9.6.1 snap-zone markers cover the blind forced snaps', () => {
+  it('accepts the first spider press as soon as the runner reaches its marker', () => {
+    const sim = new GameSimulation(THE_DESCENT_CLASSIC);
+    const driver = new TheDescentClassicDriver('primary');
+    const marker = THE_DESCENT_CLASSIC.visualSetpieces?.find((s) => s.id === 'ps-snap-1344');
+    expect(marker).toBeDefined();
+    for (let tick = 0; tick < 15000 && sim.player.position.z < (marker?.center.z ?? 0); tick++) {
+      expect(sim.status).toBe('running');
+      sim.update(driver.nextInput(sim.player.position.z, sim));
+    }
+    expect(sim.playerMode).toBe('spider');
+    const before = sim.spiderSnapEventCount;
+    sim.update(holdJump);
+    expect(sim.spiderSnapEventCount).toBe(before + 1);
+    expect(sim.spiderRejectCount).toBe(0);
+    expect(sim.status).toBe('running');
+  });
+
   it('marks every blind press window with a runner-line diamond', () => {
     const marks = (THE_DESCENT_CLASSIC.visualSetpieces ?? []).filter((s) => s.kind === 'snapmark');
     expect(marks.length).toBe(6);
