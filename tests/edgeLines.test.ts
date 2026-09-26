@@ -5,6 +5,12 @@ import { loadLevel } from '../src/level/levelRuntime';
 import { makeTestLibrary } from './helpers/visuals';
 import { TEST_LEVEL } from '../src/content/levels/testLevel01';
 import { PRODUCTION_SHOWCASE_01 } from '../src/content/levels/productionShowcase01';
+import {
+  groupDoorBlocks,
+  findDoorGaps,
+  corridorHalfWidth,
+} from '../src/level/doorGaps';
+import type { LevelDefinition } from '../src/level/levelDefinition';
 
 /**
  * M8.5 neon edge-line pass (presentation geometry only — no gameplay):
@@ -23,6 +29,14 @@ const lineSegments = (view: LevelView): THREE.LineSegments[] =>
 const expectedVerts = (solids: number, walls: number, spikes: number): number =>
   (solids + walls) * 24 + spikes * 16;
 
+/** M9.6.1 gap-frame bars for a level (4 bars × 2 verts per opening). */
+const expectedGapVerts = (def: LevelDefinition): number => {
+  const walls = def.hazards.filter((h) => h.kind === 'killFront' || h.visual === 'block');
+  const gates = groupDoorBlocks(walls);
+  const hw = corridorHalfWidth(def.laneCenters);
+  return gates.reduce((n, g) => n + findDoorGaps(g, hw).length * 8, 0);
+};
+
 describe('M8.5 edge lines', () => {
   it('builds exactly one merged LineSegments with the expected vertex count', () => {
     const library = makeTestLibrary();
@@ -36,7 +50,7 @@ describe('M8.5 edge lines', () => {
       ).length;
       const spikes = TEST_LEVEL.hazards.length - walls;
       expect(geo.getAttribute('position').count).toBe(
-        expectedVerts(TEST_LEVEL.solids.length, walls, spikes),
+        expectedVerts(TEST_LEVEL.solids.length, walls, spikes) + expectedGapVerts(TEST_LEVEL),
       );
       expect(geo.getAttribute('color').count).toBe(geo.getAttribute('position').count);
     } finally {
@@ -67,22 +81,34 @@ describe('M8.5 edge lines', () => {
       const colors = geo.getAttribute('color').array as Float32Array;
       const solidVerts = (TEST_LEVEL.solids.length +
         TEST_LEVEL.hazards.filter((h) => h.kind === 'killFront' || h.visual === 'block').length) * 24;
+      const gapVerts = expectedGapVerts(TEST_LEVEL);
       // Baseline: dynamic range matches the theme accent.
       const accent = new THREE.Color(library.routeEdge.color.getHex());
       expect(colors[0]).toBeCloseTo(accent.r, 5);
+      // M9.6.1 gap range is bright white-cyan (stable safe-passage language).
+      const gapStart = solidVerts * 3;
+      if (gapStart < colors.length && gapVerts > 0) {
+        expect(colors[gapStart]).toBeCloseTo(0.85, 5);
+        expect(colors[gapStart + 1]).toBeCloseTo(1.0, 5);
+        expect(colors[gapStart + 2]).toBeCloseTo(1.0, 5);
+      }
       // Spike range matches the global hazard warm identity.
       const warm = library.hazard.color;
-      const spikeStart = solidVerts * 3;
+      const spikeStart = (solidVerts + gapVerts) * 3;
       if (spikeStart < colors.length) {
         expect(colors[spikeStart]).toBeCloseTo(warm.r, 5);
         expect(colors[spikeStart + 1]).toBeCloseTo(warm.g, 5);
         expect(colors[spikeStart + 2]).toBeCloseTo(warm.b, 5);
       }
-      // Re-tint: solid range follows, spike range never moves.
+      // Re-tint: solid range follows, gap + spike ranges never move.
       view.setEdgeAccent(0x12ff34);
       const painted = new THREE.Color(0x12ff34);
       expect(colors[0]).toBeCloseTo(painted.r, 5);
       expect(colors[1]).toBeCloseTo(painted.g, 5);
+      if (gapStart < colors.length && gapVerts > 0) {
+        expect(colors[gapStart]).toBeCloseTo(0.85, 5);
+        expect(colors[gapStart + 1]).toBeCloseTo(1.0, 5);
+      }
       if (spikeStart < colors.length) {
         expect(colors[spikeStart]).toBeCloseTo(warm.r, 5);
         expect(colors[spikeStart + 1]).toBeCloseTo(warm.g, 5);
@@ -109,7 +135,8 @@ describe('M8.5 edge lines', () => {
       ).length;
       const spikes = PRODUCTION_SHOWCASE_01.hazards.length - walls;
       expect((lines[0]?.geometry as THREE.BufferGeometry).getAttribute('position').count).toBe(
-        expectedVerts(PRODUCTION_SHOWCASE_01.solids.length, walls, spikes),
+        expectedVerts(PRODUCTION_SHOWCASE_01.solids.length, walls, spikes) +
+          expectedGapVerts(PRODUCTION_SHOWCASE_01),
       );
       expect(library.geometryCount).toBeGreaterThan(0);
     } finally {

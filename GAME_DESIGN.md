@@ -587,6 +587,42 @@ Public editor, backend, persistence. See `ROADMAP.md`.
 (Pads, orbs, speed portals and the trigger infrastructure shipped in M4 —
 §6.1. Ship/Spider modes, wall gravity and moving hazards ship in M8.)
 
+## 7.10 Visibility / telegraphing contract — CURRENT (M9.6.1)
+
+Threats, obstacles and forced actions must be understandable in time —
+by direct visibility, silhouette, preview framing, windows, glow/color
+cues, setup, movement telegraphs, rhythm, or route shaping that exposes
+the next challenge. Never a lethal surprise from nowhere, never a blind
+commitment that kills before it reads, never a decision hidden by camera
+or occlusion. Measured headlessly along both reference routes (resolved
+camera eye + frustum + occlusion, `tests/helpers/sightline.ts`,
+`tests/telegraphing.test.ts`); only on-line threats count (a threat on
+a deck the route doesn't take is not a violation).
+
+- **R-decision (0.7 s):** new lane/commit decisions (maze-door gaps,
+  lateral spikes, Chomper triggers, ferry boards, teleport entries) —
+  the gap/action reads ≥0.7 s of travel before the act. Sequenced
+  doors (a rhythm weave): the first gap ≥0.7 s, each follower ≤0.5 s
+  after the previous door's plane (tutorial-rhythm exception: an
+  alternating, checkpoint-adjacent, instantly-retried pattern — the
+  ACT 1 weave only — where pattern + gap frames teach within one
+  attempt; maze doors with unpredictable openings never take it).
+- **R-action (0.5 s):** timed presses (jump/gravity orb windows).
+- **R-routing (0.4 s + coverage):** passive gates (speed/mode/gravity
+  portals) and pads — the gate/volume covers the natural exit line and
+  reads ≥0.4 s out. Pads alternatively pass by approach-line
+  unambiguity (runner lateral spread ≤2.5 u over the 15 u before the
+  pad — the route does the aiming, the pad is the payoff).
+- **R-drop (no-input walk-offs):** the landing reads at takeoff or
+  before touchdown (≥0.2 s), or the drop is a curb (edge visible +
+  landing zone hazard-free + no mid-fall action). Guided flights
+  (ship/teleport/portal/orb/pad-assisted, any input edge) are excluded.
+- **R-spider (forced snaps):** the destination surface reads at press,
+  or an authored snap-zone marker rides the runner's line
+  (orb-pattern: visible cue + press edge — §7.4).
+- **R-chomper:** the dormant creature reads ≥0.7 s before its trigger
+  (the M8D telegraph answers the lunge itself).
+
 ## 7.9 Music-driven precision routing — CURRENT (M9, GRAVITY RIFT only)
 
 GRAVITY RIFT is built for the track Gravity Lessons (120 BPM, beat 0 at

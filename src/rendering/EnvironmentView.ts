@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { ProductionTheme } from '../visuals/productionTheme';
 import type { LevelDefinition } from '../level/levelDefinition';
 import { mulberry32 } from '../core/math';
+import { placeBiomeDressing, routeGroundAt } from '../level/biomeDressing';
 
 /**
  * Production environment (M6A): fog, near-black gradient backdrop, a
@@ -58,6 +59,73 @@ export class EnvironmentView {
    * Pure dressing — never a collider, never landable-looking (it sits
    * below the lethal bound).
    */
+  /**
+   * M9.6.1 biome dressing build (cold, deterministic): route-adjacent
+   * midground props from the level's `visualDressing` rows, baked once
+   * into TWO static InstancedMeshes (dark solid silhouettes in the act
+   * accent + additive glow accents in biome signatures, per-instance
+   * colors, shared unit-box geometry, zero per-frame work, 2 draws).
+   * Absent (nulls) when the level declares no rows — other levels keep
+   * their exact look, exact draw counts, exact materials.
+   */
+  private static buildBiomeDressing(
+    unitBox: THREE.BoxGeometry,
+    def?: LevelDefinition,
+  ): {
+    solid: THREE.InstancedMesh | null;
+    glow: THREE.InstancedMesh | null;
+    solidMat: THREE.Material | null;
+    glowMat: THREE.Material | null;
+    count: number;
+  } {
+    const empty: {
+      solid: THREE.InstancedMesh | null;
+      glow: THREE.InstancedMesh | null;
+      solidMat: THREE.Material | null;
+      glowMat: THREE.Material | null;
+      count: number;
+    } = { solid: null, glow: null, solidMat: null, glowMat: null, count: 0 };
+    const rows = def?.visualDressing;
+    if (rows === undefined || rows.length === 0 || def === undefined) return empty;
+    const instances = placeBiomeDressing(rows, (z) => routeGroundAt(def.solids, z));
+    if (instances.length === 0) return empty;
+    const solids = instances.filter((inst) => !inst.glow);
+    const glows = instances.filter((inst) => inst.glow);
+    const dummy = new THREE.Object3D();
+    const tint = new THREE.Color();
+    const fill = (
+      list: typeof instances,
+      material: THREE.Material,
+    ): THREE.InstancedMesh | null => {
+      if (list.length === 0) return null;
+      const mesh = new THREE.InstancedMesh(unitBox, material, list.length);
+      for (let i = 0; i < list.length; i++) {
+        const inst = list[i];
+        if (inst === undefined) continue;
+        dummy.position.set(inst.x, inst.y, inst.z);
+        dummy.rotation.set(0, inst.ry, inst.rz);
+        dummy.scale.set(inst.sx, inst.sy, inst.sz);
+        dummy.updateMatrix();
+        mesh.setMatrixAt(i, dummy.matrix);
+        mesh.setColorAt(i, tint.setHex(inst.color));
+      }
+      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor !== null) mesh.instanceColor.needsUpdate = true;
+      mesh.frustumCulled = false;
+      return mesh;
+    };
+    const solidMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff, roughness: 0.9, metalness: 0.15, fog: true,
+    });
+    const glowMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff, transparent: true, opacity: 0.85,
+      blending: THREE.AdditiveBlending, depthWrite: false, fog: false,
+    });
+    const solid = fill(solids, solidMat);
+    const glow = fill(glows, glowMat);
+    return { solid, glow, solidMat, glowMat, count: instances.length };
+  }
+
   // M9.2 biome motes (ONE Points cloud, 1 draw): slow-rising ambient
   // particles tinted per biome by z (forge embers, island mint, maze
   // violet, cathedral cyan, reactor sparks, temple gold, void indigo,
@@ -67,6 +135,17 @@ export class EnvironmentView {
   private readonly motePos: Float32Array | null;
   private readonly moteSpeed: Float32Array | null;
   private static readonly MOTE_COUNT = 240;
+  /**
+   * M9.6.1 biome dressing (route-adjacent midground): TWO static
+   * InstancedMeshes (solid silhouettes + glow accents, per-instance
+   * colors, zero per-frame work, 2 draws) built once from the level's
+   * `visualDressing` rows. Absent when the level declares none (other
+   * levels keep their exact look). Never in the corridor (|x| ≥ 7),
+   * never colliders, never landable-looking.
+   */
+  private readonly dressSolid: THREE.InstancedMesh | null;
+  private readonly dressGlow: THREE.InstancedMesh | null;
+  private readonly dressCount: number;
 
   constructor(levelLengthZ: number, theme: ProductionTheme, def?: LevelDefinition) {
     this.theme = theme;
@@ -187,6 +266,20 @@ export class EnvironmentView {
       this.motePos = null;
       this.moteSpeed = null;
     }
+    // M9.6.1 biome dressing (opt-in per level, static, 2 draws).
+    const dressing = EnvironmentView.buildBiomeDressing(pillarGeo, def);
+    this.dressSolid = dressing.solid;
+    this.dressGlow = dressing.glow;
+    this.dressCount = dressing.count;
+    if (dressing.solid !== null) this.scene.add(dressing.solid);
+    if (dressing.glow !== null) this.scene.add(dressing.glow);
+    if (dressing.solidMat !== null) this.disposables.push(dressing.solidMat);
+    if (dressing.glowMat !== null) this.disposables.push(dressing.glowMat);
+  }
+
+  /** QA observability: total biome dressing instances (0 when absent). */
+  public get dressInstances(): number {
+    return this.dressCount;
   }
 
   /** Section background at z (biome identity for cold-built dressing). */
@@ -503,6 +596,8 @@ export class EnvironmentView {
   public dispose(): void {
     for (const d of this.disposables) d.dispose();
     this.archMesh?.dispose();
+    this.dressSolid?.dispose();
+    this.dressGlow?.dispose();
   }
 
   /**

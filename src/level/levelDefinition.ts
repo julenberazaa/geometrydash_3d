@@ -2,6 +2,7 @@ import type { ColliderKind } from '../collision/collider';
 import type { GravityMode, PlayerMode } from '../player/playerState';
 import type { RhythmCue } from '../visuals/rhythmCues';
 import type { Vec3 } from '../core/math';
+import type { DressingRow } from './biomeDressing';
 
 /**
  * Declarative level content. Engine behavior lives in code; THIS is data.
@@ -320,8 +321,13 @@ export interface VisualSetpieceDef {
    * - `lava`: glowing hazard-orange basin/river surface marking void
    *   danger (M7.3). Lives below the route; falling in still dies through
    *   the normal void bound — no gameplay, pure environmental menace.
+   * - `snapmark` (M9.6.1): mint diamond marking a forced spider-snap
+   *   zone (orb-pattern: visible cue + press edge — §7.10 R-spider).
+   *   Rendered from the biome glow instancing (zero extra draws).
+   * - `fall` (M9.6.1): a waterfall sheet pair + pool (one authored
+   *   moment per level at most — skybridge dressing, not a system).
    */
-  kind: 'guardian' | 'lava';
+  kind: 'guardian' | 'lava' | 'snapmark' | 'fall';
   /** World-space center of the silhouette volume. */
   center: Vec3;
   /** Silhouette half extents (eyes derive from these — no extra fields). */
@@ -570,6 +576,13 @@ export interface LevelDefinition {
    * Absent = no setpieces.
    */
   visualSetpieces?: VisualSetpieceDef[];
+  /**
+   * Presentation-only biome dressing acts (M9.6.1): seeded route-adjacent
+   * midground props rendered once into static instancing. Renderer-only:
+   * never read by simulation, collision, replay, or the level
+   * fingerprint. Absent = no dressing (levels keep their exact look).
+   */
+  visualDressing?: DressingRow[];
   solids: LevelSolid[];
   hazards: LevelHazard[];
   theme: LevelTheme;

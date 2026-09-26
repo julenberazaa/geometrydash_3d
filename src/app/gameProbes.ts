@@ -99,6 +99,10 @@ declare global {
       /** M9.6 spider-beam presentation probes (never gameplay). */
       spiderBeamActive: () => boolean;
       spiderBeamPlays: () => number;
+      /** M9.6.1 authored snap-zone markers (never gameplay). */
+      snapmarkCount: () => number;
+      /** M9.6.1 biome dressing instances (never gameplay). */
+      dressInstances: () => number;
       /** QA-only: lava-motion checksum (M8.3 flow proof). */
       lavaMotion: () => string;
       // M6C1 visual-trigger observability (presentation only).
@@ -355,6 +359,8 @@ export const publishGameProbes = (game: Game): void => {
     lastSpiderRejectReason: () => game['simulation'].lastSpiderRejectReason,
     spiderBeamActive: () => game['rendererHost'].spiderBeamActive,
     spiderBeamPlays: () => game['rendererHost'].spiderBeamPlays,
+    snapmarkCount: () => game['rendererHost'].snapmarkCount,
+    dressInstances: () => game['rendererHost'].dressInstances,
     lavaMotion: () => game['rendererHost'].lavaMotionSample,
     // M6C1 probes: trigger state + resolved presentation (cold path).
     visualSectionId: () => game['rendererHost'].visualSectionId,

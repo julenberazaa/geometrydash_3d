@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import type { LoadedLevel } from '../level/levelRuntime';
 import type { MaterialLibrary } from './MaterialLibrary';
 import { lavaFeedsFallTop, lavaReceivesFallBottom } from '../level/lavaAuthoring';
+import { groupDoorBlocks, findDoorGaps, corridorHalfWidth } from '../level/doorGaps';
+import type { VisualSetpieceDef } from '../level/levelDefinition';
 import {
   GRAVITY_GATE_RADIUS,
   MODE_GATE_RADIUS,
@@ -74,6 +76,21 @@ export class LevelView {
   private readonly lavaAnim: LavaAnimNode[] = [];
   /** M8.3 lava clock (render seconds; pause freezes the flow). */
   private lavaTime = 0;
+  /**
+   * M9.6.1 spider snap-zone markers: ONE InstancedMesh of mint diamonds
+   * (shared unitBox + shared modeSpider — zero new materials/geometries,
+   * 1 draw, static). Orb-pattern telegraphs for forced snaps (§7.10).
+   */
+  private snapmarkMesh: THREE.InstancedMesh | null = null;
+  /**
+   * M9.6.1 waterfall registry (cleared on dispose): sheet/pool meshes +
+   * build bases sharing ONE owned translucent material (the portal pane
+   * materials are shared with live portals and must never pulse here).
+   */
+  private readonly fallNodes: { mesh: THREE.Mesh; baseSX: number; baseSZ: number; phase: number }[] = [];
+  private fallMat: THREE.MeshBasicMaterial | null = null;
+  /** M9.6.1 waterfall clock (render seconds; pause freezes it). */
+  private fallTime = 0;
   /**
    * M9.2 portal-pulse registry (cleared on dispose): outer ring meshes +
    * their build-time base scales. Presentation-only energy breathing —
@@ -424,6 +441,8 @@ export class LevelView {
    */
   private edgeLineGeo: THREE.BufferGeometry | null = null;
   private edgeDynamicVerts = 0;
+  /** End of the M9.6.1 gap-frame range (bright, constant — see below). */
+  private edgeGapEndVerts = 0;
   private edgeAccentHex = 0;
   private readonly edgeScratch = new THREE.Color();
 
@@ -431,9 +450,15 @@ export class LevelView {
     const solids = level.def.solids;
     const walls = level.def.hazards.filter((h) => h.kind === 'killFront' || h.visual === 'block');
     const spikes = level.def.hazards.filter((h) => !(h.kind === 'killFront' || h.visual === 'block'));
+    // M9.6.1 door gap frames: same-z wall groups → committable openings
+    // across the corridor span (pure doorGaps geometry — no level ids).
+    const corridorHW = corridorHalfWidth(level.def.laneCenters);
+    const gates = groupDoorBlocks(walls);
+    const gateGaps = gates.map((g) => findDoorGaps(g, corridorHW));
+    const gapSegs = gateGaps.reduce((n, gaps) => n + gaps.length * 4, 0);
     const boxEdges = (solids.length + walls.length) * 12;
     const spikeEdges = spikes.length * 8;
-    const totalVerts = (boxEdges + spikeEdges) * 2;
+    const totalVerts = (boxEdges + spikeEdges) * 2 + gapSegs * 2;
     if (totalVerts === 0) return;
     const positions = new Float32Array(totalVerts * 3);
     const colors = new Float32Array(totalVerts * 3);
@@ -462,6 +487,23 @@ export class LevelView {
     for (const s of solids) pushBox(s.center.x, s.center.y, s.center.z, s.halfExtents.x, s.halfExtents.y, s.halfExtents.z);
     for (const w of walls) pushBox(w.center.x, w.center.y, w.center.z, w.halfExtents.x, w.halfExtents.y, w.halfExtents.z);
     this.edgeDynamicVerts = v;
+    // Gap frames: one bright rectangle per opening, shrunk inside the
+    // gap and riding proud toward the approach (never coplanar with a
+    // wall face). The opening reads the moment its plane reads.
+    for (const gaps of gateGaps) {
+      for (const gap of gaps) {
+        const x0 = gap.x0 + 0.07;
+        const x1 = gap.x1 - 0.07;
+        const y0 = gap.y0 + 0.07;
+        const y1 = gap.y1 - 0.07;
+        const z = gap.z - 0.06;
+        pushEdge(x0, y0, z, x1, y0, z);
+        pushEdge(x1, y0, z, x1, y1, z);
+        pushEdge(x1, y1, z, x0, y1, z);
+        pushEdge(x0, y1, z, x0, y0, z);
+      }
+    }
+    this.edgeGapEndVerts = v;
     // Spike pyramids from the collider box + mount (mirrors the mesh
     // seating above): base square on the support face, apex along the
     // surface normal past the cone tip.
@@ -495,7 +537,9 @@ export class LevelView {
         pushEdge(x1, by, z1, cx, ay, cz); pushEdge(x0, by, z1, cx, ay, cz);
       }
     }
-    // Paint: dynamic range follows the section accent, spike range stays
+    // Paint: dynamic range follows the section accent, the gap range
+    // stays bright white-cyan forever (the stable "safe passage"
+    // language — never re-tinted, never hazard-warm), spike range stays
     // hazard-warm (read once from the shared hazard material — the single
     // global warm identity of GAME_DESIGN §9 / ARCHITECTURE M6D).
     const accent = this.library.routeEdge.color;
@@ -503,7 +547,10 @@ export class LevelView {
     for (let i = 0; i < this.edgeDynamicVerts; i++) {
       colors[i * 3] = accent.r; colors[i * 3 + 1] = accent.g; colors[i * 3 + 2] = accent.b;
     }
-    for (let i = this.edgeDynamicVerts; i < v; i++) {
+    for (let i = this.edgeDynamicVerts; i < this.edgeGapEndVerts; i++) {
+      colors[i * 3] = 0.85; colors[i * 3 + 1] = 1.0; colors[i * 3 + 2] = 1.0;
+    }
+    for (let i = this.edgeGapEndVerts; i < v; i++) {
       colors[i * 3] = warm.r; colors[i * 3 + 1] = warm.g; colors[i * 3 + 2] = warm.b;
     }
     this.edgeAccentHex = this.library.routeEdge.color.getHex();
@@ -1013,7 +1060,13 @@ export class LevelView {
     if (setpieces.length === 0) return;
     const unitBox = this.library.unitBox;
     const sphere = this.library.orbSphere;
+    this.buildSnapmarks(setpieces);
     for (const piece of setpieces) {
+      if (piece.kind === 'snapmark') continue; // batched above (1 draw)
+      if (piece.kind === 'fall') {
+        this.buildWaterfall(piece);
+        continue;
+      }
       if (piece.kind === 'lava') {
         // Molten surface: hazard-orange glow slab + a darker crust rim
         // slightly larger beneath it (route body material, shared).
@@ -1027,8 +1080,8 @@ export class LevelView {
         this.group.add(surface);
         continue;
       }
-      // Only 'guardian' otherwise (the kind field reserves the vocabulary
-      // for future setpieces without changing the renderer).
+      // Only 'guardian' otherwise (snapmark/fall branch above; the kind
+      // field reserves the vocabulary without changing the renderer).
       const body = new THREE.Mesh(unitBox, this.library.routeBody);
       body.scale.set(piece.halfExtents.x * 2, piece.halfExtents.y * 2, piece.halfExtents.z * 2);
       body.position.set(piece.center.x, piece.center.y, piece.center.z);
@@ -1086,6 +1139,98 @@ export class LevelView {
         link.rotation.y = (i % 2 === 0) ? 0 : Math.PI / 2;
         this.group.add(link);
       }
+    }
+  }
+
+  /**
+   * M9.6.1 spider snap-zone markers (§7.10 R-spider): mint diamonds at
+   * authored forced-snap points — the orb pattern (visible cue + press
+   * edge) for destinations the camera cannot frame. ONE static
+   * InstancedMesh (shared unitBox + shared spider-mint, diamond roll,
+   * zero per-frame work, 1 draw).
+   */
+  private buildSnapmarks(
+    setpieces: readonly VisualSetpieceDef[],
+  ): void {
+    const marks = setpieces.filter((p) => p.kind === 'snapmark');
+    if (marks.length === 0) return;
+    const mesh = new THREE.InstancedMesh(this.library.unitBox, this.library.modeSpider, marks.length);
+    const dummy = new THREE.Object3D();
+    const quarterTurn = new THREE.Euler(0, 0, Math.PI / 4);
+    for (let i = 0; i < marks.length; i++) {
+      const mark = marks[i];
+      if (mark === undefined) continue;
+      dummy.position.set(mark.center.x, mark.center.y, mark.center.z);
+      dummy.rotation.copy(quarterTurn);
+      dummy.scale.set(mark.halfExtents.x * 2, mark.halfExtents.y * 2, mark.halfExtents.z * 2);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.frustumCulled = false;
+    this.group.add(mesh);
+    this.snapmarkMesh = mesh;
+  }
+
+  /** QA observability: authored snap-zone marker count. */
+  public get snapmarkCount(): number {
+    return this.snapmarkMesh?.count ?? 0;
+  }
+
+  /**
+   * M9.6.1 waterfall (one authored moment): two phase-offset translucent
+   * sheets + a pool disc, sharing ONE owned material (portal panes are
+   * shared with live portals — pulsing them would throb every portal).
+   * Unit-box sheets read blocky-Minecraft; the pulse reads falling water.
+   */
+  private buildWaterfall(
+    piece: { center: { x: number; y: number; z: number }; halfExtents: { x: number; y: number; z: number } },
+  ): void {
+    if (this.fallMat === null) {
+      this.fallMat = new THREE.MeshBasicMaterial({
+        color: 0x7df9ff,
+        transparent: true,
+        opacity: 0.38,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      });
+    }
+    const unitBox = this.library.unitBox;
+    const height = Math.max(1, piece.halfExtents.y * 2);
+    const width = Math.max(0.6, Math.min(piece.halfExtents.z * 2, 2.2));
+    for (let i = 0; i < 2; i++) {
+      const sheet = new THREE.Mesh(unitBox, this.fallMat);
+      sheet.scale.set(0.16, height, width * (i === 0 ? 1 : 0.7));
+      sheet.position.set(
+        piece.center.x + (i === 0 ? 0 : 0.45),
+        piece.center.y,
+        piece.center.z + (i === 0 ? 0 : -0.3),
+      );
+      this.group.add(sheet);
+      this.fallNodes.push({ mesh: sheet, baseSX: sheet.scale.x, baseSZ: sheet.scale.z, phase: i * Math.PI });
+    }
+    const pool = new THREE.Mesh(unitBox, this.fallMat);
+    pool.scale.set(Math.max(1.5, width * 1.6), 0.14, Math.max(1.5, width * 1.6));
+    pool.position.set(piece.center.x + 0.2, piece.center.y - piece.halfExtents.y, piece.center.z);
+    this.group.add(pool);
+    this.fallNodes.push({ mesh: pool, baseSX: pool.scale.x, baseSZ: pool.scale.z, phase: Math.PI / 2 });
+  }
+
+  /**
+   * M9.6.1 waterfall pulse (render-dt, in place): sheets breathe width in
+   * opposite phase + the pool swells slowly (delta-from-build — t = 0
+   * resumes the build pose). Pause freezes (dt 0); zero allocation.
+   */
+  public updateWaterfall(renderDtSeconds: number): void {
+    if (renderDtSeconds <= 0 || this.fallNodes.length === 0) return;
+    this.fallTime += renderDtSeconds;
+    const t = this.fallTime;
+    for (let i = 0; i < this.fallNodes.length; i++) {
+      const n = this.fallNodes[i];
+      if (n === undefined) continue;
+      const s = 1 + 0.12 * (Math.sin(t * 3.1 + n.phase) - Math.sin(n.phase));
+      n.mesh.scale.x = n.baseSX * s;
+      n.mesh.scale.z = n.baseSZ * s;
     }
   }
 
@@ -1232,5 +1377,13 @@ export class LevelView {
       this.edgeLineGeo = null;
     }
     this.edgeDynamicVerts = 0;
+    this.edgeGapEndVerts = 0;
+    // M9.6.1 owned presentation (snapmark instance buffer + waterfall
+    // material/nodes — shared library assets are never disposed here).
+    this.snapmarkMesh?.dispose();
+    this.snapmarkMesh = null;
+    this.fallMat?.dispose();
+    this.fallMat = null;
+    this.fallNodes.length = 0;
   }
 }

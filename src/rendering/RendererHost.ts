@@ -526,6 +526,8 @@ export class RendererHost {
     // M8.3 lava motion: convect crust + descend falls (render-dt driven;
     // pause freezes the flow like every other presentation clock).
     this.levelView.updateLava(renderDtSeconds);
+    // M9.6.1 waterfall pulse (same render-dt contract, presentation only).
+    this.levelView.updateWaterfall(renderDtSeconds);
     // M9.2 portal energy breathing (same render-dt contract).
     this.levelView.updatePortals(renderDtSeconds);
     // M8A lava shimmer: slow dense pulse on the shared lava materials
@@ -1134,6 +1136,16 @@ export class RendererHost {
   /** Cumulative spider-beam plays (QA observability; evidence). */
   public get spiderBeamPlays(): number {
     return this.spiderBeam.playCount;
+  }
+
+  /** Authored snap-zone markers (QA observability; §7.10 R-spider). */
+  public get snapmarkCount(): number {
+    return this.levelView.snapmarkCount;
+  }
+
+  /** Biome dressing instances (QA observability; perf evidence). */
+  public get dressInstances(): number {
+    return this.environmentView.dressInstances;
   }
 
   /** Active M4 activation rings (QA leak-guard observability). */

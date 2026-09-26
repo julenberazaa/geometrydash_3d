@@ -1070,6 +1070,36 @@ export const THE_DESCENT_CLASSIC: LevelDefinition = {
     { id: 'ps-spire-watcher', kind: 'guardian', center: { x: -10, y: 6, z: 1420 }, halfExtents: { x: 3, y: 4, z: 1.5 } },
     { id: 'ps-void-lake', kind: 'lava', center: { x: 0, y: -8, z: 1555 }, halfExtents: { x: 8, y: 1, z: 30 } },
     { id: 'ps-core-arch', kind: 'guardian', center: { x: 0, y: 7, z: 1792 }, halfExtents: { x: 7, y: 4, z: 1.5 } },
+    // M9.6.1 forced spider-snap zones (R-spider): mint diamonds on the
+    // runner's line, free-face offset, ~2.5 u before each blind mandatory
+    // press (orb-pattern: visible cue + press edge). The 1356 press is
+    // optional but marked alike (uniform pattern language).
+    { id: 'ps-snap-1344', kind: 'snapmark', center: { x: 0, y: 2.15, z: 1341.5 }, halfExtents: { x: 0.45, y: 0.45, z: 0.45 } },
+    { id: 'ps-snap-1356', kind: 'snapmark', center: { x: 2.6, y: 7.85, z: 1353.5 }, halfExtents: { x: 0.45, y: 0.45, z: 0.45 } },
+    { id: 'ps-snap-1364', kind: 'snapmark', center: { x: 2.6, y: 2.15, z: 1361.5 }, halfExtents: { x: 0.45, y: 0.45, z: 0.45 } },
+    { id: 'ps-snap-1400', kind: 'snapmark', center: { x: 0, y: 7.85, z: 1397.6 }, halfExtents: { x: 0.45, y: 0.45, z: 0.45 } },
+    { id: 'ps-snap-1482', kind: 'snapmark', center: { x: -3.4, y: 3.0, z: 1479.5 }, halfExtents: { x: 0.45, y: 0.45, z: 0.45 } },
+    { id: 'ps-snap-1749', kind: 'snapmark', center: { x: 0, y: 5.85, z: 1746.5 }, halfExtents: { x: 0.45, y: 0.45, z: 0.45 } },
+    // M9.6.1 skybridge waterfall (one authored moment): sheets pour past
+    // the traverse/MID corner, pool below the LOW road. Off-corridor,
+    // presentation-only, never a collider.
+    { id: 'ps-falls-skybridge', kind: 'fall', center: { x: 9, y: 3, z: 295 }, halfExtents: { x: 1, y: 5, z: 1 } },
+  ],
+  /**
+   * M9.6.1 biome dressing acts (fingerprint-neutral): seeded
+   * route-adjacent midground per visual act — same ranges as the
+   * visualSequence scenes below (paired by authoring, not by reference).
+   */
+  visualDressing: [
+    { z0: -10, z1: 170, biome: 'foundry', density: 0.5, seed: 11, accent: 0xffc233 },
+    { z0: 170, z1: 430, biome: 'garden', density: 0.6, seed: 22, accent: 0x2dffc4, baseY: 0 },
+    { z0: 430, z1: 720, biome: 'ruins', density: 0.9, seed: 33, accent: 0xb44dff },
+    { z0: 720, z1: 920, biome: 'cavern', density: 0.9, seed: 44, accent: 0x35c8ff },
+    { z0: 920, z1: 1110, biome: 'crag', density: 0.7, seed: 55, accent: 0xff3b1f },
+    { z0: 1110, z1: 1330, biome: 'works', density: 0.6, seed: 66, accent: 0x3dff7a },
+    { z0: 1330, z1: 1510, biome: 'temple', density: 0.6, seed: 77, accent: 0xffd23d },
+    { z0: 1510, z1: 1620, biome: 'void', density: 0.5, seed: 88, accent: 0x6a5cff, baseY: 0 },
+    { z0: 1620, z1: 1800, biome: 'core', density: 0.5, seed: 99, accent: 0xff4dd2 },
   ],
   /**
    * Nine-scene visual arc — one identity per act (fingerprint-excluded).
