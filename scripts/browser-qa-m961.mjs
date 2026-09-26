@@ -254,9 +254,9 @@ const riftPerf = await ev(page, () => ({
   geos: window.__gd3d.geometryCount(),
 }));
 log(
-  'm961 perf flat vs Rift (dressing ≈ +6 draws, +0 geometries)',
-  descentPerf.calls <= riftPerf.calls + 80 && descentPerf.geos === riftPerf.geos &&
-    descentPerf.mats <= riftPerf.mats + 3,
+  'm961 bounded Descent scene resources (nine shared biome route materials)',
+  descentPerf.calls <= 100 && descentPerf.tris <= 150000 &&
+    descentPerf.geos === riftPerf.geos && descentPerf.mats <= riftPerf.mats + 12,
   JSON.stringify({ descent: descentPerf, rift: riftPerf }),
 );
 
