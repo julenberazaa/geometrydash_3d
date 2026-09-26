@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import * as THREE from 'three';
+import type * as THREE from 'three';
 import { THE_DESCENT_CLASSIC } from '../src/content/levels/theDescentClassic';
 import { PRODUCTION_SHOWCASE_01 } from '../src/content/levels/productionShowcase01';
 import { loadLevel } from '../src/level/levelRuntime';
@@ -9,6 +9,7 @@ import { makeTestLibrary } from './helpers/visuals';
 describe('authored route surfaces', () => {
   it('gives Descent distinct world-space material structures without altering hazard materials', () => {
     const library = makeTestLibrary();
+    const baseMaterials = library.materialCount;
     const view = new LevelView(loadLevel(THE_DESCENT_CLASSIC), library);
     const mats = new Set<THREE.Material>();
     for (const [index, solid] of THE_DESCENT_CLASSIC.solids.entries()) {
@@ -30,7 +31,8 @@ describe('authored route surfaces', () => {
     expect(garden.onBeforeCompile.toString()).toContain('vRouteWorldPos.xz');
     expect(garden.onBeforeCompile.toString()).toContain('routeSurfaceShader');
     expect(library.hazard.map).toBeNull();
-    expect(library.materialCount).toBeLessThan(70);
+    // Nine route shaders + two cached materials per biome spike style.
+    expect(library.materialCount - baseMaterials).toBeLessThanOrEqual(27);
     view.dispose();
     library.dispose();
     expect(library.materialCount).toBe(0);

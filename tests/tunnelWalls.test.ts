@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { LevelView } from '../src/rendering/LevelView';
 import { loadLevel } from '../src/level/levelRuntime';
-import { makeTestLibrary } from './helpers/visuals';
+import { makeTestLibrary, meshInstances } from './helpers/visuals';
 import { MULTIMODE_GAUNTLET_01 } from '../src/content/levels/multimodeGauntlet01';
 import type { LevelDefinition } from '../src/level/levelDefinition';
 import { TEST_LEVEL } from '../src/content/levels/testLevel01';
@@ -39,7 +39,7 @@ const isMesh = (o: THREE.Object3D): o is THREE.Mesh =>
   o instanceof THREE.Mesh && !Array.isArray(o.material);
 
 const beadsIn = (view: LevelView): THREE.Mesh[] =>
-  view.group.children.filter(
+  meshInstances(view.group).filter(
     (o): o is THREE.Mesh =>
       isMesh(o) &&
       Math.abs(o.scale.y - 0.07) < 1e-6 &&
@@ -69,7 +69,7 @@ describe('M8.1 tunnel-wall mid-band', () => {
     for (const b of beads) {
       expect(b.position.y).toBeCloseTo(3, 5);
       // Bead runs the wall's full length.
-      expect(b.scale.z).toBeCloseTo(150.1, 5);
+      expect(b.scale.z).toBeCloseTo(150.1, 4); // Float32 instance scale.
     }
     view.dispose();
     library.dispose();
@@ -102,7 +102,7 @@ describe('M8.1 tunnel-wall mid-band', () => {
     // Two tunnel walls × both faces, running the corridor length.
     expect(beads.length).toBe(4);
     for (const b of beads) {
-      expect(b.scale.z).toBeCloseTo(150.1, 5);
+      expect(b.scale.z).toBeCloseTo(150.1, 4); // Float32 instance scale.
     }
     view.dispose();
     library.dispose();

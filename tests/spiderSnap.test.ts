@@ -120,8 +120,10 @@ describe('M9.6 spider observability + press buffer', () => {
     expect(sim.spiderSnapEventCount).toBe(1);
     expect(sim.spiderRejectCount).toBe(0);
     expect(sim.lastSpiderRejectReason).toBeNull();
-    // From: the grounded floor runner; to: resting under the ceiling face.
-    expect(sim.lastSpiderSnapFrom.y).toBeCloseTo(0.55, 2);
+    // Cube integrates the entry-step press before crossing the mode gate.
+    // The completed tap now jumps for that one step, then the SAME edge
+    // snaps immediately from the resulting position (no second press).
+    expect(sim.lastSpiderSnapFrom.y).toBeCloseTo(0.66, 5);
     expect(sim.lastSpiderSnapTo.y).toBeCloseTo(5.45, 5);
     expect(sim.lastSpiderSnapTo.x).toBeCloseTo(sim.player.position.x, 9);
     expect(sim.lastSpiderSnapTo.z).toBeCloseTo(sim.player.position.z, 9);

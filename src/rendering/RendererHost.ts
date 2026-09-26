@@ -83,6 +83,8 @@ import {
 export interface RendererStatsSnapshot {
   calls: number;
   triangles: number;
+  gpuGeometries: number;
+  gpuTextures: number;
 }
 
 export interface RendererOptions {
@@ -669,6 +671,8 @@ export class RendererHost {
     return {
       calls: this.renderer.info.render.calls,
       triangles: this.renderer.info.render.triangles,
+      gpuGeometries: this.renderer.info.memory.geometries,
+      gpuTextures: this.renderer.info.memory.textures,
     };
   }
 

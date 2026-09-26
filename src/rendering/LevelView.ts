@@ -4,6 +4,7 @@ import type { MaterialLibrary } from './MaterialLibrary';
 import { lavaFeedsFallTop, lavaReceivesFallBottom } from '../level/lavaAuthoring';
 import { groupDoorBlocks, findDoorGaps, corridorHalfWidth } from '../level/doorGaps';
 import type { VisualSetpieceDef } from '../level/levelDefinition';
+import type { BiomeId } from '../level/biomeDressing';
 import {
   GRAVITY_GATE_RADIUS,
   MODE_GATE_RADIUS,
@@ -15,6 +16,55 @@ import {
 const FACE_TRIM_MIN_HEIGHT = 0.8;
 /** Faces narrower than this get no center seam (small faces read via frame). */
 const FACE_SEAM_MIN_WIDTH = 6.0;
+/** Matches scenery's longitudinal culling granularity; built only at load. */
+const STATIC_TRIM_CHUNK_LENGTH = 96;
+
+/** Socket pieces in the cone's unscaled local frame. All eight box corners
+ * stay inside the square base footprint (after the cone's 45-degree yaw),
+ * within the lowest 22% of the pyramid. No part reaches the lethal tip.
+ * Recipes encode actual relief/negative space, not a color-only variant. */
+type SpikeSocketPiece = readonly [number, number, number, number, number, number, number];
+const SPIKE_SOCKETS: Record<BiomeId, readonly SpikeSocketPiece[]> = {
+  garden: [
+    [-0.28, -0.43, 0, 0.12, 0.14, 0.52, 0], [0.28, -0.45, 0.05, 0.12, 0.1, 0.42, 0],
+    [0, -0.44, -0.28, 0.44, 0.12, 0.12, 0], [-0.14, -0.36, 0.27, 0.18, 0.12, 0.12, 0],
+  ],
+  ruins: [
+    [-0.28, -0.44, 0, 0.12, 0.12, 0.56, 0], [0.28, -0.44, 0, 0.12, 0.12, 0.56, 0],
+    [0, -0.44, -0.28, 0.44, 0.12, 0.12, 0], [0.1, -0.38, 0.28, 0.26, 0.12, 0.12, 0],
+  ],
+  temple: [
+    [-0.28, -0.43, 0, 0.12, 0.14, 0.56, 0], [0.28, -0.43, 0, 0.12, 0.14, 0.56, 0],
+    [0, -0.43, -0.28, 0.44, 0.14, 0.12, 0], [0, -0.43, 0.28, 0.44, 0.14, 0.12, 0],
+    [-0.12, -0.33, 0.28, 0.16, 0.08, 0.1, 0],
+  ],
+  foundry: [
+    [-0.27, -0.42, -0.12, 0.13, 0.16, 0.28, 0.12], [0.27, -0.45, 0.1, 0.13, 0.1, 0.3, -0.12],
+    [-0.12, -0.43, 0.27, 0.28, 0.14, 0.13, 0.12], [0.12, -0.4, -0.27, 0.28, 0.2, 0.13, -0.12],
+  ],
+  crag: [
+    [-0.26, -0.43, 0.14, 0.16, 0.14, 0.24, 0.16], [0.27, -0.42, -0.1, 0.13, 0.16, 0.28, -0.12],
+    [0.12, -0.41, 0.27, 0.26, 0.18, 0.13, 0.12], [-0.15, -0.45, -0.27, 0.22, 0.1, 0.13, -0.14],
+  ],
+  cavern: [
+    [-0.27, -0.4, 0, 0.1, 0.2, 0.24, 0.25], [0.27, -0.4, 0, 0.1, 0.2, 0.24, -0.25],
+    [0, -0.4, -0.27, 0.24, 0.2, 0.1, 0.25], [0, -0.4, 0.27, 0.24, 0.2, 0.1, -0.25],
+  ],
+  works: [
+    [-0.29, -0.45, 0, 0.1, 0.1, 0.56, 0], [0.29, -0.45, 0, 0.1, 0.1, 0.56, 0],
+    [0, -0.45, -0.29, 0.48, 0.1, 0.1, 0], [0, -0.45, 0.29, 0.48, 0.1, 0.1, 0],
+    [-0.28, -0.34, 0, 0.12, 0.12, 0.16, 0], [0.28, -0.34, 0, 0.12, 0.12, 0.16, 0],
+  ],
+  void: [
+    [-0.28, -0.34, 0, 0.1, 0.05, 0.46, 0], [0.28, -0.34, 0, 0.1, 0.05, 0.46, 0],
+    [0, -0.34, -0.28, 0.46, 0.05, 0.1, 0], [0, -0.34, 0.28, 0.46, 0.05, 0.1, 0],
+  ],
+  core: [
+    [-0.28, -0.34, 0, 0.1, 0.05, 0.46, 0], [0.28, -0.34, 0, 0.1, 0.05, 0.46, 0],
+    [0, -0.34, -0.28, 0.46, 0.05, 0.1, 0], [0, -0.34, 0.28, 0.46, 0.05, 0.1, 0],
+    [0, -0.46, 0.28, 0.18, 0.05, 0.1, 0], [0, -0.46, -0.28, 0.18, 0.05, 0.1, 0],
+  ],
+};
 /**
  * Bottom-face trims (underside rails) apply only to undersides exposed in
  * open air well above the void reference (world-space heuristic — the same
@@ -99,6 +149,8 @@ export class LevelView {
   private readonly portalPulse: { mesh: THREE.Mesh; base: number; phase: number }[] = [];
   /** M9.2 portal clock (render seconds; pause freezes the pulse). */
   private portalTime = 0;
+  /** View-owned instance buffers; geometry/material remain library-owned. */
+  private readonly staticTrimChunks: THREE.InstancedMesh[] = [];
 
   constructor(
     level: LoadedLevel,
@@ -115,6 +167,7 @@ export class LevelView {
     const edgeMat = library.routeEdge;
     const hazardMat = library.hazard;
     const dressing = level.def.visualDressing;
+    const staticTrims: THREE.Mesh[] = [];
 
     let solidIndex = 0;
     for (const solid of level.def.solids) {
@@ -146,7 +199,7 @@ export class LevelView {
         solid.center.y + solid.halfExtents.y + 0.011,
         solid.center.z,
       );
-      this.group.add(top);
+      staticTrims.push(top);
 
       // Exposed-face edge treatment (M1.1 corners + M1.2 faces): thin unlit
       // boxes in the shared edge material framing each solid so slabs read
@@ -180,7 +233,7 @@ export class LevelView {
           solid.halfExtents.z * 2 - 0.12,
         );
         under.position.set(solid.center.x, bottomY - 0.011, solid.center.z);
-        this.group.add(under);
+        staticTrims.push(under);
 
         // M3.2: underside edge rails — the mirror of the top-edge strips
         // below, for exposed undersides only (see UNDER_RAIL_MIN_BOTTOM_Y).
@@ -200,7 +253,7 @@ export class LevelView {
               bottomY - 0.01,
               solid.center.z + side * (solid.halfExtents.z - 0.01),
             );
-            this.group.add(strip);
+            staticTrims.push(strip);
             const stripSide = new THREE.Mesh(box, edgeMat);
             stripSide.scale.set(0.1, 0.055, solid.halfExtents.z * 2 + 0.1);
             stripSide.position.set(
@@ -208,7 +261,7 @@ export class LevelView {
               bottomY - 0.01,
               solid.center.z,
             );
-            this.group.add(stripSide);
+            staticTrims.push(stripSide);
           }
         }
 
@@ -223,7 +276,7 @@ export class LevelView {
               solid.center.y - 0.02,
               solid.center.z + sz * (solid.halfExtents.z + 0.005),
             );
-            this.group.add(post);
+            staticTrims.push(post);
           }
         }
         // Front-face bottom strip: completes the glowing rectangle with the
@@ -232,7 +285,7 @@ export class LevelView {
         const sill = new THREE.Mesh(box, edgeMat);
         sill.scale.set(solidWidth + 0.1, 0.055, 0.1);
         sill.position.set(solid.center.x, bottomY + 0.03, frontZ);
-        this.group.add(sill);
+        staticTrims.push(sill);
         // M7.3: rear-face bottom strip — the mirror of the front sill.
         // Drop/takeoff faces on the far side previously ended in an open
         // dark edge once the camera passed them; both gap faces now read
@@ -241,14 +294,14 @@ export class LevelView {
         const backSill = new THREE.Mesh(box, edgeMat);
         backSill.scale.set(solidWidth + 0.1, 0.055, 0.1);
         backSill.position.set(solid.center.x, bottomY + 0.03, backZ);
-        this.group.add(backSill);
+        staticTrims.push(backSill);
         // Front-face center seam on wide solids: breaks up the dark face
         // center where the player actually looks when crossing gaps.
         if (solidWidth >= FACE_SEAM_MIN_WIDTH) {
           const seam = new THREE.Mesh(box, edgeMat);
           seam.scale.set(0.09, solidHeight, 0.09);
           seam.position.set(solid.center.x, solid.center.y - 0.02, frontZ + 0.005);
-          this.group.add(seam);
+          staticTrims.push(seam);
         }
       }
 
@@ -265,7 +318,7 @@ export class LevelView {
           solid.center.y + solid.halfExtents.y + 0.01,
           solid.center.z + side * (solid.halfExtents.z - 0.01),
         );
-        this.group.add(strip);
+        staticTrims.push(strip);
         const stripSide = new THREE.Mesh(box, edgeMat);
         stripSide.scale.set(0.1, 0.055, solid.halfExtents.z * 2 + 0.1);
         stripSide.position.set(
@@ -273,7 +326,7 @@ export class LevelView {
           solid.center.y + solid.halfExtents.y + 0.01,
           solid.center.z,
         );
-        this.group.add(stripSide);
+        staticTrims.push(stripSide);
       }
 
       // M8.1 tunnel-wall mid-band: tall thin freestanding walls (corridor
@@ -310,7 +363,7 @@ export class LevelView {
               solid.center.z + side * (solid.halfExtents.z + 0.005),
             );
           }
-          this.group.add(bead);
+          staticTrims.push(bead);
         }
       }
 
@@ -333,7 +386,7 @@ export class LevelView {
             islandBottomY - 0.01,
             solid.center.z + side * (solid.halfExtents.z - 0.01),
           );
-          this.group.add(glow);
+          staticTrims.push(glow);
           const glowSide = new THREE.Mesh(box, edgeMat);
           glowSide.scale.set(0.1, 0.055, solid.halfExtents.z * 2 + 0.1);
           glowSide.position.set(
@@ -341,7 +394,7 @@ export class LevelView {
             islandBottomY - 0.01,
             solid.center.z,
           );
-          this.group.add(glowSide);
+          staticTrims.push(glowSide);
         }
       }
     }
@@ -378,10 +431,12 @@ export class LevelView {
           hazard.center.y,
           hazard.center.z - hazard.halfExtents.z - 0.005,
         );
-        this.group.add(face);
+        staticTrims.push(face);
         continue;
       }
-      const mesh = new THREE.Mesh(spike, hazardMat);
+      const row = dressing?.find((act) => hazard.center.z >= act.z0 && hazard.center.z < act.z1);
+      const mesh = new THREE.Mesh(spike,
+        row === undefined ? hazardMat : library.spikeBiome(row.biome).material);
       const mount = hazard.mount ?? 'floor';
       // M8B: the tip points AWAY from the support along the surface
       // normal on all four surfaces (floor +Y, ceiling −Y, leftWall −X,
@@ -424,7 +479,10 @@ export class LevelView {
       }
       mesh.rotation.y = Math.PI / 4;
       this.group.add(mesh);
+      if (row !== undefined) this.buildSpikeSocket(mesh, row.biome, staticTrims);
     }
+
+    this.buildStaticTrimChunks(staticTrims);
 
     this.buildGravityPortals(level);
     this.buildTeleportPortals(level);
@@ -432,6 +490,80 @@ export class LevelView {
     this.buildLavaVolumes(level);
     this.buildSetpieces(level);
     this.buildEdgeLines(level);
+  }
+
+  /** Static socket relief shares the existing box and trim batching owner.
+   * Use the exact cone transform so all mount orientations remain intact. */
+  private buildSpikeSocket(spike: THREE.Mesh, biome: BiomeId, trims: THREE.Mesh[]): void {
+    spike.updateMatrix();
+    const transform = new THREE.Matrix4();
+    const squareFrame = new THREE.Matrix4().makeRotationY(-Math.PI / 4);
+    const orientation = new THREE.Quaternion();
+    const position = new THREE.Vector3();
+    const scale = new THREE.Vector3();
+    for (const [x, y, z, sx, sy, sz, yaw] of SPIKE_SOCKETS[biome]) {
+      const piece = new THREE.Mesh(this.library.unitBox, this.library.spikeBiome(biome).socket);
+      piece.name = 'biome-spike-socket';
+      // Inset the rotated rock corners: yawed pieces otherwise protrude
+      // slightly beyond the pyramid's diamond footprint.
+      position.set(x * 0.97, y, z * 0.97);
+      scale.set(sx * 0.97, sy, sz * 0.97);
+      orientation.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, yaw);
+      transform.compose(position, orientation, scale).premultiply(squareFrame).premultiply(spike.matrix);
+      // Preserve affine transforms exactly (anisotropic crystal facets can
+      // contain shear); static instancing consumes this matrix directly.
+      piece.matrix.copy(transform);
+      piece.matrixAutoUpdate = false;
+      position.setFromMatrixPosition(transform);
+      piece.position.copy(position);
+      piece.userData.spikeChunk = Math.floor(spike.position.z / STATIC_TRIM_CHUNK_LENGTH);
+      trims.push(piece);
+    }
+  }
+
+  /** Cold batching of explicit static trims only, never registered bodies. */
+  private buildStaticTrimChunks(trims: readonly THREE.Mesh[]): void {
+    const buckets = new Map<string, THREE.Mesh[]>();
+    for (const mesh of trims) {
+      if (mesh.matrixAutoUpdate) mesh.updateMatrix();
+      // InstancedMesh does not support reflected transforms. Retain any
+      // degenerate inset too, preserving the original thin-solid behavior.
+      if (Array.isArray(mesh.material) || mesh.matrix.determinant() <= 0) {
+        this.group.add(mesh);
+        continue;
+      }
+      const chunk = typeof mesh.userData.spikeChunk === 'number'
+        ? mesh.userData.spikeChunk : Math.floor(mesh.position.z / STATIC_TRIM_CHUNK_LENGTH);
+      const key = `${chunk}:${mesh.geometry.uuid}:${mesh.material.uuid}`;
+      const bucket = buckets.get(key);
+      if (bucket === undefined) buckets.set(key, [mesh]);
+      else bucket.push(mesh);
+    }
+    for (const meshes of buckets.values()) {
+      const first = meshes[0];
+      if (first === undefined) continue;
+      if (meshes.length === 1) {
+        this.group.add(first);
+        continue;
+      }
+      const batch = new THREE.InstancedMesh(first.geometry, first.material, meshes.length);
+      batch.name = 'static-route-trims';
+      batch.userData.chunkIndex = typeof first.userData.spikeChunk === 'number'
+        ? first.userData.spikeChunk : Math.floor(first.position.z / STATIC_TRIM_CHUNK_LENGTH);
+      batch.userData.biomeSpikeSocket = first.name === 'biome-spike-socket';
+      for (let i = 0; i < meshes.length; i++) {
+        const mesh = meshes[i];
+        if (mesh !== undefined) batch.setMatrixAt(i, mesh.matrix);
+      }
+      batch.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+      batch.instanceMatrix.needsUpdate = true;
+      // Bounds include full transformed extents, including rails crossing
+      // chunk boundaries. Three.js handles per-chunk frustum culling.
+      batch.computeBoundingBox();
+      batch.computeBoundingSphere();
+      this.staticTrimChunks.push(batch);
+      this.group.add(batch);
+    }
   }
 
   /**
@@ -443,8 +575,8 @@ export class LevelView {
    * per-frame allocation). Box lines ride 0.05 proud of the faces;
    * pyramid lines 0.12 proud of the cone surface (no coplanar shimmer).
    * Solid/wall vertices tint with the section accent (dynamic range);
-   * spike vertices stay hazard-warm forever (static range — the player /
-   * hazard / route hierarchy of GAME_DESIGN §9 is structural).
+   * spike vertices keep their authored biome color (or warm base fallback)
+   * forever, outside the timeline's dynamic range.
    */
   private edgeLineGeo: THREE.BufferGeometry | null = null;
   private edgeDynamicVerts = 0;
@@ -516,6 +648,7 @@ export class LevelView {
     // surface normal past the cone tip.
     const SPIKE_OUT = 0.12;
     for (const h of spikes) {
+      const firstVertex = v;
       const mount = h.mount ?? 'floor';
       const cx = h.center.x; const cy = h.center.y; const cz = h.center.z;
       const hx = h.halfExtents.x + SPIKE_OUT;
@@ -543,22 +676,22 @@ export class LevelView {
         pushEdge(x0, by, z0, cx, ay, cz); pushEdge(x1, by, z0, cx, ay, cz);
         pushEdge(x1, by, z1, cx, ay, cz); pushEdge(x0, by, z1, cx, ay, cz);
       }
+      const row = level.def.visualDressing?.find((act) => cz >= act.z0 && cz < act.z1);
+      const color = row === undefined ? this.library.hazard.color : this.library.spikeBiome(row.biome).edge;
+      for (let i = firstVertex; i < v; i++) {
+        colors[i * 3] = color.r; colors[i * 3 + 1] = color.g; colors[i * 3 + 2] = color.b;
+      }
     }
     // Paint: dynamic range follows the section accent, the gap range
     // stays bright white-cyan forever (the stable "safe passage"
-    // language — never re-tinted, never hazard-warm), spike range stays
-    // hazard-warm (read once from the shared hazard material — the single
-    // global warm identity of GAME_DESIGN §9 / ARCHITECTURE M6D).
+    // language — never re-tinted). Spike colors are already painted above
+    // from their authored position and are never part of timeline recoloring.
     const accent = this.library.routeEdge.color;
-    const warm = this.library.hazard.color;
     for (let i = 0; i < this.edgeDynamicVerts; i++) {
       colors[i * 3] = accent.r; colors[i * 3 + 1] = accent.g; colors[i * 3 + 2] = accent.b;
     }
     for (let i = this.edgeDynamicVerts; i < this.edgeGapEndVerts; i++) {
       colors[i * 3] = 0.85; colors[i * 3 + 1] = 1.0; colors[i * 3 + 2] = 1.0;
-    }
-    for (let i = this.edgeGapEndVerts; i < v; i++) {
-      colors[i * 3] = warm.r; colors[i * 3 + 1] = warm.g; colors[i * 3 + 2] = warm.b;
     }
     this.edgeAccentHex = this.library.routeEdge.color.getHex();
     const geo = new THREE.BufferGeometry();
@@ -1373,6 +1506,8 @@ export class LevelView {
   }
 
   public dispose(): void {
+    for (const chunk of this.staticTrimChunks) chunk.dispose();
+    this.staticTrimChunks.length = 0;
     // Meshes only — materials/geometries belong to the MaterialLibrary.
     this.group.clear();
     this.lavaAnim.length = 0;

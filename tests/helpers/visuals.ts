@@ -1,5 +1,6 @@
 import { MaterialLibrary } from '../../src/rendering/MaterialLibrary';
 import { PRODUCTION_THEME } from '../../src/visuals/productionTheme';
+import * as THREE from 'three';
 
 /**
  * Test-only visual helper (NOT a *.test.ts module — reusable support code
@@ -10,3 +11,28 @@ import { PRODUCTION_THEME } from '../../src/visuals/productionTheme';
  */
 export const makeTestLibrary = (): MaterialLibrary =>
   new MaterialLibrary({ ...PRODUCTION_THEME });
+
+/** Structural assertions inspect the same pieces whether represented by
+ * individual meshes or Float32 instance transforms. Test-only expansion;
+ * shared geometry/material stay owned by the original library. */
+export const meshInstances = (group: THREE.Group): THREE.Mesh[] => {
+  const pieces: THREE.Mesh[] = [];
+  const matrix = new THREE.Matrix4();
+  for (const child of group.children) {
+    if (!(child instanceof THREE.Mesh)) continue;
+    if (!(child instanceof THREE.InstancedMesh)) {
+      pieces.push(child as THREE.Mesh);
+      continue;
+    }
+    for (let i = 0; i < child.count; i++) {
+      child.getMatrixAt(i, matrix);
+      const piece = new THREE.Mesh(
+        child.geometry as THREE.BufferGeometry,
+        child.material as THREE.Material | THREE.Material[],
+      );
+      matrix.decompose(piece.position, piece.quaternion, piece.scale);
+      pieces.push(piece);
+    }
+  }
+  return pieces;
+};

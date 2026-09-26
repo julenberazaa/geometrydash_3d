@@ -2,6 +2,26 @@ import * as THREE from 'three';
 import type { ProductionTheme } from '../visuals/productionTheme';
 import type { BiomeId } from '../level/biomeDressing';
 
+/** Reference-style lethal pyramids: volcanic/stone/metal faces, neon edges.
+ * Edge energy is HDR for bloom, without making the dark core luminous. */
+const SPIKE_BIOMES: Record<BiomeId, { core: number; edge: number; roughness: number; metalness: number }> = {
+  foundry: { core: 0x241b18, edge: 0xffa32a, roughness: 0.88, metalness: 0.12 },
+  garden: { core: 0x182418, edge: 0xbaff32, roughness: 0.94, metalness: 0.02 },
+  ruins: { core: 0x24271c, edge: 0xa4ff48, roughness: 0.96, metalness: 0.02 },
+  cavern: { core: 0x1c2033, edge: 0xcf9dff, roughness: 0.38, metalness: 0.18 },
+  crag: { core: 0x241816, edge: 0xff942e, roughness: 0.98, metalness: 0.04 },
+  works: { core: 0x172728, edge: 0x9dffb5, roughness: 0.32, metalness: 0.68 },
+  temple: { core: 0x25291a, edge: 0xd4ff62, roughness: 0.72, metalness: 0.28 },
+  void: { core: 0x1e182d, edge: 0xc29aff, roughness: 0.46, metalness: 0.26 },
+  core: { core: 0x2b1929, edge: 0xff94d8, roughness: 0.3, metalness: 0.58 },
+};
+
+export interface BiomeSpikeStyle {
+  readonly material: THREE.MeshStandardMaterial;
+  readonly edge: THREE.Color;
+  readonly socket: THREE.MeshStandardMaterial;
+}
+
 const ROUTE_BIOMES: Record<BiomeId, { stone: number; light: number; dark: number; mark: number; style: number }> = {
   foundry: { stone: 0x514846, light: 0x776158, dark: 0x24272b, mark: 0xc46b33, style: 0 },
   garden: { stone: 0x677466, light: 0x9aaa87, dark: 0x34483f, mark: 0x468895, style: 1 },
@@ -9,9 +29,9 @@ const ROUTE_BIOMES: Record<BiomeId, { stone: number; light: number; dark: number
   cavern: { stone: 0x45576a, light: 0x718597, dark: 0x273746, mark: 0x5aa7bd, style: 3 },
   crag: { stone: 0x64483d, light: 0x936352, dark: 0x33262a, mark: 0xd45a33, style: 4 },
   works: { stone: 0x53636b, light: 0x83969b, dark: 0x293b42, mark: 0x57b0a1, style: 5 },
-  temple: { stone: 0x84795c, light: 0xb2a376, dark: 0x4b5145, mark: 0xbba05a, style: 2 },
-  void: { stone: 0x35384c, light: 0x5a5d7c, dark: 0x1c1e30, mark: 0x8677ae, style: 3 },
-  core: { stone: 0x505067, light: 0x82809b, dark: 0x292a40, mark: 0xb879a2, style: 5 },
+  temple: { stone: 0x84795c, light: 0xb2a376, dark: 0x4b5145, mark: 0xbba05a, style: 7 },
+  void: { stone: 0x35384c, light: 0x5a5d7c, dark: 0x1c1e30, mark: 0x8677ae, style: 6 },
+  core: { stone: 0x505067, light: 0x82809b, dark: 0x292a40, mark: 0xb879a2, style: 8 },
 };
 
 const shaderColor = (hex: number): string => {
@@ -31,10 +51,16 @@ const routeSurfaceShader = (style: number, seed: number, palette: typeof ROUTE_B
   vec3 mark = ${shaderColor(palette.mark)};
   vec3 surface = mix(dark, stone, 0.48 + broad * 0.42);
   ${style === 0 ? `
-    // Foundry: fractured ironstone and sparse heat seams.
-    float fracture = abs(routeNoise(q * 0.57 + broad * 2.7) - 0.51);
-    surface = mix(surface, dark, smoothstep(0.12, 0.55, grain) * 0.24);
-    surface = mix(surface, mark, (1.0 - smoothstep(0.015, 0.055, fracture)) * 0.32);
+    // Foundry: angular clinker courses, not the cavern's wavy vein motif.
+    float course = floor(q.y / 1.85);
+    vec2 clinker = vec2((q.x + routeHash(vec2(course, ${seed}.0)) * 3.8)
+      / (2.0 + routeHash(vec2(course, 31.0)) * 1.3), q.y / 1.85);
+    vec2 local = fract(clinker);
+    float split = min(min(local.x, 1.0-local.x), min(local.y, 1.0-local.y));
+    surface = mix(surface, light, routeHash(floor(clinker) + ${seed}.0) * 0.22);
+    surface = mix(surface, dark, (1.0-smoothstep(0.02,0.09,split)) * 0.82);
+    surface = mix(surface, mark, (1.0-smoothstep(0.007,0.025,split))
+      * step(0.7, routeHash(floor(clinker) + 13.0)) * 0.45);
   ` : style === 1 ? `
     // Garden: broad moss colonies and irregular wet runnels; no grid.
     float moss = routeNoise(q * 0.36 + vec2(broad * 2.0, grain));
@@ -43,7 +69,7 @@ const routeSurfaceShader = (style: number, seed: number, palette: typeof ROUTE_B
     surface = mix(surface, mark, (1.0 - smoothstep(0.02, 0.11, wet)) * 0.38);
     surface = mix(surface, light, smoothstep(0.75, 0.95, grain) * 0.12);
   ` : style === 2 ? `
-    // Ruins/temple: staggered blocks with cell-specific width and wear.
+    // Ruins: staggered blocks with cell-specific width and wear.
     float row = floor(q.y / 2.6);
     float offset = routeHash(vec2(row, ${seed}.0)) * 2.1;
     vec2 blockUv = vec2((q.x + offset) / 3.4, q.y / 2.6);
@@ -55,7 +81,7 @@ const routeSurfaceShader = (style: number, seed: number, palette: typeof ROUTE_B
     float glyph = abs(length(local - vec2(0.5)) - 0.23);
     surface = mix(surface, mark, (1.0-smoothstep(0.02,0.06,glyph)) * step(0.78,routeHash(cell+17.0)) * 0.25);
   ` : style === 3 ? `
-    // Cavern/void: veined mineral, broad dark pockets, no masonry grid.
+    // Cavern: veined mineral, broad dark pockets, no masonry grid.
     float vein = abs(routeNoise(q * vec2(0.44, 0.81) + broad * 3.1) - 0.5);
     surface = mix(surface, dark, smoothstep(0.56, 0.76, broad) * 0.35);
     surface = mix(surface, mark, (1.0-smoothstep(0.008, 0.045, vein)) * 0.38);
@@ -65,8 +91,8 @@ const routeSurfaceShader = (style: number, seed: number, palette: typeof ROUTE_B
     float lava = abs(routeNoise(q * 0.62 + vec2(grain, broad) * 1.5) - 0.49);
     surface = mix(surface, dark, smoothstep(0.35, 0.7, grain) * 0.34);
     surface = mix(surface, mark, (1.0-smoothstep(0.012, 0.07, lava)) * 0.65);
-  ` : `
-    // Works/core: engineered plates of varied widths, recessed conductors.
+  ` : style === 5 ? `
+    // Works: engineered plates of varied widths, recessed conductors.
     float row = floor(q.y / 3.6);
     float offset = routeHash(vec2(row, ${seed}.0)) * 2.8;
     vec2 panel = vec2((q.x + offset) / 4.8, q.y / 3.6);
@@ -77,6 +103,38 @@ const routeSurfaceShader = (style: number, seed: number, palette: typeof ROUTE_B
     surface = mix(surface, dark, seam * 0.82);
     float conductor = 1.0-smoothstep(0.012,0.05,abs(local.y-0.53));
     surface = mix(surface, mark, conductor * step(0.58,routeHash(cell+11.0)) * 0.36);
+  ` : style === 6 ? `
+    // Void: separated slate fragments and sparse stellar inclusions.
+    vec2 shard = floor(q * vec2(0.48, 0.31));
+    vec2 local = fract(q * vec2(0.48, 0.31));
+    float cut = abs(local.x - local.y * (0.4 + routeHash(shard) * 0.8));
+    surface = mix(dark, surface, 0.48 + routeHash(shard + ${seed}.0) * 0.4);
+    surface = mix(surface, mark, (1.0-smoothstep(0.005,0.025,cut)) * 0.24);
+    float fleck = step(0.96, routeHash(floor(q * 3.2) + 29.0));
+    surface = mix(surface, light, fleck * 0.4);
+  ` : style === 7 ? `
+    // Temple: carved sandstone bands, angular glyphs and moss pockets.
+    vec2 carving = vec2(q.x / 2.2, q.y / 4.1);
+    vec2 cell = floor(carving);
+    vec2 local = fract(carving);
+    float border = min(min(local.x,1.0-local.x),min(local.y,1.0-local.y));
+    float chevron = abs(abs(local.x-0.5) + (local.y-0.32)*0.7 - 0.25);
+    surface = mix(surface, light, routeHash(cell + ${seed}.0) * 0.32);
+    surface = mix(surface, dark, (1.0-smoothstep(0.015,0.07,border)) * 0.55);
+    surface = mix(surface, mark, (1.0-smoothstep(0.015,0.055,chevron))
+      * step(0.6,routeHash(cell+7.0)) * 0.4);
+    surface = mix(surface, vec3(0.08,0.18,0.07), smoothstep(0.62,0.86,broad)*0.4);
+  ` : `
+    // Core: segmented circuit rails with cross-links, not reactor plates.
+    vec2 circuit = vec2(q.x / 1.7, q.y / 5.2);
+    vec2 cell = floor(circuit);
+    vec2 local = fract(circuit);
+    float rail = 1.0-smoothstep(0.012,0.045,abs(local.x-0.5));
+    float cross = (1.0-smoothstep(0.012,0.04,abs(local.y-0.3)))
+      * step(0.55,routeHash(cell+${seed}.0));
+    surface = mix(surface, dark, step(0.7,routeHash(cell+19.0))*0.22);
+    surface = mix(surface, mark, max(rail,cross)*0.42);
+    surface = mix(surface, light, step(0.9,grain)*0.1);
   `}
   diffuseColor.rgb *= surface;
 `;
@@ -104,6 +162,7 @@ export class MaterialLibrary {
   private readonly ringPool: THREE.MeshBasicMaterial[] = [];
   private readonly checkpointBurstPool: THREE.MeshBasicMaterial[] = [];
   private readonly biomeRoute = new Map<BiomeId, THREE.MeshStandardMaterial>();
+  private readonly biomeSpikes = new Map<BiomeId, BiomeSpikeStyle>();
 
   // --- Route ---
   public readonly routeBody: THREE.MeshStandardMaterial;
@@ -268,7 +327,8 @@ export class MaterialLibrary {
     // M8.5 neon edge-line pass: ONE merged LineSegments per level (see
     // LevelView.buildEdgeLines) shares this single vertex-colored line
     // material — route solids tint with the section accent, spike pyramids
-    // stay hazard-warm. Bounded: +1 material, +1 draw call, zero per-frame
+    // retain authored biome colors or warm fallback. Bounded: +1 material,
+    // +1 draw call, zero per-frame
     // allocation (re-tints are change-guarded in LevelView.setEdgeAccent).
     this.routeEdgeLine = track(new THREE.LineBasicMaterial({ vertexColors: true }));
 
@@ -526,6 +586,34 @@ export class MaterialLibrary {
     return this.checkpointBurstPool;
   }
 
+  /** Cached only for authored spike bands; legacy hazards keep `hazard`.
+   * Two materials per biome; socket meshes use static trim instancing.
+   * No extra texture, shader, light or per-frame palette work. */
+  public spikeBiome(biome: BiomeId): BiomeSpikeStyle {
+    const cached = this.biomeSpikes.get(biome);
+    if (cached !== undefined) return cached;
+    const palette = SPIKE_BIOMES[biome];
+    const material = new THREE.MeshStandardMaterial({
+      color: palette.core,
+      emissive: palette.core,
+      emissiveIntensity: 0.18,
+      roughness: palette.roughness,
+      metalness: palette.metalness,
+      flatShading: true,
+    });
+    const socket = new THREE.MeshStandardMaterial({
+      color: ROUTE_BIOMES[biome].stone,
+      roughness: palette.roughness, metalness: palette.metalness,
+      emissive: palette.edge, emissiveIntensity: 0.12,
+      flatShading: true,
+    });
+    const style = { material, socket, edge: new THREE.Color(palette.edge).multiplyScalar(2.5) };
+    this.materials.push(material);
+    this.materials.push(socket);
+    this.biomeSpikes.set(biome, style);
+    return style;
+  }
+
   /** Opt-in Descent route skin. World-space coordinates avoid UV stretching
    * and tile repetition; each act uses a distinct procedural structure. */
   public routeBiome(biome: BiomeId): THREE.MeshStandardMaterial {
@@ -543,9 +631,15 @@ export class MaterialLibrary {
       shader.vertexShader = shader.vertexShader.replace('#include <common>',
         '#include <common>\nvarying vec3 vRouteWorldPos;\nvarying vec3 vRouteWorldNormal;');
       shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>',
-        `#include <begin_vertex>
-         vRouteWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
-         vRouteWorldNormal = normalize(mat3(modelMatrix) * objectNormal);`);
+         `#include <begin_vertex>
+         vec4 routePosition = vec4(transformed, 1.0);
+         vec3 routeNormal = objectNormal;
+         #ifdef USE_INSTANCING
+           routePosition = instanceMatrix * routePosition;
+           routeNormal = mat3(instanceMatrix) * routeNormal;
+         #endif
+         vRouteWorldPos = (modelMatrix * routePosition).xyz;
+         vRouteWorldNormal = normalize(mat3(modelMatrix) * routeNormal);`);
       shader.fragmentShader = shader.fragmentShader.replace('#include <common>',
         `#include <common>
          varying vec3 vRouteWorldPos;
@@ -637,6 +731,7 @@ export class MaterialLibrary {
     this.geometries.length = 0;
     this.tierMaterials.clear();
     this.biomeRoute.clear();
+    this.biomeSpikes.clear();
     this.ringPool.length = 0;
   }
 }

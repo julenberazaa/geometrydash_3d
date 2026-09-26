@@ -64,7 +64,7 @@ declare global {
         normal: { x: number; y: number; z: number };
         preVel: { x: number; y: number; z: number };
       };
-      rendererStats: () => { calls: number; triangles: number };
+      rendererStats: () => { calls: number; triangles: number; gpuGeometries: number; gpuTextures: number };
       sceneChildren: () => number;
       // M6A visual-foundation observability (presentation only).
       materialCount: () => number;

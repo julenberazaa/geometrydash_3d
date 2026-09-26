@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { LevelView } from '../src/rendering/LevelView';
 import { loadLevel } from '../src/level/levelRuntime';
-import { makeTestLibrary } from './helpers/visuals';
+import { makeTestLibrary, meshInstances } from './helpers/visuals';
 import { TEST_LEVEL } from '../src/content/levels/testLevel01';
 import type { LevelDefinition } from '../src/level/levelDefinition';
 
@@ -43,7 +43,7 @@ const isMesh = (o: THREE.Object3D): o is THREE.Mesh =>
  *  horizontally inside the given solid's footprint (both ceiling slabs share
  *  the same underside height, so y alone cannot discriminate). */
 const railMeshesAtY = (group: THREE.Group, y: number, box: Box): THREE.Mesh[] =>
-  group.children.filter(
+  meshInstances(group).filter(
     (o): o is THREE.Mesh =>
       isMesh(o) &&
       Math.abs(o.scale.y - RAIL_THICKNESS) < 1e-6 &&
@@ -53,7 +53,7 @@ const railMeshesAtY = (group: THREE.Group, y: number, box: Box): THREE.Mesh[] =>
   );
 
 const anyRailAtY = (group: THREE.Group, y: number): number =>
-  group.children.filter(
+  meshInstances(group).filter(
     (o): o is THREE.Mesh =>
       isMesh(o) &&
       Math.abs(o.scale.y - RAIL_THICKNESS) < 1e-6 &&
@@ -78,10 +78,10 @@ describe('underside rail parity (M3.2)', () => {
       // corner posts (lengths +0.1 vs the slab face), so match the closed
       // frame, not the old near-touching segments.
       const longitudinal = rails.filter(
-        (m) => Math.abs(m.scale.z - (slab.halfExtents.z * 2 + 0.1)) < 1e-6,
+        (m) => Math.abs(m.scale.z - (slab.halfExtents.z * 2 + 0.1)) < 1e-4,
       );
       const across = rails.filter(
-        (m) => Math.abs(m.scale.x - (slab.halfExtents.x * 2 + 0.1)) < 1e-6,
+        (m) => Math.abs(m.scale.x - (slab.halfExtents.x * 2 + 0.1)) < 1e-4,
       );
       expect(longitudinal.length, `slab at z=${slab.center.z}`).toBe(2);
       expect(across.length, `slab at z=${slab.center.z}`).toBe(2);
@@ -112,7 +112,7 @@ describe('underside rail parity (M3.2)', () => {
     const view = new LevelView(loadLevel(TEST_LEVEL), makeTestLibrary());
     for (const slab of [slabA, slabB]) {
       const bottomY = slab.center.y - slab.halfExtents.y;
-      const insets = view.group.children.filter(
+      const insets = meshInstances(view.group).filter(
         (o): o is THREE.Mesh =>
           isMesh(o) &&
           Math.abs(o.scale.y - 0.02) < 1e-6 &&

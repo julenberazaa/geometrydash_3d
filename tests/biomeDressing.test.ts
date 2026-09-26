@@ -131,7 +131,7 @@ describe('biome dressing placement', () => {
     }
   });
 
-  it('builds voxel assemblies in two bounded batches without changing the Rift', () => {
+  it('chunks voxel assemblies for view culling without changing the Rift', () => {
     const descent = new EnvironmentView(1800, PRODUCTION_THEME, THE_DESCENT_CLASSIC);
     const batches = descent.scene.children.filter(
       (object): object is THREE.InstancedMesh => object instanceof THREE.InstancedMesh,
@@ -141,16 +141,23 @@ describe('biome dressing placement', () => {
       (mesh.material instanceof THREE.MeshBasicMaterial && mesh.material.transparent));
     expect(descent.dressInstances).toBeGreaterThan(100);
     expect(descent.dressInstances).toBeLessThanOrEqual(MAX_DRESS_INSTANCES);
-    expect(dressed.length).toBe(2);
-    const first = dressed[0];
-    const second = dressed[1];
-    expect(first).toBeDefined();
-    expect(second).toBeDefined();
-    if (first === undefined || second === undefined) throw new Error('Missing dressing batch');
-    expect(first.count + second.count).toBeGreaterThan(500);
-    expect(first.geometry).toBe(second.geometry);
-    expect(batches.length).toBe(4); // architecture + two dressing + facade
-    expect(Math.max(...batches.map((mesh) => mesh.count))).toBeLessThan(4000);
+    expect(dressed.length).toBeGreaterThan(20);
+    expect(dressed.length).toBeLessThan(45);
+    expect(dressed.reduce((sum, mesh) => sum + mesh.count, 0)).toBeGreaterThan(500);
+    expect(new Set(dressed.map((mesh) => mesh.material)).size).toBe(3);
+    expect(new Set(batches.map((mesh) => mesh.geometry)).size).toBe(2);
+    expect(Math.max(...batches.map((mesh) => mesh.count))).toBeLessThan(500);
+    expect(batches.every((mesh) => mesh.frustumCulled && mesh.boundingSphere !== null)).toBe(true);
+    const camera = new THREE.PerspectiveCamera(75, 16 / 9, 0.1, 130);
+    camera.position.set(0, 3, 280);
+    camera.lookAt(0, 2, 330);
+    camera.updateMatrixWorld();
+    const frustum = new THREE.Frustum().setFromProjectionMatrix(
+      new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse),
+    );
+    const visible = dressed.filter((mesh) => frustum.intersectsObject(mesh));
+    expect(visible.length).toBeGreaterThan(0);
+    expect(visible.length).toBeLessThan(dressed.length / 2);
     descent.dispose();
 
     const plain = new EnvironmentView(1800, PRODUCTION_THEME);

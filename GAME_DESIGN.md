@@ -661,17 +661,26 @@ gameplay is real runtime 3D geometry. Never ship reference pixels.
 ## 9. Visual language — CURRENT (M6A foundation)
 
 Deliberate production hierarchy (presentation-only; gameplay in §§1–6 is
-unaffected): player (cyan, highest priority) > hazards (warm orange,
+unaffected): player (cyan, highest priority) > hazards (bright recognizable
+neon pyramids, warm orange in the base style,
 readable before contact, never bloom-hidden) > playable route (dark body +
 section-colored edge language, obvious surface plane) > interactions
 (semantic accents: yellow = jump impulse, blue = gravity, per-tier speed
 colors) > environment (depth only, never competes). Dark surfaces stay
 dark; bloom reinforces edges instead of washing the scene. Since M8.5 every
-solid and spike carries a merged neon edge outline in the section accent
-(spikes additionally keep their warm hazard body), so each act reads in
-one hue the way neon-arcade references do — edge color never carries
-gameplay meaning. The Cube reads identically on Floor and Ceiling
+solid carries a merged neon edge outline in the section accent. Authored
+biomes give spikes a dark biome-material body and bright matching neon
+outline: jungle/ruins vegetation green, lava fire orange, cave mineral,
+reactor energy, void/core cosmic. The recognizable lethal pyramid
+silhouette and luminance contrast must survive every biome; color alone
+never distinguishes a hazard from decoration. Levels without biome data
+keep the original warm hazard style. The Cube reads identically on Floor and Ceiling
 (free-face accents on both faces; §4 symmetry holds).
+
+Spike bases also carry biome-specific 3D relief (moss/stone, fractured
+volcanic pieces, crystal sockets, machine collars, floating energy frames).
+These details remain at the base, inside its footprint, and never alter
+the lethal volume or hide the tip.
 
 ## 9.1 Motion language — CURRENT (M6B juice, presentation only)
 
@@ -695,8 +704,9 @@ environment energy, restrained bloom/exposure, juice multipliers. Visual
 section semantics are STRICTLY position-driven (same location → same
 section, every machine); transitions are smooth presentation
 interpolation that must never obscure gameplay, mislead as gameplay cues,
-flash, or strobe. The cyan player anchor and warm hazard identity NEVER
-change with sections. All evolution is reversibly disableable
+flash, or strobe. The cyan player anchor never changes. Authored spike
+materials/outline palettes are fixed by the spike's biome position and
+never retinted by timeline interpolation or reactive flashes. All evolution is reversibly disableable
 (`?triggers=off` = exact baseline) with zero gameplay difference. The
 shipped section values are ENGINEERING PROOF, not direction (M6C1 proof
 gate NOT performed; full artistic timeline authoring still remains after

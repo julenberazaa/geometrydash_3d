@@ -114,6 +114,15 @@ export class CameraOccluderFade {
     // multi-material meshes are never faded rather than half-faded.
     if (Array.isArray(shared)) return;
     const clone = shared.clone();
+    // Three.js clone/copy omits these callbacks. Preserve authored biome
+    // shaders when a body fades, rather than briefly reverting to a plain
+    // material and losing its world-space surface identity.
+    // Copy the hooks, preserving Three.js's invocation with clone as `this`.
+    // Binding to shared would change semantics for this-dependent shaders.
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- intentional framework callback copy; never invoked unbound
+    clone.onBeforeCompile = shared.onBeforeCompile;
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- renderer invokes the copied method on the clone
+    clone.customProgramCacheKey = shared.customProgramCacheKey;
     clone.transparent = true;
     clone.depthWrite = false;
     clone.opacity = slot.level = 1;

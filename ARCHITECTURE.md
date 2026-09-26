@@ -520,7 +520,8 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   prevPosition, portal/debug ids, counters, death anchors incl. the
   teleport anchor, derived progress).
 - `replayFormat.ts`: versioned `ReplayV1` container (`schemaVersion` 1,
-  `rulesetVersion` 1 — a deliberate compatibility constant, never
+  `rulesetVersion` 2 (completed Cube taps accepted through their press
+  edge; version-1 tapes rejected before playback) — a deliberate constant, never
   auto-derived — `simulationHz`, `levelId`, `levelFingerprint`,
   `frameCount`, `inputFrames`, per-tick `stateHashes`, `outcome`,
   `finalStateHash` == last per-tick hash). JSON serialize/parse with
@@ -636,9 +637,11 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   clamped by `validateProductionTheme`; the M6A provisional values above
   are untouched by it). M6D hazard-semantic contract: the overlay flows
   route/environment identity ONLY — hazards resolve to the single global
-  warm `GLOBAL_HAZARD_COLOR` on every level (`LevelTheme.hazard` stays on
+  warm `GLOBAL_HAZARD_COLOR` as the base fallback (`LevelTheme.hazard` stays on
   the type for data compatibility but is renderer-inert, pinned by
-  `visualFoundation` cross-level resolution tests).
+  `visualFoundation` cross-level resolution tests). Authored biome bands
+  additionally select cached spike materials and fixed luminous outlines
+  through `MaterialLibrary.spikeBiome`; timeline accents never repaint them.
 - `visualTimeline.ts` (`src/visuals/`, M6C1) — the ONE renderer-side
   owner computing CURRENT VISUAL STATE = base theme + current section +
   transition interpolation. Position-driven only (active = last section
@@ -853,15 +856,50 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   white-cyan rectangle per opening (third paint range — constant, never
   re-tinted; dynamic accent + warm ranges untouched), zero new draws /
   materials / geometries.
+- `LevelView` cold-batches static tops, undersides, rails, seams and door
+  face trims by geometry/material into 96-unit cullable instanced chunks.
+  Primary bodies in `occluderMeshes` retain individual meshes for camera
+  fade; lava/waterfall and portal animation registries remain separate.
+  Instance buffers are view-owned; shared library assets are not disposed
+  by the batches. Route material world coordinates include instance
+  transforms. Structural tests inspect all instance transforms, not only
+  direct child Mesh objects.
+  Authored biome spikes use cached core/socket materials and nine geometric
+  socket recipes in `LevelView`, batched through this same trim owner.
+  Socket relief stays within the base footprint and lowest 22% of the
+  pyramid on all four mounts; the lethal cone/collider and tip are unchanged.
+  `CameraOccluderFade` explicitly carries shader callbacks/cache keys into
+  its bounded temporary clones (Three.js material copy omits them), so
+  fading never removes an authored procedural biome surface.
 - `biomeDressing.ts` (`src/level/`, M9.6.1): pure seeded midground
   placement (9 biome vocabularies, corridor clearance, caps) +
-  `routeGroundAt` terrain query; `EnvironmentView` bakes it once into
-  TWO static InstancedMeshes (solid silhouettes + glow accents, 2
-  draws, zero per-frame work, view-owned materials, shared unit box).
+  `routeGroundAt` terrain query. Authored garden/temple landmarks supplement
+  seeded scatter without entering the route. `EnvironmentView` cold-builds
+  solids, glow accents, water/lava fall strands, route-face chips, and
+  biome architecture into cullable `InstancedMesh` chunks (48 units for
+  dense architecture, 96 for other scenery layers) with shared
+  geometry/materials and computed culling bounds. The architecture and
+  route-face materials use world-space face shading/grain, so no repeated
+  image tile is loaded. One shared eight-face octahedron adds 3D moss/
+  pointed foliage lobes and mineral shards in sparse, irregular off-route
+  clusters. Narrow trunks, folded leaves, roots, segmented lianas and
+  raised moss replace broad green box masses. Basalt relief and stepped
+  side cascades add source/fall/basin silhouettes, outside the corridor.
+  Close broken banks and tiered cliff fingers create a physical midground
+  boundary; organic banks carry raised moss and hanging roots, volcanic
+  banks cracks, and service banks mechanical strips. World-space fine
+  grain and directional face contrast add detail without image tiles.
+  Reactor side shells carry inner-face service conduits/panels outside
+  ±5.4; exterior machinery alone is hidden by the opaque tunnel shell.
+  Route shader structures distinguish all nine biomes, including angular
+  foundry clinker, temple carvings, void slate and segmented core circuits.
+  Fall-strand shader time advances from the existing
+  `updateMotes` render-dt path; pause freezes it, and no objects are
+  allocated per frame. Chunking trades extra visible draws for substantially
+  fewer submitted off-camera instances.
   Opt-in per level via `visualDressing` (Descent declares, Rift keeps
   its exact look). Snap-zone diamonds batch into the glow instancing
-  (0 extra draws); the waterfall (`fall` setpiece) is 2 sheets + pool
-  with 1 owned material pulsing in the lava update path.
+  (0 extra draws); gameplay lava volumes remain owned by level data.
 - `sightline.ts` (`tests/helpers/`, M9.6.1): the headless telegraphing
   auditor (resolved-eye frustum + occlusion per tick, on-line filter,
   walk-off R-drop verdicts, spider destination readability) behind
@@ -904,7 +942,7 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   box + spike pyramid on the shared vertex-colored `routeEdgeLine`
   material — dark faces + luminous edges; solid vertices follow the
   section accent via `setEdgeAccent` (change-guarded, cold), spike
-  vertices stay hazard-warm; view-owned buffer disposed with the view,
+  vertices retain their authored biome color or the warm fallback; view-owned buffer disposed with the view,
   so the library geometry count never moves; M7.1:
   spike visuals orient relative to their declared `mount` surface — base
   attached, tip AWAY from the support (floor +Y, ceiling −Y); colliders
@@ -1233,7 +1271,7 @@ in-page eye-velocity proof (no cut) |
 | Reference PNGs never runtime assets | Repo/runtime search + visual review |
 | Visual theme changes never alter gameplay or fingerprints; sim imports no rendering | `visualFoundation` theme/fingerprint + import-boundary tests + golden replay (unit + in-page) |
 | Shared materials/geometries only; no per-frame allocation; bounded resources | `visualFoundation` library tests + browser QA resource/draw-call guards |
-| Global warm hazard identity on every level (per-level themes move route/environment only) | `visualFoundation` cross-level hazard-resolution tests (M6D) |
+| Base hazard identity remains warm; authored biome spikes may use fixed biome materials/bright outlines, preserving lethal pyramid semantics | `visualFoundation` base theme resolution + `biomeHazardStyle` authored spike palette/outline tests |
 | DEBUG profiler bounded (ring ≤ capacity), off by default, sim-untouched; software rasterizers never a GPU pass | `perfProfiler` tests + `gpuIdentity()` probe + `perf-gate.mjs` evidence (M6D; M6D.1 headed `--real-gpu` mode, rules in `scripts/perfGateLib.mjs` + colocated tests) |
 | Controlled bloom (contract-pinned), resize-safe post, playable no-post fallback | `visualFoundation` contract tests + browser QA m6a resize/fallback checks |
 | VFX observes but never writes sim; sim imports no VFX/rendering/visuals; nothing visual in replays | `motionVfx` boundary + golden-integration tests + browser QA m6b replay checks |
@@ -1248,7 +1286,7 @@ in-page eye-velocity proof (no cut) |
 | M9.6 spider snaps observable (count + travel anchors) and ignored presses counted with reasons; 6-tick press buffer re-attempts ONLY the snap, clears on death/respawn/restart/mode-exit, rides snapshots; reference tapes unaffected | `spiderSnap` tests (anchors, no-support/blocked, buffer fire/expiry, restart clear, snapshot carry, determinism) + both-route anchors tick-exact + replay VERIFIED + browser QA m96 beam/anchor proofs |
 | M9.6 hub: menu XOR session canvas (hub disposed on START, rebuilt on menu return); selection stays in LevelSelectView; legacy menu hooks intact | Browser QA m96 hub/slider/switching/disposal checks + migrated m94/m941/m942/m95 menu gates (m92 needs no canvas migration) |
 | M9.6.1 telegraphing: on-line threats read in time (decision 0.7 / action 0.5 / routing 0.4 / drop-lead 0.2 / chomper 0.7, sequenced-door exception); door gaps framed; blind forced snaps marked; walk-offs fair | `sightline` auditor + `telegraphing` both-route pins + `doorGaps` units + gap-frame paint pins + snapmark coverage + browser QA m961 readability/completion shots |
-| M9.6.1 dressing: seeded route-adjacent midground, corridor-clear, capped, static instanced (2 draws, 0 hot allocs), opt-in per level, fingerprint-neutral | `biomeDressing` units (determinism, bounds, caps, vocab, fingerprint) + browser QA m961 biome stills + perf-vs-Rift guard |
+| M9.6.1 dressing: authored/seeded route-adjacent 3D scenery, corridor-clear, capped, chunked/cullable instancing, 0 hot allocations, opt-in per level, fingerprint-neutral | `biomeDressing`/`overgrownDressing` units (determinism, bounds, caps, vocab, fingerprint) + browser QA m961 biome stills + per-act resource guard |
 | No milestone passes with failing verification | `npm run verify` + `AGENTS.md` process rule |
 
 ## 11. Known non-defects / deferred perf notes
