@@ -210,7 +210,7 @@ export class EnvironmentView {
       color: 0xffffff, transparent: true, opacity: 0.85,
       blending: THREE.AdditiveBlending, depthWrite: false, fog: false,
     });
-    const solid = EnvironmentView.chunkBoxes(unitBox, solidMat, solids);
+    const solid = EnvironmentView.chunkBoxes(unitBox, solidMat, solids, 48);
     const glow = EnvironmentView.chunkBoxes(unitBox, glowMat, glows);
     let flowMat: THREE.MeshBasicMaterial | null = null;
     let flow: THREE.InstancedMesh[] = [];
@@ -674,7 +674,7 @@ export class EnvironmentView {
     // spent 20 faces on every tiny petiole without visible silhouette gain.
     const geometry = new THREE.OctahedronGeometry(1, 0);
     const material = EnvironmentView.voxelMaterial(motionTime);
-    const meshes = EnvironmentView.chunkBoxes(geometry, material, instances);
+    const meshes = EnvironmentView.chunkBoxes(geometry, material, instances, 48);
     for (const mesh of meshes) if (mesh.boundingSphere !== null) mesh.boundingSphere.radius += 0.2;
     return { meshes, geometry, material };
   }

@@ -877,7 +877,7 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   seeded scatter without entering the route. `EnvironmentView` cold-builds
   solids, glow accents, water/lava fall strands, route-face chips, and
   biome architecture into cullable `InstancedMesh` chunks (48 units for
-  dense architecture, 96 for other scenery layers) with shared
+  dense architecture/solid scenery/foliage, 96 for glow/flow layers) with shared
   geometry/materials and computed culling bounds. The architecture and
   route-face materials use world-space face shading/grain, so no repeated
   image tile is loaded. One shared eight-face octahedron adds 3D moss/

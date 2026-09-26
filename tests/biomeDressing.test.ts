@@ -142,7 +142,9 @@ describe('biome dressing placement', () => {
     expect(descent.dressInstances).toBeGreaterThan(100);
     expect(descent.dressInstances).toBeLessThanOrEqual(MAX_DRESS_INSTANCES);
     expect(dressed.length).toBeGreaterThan(20);
-    expect(dressed.length).toBeLessThan(45);
+    // Solid scenery uses 48-unit chunks, glow/flow 96; more bounded draws
+    // trade for fewer invisible submitted pieces. Browser budget stays 450.
+    expect(dressed.length).toBeLessThan(75);
     expect(dressed.reduce((sum, mesh) => sum + mesh.count, 0)).toBeGreaterThan(500);
     expect(new Set(dressed.map((mesh) => mesh.material)).size).toBe(3);
     expect(new Set(batches.map((mesh) => mesh.geometry)).size).toBe(2);
