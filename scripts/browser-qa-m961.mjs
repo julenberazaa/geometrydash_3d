@@ -74,6 +74,7 @@ const screenshot = async (name) => {
  *  forward position — staged teleports into weaves die without them. */
 const still = async (name, x, y, z, ms = 400, drive = []) => {
   let status = 'unknown';
+  let capturedZ = NaN;
   for (let attempt = 0; attempt < 2; attempt++) {
     await ev(page, ([px, py, pz]) => window.__gd3d.debugTeleport(px, py, pz), [x, y, z]);
     const fired = new Set();
@@ -88,11 +89,13 @@ const still = async (name, x, y, z, ms = 400, drive = []) => {
       }
       await sleep(page, 25);
     }
-    status = await ev(page, () => window.__gd3d.status());
-    if (status !== 'running') {
+    const state = await ev(page, () => ({ status: window.__gd3d.status(), z: window.__gd3d.playerPosition().z }));
+    status = state.status;
+    if (status !== 'running' || Math.abs(state.z - z) > 20) {
       await page.waitForFunction(() => window.__gd3d.status() === 'running', null, { timeout: 30000 });
       continue;
     }
+    capturedZ = state.z;
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => document.querySelector('.m94-pause-menu')?.style.display === 'block', null, { timeout: 10000 });
     await ev(page, () => {
@@ -112,11 +115,8 @@ const still = async (name, x, y, z, ms = 400, drive = []) => {
     await sleep(page, 300);
     break;
   }
-  const info = await ev(page, () => ({
-    p: window.__gd3d.playerPosition(), status: window.__gd3d.status(),
-    mode: window.__gd3d.playerMode(), grav: window.__gd3d.gravityMode(),
-  }));
-  console.log(`still ${name}: status=${status} z=${info.p.z.toFixed(1)} ${info.mode}/${info.grav}`);
+  console.log(`still ${name}: status=${status} capturedZ=${capturedZ.toFixed(1)} targetZ=${z}`);
+  log(`${name} captured on route`, status === 'running' && Math.abs(capturedZ - z) <= 20);
   return status;
 };
 
@@ -187,9 +187,9 @@ log('m961 spider entry shows the line (markers ahead)', snapView.z > 1325, JSON.
 // --- 5. Biome stills, one per act (driver-exact states where known). ---
 await still('m961-biome-forge', 0, 3.6, 100);
 await still('m961-biome-islands', 0, 0.55, 270);
-await still('m961-biome-labyrinth', 0, 0.55, 440, 400, [{ atZ: 444, key: 'ArrowRight' }]);
+await still('m961-biome-labyrinth', 0, 0.55, 450, 90);
 await still('m961-biome-cathedral', 0, 0.55, 700);
-await still('m961-biome-canyon', 0, 1.03, 1000);
+await still('m961-biome-canyon', 0, 1.98, 940, 90);
 await still('m961-biome-reactor', 0, 3.1, 1150);
 await still('m961-biome-temple', 0, 0.55, 1330);
 await still('m961-biome-void', 0, 12.6, 1550, 200);

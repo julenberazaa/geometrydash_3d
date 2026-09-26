@@ -14,67 +14,72 @@ const ROUTE_BIOMES: Record<BiomeId, { stone: number; light: number; dark: number
   core: { stone: 0x505067, light: 0x82809b, dark: 0x292a40, mark: 0xb879a2, style: 5 },
 };
 
-/** Deterministic tile pixels, authored motifs rather than a random color wash. */
-function routeTile(biome: BiomeId): THREE.DataTexture {
-  const p = ROUTE_BIOMES[biome];
-  const size = 128;
-  const pixels = new Uint8Array(size * size * 4);
-  const color = (hex: number, x: number, y: number): void => {
-    const i = (y * size + x) * 4;
-    pixels[i] = (hex >> 16) & 255;
-    pixels[i + 1] = (hex >> 8) & 255;
-    pixels[i + 2] = hex & 255;
-    pixels[i + 3] = 255;
-  };
-  const hash = (x: number, y: number): number => {
-    let n = (x * 374761393 + y * 668265263 + p.style * 1442695041) | 0;
-    n = Math.imul(n ^ (n >>> 13), 1274126177);
-    return (n ^ (n >>> 16)) >>> 0;
-  };
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const by = Math.floor(y / 32);
-      const stagger = by % 2 === 0 ? 0 : 16;
-      const localX = (x + stagger) % 32;
-      const localY = y % 32;
-      const seam = localX < 2 || localY < 2;
-      const block = hash(Math.floor((x + stagger) / 32), by);
-      const weather = hash(Math.floor(x / 8), Math.floor(y / 8));
-      let tone = block % 4 === 0 ? p.light : p.stone;
-      if (weather % 17 === 0) tone = p.dark;
-      if (localX === 2 || localY === 2) tone = p.light;
-      if (seam) tone = p.dark;
-      // Green growth clings to joints; wet channels form broken horizontal
-      // ribbons; basalt carries branching orange fissures; industrial acts
-      // have recessed panel seams, bolts and conductor traces.
-      if (p.style === 1) {
-        if (seam && block % 3 === 0) tone = 0x527d48; // moss in the mortar
-        if (weather % 13 === 0 && localY > 3) tone = 0x638348;
-        if (x % 128 > 54 && x % 128 < 68) tone = (y % 16 < 3) ? 0x73b7bc : p.mark;
-      }
-      if (p.style === 2 && x % 32 > 8 && x % 32 < 24 && y % 32 > 8 && y % 32 < 24 &&
-          ((x % 32 === 10 || x % 32 === 22) || (y % 32 === 10 || y % 32 === 22))) tone = p.mark;
-      if (p.style === 3 && (x + y * 2) % 47 < 2 && weather % 3 === 0) tone = p.mark;
-      if (p.style === 4 && ((x + Math.floor(y / 8) * 7) % 55 < 2 || y % 64 === 31) && weather % 3 !== 0) tone = p.mark;
-      if (p.style === 5) {
-        if (x % 32 < 2 || y % 32 < 2) tone = p.dark;
-        if ((x % 32 === 5 || x % 32 === 27) && (y % 32 === 5 || y % 32 === 27)) tone = p.light;
-        if (y % 32 === 16 && x % 32 > 7 && x % 32 < 25) tone = p.mark;
-      }
-      if (p.style === 0 && ((x + Math.floor(y / 9) * 5) % 43 < 2) && weather % 3 !== 0) tone = p.mark;
-      color(tone, x, y);
-    }
-  }
-  const texture = new THREE.DataTexture(pixels, size, size, THREE.RGBAFormat);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
-  texture.magFilter = THREE.NearestFilter;
-  texture.minFilter = THREE.LinearMipmapLinearFilter;
-  texture.generateMipmaps = true;
-  texture.needsUpdate = true;
-  return texture;
-}
+const shaderColor = (hex: number): string => {
+  const linear = new THREE.Color(hex);
+  return `vec3(${linear.r}, ${linear.g}, ${linear.b})`;
+};
+
+/** World coordinates and per-cell hashes give every surface a stable but
+ * non-repeating pattern. The style changes its structure, not just its hue. */
+const routeSurfaceShader = (style: number, seed: number, palette: typeof ROUTE_BIOMES[BiomeId]): string => `
+  vec2 q = routeUv;
+  float broad = routeNoise(q * 0.16 + ${seed}.0);
+  float grain = routeNoise(q * 1.35 + ${seed}.0);
+  vec3 stone = ${shaderColor(palette.stone)};
+  vec3 light = ${shaderColor(palette.light)};
+  vec3 dark = ${shaderColor(palette.dark)};
+  vec3 mark = ${shaderColor(palette.mark)};
+  vec3 surface = mix(dark, stone, 0.48 + broad * 0.42);
+  ${style === 0 ? `
+    // Foundry: fractured ironstone and sparse heat seams.
+    float fracture = abs(routeNoise(q * 0.57 + broad * 2.7) - 0.51);
+    surface = mix(surface, dark, smoothstep(0.12, 0.55, grain) * 0.24);
+    surface = mix(surface, mark, (1.0 - smoothstep(0.015, 0.055, fracture)) * 0.32);
+  ` : style === 1 ? `
+    // Garden: broad moss colonies and irregular wet runnels; no grid.
+    float moss = routeNoise(q * 0.36 + vec2(broad * 2.0, grain));
+    surface = mix(surface, vec3(0.19, 0.39, 0.16), smoothstep(0.44, 0.73, moss) * 0.67);
+    float wet = abs(sin(q.x * 0.48 + routeNoise(q * 0.12) * 8.0));
+    surface = mix(surface, mark, (1.0 - smoothstep(0.02, 0.11, wet)) * 0.38);
+    surface = mix(surface, light, smoothstep(0.75, 0.95, grain) * 0.12);
+  ` : style === 2 ? `
+    // Ruins/temple: staggered blocks with cell-specific width and wear.
+    float row = floor(q.y / 2.6);
+    float offset = routeHash(vec2(row, ${seed}.0)) * 2.1;
+    vec2 blockUv = vec2((q.x + offset) / 3.4, q.y / 2.6);
+    vec2 cell = floor(blockUv);
+    vec2 local = fract(blockUv);
+    float joint = 1.0 - smoothstep(0.018, 0.055, min(min(local.x, 1.0-local.x), min(local.y, 1.0-local.y)));
+    surface = mix(surface, light, routeHash(cell + ${seed}.0) * 0.18);
+    surface = mix(surface, dark, joint * 0.62);
+    float glyph = abs(length(local - vec2(0.5)) - 0.23);
+    surface = mix(surface, mark, (1.0-smoothstep(0.02,0.06,glyph)) * step(0.78,routeHash(cell+17.0)) * 0.25);
+  ` : style === 3 ? `
+    // Cavern/void: veined mineral, broad dark pockets, no masonry grid.
+    float vein = abs(routeNoise(q * vec2(0.44, 0.81) + broad * 3.1) - 0.5);
+    surface = mix(surface, dark, smoothstep(0.56, 0.76, broad) * 0.35);
+    surface = mix(surface, mark, (1.0-smoothstep(0.008, 0.045, vein)) * 0.38);
+    surface = mix(surface, light, smoothstep(0.86, 0.98, grain) * 0.12);
+  ` : style === 4 ? `
+    // Volcanic crag: branching magma cracks in irregular basalt.
+    float lava = abs(routeNoise(q * 0.62 + vec2(grain, broad) * 1.5) - 0.49);
+    surface = mix(surface, dark, smoothstep(0.35, 0.7, grain) * 0.34);
+    surface = mix(surface, mark, (1.0-smoothstep(0.012, 0.07, lava)) * 0.65);
+  ` : `
+    // Works/core: engineered plates of varied widths, recessed conductors.
+    float row = floor(q.y / 3.6);
+    float offset = routeHash(vec2(row, ${seed}.0)) * 2.8;
+    vec2 panel = vec2((q.x + offset) / 4.8, q.y / 3.6);
+    vec2 cell = floor(panel);
+    vec2 local = fract(panel);
+    float seam = 1.0-smoothstep(0.008,0.035,min(min(local.x,1.0-local.x),min(local.y,1.0-local.y)));
+    surface = mix(surface, light, routeHash(cell + ${seed}.0) * 0.26);
+    surface = mix(surface, dark, seam * 0.82);
+    float conductor = 1.0-smoothstep(0.012,0.05,abs(local.y-0.53));
+    surface = mix(surface, mark, conductor * step(0.58,routeHash(cell+11.0)) * 0.36);
+  `}
+  diffuseColor.rgb *= surface;
+`;
 
 /**
  * MaterialLibrary (M6A) — SOLE owner of shared Three.js materials and
@@ -99,7 +104,6 @@ export class MaterialLibrary {
   private readonly ringPool: THREE.MeshBasicMaterial[] = [];
   private readonly checkpointBurstPool: THREE.MeshBasicMaterial[] = [];
   private readonly biomeRoute = new Map<BiomeId, THREE.MeshStandardMaterial>();
-  private readonly routeTextures: THREE.Texture[] = [];
 
   // --- Route ---
   public readonly routeBody: THREE.MeshStandardMaterial;
@@ -522,16 +526,14 @@ export class MaterialLibrary {
     return this.checkpointBurstPool;
   }
 
-  /** Opt-in Descent route skin. World-space projection keeps block size
-   * constant even on long scaled slabs; one texture/material per authored act
-   * is shared by every body, top and exposed underside in that act. */
+  /** Opt-in Descent route skin. World-space coordinates avoid UV stretching
+   * and tile repetition; each act uses a distinct procedural structure. */
   public routeBiome(biome: BiomeId): THREE.MeshStandardMaterial {
     const cached = this.biomeRoute.get(biome);
     if (cached !== undefined) return cached;
-    const map = routeTile(biome);
-    this.routeTextures.push(map);
+    const palette = ROUTE_BIOMES[biome];
+    const seed = Object.keys(ROUTE_BIOMES).indexOf(biome) * 19 + 7;
     const mat = new THREE.MeshStandardMaterial({
-      map, bumpMap: map, bumpScale: 0.16,
       color: 0xffffff, roughness: biome === 'garden' ? 0.7 : biome === 'works' ? 0.48 : 0.86,
       metalness: biome === 'works' || biome === 'core' ? 0.3 : 0.04,
       emissive: biome === 'void' ? 0x11101c : 0x0b0d0d,
@@ -543,24 +545,29 @@ export class MaterialLibrary {
       shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>',
         `#include <begin_vertex>
          vRouteWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
-         vRouteWorldNormal = normalize(mat3(modelMatrix) * objectNormal);
-         vec3 routeVertexN = abs(vRouteWorldNormal);
-         vec2 routeVertexUv = routeVertexN.y > routeVertexN.x && routeVertexN.y > routeVertexN.z
-           ? vRouteWorldPos.xz : routeVertexN.z > routeVertexN.x ? vRouteWorldPos.xy : vRouteWorldPos.zy;
-         vBumpMapUv = routeVertexUv * 0.34;`);
+         vRouteWorldNormal = normalize(mat3(modelMatrix) * objectNormal);`);
       shader.fragmentShader = shader.fragmentShader.replace('#include <common>',
-        '#include <common>\nvarying vec3 vRouteWorldPos;\nvarying vec3 vRouteWorldNormal;');
+        `#include <common>
+         varying vec3 vRouteWorldPos;
+         varying vec3 vRouteWorldNormal;
+         float routeHash(vec2 p) {
+           return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+         }
+         float routeNoise(vec2 p) {
+           vec2 i = floor(p);
+           vec2 f = fract(p);
+           f = f * f * (3.0 - 2.0 * f);
+           return mix(mix(routeHash(i), routeHash(i + vec2(1.0, 0.0)), f.x),
+                      mix(routeHash(i + vec2(0.0, 1.0)), routeHash(i + vec2(1.0, 1.0)), f.x), f.y);
+         }`);
       shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `
-        #ifdef USE_MAP
-          vec3 routeN = abs(vRouteWorldNormal);
-          vec2 routeUv = routeN.y > routeN.x && routeN.y > routeN.z
-            ? vRouteWorldPos.xz : routeN.z > routeN.x ? vRouteWorldPos.xy : vRouteWorldPos.zy;
-          vec4 routeTexel = texture2D(map, routeUv * 0.34);
-          diffuseColor *= routeTexel;
-        #endif
+        vec3 routeN = abs(vRouteWorldNormal);
+        vec2 routeUv = routeN.y > routeN.x && routeN.y > routeN.z
+          ? vRouteWorldPos.xz : routeN.z > routeN.x ? vRouteWorldPos.xy : vRouteWorldPos.zy;
+        ${routeSurfaceShader(palette.style, seed, palette)}
       `);
     };
-    mat.customProgramCacheKey = () => 'biome-route-world-projection-v1';
+    mat.customProgramCacheKey = () => `biome-route-world-v2-${biome}`;
     this.materials.push(mat);
     this.biomeRoute.set(biome, mat);
     return mat;
@@ -624,14 +631,12 @@ export class MaterialLibrary {
   }
 
   public dispose(): void {
-    for (const t of this.routeTextures) t.dispose();
     for (const m of this.materials) m.dispose();
     for (const g of this.geometries) g.dispose();
     this.materials.length = 0;
     this.geometries.length = 0;
     this.tierMaterials.clear();
     this.biomeRoute.clear();
-    this.routeTextures.length = 0;
     this.ringPool.length = 0;
   }
 }

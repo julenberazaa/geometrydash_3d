@@ -7,7 +7,7 @@ import { LevelView } from '../src/rendering/LevelView';
 import { makeTestLibrary } from './helpers/visuals';
 
 describe('authored route surfaces', () => {
-  it('gives Descent distinct, tiled material motifs without altering hazard materials', () => {
+  it('gives Descent distinct world-space material structures without altering hazard materials', () => {
     const library = makeTestLibrary();
     const view = new LevelView(loadLevel(THE_DESCENT_CLASSIC), library);
     const mats = new Set<THREE.Material>();
@@ -24,11 +24,11 @@ describe('authored route surfaces', () => {
     expect(mats.size).toBeGreaterThanOrEqual(7);
     const garden = library.routeBiome('garden');
     const foundry = library.routeBiome('foundry');
-    expect(garden.map).toBeInstanceOf(THREE.DataTexture);
-    expect(garden.map).not.toBe(foundry.map);
-    expect(garden.bumpMap).toBe(garden.map);
-    expect(garden.map?.wrapS).toBe(THREE.RepeatWrapping);
+    expect(garden.map).toBeNull();
+    expect(foundry.map).toBeNull();
+    expect(garden.customProgramCacheKey()).not.toBe(foundry.customProgramCacheKey());
     expect(garden.onBeforeCompile.toString()).toContain('vRouteWorldPos.xz');
+    expect(garden.onBeforeCompile.toString()).toContain('routeSurfaceShader');
     expect(library.hazard.map).toBeNull();
     expect(library.materialCount).toBeLessThan(70);
     view.dispose();
