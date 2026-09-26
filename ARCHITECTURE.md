@@ -91,7 +91,10 @@ pause, `F1/F2/F3` debug) — a distinct domain from gameplay input.
 M9.6 pointer primary action (still this owner, still gravity-agnostic):
 `attachPointer(container)` maps pointerdown → the SAME `space` edge
 (first contact presses, last release releases; multi-touch tracked by
-pointer id) and pointerup/cancel → release; contacts starting on a
+pointer id) and pointerup/cancel/leave → release; keyboard and pointer
+holds are tracked separately, so one release cannot disarm the other and
+each new source press emits an edge even when the other is held. Pause,
+blur and detach clear stale pending edges. Contacts starting on a
 `button` are UI gestures (ignored here — buttons blur themselves on
 activation so Space never re-fires them, fixing the post-menu spurious
 pause). Pointer shares the `space` edge state, so the replay codec,
@@ -832,8 +835,9 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   state stays in `LevelSelectView`; the hub only mirrors it. Menu probes
   extended (`hubReady`, `hubSelected`, `hubBeacon`, programmatic select).
 - `SpiderBeamView` (`src/rendering/`, M9.6): the snap transition language
-  — pooled 2-slot vertical energy beam + spray + endpoint flashes between
-  the exact sim snap anchors, ~0.32 s decay, mint spider accent, owned
+  — pooled 2-slot vertical core + halo + instanced jagged strands + fast
+  traveling packet + spray + block endpoint flashes between the exact sim
+  snap anchors, ~0.32 s decay, mint spider accent, owned
   materials/geometries, edge-fired by `RendererHost` from
   `spiderSnapEventCount` (silenced by `?fx=off`, cleared on respawn/
   teleport, disposed with the host). The camera glide is untouched.
@@ -1235,7 +1239,7 @@ in-page eye-velocity proof (no cut) |
 | M9.2 audio output path: every live voice is source → gain → destination, wired in order before start; wiring failure fails loud, never silent `playing` | `musicDirector` structural order test + fail-loud wiring test + graphReady pins + browser QA m92 graph assertion (never TRANSPORT PASS with no output path) |
  | M9.2 checkpoints: latest-wins activation, atomic full-state restore (incl. platform tick + elapsed anchor), classic bit-identity, R = checkpoint / Shift+R = full, session-scoped, replay-isolated | `checkpoints` tests + DESCENT 8/8 both-route activation pin + browser QA m92 checkpoint section |
 | M9.5 per-track rhythm: Gravity grid default (existing callers/pulse byte-identical); Zenith grid + restrained pulse scale resolve from the level's track; chomper runtime order is triggerZ-sorted | `zenithTrack` map/resolution/scale tests + `rhythmPulse` default-path + Zenith-grid tests + `descentZenithAlignment` + browser QA m95 pulse/graph proof |
-| M9.6 pointer primary action: taps drive the shared `space` edge (keyboard-identical downstream, replay-identical tapes); button contacts never become gameplay input; no leaked listeners across sessions | `inputPointer` tests (fake-root edges, multi-touch, UI-target exclusion, disabled parity, detach/blur removal) + browser QA m96 tap-jump + spider-edge proofs |
+| M9.6 pointer primary action: taps drive the shared `space` edge (keyboard-identical downstream, replay-identical tapes); independent keyboard/pointer holds and presses, pointer-leave release, pending-edge purge on pause/blur; button contacts never become gameplay input; no leaked listeners across sessions | `inputPointer` tests (source overlap, rapid tap, fake-root edges, multi-touch, UI-target exclusion, disabled parity, detach/blur removal) + browser QA m96 tap-jump + spider-edge proofs |
 | M9.6 focused buttons never re-fire gameplay Space (blur on activation) | Browser QA m96 C2 (Space after menu use jumps, never pauses) |
 | M9.6 spider snaps observable (count + travel anchors) and ignored presses counted with reasons; 6-tick press buffer re-attempts ONLY the snap, clears on death/respawn/restart/mode-exit, rides snapshots; reference tapes unaffected | `spiderSnap` tests (anchors, no-support/blocked, buffer fire/expiry, restart clear, snapshot carry, determinism) + both-route anchors tick-exact + replay VERIFIED + browser QA m96 beam/anchor proofs |
 | M9.6 hub: menu XOR session canvas (hub disposed on START, rebuilt on menu return); selection stays in LevelSelectView; legacy menu hooks intact | Browser QA m96 hub/slider/switching/disposal checks + migrated m94/m941/m942/m95 menu gates (m92 needs no canvas migration) |

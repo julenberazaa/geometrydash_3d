@@ -77,7 +77,11 @@ NEVER rotates and the camera NEVER rolls when gravity changes.
 - **Jump:** `Space` is ALWAYS the jump key. A pointer tap (mouse click /
   touch tap on the scene — never on a UI control) is the SAME primary
   action as `Space` (M9.6: shared edge semantics, identical in every
-  mode). The directional jump key depends
+  mode). Each new pointer or keyboard contact produces its own press edge,
+  even while the other source remains held; release of one source never
+  disarms the other. Leaving the game area releases the pointer hold;
+  pausing or window blur discards pending edges. The
+  directional jump key depends
   on the current gravity surface:
   - Floor: `ArrowUp` or `Space` = fixed-impulse jump away from the floor.
   - Ceiling: `ArrowDown` or `Space` = fixed-impulse jump away from the
@@ -519,9 +523,9 @@ glyph) and mint-green Spider rings (surface-switch glyph), rendered on
   rides checkpoint snapshots, replay-safe). A hazard in the transit
   path kills (death wins — no magical pass-through); a solid in the way,
   or no support in range, ignores the press (never clip, never void-launch).
-  Every snap answers with a fast vertical energy beam + particle burst
-  connecting the exact start/end anchors (M9.6: presentation-only, the
-  camera keeps gliding — never a cut, never a snap).
+  Every snap answers with a fast vertical energy core, jagged strands,
+  traveling packet, endpoint flashes and particle burst connecting the
+  exact start/end anchors (presentation-only; the camera keeps gliding).
 
 `Space` is the universal primary action in every mode (jump / thrust /
 surface-switch).
