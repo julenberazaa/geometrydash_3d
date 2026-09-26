@@ -479,7 +479,7 @@ export class Game {
     const director = this.music;
     if (director === null || this.silentStart) return;
     if (this.mode.runMode === 'checkpoint') {
-      director.startAt(targetMusicTime(this.simulation.elapsedSimTime, this.trackOffset));
+      director.restartAt(targetMusicTime(this.simulation.elapsedSimTime, this.trackOffset));
     } else {
       director.restart();
     }

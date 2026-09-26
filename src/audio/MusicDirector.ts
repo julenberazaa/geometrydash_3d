@@ -477,10 +477,20 @@ export class MusicDirector {
     return this.startAt(this.pausedOffset);
   }
 
+  /** Seek an attempt boundary without unpausing an open pause menu. */
+  public restartAt(offsetSeconds: number): boolean {
+    if (this.state === 'paused') {
+      if (this.buffer === null) return false;
+      this.pausedOffset = Math.min(Math.max(0, offsetSeconds), Math.max(0, this.buffer.duration - 0.05));
+      this.lastTarget = this.pausedOffset;
+      return true;
+    }
+    return this.startAt(offsetSeconds);
+  }
+
   /** Deterministic attempt origin (death respawn / R / F4 replay). */
   public restart(): boolean {
-    this.pausedOffset = 0;
-    return this.startAt(0);
+    return this.restartAt(0);
   }
 
   /** Death/finish cut: short fade + stop; respawn restarts at the origin. */

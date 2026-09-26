@@ -185,6 +185,22 @@ describe('music transport (M9 MusicDirector)', () => {
     expect(director.probe().actualTime).toBeCloseTo(12, 9);
   });
 
+  it('keeps the transport paused when restart and checkpoint seek occur in the pause menu', async () => {
+    const { director, engine } = await readyDirector();
+    director.startAt(0);
+    engine.now += 10;
+    director.pause();
+    const sourceCount = engine.sources.length;
+    expect(director.restartAt(24)).toBe(true);
+    expect(director.transportState).toBe('paused');
+    expect(director.probe().actualTime).toBeCloseTo(24, 9);
+    expect(director.restart()).toBe(true);
+    expect(director.transportState).toBe('paused');
+    expect(engine.sources).toHaveLength(sourceCount);
+    expect(director.resume()).toBe(true);
+    expect(engine.sources[sourceCount]?.startedAtOffset).toBe(0);
+  });
+
   it('restarts at the origin and cuts on death', async () => {
     const { director, engine } = await readyDirector();
     director.startAt(0);
