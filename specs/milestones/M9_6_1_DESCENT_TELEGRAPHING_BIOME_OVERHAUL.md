@@ -1,19 +1,17 @@
 # M9.6.1 — Descent Telegraphing + Biome Overhaul (fairness first)
 
-> Status: ENGINEERING COMPLETE (branch
+> Status: IN PROGRESS (branch
 > `feature/m9-6-1-descent-telegraphing-biome-overhaul`). Human gates
-> (readability feel, art direction, audible music) remain OPEN —
+> (readability feel, art direction, audible music, real-GPU performance) remain OPEN —
 > automation proves mechanics, never art or fun. No merge to main,
 > no force-push. Untracked user MP3s preserved untouched.
 >
-> Evidence: `npm run verify` green (64 files / 737 tests: +4
-> telegraphing, +11 biomeDressing, +6 doorGaps, edgeLines re-pinned);
-> `browser-qa-m961.mjs` 6/6 green (hub regression, 6 markers + 209
-> dressing instances, gap/marker/biome stills, current-tape REPLAY
-> VERIFIED 8/8 Chompers spent, perf flat vs Rift, zero errors);
-> legacy m95 14/14 + m96 15/15 + m94 25/25 + m941 11/11 + m942 10/10 +
-> m92 16/16 green on the final tree. M9.5 tape correctly stale after
-> Zone G (fingerprint contract working — fresh tape generated).
+> Latest evidence: `npm run verify` green, 793 tests / 72 files;
+> browser `descent-release-evidence` 20/20, current tape VERIFIED,
+> nine captures within their actual biome bands, zero errors.
+> Independent final QA/audio agents hit usage limits. Their final
+> sign-off is absent; the orchestrator's checks do not substitute for it.
+> Art is richer but still below the requested near-1:1 references.
 
 ## 0. Source state (verified 2026-09-26)
 
@@ -122,45 +120,99 @@ deleted before commit).
 - Per-act color identity EXISTS (9 visualSequence sections) — the gap
   is texture/dressing, not color. Background layer EXISTS (instanced
   architecture + beams + motes). The gap is ROUTE-ADJACENT midground.
-- Design: `biomeDressing.ts` (pure seeded placement, deterministic) +
-  `LevelDefinition.visualDressing?` (opt-in per level — Descent
-  declares, Rift untouched) + EnvironmentView instanced build (2 draws:
-  solid props + glow props, static, per-instance section-accent
-  colors) + ONE waterfall (skybridge islands act, 2 planes + pool,
-  opacity pulse in the existing per-frame update path) + snapmark
-  diamonds batch into the glow instancing (0 extra draws).
+- Current implementation: `biomeDressing.ts` combines seeded scatter
+  with authored garden/temple landmarks; `visualDressing?` remains
+  opt-in (Rift untouched). `EnvironmentView` batches 3D assemblies,
+  route-face chips and architecture into 48/96-unit cullable chunks using
+  shared geometry/materials. Water/lava fall strands animate with one
+  shared shader time uniform; world-space voxel face shading and route
+  materials avoid repeating image tiles. The level also has an authored
+  lava source→fall→pool link. Added geometry sits outside the route.
 - Biome map (Descent sections): forge=foundry (vents/pipes/embers),
   islands=garden (waterfall + floating rocks + vines), labyrinth=ruins
   (pillars/arches), cathedral=cavern (crystals/stalactites),
   canyon=crag (basalt pillars/ember chains), reactor=works (ducts/
   chains/cells), temple=garden-tech (roots/vines/gold trim),
   void=void (crystals/rocks), core=core (crystals/arches, light).
-- Constraints honored: |x|≥7 clearance (never in corridor), fogged,
-  no new lights, no per-frame allocs, fingerprint-neutral
-  (presentation-only data), no new solids (no gameplay/collision
-  change), creatures skipped (design §7.2 forbids moving decoration;
-  static animals would read as clutter — honest no).
-- Vocabulary maps to EXISTING library geos/mats (+1 shared white glow
-  basic material if none qualifies; rotated boxes = crystals/rocks).
+- Scenery stays outside the ±5.4 corridor, with rotated extents checked
+  for the authored foliage. Shared chunks/materials, no new lights and
+  no per-frame object allocations. Scenery is fingerprint-neutral.
+  Gameplay edits are explicit level data: two maze micro-patterns and a
+  sourced lava fall beside the route; both reference routes still finish.
+  No moving creatures were added. Leaf sway and falling strands are
+  presentation motion, frozen on pause.
+- Scenery uses shared boxes plus one low-poly organic geometry. Spike
+  core/socket materials are cached per biome; nine distinct base relief
+  recipes share the same static trim batching owner. Tip, collider,
+  outline position and all four mount transforms remain unchanged.
 
 ## 4. QA gates
 
-- `npm run verify` green (new: `telegraphing` + `biomeDressing`
-  suites; updated: none — anchors/pins untouched by construction).
-- New `scripts/browser-qa-m961.mjs`: gap-frame legibility shots (A1 +
-  maze doors), snap-marker shots (spider entries), biome stills per
-  act, Descent full completion (reference tape? Descent tape is
-  gameplay-identical — reuse m95 tape!), perf/resource guards
-  (draw calls/materials/geometries vs M9.6 baseline), zero errors.
-- Legacy: m95 + m96 full re-run (gameplay-identical content, but
-  LevelView/level-file touched → prove it); m94/m941/m942/m92
-  overlap-covered (documented scope).
+- `npm run verify` green (including `telegraphing`, `biomeDressing`,
+  `overgrownDressing`, replay, Descent and Rift regression suites).
+- `scripts/browser-qa-m961.mjs`: on-route gap-frame shots (A1 + maze
+  doors), spider-entry and nine biome stills, freshly generated
+  current-content Descent tape with REPLAY VERIFIED, live per-act
+  draw/triangle bounds, resource/disposal guard and zero errors.
+- Legacy: final m95 full re-run 14/14 and m96 16/16 green after the
+  gameplay, input, audio and rendering changes; m94/m941/m942/m92
+  overlap-covered (documented scope). Logs are retained beside the stills.
 
 ## 5. Definition of Done
 
 - Rules in GAME_DESIGN §7.10 + ARCHITECTURE owners + auditor green on
-  both routes (on-line threats only) + gap frames visible in shots +
-  6 snap markers visible + completion anchors tick-exact + replays
-  VERIFIED + perf flat (+≤4 draws, +0 hot allocs, materials +≤1,
-  geometries +0) + branch pushed + tree clean (temp scripts deleted,
-  playwright uninstalled, manifests restored) + final report.
+  both routes (on-line threats only) + gap frames and snap markers
+  visible + completion anchors tick-exact + replays VERIFIED + no
+  hot-path allocation/regression + bounded live per-act resources +
+  real-GPU frame-time evidence + human biome/spider/readability review.
+  The former +≤4 draw target applied to the smaller 2-batch proposal;
+  the user's subsequent request for substantially more 3D scenery
+  superseded that proposal. This does not waive performance review.
+  Current status: automated engineering gates green; art fidelity,
+  independent final sign-off and human feel/performance gates remain open.
+
+## 6. Final implementation review (2026-09-26)
+
+- Real defects: pointer/key state conflation, completed taps ignored by
+  Cube held-only eligibility, cut→pause→restart audio restarting, biome
+  shader hooks lost by Three.js material cloning, and reactor thin walls
+  filtered out before interior detail could be built. Each has regression
+  coverage or browser evidence. Cube semantics deliberately bump ruleset 2;
+  schema remains 1, the regenerated 2,346-frame golden tape verifies.
+- Art workers: Carson authored overgrown waterfall banks; Ohm authored a
+  sourced side lava fall; Laplace replaced green box masses with trunks,
+  folded leaves, moss, segmented lianas and fractured volcanic forms;
+  Tesla authored spike palettes and nine bounded geometric sockets.
+  Euclid batched static route trims while preserving fade/animation owners.
+- Critical review: Herschel rejected plain reactor/void proposals;
+  Aristotle rejected the earlier art/performance verdict and demanded
+  an actual browser Spider snap. The orchestrator added the real input
+  proof (one input attempt, no retry hiding a lost first press), interior
+  machinery, close banks, nine shader structures, shorter culling chunks
+  and a lighter shared halo tube. Latest independent
+  re-review and Feynman's audio audit failed on usage limits.
+- Resolved conflicts: a finished-pose 100-call estimate was unrepresentative
+  (mid-route had 400–1,020 calls before batching). The live gate remains
+  450 calls / 70,000 triangles at each correctly located biome capture.
+  A late Temple failure at 70,582 was fixed, not waived: final 63,406.
+  Warm-only legacy hazard style conflicted with the user's biome-spike
+  requirement; base/Rift fallback stays warm, authored spikes use fixed
+  matching outlines with unchanged lethal geometry.
+- Final live replay: 122 samples, peak 374 calls / 63,934 triangles,
+  WebGL Intel UHD hardware at 1280×720, GPU resources 25 geometries / 13
+  textures across the nine shots. Library counts are separate (Descent
+  72 materials / 9 geometries, Rift 47 / 9). Rolling-window p95 ranged
+  12.0–20.5 ms; final 600-frame window p95 15.9 / p99 18.0 ms. Whole-run
+  counters still include 15 frames over 50 ms; no stutter-free claim.
+- Inspect actual screenshots and `comparison.html` in
+  `qa/screenshots/descent-release-evidence/`. Comparison poses are close,
+  not pixel-identical; the old cavern capture was in the preceding biome.
+- Still weak: water remains stylized geometry/strands without convincing
+  refraction/reflection/spray; foliage is sparse against the reference;
+  light/shadow separation and void/core composition remain insufficient.
+  Fast water lanes were not added (existing speed/route timing retained).
+- Human retest: rapid keyboard/click Spider presses across entry/landing;
+  all six marked snaps; upper/lower maze lines at 552–564 and 640–652;
+  first-time doors/drops/Chompers; pause→R/Shift+R/F4→resume; menu/mode/
+  checkpoint switching and audible single-track output; sustained play on
+  target hardware; reference comparison of jungle, falls and spike style.

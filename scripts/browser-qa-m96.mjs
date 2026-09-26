@@ -252,6 +252,16 @@ log(
 // --- C0. MAIN MENU rebuilds the hub with zero session residue. ---
 await page.keyboard.press('Escape');
 await pauseOpen();
+await page.keyboard.press('r');
+await sleep(page, 150);
+const pausedRestart = await ev(page, () => ({
+  paused: window.__gd3d.paused(),
+  playing: window.__gd3d.musicPlaying(),
+  source: window.__gd3d.musicSourceCreated(),
+}));
+log('m96 restart while paused keeps music stopped',
+  pausedRestart.paused === true && pausedRestart.playing === false && pausedRestart.source === false,
+  JSON.stringify(pausedRestart));
 await page.locator('.m94-pause-menu').getByRole('button', { name: 'MAIN MENU' }).click();
 await waitMenu();
 await sleep(page, 800);

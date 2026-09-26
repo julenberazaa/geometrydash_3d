@@ -4,13 +4,12 @@
  *
  * 1. Menu boots (hub regression).
  * 2. START Descent classic: snapmarkCount === 6, dressInstances in
- *    (100, 220], session shape sane.
+ *    bounded authored/seeded dressing, session shape sane.
  * 3. Gap-frame legibility stills (A1 doors, maze 599 doors, foundry).
  * 4. Spider snap-marker stills (entries show mint diamonds).
  * 5. Biome stills, one per act (judged by a human from the PNGs).
- * 6. Completion: the M9.5 primary tape (gameplay-identical content)
- *    finishes in-page REPLAY VERIFIED — the visual pass proves
- *    gameplay-identity, not just beauty.
+ * 6. Completion: a fresh current-content primary tape finishes in-page
+ *    REPLAY VERIFIED after the authored obstacle changes.
  * 7. Perf: draw calls vs the Rift control (same renderer path, no
  *    dressing declared) + resource counts, zero errors.
  *
@@ -22,12 +21,27 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { classifyGpuRenderer } from './perfGateLib.mjs';
 
 const URL = process.env.QA_URL ?? 'http://localhost:5174/';
+const measuredUrl = new globalThis.URL(URL);
+measuredUrl.searchParams.set('perf', '1');
 // Current-content primary tape (generated every run so gameplay edits never
 // accidentally replay a stale fingerprint).
 const TAPE = path.join(os.tmpdir(), `m961-descent-primary-${process.pid}.json`);
 const OUT_DIR = path.resolve(process.env.QA_OUT_DIR ?? 'qa/screenshots');
+const BIOME_BANDS = new Map([
+  ['m961-biome-forge', [-10, 170]], ['m961-biome-islands', [170, 430]],
+  ['m961-biome-labyrinth', [430, 720]], ['m961-biome-cathedral', [720, 920]],
+  ['m961-biome-canyon', [920, 1110]], ['m961-biome-reactor', [1110, 1330]],
+  ['m961-biome-temple', [1330, 1510]], ['m961-biome-void', [1510, 1620]],
+  ['m961-biome-core', [1620, 1800]],
+]);
+const withinBiomeBudget = (row) => {
+  const band = BIOME_BANDS.get(row.name);
+  return band !== undefined && row.z >= band[0] && row.z < band[1]
+    && row.calls <= 450 && row.triangles <= 70000;
+};
 // Gameplay geometry changes invalidate old fingerprints. Record and verify a
 // fresh deterministic Descent tape before every browser run.
 execFileSync('npx vite-node scripts/generate-m91-tape.ts ' + JSON.stringify(TAPE) + ' the-descent', {
@@ -35,6 +49,7 @@ execFileSync('npx vite-node scripts/generate-m91-tape.ts ' + JSON.stringify(TAPE
 });
 
 const results = [];
+const biomePerf = [];
 let failures = 0;
 const log = (name, ok, detail) => {
   results.push({ name, ok, detail: detail ?? '' });
@@ -96,6 +111,9 @@ const still = async (name, x, y, z, ms = 400, drive = []) => {
       continue;
     }
     capturedZ = state.z;
+    if (name.startsWith('m961-biome-')) {
+      biomePerf.push({ name, z: state.z, ...(await ev(page, () => window.__gd3d.rendererStats())) });
+    }
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => document.querySelector('.m94-pause-menu')?.style.display === 'block', null, { timeout: 10000 });
     await ev(page, () => {
@@ -121,7 +139,7 @@ const still = async (name, x, y, z, ms = 400, drive = []) => {
 };
 
 // --- 1. Menu boots (hub regression). ---
-await page.goto(URL, { waitUntil: 'load', timeout: 60000 });
+await page.goto(measuredUrl.href, { waitUntil: 'load', timeout: 60000 });
 await waitMenu();
 await sleep(page, 1500);
 const menu = await ev(page, () => ({
@@ -157,7 +175,7 @@ log(
 );
 
 // --- 3. Gap-frame legibility stills (driver-exact states). ---
-await still('m961-gap-a1', 0, 3.6, 50, 500, [{ atZ: 52.5, key: 'Space' }]);
+await still('m961-gap-a1', 0, 2.05, 43, 120);
 await still('m961-gap-maze', 0, 5.05, 590, 400, [{ atZ: 594, key: 'ArrowRight' }]);
 await still('m961-gap-foundry', 0, 1.0, 1080);
 
@@ -183,19 +201,61 @@ const snapView = await ev(page, () => ({
   snaps: window.__gd3d.spiderSnapCount(), z: window.__gd3d.playerPosition().z,
 }));
 log('m961 spider entry shows the line (markers ahead)', snapView.z > 1325, JSON.stringify(snapView));
+// Exercise the first Descent snap with an actual key edge, then observe the
+// vertical beam while it is active. A marker-only still cannot prove input.
+let descentSnap = null;
+// One input attempt: a retry would hide the ignored-first-press regression.
+{
+  await page.waitForFunction(() => window.__gd3d.status() === 'running', null, { timeout: 30000 });
+  await ev(page, () => window.__gd3d.debugTeleport(0, 0.55, 1339.4));
+  await page.waitForFunction(() => window.__gd3d.playerMode() === 'spider', null, { timeout: 10000 });
+  await sleep(page, 75);
+  const before = await ev(page, () => window.__gd3d.spiderSnapCount());
+  await page.keyboard.press('Space');
+  for (let i = 0; i < 10; i++) {
+    const live = await ev(page, () => ({
+      snaps: window.__gd3d.spiderSnapCount(),
+      beam: window.__gd3d.spiderBeamActive(),
+      anchor: window.__gd3d.lastSpiderSnap(),
+    }));
+    if (live.snaps > before) {
+      descentSnap = live;
+      if (live.beam) await screenshot('m961-spider-beam');
+      break;
+    }
+    await sleep(page, 25);
+  }
+}
+log('m961 Descent key edge snaps immediately with visible beam',
+  descentSnap !== null && descentSnap.beam === true &&
+    descentSnap.anchor !== null && Math.abs(descentSnap.anchor.to.y - descentSnap.anchor.from.y) > 1,
+  JSON.stringify(descentSnap));
 
 // --- 5. Biome stills, one per act (driver-exact states where known). ---
 await still('m961-biome-forge', 0, 3.6, 100);
 await still('m961-biome-islands', 0, 0.55, 270);
 await still('m961-biome-labyrinth', 0, 0.55, 450, 90);
-await still('m961-biome-cathedral', 0, 0.55, 700);
+await still('m961-biome-cathedral', 0, 0.55, 732, 120);
 await still('m961-biome-canyon', 0, 1.98, 940, 90);
 await still('m961-biome-reactor', 0, 3.1, 1150);
 await still('m961-biome-temple', 0, 0.55, 1330);
 await still('m961-biome-void', 0, 12.6, 1550, 200);
 await still('m961-biome-core', 2.6, 0.55, 1680);
 
-// --- 6. Completion: M9.5 tape on identical gameplay. ---
+// Fast art iteration is explicitly a partial run, never a completion gate.
+if (process.env.QA_STILLS_ONLY === '1') {
+  fs.writeFileSync(path.join(OUT_DIR, 'stills-workload.json'), JSON.stringify(biomePerf, null, 2));
+  log('partial stills: bounded rendering workload',
+    biomePerf.length === 9 && biomePerf.every(withinBiomeBudget),
+    JSON.stringify(biomePerf));
+  log('partial stills: zero console/page errors', consoleErrors.length === 0 && pageErrors.length === 0,
+    JSON.stringify({ consoleErrors, pageErrors }));
+  console.log('PARTIAL art inspection only — full replay/menu/performance gates not run');
+  await browser.close();
+  process.exit(failures > 0 ? 1 : 0);
+}
+
+// --- 6. Completion: freshly recorded current-content tape. ---
 await page.keyboard.press('Escape');
 await page.waitForFunction(() => document.querySelector('.m94-pause-menu')?.style.display === 'block', null, { timeout: 10000 });
 await page.locator('.m94-pause-menu').getByRole('button', { name: 'MAIN MENU' }).click();
@@ -207,20 +267,34 @@ await waitGame();
 await page.waitForFunction(() => window.__gd3d.musicPlaying() === true, null, { timeout: 60000 });
 const tapeJson = fs.readFileSync(TAPE, 'utf8');
 const injected = await ev(page, (json) => window.__gd3d.debugStartReplayJson(json), tapeJson);
-await page.waitForFunction(
-  () => {
-    const v = window.__gd3d.replayVerification();
-    return v.kind === 'pass' || v.kind === 'diverged';
-  },
-  null, { timeout: 600000 },
-);
+await ev(page, () => window.__gd3d.perfBeginSampling());
+const gpu = await ev(page, () => window.__gd3d.gpuIdentity());
+const frameSamples = [];
+const replayDeadline = Date.now() + 600000;
+while (Date.now() < replayDeadline) {
+  await sleep(page, 1000);
+  const sample = await ev(page, () => ({
+    z: window.__gd3d.playerPosition().z,
+    verification: window.__gd3d.replayVerification(),
+    stats: window.__gd3d.rendererStats(),
+    perf: window.__gd3d.perfSnapshot(),
+  }));
+  frameSamples.push(sample);
+  if (sample.verification.kind === 'pass' || sample.verification.kind === 'diverged') break;
+}
+fs.mkdirSync(OUT_DIR, { recursive: true });
+fs.writeFileSync(path.join(OUT_DIR, 'performance.json'), JSON.stringify({
+  gpu, rendererKind: classifyGpuRenderer(gpu.renderer),
+  viewport: { width: 1280, height: 720 }, frameSamples,
+}, null, 2));
+console.log(`GPU ${classifyGpuRenderer(gpu.renderer)}: ${gpu.renderer}; ${frameSamples.length} live replay samples saved`);
 const replayed = await ev(page, () => ({
   verification: window.__gd3d.replayVerification(),
   status: window.__gd3d.status(),
   chomps: window.__gd3d.chompers().map((c) => c.phase),
 }));
 log(
-  'm961 current tape finishes REPLAY VERIFIED (gameplay identical)',
+  'm961 current tape finishes REPLAY VERIFIED',
   injected.ok === true && replayed.verification.kind === 'pass' &&
     replayed.status === 'finished' &&
     replayed.chomps.length === 8 && replayed.chomps.every((p) => p === 'spent'),
@@ -236,6 +310,12 @@ const descentPerf = await ev(page, () => ({
   mats: window.__gd3d.materialCount(),
   geos: window.__gd3d.geometryCount(),
 }));
+// Mid-run Descent has far more drawables than the finished pose. Guard
+// each act's actual live frame against a gross workload blowout; the M6D
+// perf harness and real-GPU human gate remain the frame-time authority.
+log('m961 per-biome bounded rendering workload',
+  biomePerf.length === 9 && biomePerf.every(withinBiomeBudget),
+  JSON.stringify(biomePerf));
 await page.keyboard.press('Escape');
 await page.waitForFunction(() => document.querySelector('.m94-pause-menu')?.style.display === 'block', null, { timeout: 10000 });
 await page.locator('.m94-pause-menu').getByRole('button', { name: 'MAIN MENU' }).click();
@@ -254,9 +334,10 @@ const riftPerf = await ev(page, () => ({
   geos: window.__gd3d.geometryCount(),
 }));
 log(
-  'm961 bounded Descent scene resources (nine shared biome route materials)',
+  'm961 bounded shared biome route and spike resources',
   descentPerf.calls <= 100 && descentPerf.tris <= 150000 &&
-    descentPerf.geos === riftPerf.geos && descentPerf.mats <= riftPerf.mats + 12,
+    // Nine route materials + two cached spike materials per biome.
+    descentPerf.geos <= riftPerf.geos + 1 && descentPerf.mats <= riftPerf.mats + 27,
   JSON.stringify({ descent: descentPerf, rift: riftPerf }),
 );
 
