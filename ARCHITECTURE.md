@@ -466,6 +466,10 @@ named and removed on detach (the old anonymous closure leaked).
   `Shift+R` to `sim.restartRun()` (full origin restart, progress cleared),
   guards `F4` to classic runs, and shows PRACTICE COMPLETE (discarding the
   partial tape — checkpoint runs are never official completions).
+  `MusicDirector.restartAt` repositions the transport while preserving its
+  paused state, so `R`/`Shift+R`/`F4` from the pause menu cannot start a
+  voice until resume. Pausing a `ready` transport after a death/finish cut
+  also records `paused`, closing the cut→pause→restart boundary.
 - `SimulationCheckpointSnapshot` (M9.2, `GameSimulation`): the ONE
   deterministic resume representation — position/prev/velocity, grounded,
   support id, lane intent, authoritative gravity + player mode, speed

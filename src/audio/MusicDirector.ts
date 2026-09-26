@@ -461,6 +461,13 @@ export class MusicDirector {
 
   /** Pause: stop the source, keep the offset for resume. */
   public pause(): void {
+    // A death/finish cut has already stopped the voice, but the pause
+    // menu still owns the transport. Remember that state so an R/seek
+    // while frozen cannot create a new voice from `ready`.
+    if (this.state === 'ready' && this.buffer !== null) {
+      this.state = 'paused';
+      return;
+    }
     if (this.state !== 'playing') return;
     try {
       this.pausedOffset = this.actualTime();

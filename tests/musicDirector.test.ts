@@ -201,6 +201,24 @@ describe('music transport (M9 MusicDirector)', () => {
     expect(engine.sources[sourceCount]?.startedAtOffset).toBe(0);
   });
 
+  it.each([0, 24])('keeps a cut transport silent through pause and restart at %s', async (offset) => {
+    const { director, engine } = await readyDirector();
+    director.startAt(0);
+    engine.now += 10;
+    director.cut();
+    expect(director.transportState).toBe('ready');
+    director.pause();
+    expect(director.transportState).toBe('paused');
+    const sourceCount = engine.sources.length;
+    expect(director.restartAt(offset)).toBe(true);
+    expect(director.probe().actualTime).toBe(offset);
+    expect(director.isPlaying).toBe(false);
+    expect(engine.sources).toHaveLength(sourceCount);
+    expect(director.resume()).toBe(true);
+    expect(engine.sources).toHaveLength(sourceCount + 1);
+    expect(engine.sources[sourceCount]?.startedAtOffset).toBe(offset);
+  });
+
   it('restarts at the origin and cuts on death', async () => {
     const { director, engine } = await readyDirector();
     director.startAt(0);
