@@ -1,7 +1,7 @@
 {
   "_provenance": {
     "note": "Committed golden replay (M5). Regenerate ONLY intentionally via `npx vite-node scripts/generate-replay-fixture.ts`. Tests load this file; they never regenerate it.",
-    "generatedFromCommit": "1d5108f6b245afcaebc7c0b04d79287978eff965",
+    "generatedFromCommit": "d217710bf380a19e9a218e39dbced7015e594b37",
     "levelId": "validation-02",
     "frameCount": 2346,
     "outcome": {
@@ -11,7 +11,7 @@
   },
   "replay": {
     "schemaVersion": 1,
-    "rulesetVersion": 1,
+    "rulesetVersion": 2,
     "simulationHz": 120,
     "levelId": "validation-02",
     "levelFingerprint": "768c1100e52a264d",

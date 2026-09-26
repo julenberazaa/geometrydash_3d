@@ -363,6 +363,13 @@ describe('compatibility rejection', () => {
     if (!parsed.ok) expect(parsed.reason).toContain('rulesetVersion');
   });
 
+  it('rejects legacy ruleset 1 before playback after the completed-tap fix', () => {
+    const { replay } = recordLevel02();
+    const parsed = validateReplayObject({ ...replay, rulesetVersion: 1 });
+    expect(parsed.ok).toBe(false);
+    if (!parsed.ok) expect(parsed.reason).toContain('rulesetVersion');
+  });
+
   it('rejects a replay recorded on a different level', () => {
     const { replay } = recordDeath(); // recorded on test-01
     const sim = new GameSimulation(VALIDATION_LEVEL_02);

@@ -19,7 +19,8 @@ import { SIMULATION_HZ } from '../core/constants';
 import { isValidReplayFrame } from './replayInputCodec';
 
 export const REPLAY_SCHEMA_VERSION = 1;
-export const REPLAY_RULESET_VERSION = 1;
+// Ruleset 2 honors a completed Cube tap even when release precedes the tick.
+export const REPLAY_RULESET_VERSION = 2;
 
 const HASH_PATTERN = /^[0-9a-f]{16}$/;
 

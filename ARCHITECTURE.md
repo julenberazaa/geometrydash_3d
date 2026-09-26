@@ -133,7 +133,7 @@ named and removed on detach (the old anonymous closure leaked).
   lateral kinematics
   (accelerate/cruise/analytic-brake/settle-snap, hard geometric no-overshoot
   cap), vertical kinematics (gravity + fast-fall + terminal speed, all along
-  the frame's `gravityVector`), jump (grounded AND held → deterministic
+  the frame's `gravityVector`), jump (grounded AND held-or-press-edge → deterministic
   impulse replacing the along-gravity component — already gravity-relative),
   constant forward speed along `forwardAxis`. Computes velocities only — never
   moves positions (integration + collision belong to the simulation). The

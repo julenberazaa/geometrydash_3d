@@ -738,7 +738,7 @@ describe('advanced cube 01 visual + beat metadata contracts', () => {
 
   it('pins the replay container versions (ReplayV1 unchanged)', () => {
     expect(REPLAY_SCHEMA_VERSION).toBe(1);
-    expect(REPLAY_RULESET_VERSION).toBe(1);
+    expect(REPLAY_RULESET_VERSION).toBe(2);
   });
 });
 
