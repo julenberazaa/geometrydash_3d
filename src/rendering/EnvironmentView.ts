@@ -696,7 +696,7 @@ export class EnvironmentView {
       const hx = solid.halfExtents.x;
       const hy = solid.halfExtents.y;
       const hz = solid.halfExtents.z;
-      if (hx < 0.7 || hz < 0.7) continue;
+      if (hz < 0.7 || (hx < 0.7 && biome !== 'works')) continue;
       const base = BIOME_BODY[biome];
       const accent = biome === 'garden' || biome === 'temple' ? 0x3e7544
         : biome === 'cavern' ? 0x355d75
