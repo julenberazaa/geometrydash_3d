@@ -15,17 +15,24 @@
  *    dressing declared) + resource counts, zero errors.
  *
  * Usage: QA_URL=http://localhost:5174/ node scripts/browser-qa-m961.mjs
- * (requires the dev server + the current-content tape + system Chrome).
+ * (requires the dev server + system Chrome; generates its own current tape).
  */
 import { chromium } from 'playwright';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 
 const URL = process.env.QA_URL ?? 'http://localhost:5174/';
-// Current-content primary tape (regenerate on gameplay changes — the M9.5
-// tape is correctly stale after Zone G by the fingerprint contract).
-const TAPE = 'C:/Users/Julen/AppData/Local/Temp/opencode/m961-descent-primary-tape.json';
+// Current-content primary tape (generated every run so gameplay edits never
+// accidentally replay a stale fingerprint).
+const TAPE = path.join(os.tmpdir(), `m961-descent-primary-${process.pid}.json`);
 const OUT_DIR = path.resolve('qa/screenshots');
+// Gameplay geometry changes invalidate old fingerprints. Record and verify a
+// fresh deterministic Descent tape before every browser run.
+execFileSync('npx vite-node scripts/generate-m91-tape.ts ' + JSON.stringify(TAPE) + ' the-descent', {
+  stdio: 'inherit', shell: true,
+});
 
 const results = [];
 let failures = 0;
