@@ -27,7 +27,7 @@ const URL = process.env.QA_URL ?? 'http://localhost:5174/';
 // Current-content primary tape (generated every run so gameplay edits never
 // accidentally replay a stale fingerprint).
 const TAPE = path.join(os.tmpdir(), `m961-descent-primary-${process.pid}.json`);
-const OUT_DIR = path.resolve('qa/screenshots');
+const OUT_DIR = path.resolve(process.env.QA_OUT_DIR ?? 'qa/screenshots');
 // Gameplay geometry changes invalidate old fingerprints. Record and verify a
 // fresh deterministic Descent tape before every browser run.
 execFileSync('npx vite-node scripts/generate-m91-tape.ts ' + JSON.stringify(TAPE) + ' the-descent', {
