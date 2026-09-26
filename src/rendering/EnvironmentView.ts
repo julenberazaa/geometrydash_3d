@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { ProductionTheme } from '../visuals/productionTheme';
 import type { LevelDefinition } from '../level/levelDefinition';
 import { mulberry32 } from '../core/math';
-import { placeBiomeDressing, routeGroundAt } from '../level/biomeDressing';
+import { BIOME_BODY, BIOME_GLOW, placeBiomeDressing, routeGroundAt, type DressInstance } from '../level/biomeDressing';
 
 /**
  * Production environment (M6A): fog, near-black gradient backdrop, a
@@ -89,8 +89,11 @@ export class EnvironmentView {
     if (rows === undefined || rows.length === 0 || def === undefined) return empty;
     const instances = placeBiomeDressing(rows, (z) => routeGroundAt(def.solids, z));
     if (instances.length === 0) return empty;
-    const solids = instances.filter((inst) => !inst.glow);
-    const glows = instances.filter((inst) => inst.glow);
+    // Each anchor is a small voxel assembly. Batching the pieces into the
+    // same two meshes gives material/shape identity without per-prop draws.
+    const pieces = EnvironmentView.expandBiomeDressing(instances);
+    const solids = pieces.filter((inst) => !inst.glow);
+    const glows = pieces.filter((inst) => inst.glow);
     const dummy = new THREE.Object3D();
     const tint = new THREE.Color();
     const fill = (
@@ -126,6 +129,136 @@ export class EnvironmentView {
     return { solid, glow, solidMat, glowMat, count: instances.length };
   }
 
+  /** Cold-only voxel assemblies. Details stay beside the track and below
+   * route-edge luminance; none has a collider or modifies level data. */
+  private static expandBiomeDressing(anchors: readonly DressInstance[]): DressInstance[] {
+    const pieces: DressInstance[] = [];
+    const add = (
+      a: DressInstance, dx: number, dy: number, dz: number,
+      sx: number, sy: number, sz: number, color: number,
+      glow = false, ry = 0, rz = 0,
+    ): void => {
+      pieces.push({ ...a, x: a.x + dx, y: a.y + dy, z: a.z + dz,
+        sx, sy, sz, color, glow, ry, rz });
+    };
+    for (const a of anchors) {
+      const body = BIOME_BODY[a.biome];
+      const light = BIOME_GLOW[a.biome];
+      if (a.prop === 'fall') {
+        // Segmented cascade / lava fall, with a dark basin and thin bright
+        // moving-water-looking streaks. Render-only: no fast-lane promise.
+        const water = a.biome === 'garden';
+        add(a, 0, 0, 0, a.sx, a.sy, a.sz, water ? 0x124d66 : 0x642615);
+        for (let j = 0; j < 4; j++) {
+          const x = (j - 1.5) * a.sx * 0.23;
+          add(a, x, (j % 2) * 0.5 - 0.25, a.sz * 0.55,
+            a.sx * 0.11, a.sy * (0.83 + j * 0.03), 0.08,
+            water ? 0x56dfff : 0xff9d25, true);
+        }
+        add(a, 0, -a.sy * 0.5, a.sz * 0.8,
+          a.sx * 1.7, 0.16, a.sz * 2, water ? 0x276b79 : 0x7f2c14);
+        add(a, 0, -a.sy * 0.5 + 0.1, a.sz * 1.15,
+          a.sx * 1.4, 0.05, a.sz * 1.2, water ? 0x4bbbd7 : 0xff661b, true);
+        continue;
+      }
+      pieces.push(a);
+      switch (a.prop) {
+        case 'foliage': {
+          // A thick block trunk with a broad stepped leaf crown; staggered
+          // cubes read as leaves rather than yet another column.
+          add(a, 0, a.sy * 0.4, 0, a.sx * 1.4, 0.35, a.sz * 1.3, 0x346f35);
+          for (let j = 0; j < 4; j++) {
+            const side = j % 2 === 0 ? -1 : 1;
+            add(a, side * a.sx * (0.43 + (j >> 1) * 0.25), a.sy * (0.3 - (j >> 1) * 0.08),
+              (j < 2 ? -1 : 1) * a.sz * 0.35,
+              a.sx * 0.65, 0.24, a.sz * 0.7, j % 2 ? 0x598937 : 0x407c38);
+          }
+          break;
+        }
+        case 'strand': {
+          // Hanging roots in garden/temple; mineral drips in the cavern.
+          const vine = a.biome === 'garden' || a.biome === 'temple';
+          for (let j = 0; j < 3; j++) {
+            add(a, (j - 1) * 0.38, (j - 1) * 0.45, (j % 2) * 0.32,
+              0.13, a.sy * (0.5 + j * 0.11), 0.13,
+              vine ? 0x508438 : 0x385c69);
+            if (vine) add(a, (j - 1) * 0.38 + 0.22, -a.sy * 0.12 + j * 0.7, 0.22,
+              0.48, 0.15, 0.22, 0x6b9d43);
+          }
+          break;
+        }
+        case 'pillar':
+        case 'archPost': {
+          const brick = a.biome === 'garden' || a.biome === 'temple' || a.biome === 'ruins';
+          add(a, 0, -a.sy * 0.48, 0, a.sx * 1.35, 0.35, a.sz * 1.3, body);
+          add(a, 0, a.sy * 0.48, 0, a.sx * 1.25, 0.3, a.sz * 1.2, body);
+          for (let j = 0; j < 3; j++) {
+            const y = -a.sy * 0.3 + j * a.sy * 0.27;
+            add(a, 0, y, a.sz * 0.51, a.sx * 0.82, 0.08, 0.08,
+              brick ? 0x63715a : 0x5a4c42);
+          }
+          if (brick) {
+            add(a, 0, 0, a.sz * 0.57, a.sx * 0.24, a.sy * 0.11, 0.09,
+              a.biome === 'temple' ? 0xae9d46 : 0x6f8062);
+            if (a.biome !== 'ruins') add(a, a.sx * 0.43, a.sy * 0.33, a.sz * 0.45,
+              0.2, a.sy * 0.33, 0.18, 0x387640);
+          } else if (a.biome === 'crag' || a.biome === 'foundry') {
+            add(a, 0, -a.sy * 0.12, a.sz * 0.54,
+              a.sx * 0.13, a.sy * 0.58, 0.08, 0xff5f19, true);
+          } else if (a.biome === 'works') {
+            add(a, 0, 0, a.sz * 0.54, a.sx * 0.23, a.sy * 0.65, 0.08, 0x54bca3, true);
+          }
+          break;
+        }
+        case 'rock': {
+          // Jagged stepped shelf, moss cap in jungle, fractured basalt in lava.
+          add(a, -a.sx * 0.36, -a.sy * 0.3, 0.2, a.sx * 0.7, a.sy * 0.6, a.sz * 0.75, body);
+          add(a, a.sx * 0.28, a.sy * 0.24, -a.sz * 0.2,
+            a.sx * 0.65, a.sy * 0.55, a.sz * 0.7, body);
+          if (a.biome === 'garden') add(a, 0, a.sy * 0.5, 0,
+            a.sx * 1.05, 0.15, a.sz * 1.05, 0x4d883e);
+          if (a.biome === 'crag') add(a, 0, a.sy * 0.5, a.sz * 0.15,
+            a.sx * 0.5, 0.08, a.sz * 0.56, 0xff6818, true);
+          break;
+        }
+        case 'crystal': {
+          add(a, -a.sx * 0.68, -a.sy * 0.18, 0,
+            a.sx * 0.5, a.sy * 0.7, a.sz * 0.5, light, true, 0, -0.27);
+          add(a, a.sx * 0.62, -a.sy * 0.22, a.sz * 0.2,
+            a.sx * 0.43, a.sy * 0.55, a.sz * 0.43, light, true, 0, 0.35);
+          break;
+        }
+        case 'duct':
+        case 'vent': {
+          const metal = a.biome === 'works' ? 0x55716a : 0x684a36;
+          for (let j = -1; j <= 1; j++) {
+            add(a, 0, a.prop === 'vent' ? j * a.sy * 0.25 : 0,
+              a.prop === 'duct' ? j * a.sz * 0.32 : a.sz * 0.53,
+              a.sx * 1.23, a.prop === 'vent' ? 0.14 : a.sy * 1.23,
+              a.prop === 'duct' ? 0.15 : 0.12, metal);
+          }
+          add(a, 0, a.sy * 0.48, a.sz * 0.52,
+            a.sx * 0.6, 0.12, 0.08, light, true);
+          break;
+        }
+        case 'slab':
+        case 'lintel': {
+          for (let j = -1; j <= 1; j++) {
+            add(a, j * a.sx * 0.26, a.sy * 0.53, 0,
+              a.sx * 0.22, 0.1, a.sz * 0.8,
+              a.biome === 'garden' ? 0x437e4a :
+                a.biome === 'crag' ? 0x79503a : 0x716656);
+          }
+          break;
+        }
+        case 'cell':
+          add(a, 0, 0, 0, a.sx * 1.7, a.sy * 1.7, a.sz * 1.7, body);
+          break;
+      }
+    }
+    return pieces;
+  }
+
   // M9.2 biome motes (ONE Points cloud, 1 draw): slow-rising ambient
   // particles tinted per biome by z (forge embers, island mint, maze
   // violet, cathedral cyan, reactor sparks, temple gold, void indigo,
@@ -146,6 +279,7 @@ export class EnvironmentView {
   private readonly dressSolid: THREE.InstancedMesh | null;
   private readonly dressGlow: THREE.InstancedMesh | null;
   private readonly dressCount: number;
+  private readonly surfaceMesh: THREE.InstancedMesh | null;
 
   constructor(levelLengthZ: number, theme: ProductionTheme, def?: LevelDefinition) {
     this.theme = theme;
@@ -275,11 +409,89 @@ export class EnvironmentView {
     if (dressing.glow !== null) this.scene.add(dressing.glow);
     if (dressing.solidMat !== null) this.disposables.push(dressing.solidMat);
     if (dressing.glowMat !== null) this.disposables.push(dressing.glowMat);
+    const surface = EnvironmentView.buildBiomeSurfaces(pillarGeo, def);
+    this.surfaceMesh = surface.mesh;
+    if (surface.mesh !== null) this.scene.add(surface.mesh);
+    if (surface.material !== null) this.disposables.push(surface.material);
   }
 
   /** QA observability: total biome dressing instances (0 when absent). */
   public get dressInstances(): number {
     return this.dressCount;
+  }
+
+  /** A single thin voxel facade on existing route solids. No topology or
+   * gameplay geometry is created; tiles sit flush against their host face. */
+  private static buildBiomeSurfaces(
+    unitBox: THREE.BoxGeometry,
+    def?: LevelDefinition,
+  ): { mesh: THREE.InstancedMesh | null; material: THREE.Material | null } {
+    if (def?.visualDressing === undefined) return { mesh: null, material: null };
+    const tiles: Array<{ x: number; y: number; z: number; sx: number; sy: number; sz: number; color: number }> = [];
+    const rand = mulberry32(88472);
+    const rows = def.visualDressing;
+    for (const solid of def.solids) {
+      const z = solid.center.z;
+      const biome = rows.find((row) => z >= row.z0 && z < row.z1)?.biome;
+      if (biome === undefined) continue;
+      const hx = solid.halfExtents.x;
+      const hy = solid.halfExtents.y;
+      const hz = solid.halfExtents.z;
+      if (hx < 0.7 || hz < 0.7) continue;
+      const base = BIOME_BODY[biome];
+      const accent = biome === 'garden' || biome === 'temple' ? 0x3e7544
+        : biome === 'cavern' ? 0x355d75
+          : biome === 'crag' || biome === 'foundry' ? 0x70432e
+            : biome === 'works' ? 0x3e6962 : 0x544966;
+      const palette = [base, accent, base, accent, base];
+      // Front facing block face: inset patches form irregular stone/metal
+      // courses. A gap around every patch exposes the original material.
+      if (hy >= 0.35) {
+        const cols = Math.min(7, Math.max(3, Math.floor(hx * 1.65)));
+        const width = (hx * 1.82) / cols;
+        for (let row = 0; row < 2; row++) {
+          for (let col = 0; col < cols; col++) {
+            const px = solid.center.x - hx * 0.91 + width * (col + 0.5 + (row % 2) * 0.12);
+            const py = solid.center.y + (row === 0 ? -0.42 : 0.42) * hy;
+            tiles.push({ x: px, y: py, z: z - hz - 0.018,
+              sx: width * 0.79, sy: Math.min(hy * 0.66, 0.46), sz: 0.025,
+              color: palette[Math.floor(rand() * palette.length)] ?? base });
+          }
+        }
+      }
+      // Sparse top-face chips remain low profile and dark: they are surface
+      // texture, never an apparent obstacle or landing platform.
+      if (hy <= 1.5 && hx >= 1.3 && hz >= 1.3) {
+        for (let j = 0; j < 6; j++) {
+          tiles.push({
+            x: solid.center.x + ((j % 3) - 1) * hx * 0.52,
+            y: solid.center.y + hy + 0.033,
+            z: z + (j < 3 ? -0.45 : 0.45) * hz,
+            sx: Math.min(hx * 0.43, 1.25), sy: 0.012,
+            sz: Math.min(hz * 0.67, 1.25),
+            color: j === 0 && biome === 'garden' ? 0x3c703c : palette[(j + 1) % palette.length] ?? base,
+          });
+        }
+      }
+    }
+    if (tiles.length === 0) return { mesh: null, material: null };
+    const material = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: true });
+    const mesh = new THREE.InstancedMesh(unitBox, material, tiles.length);
+    const dummy = new THREE.Object3D();
+    const tint = new THREE.Color();
+    for (let i = 0; i < tiles.length; i++) {
+      const tile = tiles[i];
+      if (tile === undefined) continue;
+      dummy.position.set(tile.x, tile.y, tile.z);
+      dummy.scale.set(tile.sx, tile.sy, tile.sz);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+      mesh.setColorAt(i, tint.setHex(tile.color));
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor !== null) mesh.instanceColor.needsUpdate = true;
+    mesh.frustumCulled = false;
+    return { mesh, material };
   }
 
   /** Section background at z (biome identity for cold-built dressing). */
@@ -368,21 +580,103 @@ export class EnvironmentView {
       lastArchZ = z;
       impactTick++;
       const accent = accentAtZ(z);
+      const biome = def?.visualDressing?.find((row) => z >= row.z0 && z < row.z1)?.biome;
       const hot = impactTick % 7 === 0;
-      const postMul = hot ? 0.8 : 0.35;
-      const lintelMul = hot ? 1.0 : 0.55;
-      push(-7.5, 5.5, z, 1.2, 11, 1.2, accent, postMul);
-      push(7.5, 5.5, z, 1.2, 11, 1.2, accent, postMul);
-      push(0, 11.6, z, 16.2, 1.2, 1.2, accent, lintelMul);
+      const frame = biome === undefined ? accent : BIOME_BODY[biome];
+      const postMul = biome === undefined ? (hot ? 0.8 : 0.35) : 1.2;
+      const lintelMul = biome === undefined ? (hot ? 1.0 : 0.55) : 1.35;
+      push(-7.5, 5.5, z, 1.2, 11, 1.2, frame, postMul);
+      push(7.5, 5.5, z, 1.2, 11, 1.2, frame, postMul);
+      push(0, 11.6, z, 16.2, 1.2, 1.2, frame, lintelMul);
+      if (biome === 'garden' || biome === 'temple') {
+        push(0, 12.35, z, 17.2, 0.35, 2.4, 0x4f943e, 0.9);
+        for (const side of [-1, 1]) {
+          push(side * 8.2, 7.8, z + 0.7, 0.28, 5.5, 0.3, 0x569949, 0.8);
+          push(side * 8.5, 4.3, z + 0.75, 1.1, 0.22, 0.6, 0x70a94b, 0.7);
+          if (biome === 'garden') {
+            push(side * 9.7, 2.4, z + 3, 1.3, 8, 0.3, 0x36b8d6, 0.6);
+            push(side * 9.7, -1.7, z + 3.3, 2.5, 0.2, 1.4, 0x4fc8db, 0.55);
+          }
+        }
+      } else if (biome === 'ruins' || biome === 'cavern') {
+        for (const side of [-1, 1]) {
+          push(side * 7.5, 7.5, z + 0.68, 0.9, 0.14, 0.14,
+            biome === 'ruins' ? 0x85728a : 0x62b8cd, 0.7);
+          push(side * 7.5, 3.5, z + 0.68, 0.9, 0.14, 0.14,
+            biome === 'ruins' ? 0x85728a : 0x62b8cd, 0.7);
+          if (biome === 'cavern') push(side * 7.3, 12.7, z,
+            0.45, 2.2, 0.55, 0x5acef2, 0.5);
+        }
+      } else if (biome === 'crag' || biome === 'foundry') {
+        for (const side of [-1, 1]) {
+          push(side * 7.5, 5.5, z + 0.66, 0.14, 7.5, 0.15,
+            biome === 'crag' ? 0xff5b18 : 0xff9631, 0.62);
+        }
+      } else if (biome === 'works') {
+        push(0, 11.6, z + 0.68, 15.5, 0.12, 0.12, 0x73cbb1, 0.55);
+        for (const side of [-1, 1]) {
+          push(side * 7.5, 5.5, z + 0.68, 0.12, 8, 0.12, 0x73cbb1, 0.55);
+        }
+      }
     }
     // Towers / walls / canopies / bridges / columns (seeded variety).
     const rand = mulberry32(918273);
     const fogHex = def?.theme.fogColor ?? 0x0b3a5c;
     const fogCol = new THREE.Color(fogHex);
+    const biomeAt = (z: number): DressInstance['biome'] | null => {
+      for (const row of def?.visualDressing ?? []) {
+        if (z >= row.z0 && z < row.z1) return row.biome;
+      }
+      return null;
+    };
     const put = (x: number, y: number, z: number, sx: number, sy: number, sz: number): void => {
-      const accent = new THREE.Color(accentAtZ(z));
-      const c = accent.clone().multiplyScalar(0.22 + rand() * 0.14).lerp(fogCol, 0.25 + rand() * 0.25);
+      const biome = biomeAt(z);
+      const c = biome === null
+        ? new THREE.Color(accentAtZ(z)).multiplyScalar(0.22 + rand() * 0.14).lerp(fogCol, 0.25 + rand() * 0.25)
+        : new THREE.Color(BIOME_BODY[biome]).multiplyScalar(0.83 + rand() * 0.32).lerp(fogCol, 0.1);
       items.push({ x, y, z, sx, sy, sz, color: c });
+      if (biome === null) return;
+      // Large formerly flat towers gain a readable block silhouette and
+      // material-specific facade. All details share this architecture batch.
+      if (sx >= 3 && sy >= 8) {
+        const faceZ = z + sz * 0.51;
+        for (let j = -1; j <= 1; j++) {
+          const inset = (j % 2) * sx * 0.12;
+          push(x + j * sx * 0.28 + inset, y + sy * (0.21 + j * 0.05), faceZ,
+            sx * 0.22, sy * 0.1, 0.12, BIOME_BODY[biome], 1.55);
+        }
+        if (biome === 'garden' || biome === 'temple') {
+          push(x, y + sy * 0.51, z, sx * 1.24, 0.65, sz * 1.15, 0x4a8a3c, 0.8);
+          for (let j = -1; j <= 1; j++) {
+            push(x + j * sx * 0.31, y + sy * 0.33, faceZ,
+              0.25, sy * (0.24 + (j + 1) * 0.06), 0.2, 0x5a9d48, 0.65);
+          }
+        } else if (biome === 'crag' || biome === 'foundry') {
+          push(x + sx * 0.27, y, faceZ, sx * 0.13, sy * 0.68, 0.12,
+            biome === 'crag' ? 0xff5a0b : 0xff9228, 0.8);
+        } else if (biome === 'cavern' || biome === 'void' || biome === 'core') {
+          for (let j = -1; j <= 1; j++) {
+            push(x + j * sx * 0.28, y + sy * 0.53, z,
+              sx * 0.12, 1.5 + (j + 1) * 0.9, sz * 0.15,
+              BIOME_GLOW[biome], 0.45);
+          }
+        } else if (biome === 'works') {
+          push(x, y + sy * 0.05, faceZ,
+            sx * 0.68, sy * 0.47, 0.12, 0x6aa198, 0.42);
+          push(x, y + sy * 0.05, faceZ + 0.08,
+            sx * 0.09, sy * 0.5, 0.1, 0x85ffd2, 0.32);
+        } else {
+          push(x, y + sy * 0.5, z,
+            sx * 1.16, 0.5, sz * 1.14, 0x81786c, 0.65);
+        }
+      } else if (sx <= 2 && sz > 10) {
+        // Side walls receive repeated seams at a much darker value than the
+        // neon track border; they cannot impersonate route edges.
+        for (let j = -2; j <= 2; j++) {
+          push(x, y + sy * 0.2, z + j * sz * 0.18,
+            sx * 1.08, sy * 0.58, 0.13, BIOME_BODY[biome], 1.4);
+        }
+      }
     };
     for (let i = 0; i < 44; i++) {
       const side = i % 2 === 0 ? -1 : 1;
@@ -409,6 +703,34 @@ export class EnvironmentView {
       const side = i % 2 === 0 ? -1 : 1;
       const z = -20 + rand() * (levelLengthZ + 60);
       put(side * (8 + rand() * 4), 3 + rand() * 3, z, 1.5, 18 + rand() * 6, 1.5);
+    }
+    // Continuous, off-route material beds make the island and volcanic acts
+    // read as water and magma instead of differently tinted empty space.
+    // Staggered voxel courses imply flow without a costly animated material.
+    for (const row of def?.visualDressing ?? []) {
+      if (row.biome !== 'garden' && row.biome !== 'crag') continue;
+      const water = row.biome === 'garden';
+      for (let z = row.z0 + 8; z < row.z1 - 8; z += 18) {
+        for (const side of [-1, 1]) {
+          push(side * 13, water ? -4.5 : -7, z,
+            9, 0.22, 17.6, water ? 0x147ca0 : 0x9d3415, 0.75);
+          for (let j = 0; j < 3; j++) {
+            push(side * (10.3 + j * 2.1), water ? -4.3 : -6.8,
+              z + (j - 1) * 3.7, 0.26, 0.04, 5.2,
+              water ? 0x55d8e8 : 0xff8b22, 0.5);
+          }
+        }
+      }
+      if (water) {
+        for (let z = row.z0 + 12; z < row.z1 - 10; z += 25) {
+          const side = Math.floor(z / 25) % 2 === 0 ? -1 : 1;
+          const x = side * 13.2;
+          push(x, 3.2, z, 0.85, 8.5, 0.85, 0x35553a, 0.9);
+          push(x, 8.2, z, 5.6, 1.35, 3.7, 0x4c913f, 0.8);
+          push(x + side * 2.2, 7.4, z - 0.8, 3.1, 0.75, 3.4, 0x65a94c, 0.75);
+          push(x - side * 1.8, 5.9, z + 1.2, 0.25, 4.1, 0.25, 0x5e9d48, 0.65);
+        }
+      }
     }
     if (items.length === 0) return { mesh: null, material: null };
     const material = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: true });
@@ -598,6 +920,7 @@ export class EnvironmentView {
     this.archMesh?.dispose();
     this.dressSolid?.dispose();
     this.dressGlow?.dispose();
+    this.surfaceMesh?.dispose();
   }
 
   /**

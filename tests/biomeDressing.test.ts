@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   placeBiomeDressing,
   routeGroundAt,
-  darkenForSilhouette,
   BIOME_GLOW,
+  BIOME_BODY,
   MAX_DRESS_INSTANCES,
   DRESS_CLEARANCE_X,
   type DressingRow,
@@ -11,6 +11,9 @@ import {
 } from '../src/level/biomeDressing';
 import { THE_DESCENT_CLASSIC } from '../src/content/levels/theDescentClassic';
 import { computeLevelFingerprint } from '../src/replay/levelFingerprint';
+import * as THREE from 'three';
+import { EnvironmentView } from '../src/rendering/EnvironmentView';
+import { PRODUCTION_THEME } from '../src/visuals/productionTheme';
 
 /**
  * M9.6.1 biome dressing placement contract (pure, deterministic —
@@ -118,17 +121,42 @@ describe('biome dressing placement', () => {
     }
   });
 
-  it('keeps glow identity per biome, solids in the act accent', () => {
+  it('keeps glow and material families per biome instead of recoloring one surface', () => {
     const instances = placeBiomeDressing([ROW], groundAt);
     for (const inst of instances.filter((v) => v.glow)) {
       expect(inst.color).toBe(BIOME_GLOW.ruins);
     }
     for (const inst of instances.filter((v) => !v.glow)) {
-      // Darkened silhouette of the act accent (never brighter than 30%).
-      const lit =
-        (((inst.color >> 16) & 255) + ((inst.color >> 8) & 255) + (inst.color & 255)) / (3 * 255);
-      expect(lit).toBeLessThan(0.3);
+      expect(inst.color).toBe(BIOME_BODY.ruins);
     }
+  });
+
+  it('builds voxel assemblies in two bounded batches without changing the Rift', () => {
+    const descent = new EnvironmentView(1800, PRODUCTION_THEME, THE_DESCENT_CLASSIC);
+    const batches = descent.scene.children.filter(
+      (object): object is THREE.InstancedMesh => object instanceof THREE.InstancedMesh,
+    );
+    const dressed = batches.filter((mesh) =>
+      mesh.material instanceof THREE.MeshStandardMaterial ||
+      (mesh.material instanceof THREE.MeshBasicMaterial && mesh.material.transparent));
+    expect(descent.dressInstances).toBeGreaterThan(100);
+    expect(descent.dressInstances).toBeLessThanOrEqual(MAX_DRESS_INSTANCES);
+    expect(dressed.length).toBe(2);
+    const first = dressed[0];
+    const second = dressed[1];
+    expect(first).toBeDefined();
+    expect(second).toBeDefined();
+    if (first === undefined || second === undefined) throw new Error('Missing dressing batch');
+    expect(first.count + second.count).toBeGreaterThan(500);
+    expect(first.geometry).toBe(second.geometry);
+    expect(batches.length).toBe(4); // architecture + two dressing + facade
+    expect(Math.max(...batches.map((mesh) => mesh.count))).toBeLessThan(4000);
+    descent.dispose();
+
+    const plain = new EnvironmentView(1800, PRODUCTION_THEME);
+    expect(plain.dressInstances).toBe(0);
+    expect(plain.scene.children.filter((object) => object instanceof THREE.InstancedMesh).length).toBe(1);
+    plain.dispose();
   });
 
   it('routeGroundAt returns the highest corridor top, null in voids', () => {
@@ -140,16 +168,6 @@ describe('biome dressing placement', () => {
     expect(routeGroundAt(solids, 100)).toBe(4.5);
     expect(routeGroundAt(solids, 500)).toBeNull();
     expect(routeGroundAt([], 100)).toBeNull();
-  });
-
-  it('darkenForSilhouette stays dark and in range', () => {
-    for (const hex of [0xffc233, 0x2dffc4, 0xb44dff, 0xffffff]) {
-      const dark = darkenForSilhouette(hex, () => 0.5);
-      expect(dark).toBeGreaterThanOrEqual(0);
-      expect(dark).toBeLessThanOrEqual(0xffffff);
-      const lit = (((dark >> 16) & 255) + ((dark >> 8) & 255) + (dark & 255)) / (3 * 255);
-      expect(lit).toBeLessThan(0.3);
-    }
   });
 
   it('dressing + new setpiece kinds never touch the gameplay fingerprint', () => {

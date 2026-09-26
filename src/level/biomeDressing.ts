@@ -36,7 +36,9 @@ export type DressProp =
   | 'duct'
   | 'cell'
   | 'vent'
-  | 'slab';
+  | 'slab'
+  | 'fall'
+  | 'foliage';
 
 /** One authored dressing act (data lives on the level, never fingerprinted). */
 export interface DressingRow {
@@ -46,13 +48,14 @@ export interface DressingRow {
   /** 0..1 (instances per 10 u before the biome rate). */
   density: number;
   seed: number;
-  /** Section accent for solid-prop cohesion (glow keeps biome identity). */
+  /** Authored act accent; prop bodies use stable biome material colors. */
   accent: number;
   /** Anchor height when no terrain exists below (void/sky acts). */
   baseY?: number;
 }
 
 export interface DressInstance {
+  biome: BiomeId;
   prop: DressProp;
   x: number;
   y: number;
@@ -65,7 +68,7 @@ export interface DressInstance {
   /** Roll radians (crystals read as diamonds at PI/4, else 0). */
   rz: number;
   glow: boolean;
-  /** Resolved hex color (solid: darkened act accent; glow: biome signature). */
+  /** Resolved hex color (solid: biome material; glow: biome signature). */
   color: number;
 }
 
@@ -89,6 +92,19 @@ export const BIOME_GLOW: Record<BiomeId, number> = {
   core: 0xff6ad2,
 };
 
+/** Material families stay recognizable even when the timeline changes hue. */
+export const BIOME_BODY: Record<BiomeId, number> = {
+  foundry: 0x493327,
+  garden: 0x315a3a,
+  ruins: 0x49404e,
+  cavern: 0x27485b,
+  crag: 0x4d3026,
+  works: 0x294744,
+  temple: 0x545138,
+  void: 0x36364e,
+  core: 0x563850,
+};
+
 interface PropSpec {
   prop: DressProp;
   weight: number;
@@ -110,7 +126,9 @@ const BIOME_MIX: Record<BiomeId, PropSpec[]> = {
     { prop: 'rock', weight: 3, glow: false, s: [1, 3, 1, 3, 1, 3], float: [2, 10] },
     { prop: 'strand', weight: 3, glow: false, s: [0.15, 0.3, 3, 7, 0.15, 0.3] },
     { prop: 'cell', weight: 2, glow: true, s: [0.2, 0.4, 0.2, 0.4, 0.2, 0.4], float: [1, 6] },
-    { prop: 'slab', weight: 1, glow: false, s: [2, 4, 0.3, 0.3, 2, 4] },
+    { prop: 'slab', weight: 2, glow: false, s: [2, 4, 0.3, 0.3, 2, 4] },
+    { prop: 'foliage', weight: 4, glow: false, s: [2, 4, 2, 5, 1, 2] },
+    { prop: 'fall', weight: 2, glow: false, s: [1.5, 3, 5, 10, 0.3, 0.6] },
   ],
   ruins: [
     { prop: 'pillar', weight: 4, glow: false, s: [1.2, 2.2, 6, 13, 1.2, 2.2] },
@@ -129,6 +147,7 @@ const BIOME_MIX: Record<BiomeId, PropSpec[]> = {
     { prop: 'slab', weight: 2, glow: false, s: [2, 5, 0.3, 0.5, 2, 5] },
     { prop: 'cell', weight: 3, glow: true, s: [0.3, 0.6, 0.3, 0.6, 0.3, 0.6], float: [0.5, 4] },
     { prop: 'rock', weight: 2, glow: false, s: [1, 3, 1, 3, 1, 3], float: [1, 6] },
+    { prop: 'fall', weight: 2, glow: false, s: [1.5, 3, 5, 10, 0.3, 0.6] },
   ],
   works: [
     { prop: 'duct', weight: 3, glow: false, s: [0.8, 1.2, 0.8, 1.2, 6, 14] },
@@ -141,6 +160,7 @@ const BIOME_MIX: Record<BiomeId, PropSpec[]> = {
     { prop: 'strand', weight: 3, glow: false, s: [0.2, 0.4, 4, 9, 0.2, 0.4] },
     { prop: 'cell', weight: 2, glow: true, s: [0.25, 0.5, 0.25, 0.5, 0.25, 0.5], float: [1, 6] },
     { prop: 'slab', weight: 1, glow: false, s: [2, 4, 0.3, 0.5, 2, 4] },
+    { prop: 'foliage', weight: 3, glow: false, s: [2, 4, 2, 5, 1, 2] },
   ],
   void: [
     { prop: 'crystal', weight: 4, glow: true, s: [0.5, 1, 1.5, 3, 0.5, 1], float: [0, 8] },
@@ -153,16 +173,6 @@ const BIOME_MIX: Record<BiomeId, PropSpec[]> = {
     { prop: 'cell', weight: 2, glow: true, s: [0.25, 0.5, 0.25, 0.5, 0.25, 0.5], float: [1, 6] },
     { prop: 'pillar', weight: 1, glow: false, s: [1.2, 2, 6, 12, 1.2, 2] },
   ],
-};
-
-/** Darken a hex toward silhouette range (0.16–0.30 luminance factor). */
-export const darkenForSilhouette = (hex: number, rand: () => number): number => {
-  const r = (hex >> 16) & 255;
-  const g = (hex >> 8) & 255;
-  const b = hex & 255;
-  const k = 0.16 + rand() * 0.14;
-  const q = (v: number): number => Math.max(0, Math.min(255, Math.round(v * k)));
-  return (q(r) << 16) | (q(g) << 8) | q(b);
 };
 
 /**
@@ -214,7 +224,8 @@ export const placeBiomeDressing = (
     for (let i = 0; i < count; i++) {
       const spec = pickSpec(mix, rand);
       const side = rand() < 0.5 ? -1 : 1;
-      const x = side * (DRESS_CLEARANCE_X + rand() * 9);
+      // Leave room for the prop's full width and its small voxel details.
+      const x = side * (DRESS_CLEARANCE_X + 3 + rand() * 9);
       const z = row.z0 + rand() * (row.z1 - row.z0);
       // Every prop anchors to terrain (or the row baseY) — never
       // unanchored floats, never inside the corridor.
@@ -229,15 +240,15 @@ export const placeBiomeDressing = (
         const lx = Math.abs(x);
         for (const px of [-lx, lx]) {
           out.push({
-            prop: 'archPost', x: px, y: ground + sy / 2, z,
+            biome: row.biome, prop: 'archPost', x: px, y: ground + sy / 2, z,
             sx, sy, sz, ry: 0, rz: 0, glow: false,
-            color: darkenForSilhouette(row.accent, rand),
+            color: BIOME_BODY[row.biome],
           });
         }
         out.push({
-          prop: 'lintel', x: 0, y: ground + sy + 0.5, z,
+          biome: row.biome, prop: 'lintel', x: 0, y: ground + sy + 0.5, z,
           sx: lx * 2 + 1, sy: 1, sz, ry: 0, rz: 0, glow: false,
-          color: darkenForSilhouette(row.accent, rand),
+          color: BIOME_BODY[row.biome],
         });
         continue;
       }
@@ -254,10 +265,10 @@ export const placeBiomeDressing = (
         ? 0
         : rand() * Math.PI * 2;
       out.push({
-        prop: spec.prop, x, y, z, sx, sy, sz, ry,
+        biome: row.biome, prop: spec.prop, x, y, z, sx, sy, sz, ry,
         rz: spec.prop === 'crystal' ? Math.PI / 4 : 0,
         glow: spec.glow,
-        color: spec.glow ? BIOME_GLOW[row.biome] : darkenForSilhouette(row.accent, rand),
+        color: spec.glow ? BIOME_GLOW[row.biome] : BIOME_BODY[row.biome],
       });
     }
   }
