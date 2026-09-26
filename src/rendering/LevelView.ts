@@ -114,10 +114,17 @@ export class LevelView {
     const underMat = library.routeUnder;
     const edgeMat = library.routeEdge;
     const hazardMat = library.hazard;
+    const dressing = level.def.visualDressing;
 
     let solidIndex = 0;
     for (const solid of level.def.solids) {
-      const mesh = new THREE.Mesh(box, bodyMat);
+      // Presentation-only authored biome bands. The solid's gameplay AABB,
+      // neon frame and global hazard material remain exactly as before.
+      const row = dressing?.find((act) => solid.center.z >= act.z0 && solid.center.z < act.z1);
+      const stone = row === undefined ? bodyMat : library.routeBiome(row.biome);
+      const surface = row === undefined ? topMat : stone;
+      const underside = row === undefined ? underMat : stone;
+      const mesh = new THREE.Mesh(box, stone);
       this.occluderMeshes.set(`solid-${String(solidIndex++)}`, mesh);
       mesh.scale.set(
         solid.halfExtents.x * 2,
@@ -128,7 +135,7 @@ export class LevelView {
       this.group.add(mesh);
 
       // Emissive top surface inset slightly (readable walkable area).
-      const top = new THREE.Mesh(box, topMat);
+      const top = new THREE.Mesh(box, surface);
       top.scale.set(
         solid.halfExtents.x * 2 - 0.12,
         0.02,
@@ -166,7 +173,7 @@ export class LevelView {
       // the surface readable from the corridor below. On floor content the
       // bottom faces are buried or void-facing, so this changes nothing there.
       if (solidHeight >= FACE_TRIM_MIN_HEIGHT) {
-        const under = new THREE.Mesh(box, underMat);
+        const under = new THREE.Mesh(box, underside);
         under.scale.set(
           solid.halfExtents.x * 2 - 0.12,
           0.02,

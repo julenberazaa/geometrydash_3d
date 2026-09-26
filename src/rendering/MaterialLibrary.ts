@@ -1,5 +1,80 @@
 import * as THREE from 'three';
 import type { ProductionTheme } from '../visuals/productionTheme';
+import type { BiomeId } from '../level/biomeDressing';
+
+const ROUTE_BIOMES: Record<BiomeId, { stone: number; light: number; dark: number; mark: number; style: number }> = {
+  foundry: { stone: 0x514846, light: 0x776158, dark: 0x24272b, mark: 0xc46b33, style: 0 },
+  garden: { stone: 0x677466, light: 0x9aaa87, dark: 0x34483f, mark: 0x468895, style: 1 },
+  ruins: { stone: 0x81766d, light: 0xb19d86, dark: 0x454b4b, mark: 0xa3886b, style: 2 },
+  cavern: { stone: 0x45576a, light: 0x718597, dark: 0x273746, mark: 0x5aa7bd, style: 3 },
+  crag: { stone: 0x64483d, light: 0x936352, dark: 0x33262a, mark: 0xd45a33, style: 4 },
+  works: { stone: 0x53636b, light: 0x83969b, dark: 0x293b42, mark: 0x57b0a1, style: 5 },
+  temple: { stone: 0x84795c, light: 0xb2a376, dark: 0x4b5145, mark: 0xbba05a, style: 2 },
+  void: { stone: 0x35384c, light: 0x5a5d7c, dark: 0x1c1e30, mark: 0x8677ae, style: 3 },
+  core: { stone: 0x505067, light: 0x82809b, dark: 0x292a40, mark: 0xb879a2, style: 5 },
+};
+
+/** Deterministic tile pixels, authored motifs rather than a random color wash. */
+function routeTile(biome: BiomeId): THREE.DataTexture {
+  const p = ROUTE_BIOMES[biome];
+  const size = 128;
+  const pixels = new Uint8Array(size * size * 4);
+  const color = (hex: number, x: number, y: number): void => {
+    const i = (y * size + x) * 4;
+    pixels[i] = (hex >> 16) & 255;
+    pixels[i + 1] = (hex >> 8) & 255;
+    pixels[i + 2] = hex & 255;
+    pixels[i + 3] = 255;
+  };
+  const hash = (x: number, y: number): number => {
+    let n = (x * 374761393 + y * 668265263 + p.style * 1442695041) | 0;
+    n = Math.imul(n ^ (n >>> 13), 1274126177);
+    return (n ^ (n >>> 16)) >>> 0;
+  };
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const by = Math.floor(y / 32);
+      const stagger = by % 2 === 0 ? 0 : 16;
+      const localX = (x + stagger) % 32;
+      const localY = y % 32;
+      const seam = localX < 2 || localY < 2;
+      const block = hash(Math.floor((x + stagger) / 32), by);
+      const weather = hash(Math.floor(x / 8), Math.floor(y / 8));
+      let tone = block % 4 === 0 ? p.light : p.stone;
+      if (weather % 17 === 0) tone = p.dark;
+      if (localX === 2 || localY === 2) tone = p.light;
+      if (seam) tone = p.dark;
+      // Green growth clings to joints; wet channels form broken horizontal
+      // ribbons; basalt carries branching orange fissures; industrial acts
+      // have recessed panel seams, bolts and conductor traces.
+      if (p.style === 1) {
+        if (seam && block % 3 === 0) tone = 0x527d48; // moss in the mortar
+        if (weather % 13 === 0 && localY > 3) tone = 0x638348;
+        if (x % 128 > 54 && x % 128 < 68) tone = (y % 16 < 3) ? 0x73b7bc : p.mark;
+      }
+      if (p.style === 2 && x % 32 > 8 && x % 32 < 24 && y % 32 > 8 && y % 32 < 24 &&
+          ((x % 32 === 10 || x % 32 === 22) || (y % 32 === 10 || y % 32 === 22))) tone = p.mark;
+      if (p.style === 3 && (x + y * 2) % 47 < 2 && weather % 3 === 0) tone = p.mark;
+      if (p.style === 4 && ((x + Math.floor(y / 8) * 7) % 55 < 2 || y % 64 === 31) && weather % 3 !== 0) tone = p.mark;
+      if (p.style === 5) {
+        if (x % 32 < 2 || y % 32 < 2) tone = p.dark;
+        if ((x % 32 === 5 || x % 32 === 27) && (y % 32 === 5 || y % 32 === 27)) tone = p.light;
+        if (y % 32 === 16 && x % 32 > 7 && x % 32 < 25) tone = p.mark;
+      }
+      if (p.style === 0 && ((x + Math.floor(y / 9) * 5) % 43 < 2) && weather % 3 !== 0) tone = p.mark;
+      color(tone, x, y);
+    }
+  }
+  const texture = new THREE.DataTexture(pixels, size, size, THREE.RGBAFormat);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.magFilter = THREE.NearestFilter;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.generateMipmaps = true;
+  texture.needsUpdate = true;
+  return texture;
+}
 
 /**
  * MaterialLibrary (M6A) — SOLE owner of shared Three.js materials and
@@ -23,6 +98,8 @@ export class MaterialLibrary {
   private readonly tierMaterials = new Map<number, THREE.MeshStandardMaterial>();
   private readonly ringPool: THREE.MeshBasicMaterial[] = [];
   private readonly checkpointBurstPool: THREE.MeshBasicMaterial[] = [];
+  private readonly biomeRoute = new Map<BiomeId, THREE.MeshStandardMaterial>();
+  private readonly routeTextures: THREE.Texture[] = [];
 
   // --- Route ---
   public readonly routeBody: THREE.MeshStandardMaterial;
@@ -445,6 +522,50 @@ export class MaterialLibrary {
     return this.checkpointBurstPool;
   }
 
+  /** Opt-in Descent route skin. World-space projection keeps block size
+   * constant even on long scaled slabs; one texture/material per authored act
+   * is shared by every body, top and exposed underside in that act. */
+  public routeBiome(biome: BiomeId): THREE.MeshStandardMaterial {
+    const cached = this.biomeRoute.get(biome);
+    if (cached !== undefined) return cached;
+    const map = routeTile(biome);
+    this.routeTextures.push(map);
+    const mat = new THREE.MeshStandardMaterial({
+      map, bumpMap: map, bumpScale: 0.16,
+      color: 0xffffff, roughness: biome === 'garden' ? 0.7 : biome === 'works' ? 0.48 : 0.86,
+      metalness: biome === 'works' || biome === 'core' ? 0.3 : 0.04,
+      emissive: biome === 'void' ? 0x11101c : 0x0b0d0d,
+      emissiveIntensity: 0.28,
+    });
+    mat.onBeforeCompile = (shader) => {
+      shader.vertexShader = shader.vertexShader.replace('#include <common>',
+        '#include <common>\nvarying vec3 vRouteWorldPos;\nvarying vec3 vRouteWorldNormal;');
+      shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>',
+        `#include <begin_vertex>
+         vRouteWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
+         vRouteWorldNormal = normalize(mat3(modelMatrix) * objectNormal);
+         vec3 routeVertexN = abs(vRouteWorldNormal);
+         vec2 routeVertexUv = routeVertexN.y > routeVertexN.x && routeVertexN.y > routeVertexN.z
+           ? vRouteWorldPos.xz : routeVertexN.z > routeVertexN.x ? vRouteWorldPos.xy : vRouteWorldPos.zy;
+         vBumpMapUv = routeVertexUv * 0.34;`);
+      shader.fragmentShader = shader.fragmentShader.replace('#include <common>',
+        '#include <common>\nvarying vec3 vRouteWorldPos;\nvarying vec3 vRouteWorldNormal;');
+      shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `
+        #ifdef USE_MAP
+          vec3 routeN = abs(vRouteWorldNormal);
+          vec2 routeUv = routeN.y > routeN.x && routeN.y > routeN.z
+            ? vRouteWorldPos.xz : routeN.z > routeN.x ? vRouteWorldPos.xy : vRouteWorldPos.zy;
+          vec4 routeTexel = texture2D(map, routeUv * 0.34);
+          diffuseColor *= routeTexel;
+        #endif
+      `);
+    };
+    mat.customProgramCacheKey = () => 'biome-route-world-projection-v1';
+    this.materials.push(mat);
+    this.biomeRoute.set(biome, mat);
+    return mat;
+  }
+
   /**
    * M6C1 timeline hook: retint the EXISTING shared route materials in
    * place (body color, surface color + self-emissive, edge color +
@@ -503,11 +624,14 @@ export class MaterialLibrary {
   }
 
   public dispose(): void {
+    for (const t of this.routeTextures) t.dispose();
     for (const m of this.materials) m.dispose();
     for (const g of this.geometries) g.dispose();
     this.materials.length = 0;
     this.geometries.length = 0;
     this.tierMaterials.clear();
+    this.biomeRoute.clear();
+    this.routeTextures.length = 0;
     this.ringPool.length = 0;
   }
 }

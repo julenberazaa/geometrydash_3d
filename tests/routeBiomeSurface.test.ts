@@ -1,0 +1,50 @@
+import { describe, expect, it } from 'vitest';
+import * as THREE from 'three';
+import { THE_DESCENT_CLASSIC } from '../src/content/levels/theDescentClassic';
+import { PRODUCTION_SHOWCASE_01 } from '../src/content/levels/productionShowcase01';
+import { loadLevel } from '../src/level/levelRuntime';
+import { LevelView } from '../src/rendering/LevelView';
+import { makeTestLibrary } from './helpers/visuals';
+
+describe('authored route surfaces', () => {
+  it('gives Descent distinct, tiled material motifs without altering hazard materials', () => {
+    const library = makeTestLibrary();
+    const view = new LevelView(loadLevel(THE_DESCENT_CLASSIC), library);
+    const mats = new Set<THREE.Material>();
+    for (const [index, solid] of THE_DESCENT_CLASSIC.solids.entries()) {
+      const row = THE_DESCENT_CLASSIC.visualDressing?.find(
+        (act) => solid.center.z >= act.z0 && solid.center.z < act.z1,
+      );
+      const body = view.occluderMeshes.get(`solid-${index}`);
+      expect(body).toBeDefined();
+      if (row === undefined) continue;
+      expect(body?.material).toBe(library.routeBiome(row.biome));
+      if (body !== undefined) mats.add(body.material as THREE.Material);
+    }
+    expect(mats.size).toBeGreaterThanOrEqual(7);
+    const garden = library.routeBiome('garden');
+    const foundry = library.routeBiome('foundry');
+    expect(garden.map).toBeInstanceOf(THREE.DataTexture);
+    expect(garden.map).not.toBe(foundry.map);
+    expect(garden.bumpMap).toBe(garden.map);
+    expect(garden.map?.wrapS).toBe(THREE.RepeatWrapping);
+    expect(garden.onBeforeCompile.toString()).toContain('vRouteWorldPos.xz');
+    expect(library.hazard.map).toBeNull();
+    expect(library.materialCount).toBeLessThan(70);
+    view.dispose();
+    library.dispose();
+    expect(library.materialCount).toBe(0);
+  });
+
+  it('keeps Rift on its original shared route material', () => {
+    const library = makeTestLibrary();
+    const before = library.materialCount;
+    const view = new LevelView(loadLevel(PRODUCTION_SHOWCASE_01), library);
+    for (const body of view.occluderMeshes.values()) {
+      expect(body.material).toBe(library.routeBody);
+    }
+    expect(library.materialCount - before).toBeLessThanOrEqual(3);
+    view.dispose();
+    library.dispose();
+  });
+});
