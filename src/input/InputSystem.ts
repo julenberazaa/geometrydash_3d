@@ -181,6 +181,11 @@ export class InputSystem {
       if (action === 'space') {
         if (this.keyboardSpaceHeld) continue;
         this.keyboardSpaceHeld = true;
+        // A new physical source-down is a press even when the pointer
+        // already holds the aggregate action (Spider consumes press edges).
+        this.edges.space.held = true;
+        this.edges.space.pressed = true;
+        continue;
       }
       const edge = this.edges[action];
       if (!edge.held) {
@@ -238,10 +243,8 @@ export class InputSystem {
     if (this.pointerIds.has(event.pointerId)) return;
     if (this.pointerIds.size === 0) {
       const edge = this.edges.space;
-      if (!edge.held) {
-        edge.held = true;
-        edge.pressed = true;
-      }
+      edge.held = true;
+      edge.pressed = true;
     }
     this.pointerIds.add(event.pointerId);
   };

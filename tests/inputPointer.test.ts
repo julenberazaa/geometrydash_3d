@@ -227,6 +227,60 @@ describe('M9.6 pointer primary action (InputSystem)', () => {
     input.detach(asWindow(win));
   });
 
+  it('clicking while keyboard Space is held emits a fresh spider press edge', () => {
+    const input = new InputSystem();
+    const root = new FakeRoot();
+    const win = new FakeRoot();
+    input.attach(asWindow(win));
+    input.attachPointer(asHtmlElement(root));
+    win.dispatch('keydown', { code: 'Space', preventDefault: (): void => {} });
+    expect(input.sample().space.pressedThisStep).toBe(true);
+    root.dispatch('pointerdown', scenePointer(1));
+    expect(input.sample().space).toMatchObject({ held: true, pressedThisStep: true, releasedThisStep: false });
+    root.dispatch('pointerup', scenePointer(1));
+    expect(input.sample().space).toMatchObject({ held: true, pressedThisStep: false, releasedThisStep: false });
+    input.detach(asWindow(win));
+  });
+
+  it('pressing keyboard Space while a pointer is held emits a fresh spider press edge', () => {
+    const input = new InputSystem();
+    const root = new FakeRoot();
+    const win = new FakeRoot();
+    input.attach(asWindow(win));
+    input.attachPointer(asHtmlElement(root));
+    root.dispatch('pointerdown', scenePointer(1));
+    expect(input.sample().space.pressedThisStep).toBe(true);
+    win.dispatch('keydown', { code: 'Space', preventDefault: (): void => {} });
+    expect(input.sample().space).toMatchObject({ held: true, pressedThisStep: true, releasedThisStep: false });
+    win.dispatch('keydown', { code: 'Space', repeat: true, preventDefault: (): void => {} });
+    expect(input.sample().space.pressedThisStep).toBe(false);
+    input.detach(asWindow(win));
+  });
+
+  it('a quick pointer up/down between samples preserves the new press', () => {
+    const input = new InputSystem();
+    const root = new FakeRoot();
+    input.attachPointer(asHtmlElement(root));
+    root.dispatch('pointerdown', scenePointer(1));
+    input.sample();
+    root.dispatch('pointerup', scenePointer(1));
+    root.dispatch('pointerdown', scenePointer(2));
+    expect(input.sample().space).toMatchObject({ held: true, pressedThisStep: true, releasedThisStep: true });
+    expect(input.sample().space).toMatchObject({ held: true, pressedThisStep: false, releasedThisStep: false });
+  });
+
+  it('multiple complete taps within one step coalesce into one physical snapshot edge', () => {
+    const input = new InputSystem();
+    const root = new FakeRoot();
+    input.attachPointer(asHtmlElement(root));
+    root.dispatch('pointerdown', scenePointer(1));
+    root.dispatch('pointerup', scenePointer(1));
+    root.dispatch('pointerdown', scenePointer(2));
+    root.dispatch('pointerup', scenePointer(2));
+    expect(input.sample().space).toMatchObject({ held: false, pressedThisStep: true, releasedThisStep: true });
+    expect(input.sample().space.pressedThisStep).toBe(false);
+  });
+
   it('disabling input discards a pending press before resume', () => {
     const input = new InputSystem();
     const root = new FakeRoot();
