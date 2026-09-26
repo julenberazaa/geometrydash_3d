@@ -973,11 +973,28 @@ export const THE_DESCENT_CLASSIC: LevelDefinition = {
     // Lower-deck spike timing (under the upper deck).
     { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 570 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     { kind: 'hazard', visual: 'spike', center: { x: 2.6, y: 0.25, z: 594 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Lower maze: a framed lane-2 opening after the pad split prevents
+    // bypassing the technical lower route through the empty center road.
+    // The upper reference line rides the deck above this 0..3 wall.
+    { kind: 'killFront', visual: 'block', center: { x: 1.3, y: 1.5, z: 552 }, halfExtents: { x: 2.6, y: 1.5, z: 0.5 } },
+    // The lower line's existing 559 hop clears this lane-2 spike; the
+    // paired door→jump read stops the long under-deck cruise.
+    { kind: 'hazard', visual: 'spike', center: { x: -2.6, y: 0.25, z: 564 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
     // M9.5 Zone B: lower-deck maze door (unjumpable 0..3 wall, door lane
     // 0 — two taps from the lane-2 line, one tap back). Pairs with the
     // lower Chomper (612): the weave feeds the load-bearing 604.5 jump.
     // The upper line rides 3.5+ u above, unaffected.
     { kind: 'killFront', visual: 'block', center: { x: -1.3, y: 1.5, z: 600 }, halfExtents: { x: 2.6, y: 1.5, z: 0.5 } },
+    // Maze exit: the shared z640 hop now clears a center spike while a
+    // framed pair of side posts commits both routes to the center gap.
+    // The long 628..660 slab keeps its width; only the read is tightened.
+    { kind: 'killFront', visual: 'block', center: { x: 2.6, y: 1.5, z: 640 }, halfExtents: { x: 1.3, y: 1.5, z: 0.5 } },
+    { kind: 'killFront', visual: 'block', center: { x: -2.6, y: 1.5, z: 640 }, halfExtents: { x: 1.3, y: 1.5, z: 0.5 } },
+    { kind: 'hazard', visual: 'spike', center: { x: 0, y: 0.25, z: 644 }, halfExtents: { x: 0.5, y: 0.25, z: 0.5 } },
+    // Repeat the opening once at the ferry approach: the wide slab can
+    // no longer be bypassed laterally immediately after the center hop.
+    { kind: 'killFront', visual: 'block', center: { x: 2.6, y: 1.5, z: 652 }, halfExtents: { x: 1.3, y: 1.5, z: 0.5 } },
+    { kind: 'killFront', visual: 'block', center: { x: -2.6, y: 1.5, z: 652 }, halfExtents: { x: 1.3, y: 1.5, z: 0.5 } },
     // 2× exit weave gates (single-lane blocks, one-tap line at speed:
     // lane 1 through 700, lane 0 through 706 + 712).
     { kind: 'killFront', visual: 'block', center: { x: 2.6, y: 1.5, z: 700 }, halfExtents: { x: 1.3, y: 1.5, z: 0.5 } },

@@ -166,10 +166,10 @@ describe('M9.5 THE DESCENT (M8.6 foundation + Zenith density polish)', () => {
       'ps-gorb-spire',
       'ps-gorb-spire-back',
     ]);
-    // Raw content volume: the M8.6 redesign is dense (M8.5: 100/32);
-    // M9.5 adds 3 pillars + 7 net hazards on top.
+    // Raw content volume: M9.5 adds 3 pillars + 7 net hazards on the M8.6
+    // route; the focused exit/LOW maze pass adds seven authored hazards.
     expect(THE_DESCENT_CLASSIC.solids.length).toBe(178);
-    expect(THE_DESCENT_CLASSIC.hazards.length).toBe(84);
+    expect(THE_DESCENT_CLASSIC.hazards.length).toBe(91);
   });
 
   it('M9.5: primary route density (M8.6 foundation + surgical polish)', { timeout: 120000 }, () => {
