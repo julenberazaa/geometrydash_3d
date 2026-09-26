@@ -181,6 +181,86 @@ describe('M9.6 pointer primary action (InputSystem)', () => {
     input.detach(asWindow(win));
   });
 
+  it('a pointer released outside the scene rearms the next spider press', () => {
+    const input = new InputSystem();
+    const root = new FakeRoot();
+    input.attachPointer(asHtmlElement(root));
+    root.dispatch('pointerdown', scenePointer(1));
+    expect(input.sample().space.pressedThisStep).toBe(true);
+    root.dispatch('pointerleave', scenePointer(1));
+    expect(input.sample().space.releasedThisStep).toBe(true);
+    root.dispatch('pointerdown', scenePointer(2));
+    expect(input.sample().space.pressedThisStep).toBe(true);
+  });
+
+  it('pointer release does not release a held keyboard Space', () => {
+    const input = new InputSystem();
+    const root = new FakeRoot();
+    const win = new FakeRoot();
+    input.attach(asWindow(win));
+    input.attachPointer(asHtmlElement(root));
+    win.dispatch('keydown', { code: 'Space', preventDefault: (): void => {} });
+    root.dispatch('pointerdown', scenePointer(1));
+    input.sample();
+    root.dispatch('pointerup', scenePointer(1));
+    expect(input.sample().space).toMatchObject({ held: true, releasedThisStep: false });
+    win.dispatch('keyup', { code: 'Space', preventDefault: (): void => {} });
+    expect(input.sample().space).toMatchObject({ held: false, releasedThisStep: true });
+    input.detach(asWindow(win));
+  });
+
+  it('keyboard release does not disarm a held pointer or its next press', () => {
+    const input = new InputSystem();
+    const root = new FakeRoot();
+    const win = new FakeRoot();
+    input.attach(asWindow(win));
+    input.attachPointer(asHtmlElement(root));
+    root.dispatch('pointerdown', scenePointer(1));
+    win.dispatch('keydown', { code: 'Space', preventDefault: (): void => {} });
+    input.sample();
+    win.dispatch('keyup', { code: 'Space', preventDefault: (): void => {} });
+    expect(input.sample().space).toMatchObject({ held: true, releasedThisStep: false });
+    root.dispatch('pointerup', scenePointer(1));
+    expect(input.sample().space.releasedThisStep).toBe(true);
+    root.dispatch('pointerdown', scenePointer(2));
+    expect(input.sample().space.pressedThisStep).toBe(true);
+    input.detach(asWindow(win));
+  });
+
+  it('disabling input discards a pending press before resume', () => {
+    const input = new InputSystem();
+    const root = new FakeRoot();
+    input.attachPointer(asHtmlElement(root));
+    root.dispatch('pointerdown', scenePointer(1));
+    input.setEnabled(false);
+    input.setEnabled(true);
+    expect(input.sample().space.pressedThisStep).toBe(false);
+  });
+
+  it('window blur discards a pending press and rearms pointer input', () => {
+    const input = new InputSystem();
+    const root = new FakeRoot();
+    const win = new FakeRoot();
+    input.attach(asWindow(win));
+    input.attachPointer(asHtmlElement(root));
+    root.dispatch('pointerdown', scenePointer(1));
+    win.dispatch('blur', {});
+    expect(input.sample().space.pressedThisStep).toBe(false);
+    root.dispatch('pointerdown', scenePointer(2));
+    expect(input.sample().space.pressedThisStep).toBe(true);
+    input.detach(asWindow(win));
+  });
+
+  it('detaching an active pointer releases Space without releasing a held key', () => {
+    const input = new InputSystem();
+    const root = new FakeRoot();
+    input.attachPointer(asHtmlElement(root));
+    root.dispatch('pointerdown', scenePointer(1));
+    input.sample();
+    input.detachPointer();
+    expect(input.sample().space).toMatchObject({ held: false, releasedThisStep: true });
+  });
+
   it('detachPointer stops recording and removes every pointer listener', () => {
     const input = new InputSystem();
     const root = new FakeRoot();
@@ -190,8 +270,9 @@ describe('M9.6 pointer primary action (InputSystem)', () => {
     expect(root.listenerCount('pointerdown')).toBe(0);
     expect(root.listenerCount('pointerup')).toBe(0);
     expect(root.listenerCount('pointercancel')).toBe(0);
+    expect(root.listenerCount('pointerleave')).toBe(0);
     const removed = root.removed.map((c) => c.type).sort();
-    expect(removed).toEqual(['pointercancel', 'pointerdown', 'pointerup']);
+    expect(removed).toEqual(['pointercancel', 'pointerdown', 'pointerleave', 'pointerup']);
     // Post-detach contacts are ignored (no cross-session leakage).
     root.dispatch('pointerdown', scenePointer(1));
     const snap = input.sample();

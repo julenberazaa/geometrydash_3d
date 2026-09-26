@@ -165,6 +165,8 @@ export class InputSystem {
    * as keyboard Space, so taps are indistinguishable downstream).
    */
   private readonly pointerIds = new Set<number>();
+  /** Track Space separately: pointer and keyboard releases must not disarm each other. */
+  private keyboardSpaceHeld = false;
   private pointerRoot: HTMLElement | null = null;
 
   private enabled = true;
@@ -176,6 +178,10 @@ export class InputSystem {
     if (PREVENT_DEFAULT_CODES.has(event.code)) event.preventDefault();
     if (!this.enabled) return;
     for (const action of actions) {
+      if (action === 'space') {
+        if (this.keyboardSpaceHeld) continue;
+        this.keyboardSpaceHeld = true;
+      }
       const edge = this.edges[action];
       if (!edge.held) {
         // First physical press only — OS auto-repeat events are ignored.
@@ -191,6 +197,11 @@ export class InputSystem {
     if (PREVENT_DEFAULT_CODES.has(event.code)) event.preventDefault();
     if (!this.enabled) return;
     for (const action of actions) {
+      if (action === 'space') {
+        if (!this.keyboardSpaceHeld) continue;
+        this.keyboardSpaceHeld = false;
+        if (this.pointerIds.size > 0) continue;
+      }
       const edge = this.edges[action];
       if (edge.held) {
         edge.held = false;
@@ -205,6 +216,7 @@ export class InputSystem {
    */
   private readonly onBlur = (): void => {
     this.releaseAll();
+    this.clearTransient();
   };
 
   /**
@@ -223,6 +235,7 @@ export class InputSystem {
     if (this.isUiTarget(event.target)) return;
     event.preventDefault();
     if (!this.enabled) return;
+    if (this.pointerIds.has(event.pointerId)) return;
     if (this.pointerIds.size === 0) {
       const edge = this.edges.space;
       if (!edge.held) {
@@ -238,7 +251,7 @@ export class InputSystem {
     this.pointerIds.delete(event.pointerId);
     if (this.pointerIds.size > 0) return;
     const edge = this.edges.space;
-    if (edge.held) {
+    if (edge.held && !this.keyboardSpaceHeld) {
       edge.held = false;
       edge.released = true;
     }
@@ -247,7 +260,11 @@ export class InputSystem {
   /** Ignore game input entirely (e.g. pause menu open). */
   public setEnabled(enabled: boolean): void {
     this.enabled = enabled;
-    if (!enabled) this.releaseAll();
+    if (!enabled) {
+      this.releaseAll();
+      // A press pending when the pause/menu opens must not fire on resume.
+      this.clearTransient();
+    }
   }
 
   public attach(target: Window = window): void {
@@ -279,6 +296,7 @@ export class InputSystem {
     root.addEventListener('pointerdown', this.onPointerDown, { passive: false });
     root.addEventListener('pointerup', this.onPointerUp);
     root.addEventListener('pointercancel', this.onPointerUp);
+    root.addEventListener('pointerleave', this.onPointerUp);
   }
 
   public detachPointer(): void {
@@ -286,8 +304,13 @@ export class InputSystem {
     this.pointerRoot.removeEventListener('pointerdown', this.onPointerDown);
     this.pointerRoot.removeEventListener('pointerup', this.onPointerUp);
     this.pointerRoot.removeEventListener('pointercancel', this.onPointerUp);
+    this.pointerRoot.removeEventListener('pointerleave', this.onPointerUp);
     this.pointerRoot = null;
     this.pointerIds.clear();
+    if (!this.keyboardSpaceHeld && this.edges.space.held) {
+      this.edges.space.held = false;
+      this.edges.space.released = true;
+    }
   }
 
   /** True when the contact started on (or inside) a UI control. */
@@ -332,5 +355,6 @@ export class InputSystem {
     // Pointer contacts are re-armed on next contact (blur/pause drops the
     // gesture — the matching release may never arrive while disabled).
     this.pointerIds.clear();
+    this.keyboardSpaceHeld = false;
   }
 }
