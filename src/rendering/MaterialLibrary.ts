@@ -531,7 +531,10 @@ export class MaterialLibrary {
     this.unitBox = trackGeo(new THREE.BoxGeometry(1, 1, 1));
     this.spikeCone = trackGeo(new THREE.ConeGeometry(0.5, 1, 4));
     this.orbSphere = trackGeo(new THREE.SphereGeometry(0.42, 18, 14));
-    this.orbHalo = trackGeo(new THREE.TorusGeometry(0.62, 0.045, 8, 36));
+    // Keep the 36-segment ring silhouette; the tiny tube needs six faces,
+    // not eight. Saves 144 triangles on every visible halo/rim across
+    // portals and interaction rings without removing biome geometry.
+    this.orbHalo = trackGeo(new THREE.TorusGeometry(0.62, 0.045, 6, 36));
     this.checkpointGem = trackGeo(new THREE.OctahedronGeometry(0.55));
     this.chevron = trackGeo(new THREE.ConeGeometry(0.26, 0.55, 4));
     const playerSize = 1.24; // visual edge; gameplay collider stays 1.1

@@ -893,6 +893,9 @@ fixed-tick PHYSICAL input tape plus verification evidence.
   ±5.4; exterior machinery alone is hidden by the opaque tunnel shell.
   Route shader structures distinguish all nine biomes, including angular
   foundry clinker, temple carvings, void slate and segmented core circuits.
+  Shared halo geometry retains its 36-segment circular silhouette while
+  the small tube cross-section uses six faces (432 triangles instead of
+  576), reducing repeated portal/rim cost without cutting biome geometry.
   Fall-strand shader time advances from the existing
   `updateMotes` render-dt path; pause freezes it, and no objects are
   allocated per frame. Chunking trades extra visible draws for substantially
