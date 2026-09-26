@@ -267,6 +267,8 @@ export class EnvironmentView {
   private readonly moteGeo: THREE.BufferGeometry | null;
   private readonly motePos: Float32Array | null;
   private readonly moteSpeed: Float32Array | null;
+  private readonly moteWrapLow: Float32Array | null;
+  private readonly moteWrapHigh: Float32Array | null;
   private static readonly MOTE_COUNT = 240;
   /**
    * M9.6.1 biome dressing (route-adjacent midground): TWO static
@@ -395,10 +397,14 @@ export class EnvironmentView {
       this.moteGeo = motes.geometry;
       this.motePos = motes.positions;
       this.moteSpeed = motes.speeds;
+      this.moteWrapLow = motes.wrapLow;
+      this.moteWrapHigh = motes.wrapHigh;
     } else {
       this.moteGeo = null;
       this.motePos = null;
       this.moteSpeed = null;
+      this.moteWrapLow = null;
+      this.moteWrapHigh = null;
     }
     // M9.6.1 biome dressing (opt-in per level, static, 2 draws).
     const dressing = EnvironmentView.buildBiomeDressing(pillarGeo, def);
@@ -542,6 +548,8 @@ export class EnvironmentView {
       sy: number;
       sz: number;
       color: THREE.Color;
+      ry?: number;
+      rz?: number;
     }
     const items: ArchItem[] = [];
     const accentAtZ = (z: number): number => {
@@ -555,8 +563,9 @@ export class EnvironmentView {
       }
       return accent ?? def?.theme.edge ?? 0x35c8ff;
     };
-    const push = (x: number, y: number, z: number, sx: number, sy: number, sz: number, hex: number, mul: number): void => {
-      items.push({ x, y, z, sx, sy, sz, color: new THREE.Color(hex).multiplyScalar(mul) });
+    const push = (x: number, y: number, z: number, sx: number, sy: number, sz: number,
+      hex: number, mul: number, ry = 0, rz = 0): void => {
+      items.push({ x, y, z, sx, sy, sz, color: new THREE.Color(hex).multiplyScalar(mul), ry, rz });
     };
     // Focal gate-arches (posts + lintel framing each gameplay moment).
     const focal: number[] = [];
@@ -576,46 +585,36 @@ export class EnvironmentView {
     let lastArchZ = -100;
     let impactTick = 0;
     for (const z of focal) {
-      if (z < -10 || z > levelLengthZ + 10 || z - lastArchZ < 6) continue;
+      if (z < -10 || z > levelLengthZ + 10) continue;
+      const biome = def?.visualDressing?.find((row) => z >= row.z0 && z < row.z1)?.biome;
+      // The old every-6-u full-width portal frames closed down the chase
+      // view. Keep their rhythm in Rift; Descent uses spaced side landmarks.
+      if (z - lastArchZ < (biome === undefined ? 6 : 26)) continue;
       lastArchZ = z;
       impactTick++;
       const accent = accentAtZ(z);
-      const biome = def?.visualDressing?.find((row) => z >= row.z0 && z < row.z1)?.biome;
       const hot = impactTick % 7 === 0;
-      const frame = biome === undefined ? accent : BIOME_BODY[biome];
-      const postMul = biome === undefined ? (hot ? 0.8 : 0.35) : 1.2;
-      const lintelMul = biome === undefined ? (hot ? 1.0 : 0.55) : 1.35;
-      push(-7.5, 5.5, z, 1.2, 11, 1.2, frame, postMul);
-      push(7.5, 5.5, z, 1.2, 11, 1.2, frame, postMul);
-      push(0, 11.6, z, 16.2, 1.2, 1.2, frame, lintelMul);
-      if (biome === 'garden' || biome === 'temple') {
-        push(0, 12.35, z, 17.2, 0.35, 2.4, 0x4f943e, 0.9);
-        for (const side of [-1, 1]) {
-          push(side * 8.2, 7.8, z + 0.7, 0.28, 5.5, 0.3, 0x569949, 0.8);
-          push(side * 8.5, 4.3, z + 0.75, 1.1, 0.22, 0.6, 0x70a94b, 0.7);
-          if (biome === 'garden') {
-            push(side * 9.7, 2.4, z + 3, 1.3, 8, 0.3, 0x36b8d6, 0.6);
-            push(side * 9.7, -1.7, z + 3.3, 2.5, 0.2, 1.4, 0x4fc8db, 0.55);
-          }
-        }
-      } else if (biome === 'ruins' || biome === 'cavern') {
-        for (const side of [-1, 1]) {
-          push(side * 7.5, 7.5, z + 0.68, 0.9, 0.14, 0.14,
-            biome === 'ruins' ? 0x85728a : 0x62b8cd, 0.7);
-          push(side * 7.5, 3.5, z + 0.68, 0.9, 0.14, 0.14,
-            biome === 'ruins' ? 0x85728a : 0x62b8cd, 0.7);
-          if (biome === 'cavern') push(side * 7.3, 12.7, z,
-            0.45, 2.2, 0.55, 0x5acef2, 0.5);
-        }
-      } else if (biome === 'crag' || biome === 'foundry') {
-        for (const side of [-1, 1]) {
-          push(side * 7.5, 5.5, z + 0.66, 0.14, 7.5, 0.15,
-            biome === 'crag' ? 0xff5b18 : 0xff9631, 0.62);
-        }
-      } else if (biome === 'works') {
-        push(0, 11.6, z + 0.68, 15.5, 0.12, 0.12, 0x73cbb1, 0.55);
-        for (const side of [-1, 1]) {
-          push(side * 7.5, 5.5, z + 0.68, 0.12, 8, 0.12, 0x73cbb1, 0.55);
+      if (biome === undefined) {
+        push(-7.5, 5.5, z, 1.2, 11, 1.2, accent, hot ? 0.8 : 0.35);
+        push(7.5, 5.5, z, 1.2, 11, 1.2, accent, hot ? 0.8 : 0.35);
+        push(0, 11.6, z, 16.2, 1.2, 1.2, accent, hot ? 1.0 : 0.55);
+        continue;
+      }
+      for (const side of [-1, 1]) {
+        const x = side * 10.4;
+        push(x, 3.2, z, 2.3, 6.4, 2.2, BIOME_BODY[biome], 1.1);
+        push(x, 6.5, z, 3.2, 0.45, 2.8, BIOME_BODY[biome], 1.25);
+        if (biome === 'garden' || biome === 'temple') {
+          push(x, 6.9, z, 3.6, 0.35, 3.2, 0x4f943e, 0.8);
+          push(side * 9.7, 4.9, z + 0.9, 0.16, 3.3, 0.18, 0x69a948, 0.65);
+        } else if (biome === 'crag' || biome === 'foundry') {
+          push(side * 9.2, 2.7, z + 0.9, 0.2, 5.1, 0.16,
+            biome === 'crag' ? 0xff5b18 : 0xff9631, 0.7);
+        } else if (biome === 'cavern' || biome === 'void' || biome === 'core') {
+          push(side * 10.2, 7.8, z, 0.45, 2.1, 0.65, BIOME_GLOW[biome], 0.42,
+            0, side * 0.25);
+        } else if (biome === 'works') {
+          push(side * 9.2, 4.6, z + 0.9, 0.14, 4, 0.16, 0x73cbb1, 0.55);
         }
       }
     }
@@ -704,31 +703,67 @@ export class EnvironmentView {
       const z = -20 + rand() * (levelLengthZ + 60);
       put(side * (8 + rand() * 4), 3 + rand() * 3, z, 1.5, 18 + rand() * 6, 1.5);
     }
-    // Continuous, off-route material beds make the island and volcanic acts
-    // read as water and magma instead of differently tinted empty space.
-    // Staggered voxel courses imply flow without a costly animated material.
+    // Visible side channels live just beyond the route footprint. The old
+    // deep bed (y=-4.5) disappeared behind the slab in the chase camera.
     for (const row of def?.visualDressing ?? []) {
       if (row.biome !== 'garden' && row.biome !== 'crag') continue;
       const water = row.biome === 'garden';
       for (let z = row.z0 + 8; z < row.z1 - 8; z += 18) {
         for (const side of [-1, 1]) {
-          push(side * 13, water ? -4.5 : -7, z,
-            9, 0.22, 17.6, water ? 0x147ca0 : 0x9d3415, 0.75);
-          for (let j = 0; j < 3; j++) {
-            push(side * (10.3 + j * 2.1), water ? -4.3 : -6.8,
-              z + (j - 1) * 3.7, 0.26, 0.04, 5.2,
-              water ? 0x55d8e8 : 0xff8b22, 0.5);
+          push(side * 13.8, water ? -2.5 : -3.8, z,
+            12.5, 0.25, 17.9, water ? 0x0d465f : 0x63200e, 0.82);
+          push(side * 11.5, water ? -1.25 : -2.2, z,
+            7.1, 0.18, 17.6, water ? 0x167eac : 0xc7440d, 0.96);
+          for (let j = 0; j < 4; j++) {
+            push(side * (9.0 + j * 1.6), water ? -1.11 : -2.06,
+              z + (j - 1.5) * 3.3, 0.2, 0.035, 4.7,
+              water ? 0x8ce9ee : 0xffa22b, 0.58);
           }
         }
       }
       if (water) {
-        for (let z = row.z0 + 12; z < row.z1 - 10; z += 25) {
-          const side = Math.floor(z / 25) % 2 === 0 ? -1 : 1;
-          const x = side * 13.2;
-          push(x, 3.2, z, 0.85, 8.5, 0.85, 0x35553a, 0.9);
-          push(x, 8.2, z, 5.6, 1.35, 3.7, 0x4c913f, 0.8);
-          push(x + side * 2.2, 7.4, z - 0.8, 3.1, 0.75, 3.4, 0x65a94c, 0.75);
-          push(x - side * 1.8, 5.9, z + 1.2, 0.25, 4.1, 0.25, 0x5e9d48, 0.65);
+        for (let z = row.z0 + 10; z < row.z1 - 10; z += 20) {
+          for (const side of [-1, 1]) {
+            const x = side * (12.4 + (Math.floor(z / 20) % 2) * 1.2);
+            push(x, 3.2, z, 0.9, 8.3, 0.9, 0x2b5136, 0.9);
+            push(x, 7.6, z, 3.1, 1.35, 2.7, 0x397038, 0.85);
+            // Tapered leaf fans and a hanging root, not a flat cube cap.
+            for (let j = -2; j <= 2; j++) {
+              push(x + side * j * 0.84, 8.3 - Math.abs(j) * 0.55,
+                z + (j % 2) * 0.65, 2.0, 0.28, 1.5,
+                j % 2 === 0 ? 0x61a448 : 0x407e3d, 0.88,
+                j * 0.13, side * j * 0.16);
+            }
+            push(x - side * 1.3, 4.7, z + 1.4, 0.18, 4.5, 0.17, 0x589b48, 0.72);
+            push(x + side * 1.4, 5.0, z - 1.1, 0.16, 3.8, 0.16, 0x569447, 0.68);
+          }
+        }
+        for (let z = row.z0 + 18; z < row.z1 - 12; z += 36) {
+          for (const side of [-1, 1]) {
+            const x = side * 7.85;
+            push(x, 2.35, z, 1.35, 7.1, 0.34, 0x228db4, 0.86);
+            for (let j = -1; j <= 1; j++) {
+              push(x + j * 0.52, 2.35 + j * 0.18, z + 0.22,
+                0.23, 6.8, 0.09, 0xb4f5f2, 0.68);
+              push(x + j * 0.57, -1.0, z + 0.8 + j * 0.33,
+                0.4, 0.12, 0.55, 0xc4f9f1, 0.62);
+            }
+            push(side * 9.2, 5.95, z - 0.25, 3.4, 0.45, 2.0, 0x466c4c, 0.9);
+          }
+        }
+      } else {
+        for (let z = row.z0 + 14; z < row.z1 - 10; z += 34) {
+          for (const side of [-1, 1]) {
+            const x = side * 8.0;
+            push(x, 2.1, z, 1.5, 8.7, 0.5, 0xf15c10, 0.9);
+            push(x - side * 0.45, 2.1, z + 0.32,
+              0.34, 8.0, 0.12, 0xffb425, 0.78);
+            push(x, -2.0, z + 0.8, 3.6, 0.14, 1.8, 0xff8b16, 0.72);
+            for (let j = -1; j <= 1; j++) {
+              push(x + side * (2.3 + j * 1.2), 3.8 + j * 0.8, z - 1.7,
+                1.25, 6.5 + j, 1.35, 0x3c2925, 0.95);
+            }
+          }
         }
       }
     }
@@ -741,7 +776,7 @@ export class EnvironmentView {
       if (it === undefined) continue;
       dummy.position.set(it.x, it.y, it.z);
       dummy.scale.set(it.sx, it.sy, it.sz);
-      dummy.rotation.set(0, 0, 0);
+      dummy.rotation.set(0, it.ry ?? 0, it.rz ?? 0);
       dummy.updateMatrix();
       mesh.setMatrixAt(i, dummy.matrix);
       mesh.setColorAt(i, it.color);
@@ -858,25 +893,40 @@ export class EnvironmentView {
     material: THREE.PointsMaterial;
     positions: Float32Array;
     speeds: Float32Array;
+    wrapLow: Float32Array;
+    wrapHigh: Float32Array;
   } | null {
     const n = EnvironmentView.MOTE_COUNT;
     const positions = new Float32Array(n * 3);
     const colors = new Float32Array(n * 3);
     const speeds = new Float32Array(n);
+    const wrapLow = new Float32Array(n);
+    const wrapHigh = new Float32Array(n);
     const rand = mulberry32(60521);
     const c = new THREE.Color();
+    const garden = def?.visualDressing?.find((row) => row.biome === 'garden');
+    const crag = def?.visualDressing?.find((row) => row.biome === 'crag');
     for (let i = 0; i < n; i++) {
-      const x = (rand() - 0.5) * 56;
-      const y = -10 + rand() * 24;
-      const z = -30 + rand() * (levelLengthZ + 90);
+      const spray = garden !== undefined && i < 72;
+      const ash = crag !== undefined && i >= 72 && i < 116;
+      const row = spray ? garden : ash ? crag : undefined;
+      const x = row === undefined ? (rand() - 0.5) * 56
+        : (rand() < 0.5 ? -1 : 1) * (8.2 + rand() * 6);
+      const y = row === undefined ? -10 + rand() * 24
+        : spray ? -1.1 + rand() * 4.6 : -2 + rand() * 7;
+      const z = row === undefined ? -30 + rand() * (levelLengthZ + 90)
+        : row.z0 + rand() * (row.z1 - row.z0);
       positions[i * 3] = x;
       positions[i * 3 + 1] = y;
       positions[i * 3 + 2] = z;
-      c.setHex(EnvironmentView.accentAtZ(def, z)).multiplyScalar(0.55 + rand() * 0.45);
+      c.setHex(spray ? 0xb5f6f2 : ash ? 0xff7923 : EnvironmentView.accentAtZ(def, z))
+        .multiplyScalar(row === undefined ? 0.55 + rand() * 0.45 : 0.45 + rand() * 0.4);
       colors[i * 3] = c.r;
       colors[i * 3 + 1] = c.g;
       colors[i * 3 + 2] = c.b;
-      speeds[i] = 0.4 + rand() * 1.1;
+      speeds[i] = row === undefined ? 0.4 + rand() * 1.1 : 0.45 + rand() * 0.7;
+      wrapLow[i] = spray ? -1.1 : ash ? -2 : -10;
+      wrapHigh[i] = spray ? 4.0 : ash ? 6 : 14;
     }
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -892,7 +942,7 @@ export class EnvironmentView {
     });
     const points = new THREE.Points(geometry, material);
     points.frustumCulled = false;
-    return { points, geometry, material, positions, speeds };
+    return { points, geometry, material, positions, speeds, wrapLow, wrapHigh };
   }
 
   /**
@@ -903,13 +953,15 @@ export class EnvironmentView {
   public updateMotes(renderDt: number): void {
     const pos = this.motePos;
     const speeds = this.moteSpeed;
+    const wrapLow = this.moteWrapLow;
+    const wrapHigh = this.moteWrapHigh;
     const geo = this.moteGeo;
-    if (pos === null || speeds === null || geo === null || renderDt <= 0) return;
+    if (pos === null || speeds === null || wrapLow === null || wrapHigh === null || geo === null || renderDt <= 0) return;
     for (let i = 0; i < speeds.length; i++) {
       const speed = speeds[i] ?? 0;
       const y0 = pos[i * 3 + 1] ?? -10;
       let y = y0 + speed * renderDt;
-      if (y > 14) y = -10;
+      if (y > (wrapHigh[i] ?? 14)) y = wrapLow[i] ?? -10;
       pos[i * 3 + 1] = y;
     }
     (geo.getAttribute('position') as THREE.BufferAttribute).needsUpdate = true;
